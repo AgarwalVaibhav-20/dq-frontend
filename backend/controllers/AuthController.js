@@ -1,5 +1,6 @@
 // controllers/AuthController.js
 const User = require("../model/User");
+const UserProfile = require("../model/UserProfile");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
 const validator = require("validator");
@@ -74,6 +75,15 @@ module.exports = {
       await user.save();
       console.log("✅ User created successfully");
 
+      await UserProfile.create({
+        userId: user._id,
+        email: user.email,
+        firstName: "Not set",
+        lastName: "Not set",
+        restaurantId: user._id,
+      });
+      console.log("✅ UserProfile created successfully");
+
       // 6️⃣ Send OTP (email service or console in dev)
       if (process.env.NODE_ENV !== "production") {
         console.log(`✅ OTP for ${email}: ${otp}`);
@@ -95,9 +105,9 @@ module.exports = {
   // LOGIN
   async login(req, res) {
     const { email, password } = req.body;
-    console.log(email, password)
 
     try {
+      // 1. Find user
       const user = await User.findOne({ email });
       if (!user) {
         return res.status(400).json({
@@ -105,20 +115,17 @@ module.exports = {
           message: "User not found",
         });
       }
-      console.log(user)
-      console.log(user.password)
-      console.log(password)
-      // 2. Compare password with hashed password
-      const isMatch = await bcrypt.compare(password, user.password);
-      console.log("📌 Match result:", isMatch);
 
+      // 2. Compare password
+      const isMatch = await bcrypt.compare(password, user.password);
       if (!isMatch) {
         return res.status(400).json({
           success: false,
           message: "Invalid credentials (wrong password)",
         });
       }
-      // 3. (Optional) Check if account is verified
+
+      // 3. Check if account is verified
       if (!user.isVerified) {
         return res.status(403).json({
           success: false,
@@ -126,14 +133,17 @@ module.exports = {
         });
       }
 
-      // 4. Create JWT
+      // 4. Find profile (to get restaurantId & categoryId)
+      const profile = await UserProfile.findOne({ userId: user._id });
+
+      // 5. Create JWT
       const token = jwt.sign(
         { id: user._id, email: user.email },
         process.env.SECRET_ACCESS_KEY,
         { expiresIn: "7d" }
       );
-      
-      // 5. Send success response
+
+      // 6. Send success response
       return res.status(200).json({
         success: true,
         message: "Login successful",
@@ -142,11 +152,10 @@ module.exports = {
           id: user._id,
           email: user.email,
           username: user.username,
-          userId: user.userId, 
-          restaurantId: user.restaurantId ,
-          categoryId:user.categoryId
+          userId: user._id,  // main user id
+          restaurantId: profile?.restaurantId || null,
+          profileImage:profile?.profileImage || null,
         }
-
       });
 
     } catch (error) {
@@ -202,24 +211,67 @@ module.exports = {
   },
 
   // FORGOT OTP (resend OTP)
-  async forgotOtp(req, res) {
+  async forgotPassword(req, res) {
     try {
       const { email } = req.body;
 
-      const user = await User.findOne({ email });
+      if (!email) return res.status(400).json({ message: "Email is required" });
+
+      const user = await User.findOne({ email: email.toLowerCase() });
       if (!user) return res.status(404).json({ message: "User not found" });
 
-      // Generate new OTP
-      const otp = Math.floor(100000 + Math.random() * 900000);
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpExpiry = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-      user.otp = otp;
-      user.otpExpires = Date.now() + 5 * 60 * 1000; // 5 min expiry
+      user.resetOTP = otp;
+      user.resetOtpExpiry = otpExpiry;
       await user.save();
 
-      // In real project -> send OTP by email/SMS
-      res.json({ message: "OTP resent successfully", otp }); // remove OTP in prod
+      // TODO: send OTP via nodemailer here
+      if (process.env.NODE_ENV !== "production") {
+        console.log(`📩 Reset OTP for ${email}: ${otp}`);
+      }
+
+      res.json({ message: "Password reset OTP sent to email" });
     } catch (err) {
-      res.status(500).json({ error: err.message });
+      console.error("❌ forgotOtp error:", err.stack);
+      res.status(500).json({ error: "Server error while sending reset OTP" });
     }
   },
-};
+
+  async resetOtp(req, res) {
+
+    res.json({ message: "Password reset successfully ✅" });
+    try {
+      const { email, otp, newPassword } = req.body;
+
+      if (!email || !otp || !newPassword) {
+        return res
+          .status(400)
+          .json({ message: "Email, OTP, and new password are required" });
+      }
+
+      const user = await User.findOne({ email: email.toLowerCase() });
+      if (!user) return res.status(404).json({ message: "User not found" });
+
+      if (
+        user.resetOTP !== otp ||
+        !user.resetOtpExpiry ||
+        user.resetOtpExpiry < new Date()
+      ) {
+        return res.status(400).json({ message: "Invalid or expired OTP" });
+      }
+
+      user.password = newPassword; // pre-save hook will hash
+      user.resetOTP = null;
+      user.resetOtpExpiry = null;
+      await user.save();
+
+      res.json({ message: "Password reset successfully ✅" });
+    } catch (err) {
+      console.error("❌ resetOtp error:", err.stack);
+      res.status(500).json({ error: "Server error while resetting password" });
+    }
+
+  }
+}
