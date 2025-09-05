@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { DataGrid } from '@mui/x-data-grid'
 import { fetchCustomers, deleteCustomer } from '../../redux/slices/customerSlice'
-import { CButton, CSpinner, CModal, CModalHeader, CModalBody, CModalFooter , CForm, CFormInput } from '@coreui/react'
+import { CButton, CSpinner, CModal, CModalHeader, CModalBody, CModalFooter, CForm, CFormInput } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilEnvelopeOpen, cilChatBubble, cilTrash } from '@coreui/icons'
 import CustomToolbar from '../../utils/CustomToolbar'
@@ -39,7 +39,7 @@ const Customer = () => {
 
   const handleDelete = () => {
     if (selectedCustomerId) {
-      dispatch(deleteCustomer({ id: selectedCustomerId })).then(() => {
+      dispatch(deleteCustomer({ _id: selectedCustomerId })).then(() => {
         setDeleteModalVisible(false)
         setSelectedCustomerId(null)
       })
@@ -57,25 +57,25 @@ const Customer = () => {
     return serialCounter++
   }
   const sendbulkEmail = () => {
-      setBulkEmailModalVisible(true)
+    setBulkEmailModalVisible(true)
 
   }
-const handleSendBulkEmail = () => {
-  if (!subject || !title || !body) {
-    alert('Please fill in all fields')
-    return
-  }
+  const handleSendBulkEmail = () => {
+    if (!subject || !title || !body) {
+      alert('Please fill in all fields')
+      return
+    }
 
-  try {
-     dispatch(sendBulkEmail({ restaurantId, subject, title, body }));
-    setBulkEmailModalVisible(false);
-    setSubject('');
-    setTitle('');
-    setBody('');
-  } catch (error) {
-    console.error('Send bulk email failed:', error)
+    try {
+      dispatch(sendBulkEmail({ restaurantId, subject, title, body }));
+      setBulkEmailModalVisible(false);
+      setSubject('');
+      setTitle('');
+      setBody('');
+    } catch (error) {
+      console.error('Send bulk email failed:', error)
+    }
   }
-}
 
 
   const columns = [
@@ -127,43 +127,47 @@ const handleSendBulkEmail = () => {
       headerClassName: 'header-style',
       sortable: false,
       filterable: false,
-      renderCell: (params) => (
-        <div style={{ display: 'flex', gap: '4px' }}>
-          <CButton color="primary" size="sm" onClick={() => sendEmail(params.row.email)}>
-            <CIcon icon={cilEnvelopeOpen} /> Email
-          </CButton>
-          <CButton color="success" size="sm" onClick={() => sendWhatsApp(params.row.phoneNumber)}>
-            <CIcon icon={cilChatBubble} /> WhatsApp
-          </CButton>
-          <CButton color="danger" size="sm" onClick={() => openDeleteModal(params.row.id)}>
-            <CIcon icon={cilTrash} />
-          </CButton>
-        </div>
-      ),
-    },
+      renderCell: (params) => {
+        const { email, phoneNumber, _id } = params.row; // ✅ safely destructure
+
+        return (
+          <div style={{ display: 'flex', gap: '4px' }}>
+            <CButton color="primary" size="sm" onClick={() => sendEmail(email)}>
+              <CIcon icon={cilEnvelopeOpen} /> Email
+            </CButton>
+            <CButton color="success" size="sm" onClick={() => sendWhatsApp(phoneNumber)}>
+              <CIcon icon={cilChatBubble} /> WhatsApp
+            </CButton>
+            <CButton color="danger" size="sm" onClick={() => openDeleteModal(_id)}>
+              <CIcon icon={cilTrash} />
+            </CButton>
+          </div>
+        );
+      },
+    }
+
   ]
 
   return (
-    <div style={{ paddingLeft: '20px', paddingRight: '20px' }}>
-      <h2 className="mb-4">Customers</h2>
+    <div className="p-4 bg-gray-50 min-h-screen">
+      <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
+        <h2 className="text-2xl font-bold text-gray-800 mb-3 sm:mb-0">Customers</h2>
+        <CButton color="primary" onClick={sendbulkEmail} className="shadow-sm">
+          <CIcon icon={cilEnvelopeOpen} className="me-2" /> Send Bulk Emails
+        </CButton>
+      </div>
+
       {loading ? (
-        <div className="d-flex justify-content-center">
+        <div className="flex justify-center my-6">
           <CSpinner color="primary" variant="grow" />
         </div>
       ) : (
-        <>
-          {/* create a button for sending bulk emails */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '10px' }}>
-            <CButton color="primary" onClick={sendbulkEmail}>
-              <CIcon icon={cilEnvelopeOpen} /> Send Bulk Emails
-            </CButton>
-          </div>
-
+        <div className="bg-white rounded-xl shadow-sm p-2 sm:p-4">
           <DataGrid
-            style={{ height: 'auto', width: '100%', backgroundColor: 'white' }}
-            rows={customers?.map((customer) => ({
+            autoHeight
+            rows={customers?.map((customer, index) => ({
               ...customer,
-              sno: generateSerialNumber(),
+              sno: index + 1,
             }))}
             columns={columns}
             getRowId={(row) => row.id || row.data?.id || Math.random()}
@@ -171,27 +175,26 @@ const handleSendBulkEmail = () => {
             rowsPerPageOptions={[10]}
             slots={{ Toolbar: CustomToolbar }}
             sx={{
-              '& .header-style': {
+              '& .MuiDataGrid-columnHeaders': {
+                backgroundColor: '#f9fafb',
                 fontWeight: 'bold',
-                fontSize: '1.1rem',
+                fontSize: '1rem',
               },
-              '& .MuiDataGrid-root': {
-                overflowX: 'auto', // Enable horizontal scrolling
+              '& .MuiDataGrid-cell': {
+                fontSize: '0.95rem',
+                padding: '10px',
               },
-              '@media (max-width: 600px)': {
+              '@media (max-width: 640px)': {
                 '& .MuiDataGrid-columnHeaderTitle': {
-                  fontSize: '0.9rem',
-                },
-                '& .MuiDataGrid-cell': {
                   fontSize: '0.8rem',
                 },
-                '& .MuiDataGrid-columnHeader': {
-                  padding: '10px',
+                '& .MuiDataGrid-cell': {
+                  fontSize: '0.75rem',
                 },
               },
             }}
           />
-        </>
+        </div>
       )}
 
       {/* Delete Confirmation Modal */}
@@ -200,61 +203,66 @@ const handleSendBulkEmail = () => {
         onClose={() => setDeleteModalVisible(false)}
         backdrop="static"
       >
-        <CModalHeader>Confirm Deletion</CModalHeader>
-        <CModalBody>Are you sure you want to delete this customer?</CModalBody>
+        <CModalHeader className="fw-bold">Confirm Deletion</CModalHeader>
+        <CModalBody className="text-gray-700">
+          Are you sure you want to delete this customer? This action cannot be undone.
+        </CModalBody>
         <CModalFooter>
-          <CButton color="secondary" onClick={() => setDeleteModalVisible(false)}>
+          <CButton color="secondary" variant="outline" onClick={() => setDeleteModalVisible(false)}>
             Cancel
           </CButton>
-          <CButton color="danger" onClick={handleDelete}>
+          <CButton color="danger" className="shadow-sm" onClick={handleDelete}>
             Delete
           </CButton>
         </CModalFooter>
       </CModal>
 
-      {/* bulk email modal */}
+      {/* Bulk Email Modal */}
       <CModal
-  visible={bulkEmailModalVisible}
-  onClose={() => setBulkEmailModalVisible(false)}
-  backdrop="static"
->
-  <CModalHeader>Send Bulk Email</CModalHeader>
-  <CModalBody>
-    <CForm>
-      <CFormInput
-        type="text"
-        id="subject"
-        label="Subject"
-        value={subject}
-        onChange={(e) => setSubject(e.target.value)}
-      />
-      <CFormInput
-        type="text"
-        id="title"
-        label="Title"
-        value={title}
-        onChange={(e) => setTitle(e.target.value)}
-      />
-      <CFormInput
-        type="text"
-        id="body"
-        label="Body"
-        value={body}
-        onChange={(e) => setBody(e.target.value)}
-      />
-    </CForm>
-  </CModalBody>
-  <CModalFooter>
-    <CButton color="secondary" onClick={() => setBulkEmailModalVisible(false)}>
-      Cancel
-    </CButton>
-    <CButton color="primary" onClick={handleSendBulkEmail}>
-      Send
-    </CButton>
-  </CModalFooter>
-</CModal>
-
+        visible={bulkEmailModalVisible}
+        onClose={() => setBulkEmailModalVisible(false)}
+        backdrop="static"
+      >
+        <CModalHeader className="fw-bold">Send Bulk Email</CModalHeader>
+        <CModalBody>
+          <CForm className="space-y-3">
+            <CFormInput
+              type="text"
+              id="subject"
+              label="Subject"
+              placeholder="Enter email subject"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+            />
+            <CFormInput
+              type="text"
+              id="title"
+              label="Title"
+              placeholder="Enter email title"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+            <CFormInput
+              type="text"
+              id="body"
+              label="Body"
+              placeholder="Write your message..."
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+            />
+          </CForm>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={() => setBulkEmailModalVisible(false)}>
+            Cancel
+          </CButton>
+          <CButton color="primary" className="shadow-sm" onClick={handleSendBulkEmail}>
+            Send
+          </CButton>
+        </CModalFooter>
+      </CModal>
     </div>
+
   )
 }
 

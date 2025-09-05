@@ -47,5 +47,5 @@ const store = configureStore({
     banner: bannerReducer,
   },
 })
-console.log( " Store -> ", store)
+// console.log " Store -> ", store)
 export default store

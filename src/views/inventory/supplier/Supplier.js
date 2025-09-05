@@ -76,12 +76,13 @@ const Supplier = () => {
 
   // Delete supplier
   const handleDeleteSupplier = async () => {
-    if (!selectedSupplier) return;
-    await dispatch(deleteSupplier(selectedSupplier.supplierId));
-    await dispatch(fetchSuppliers({ restaurantId }));
+    await dispatch(deleteSupplier()); // 👈 no supplierId needed
+    await dispatch(fetchSuppliers({ restaurantId: localStorage.getItem('restaurantId') }));
+
     setDeleteModalVisible(false);
     setSelectedSupplier(null);
   };
+
 
   const exportToCSV = () => {
     const csvContent =

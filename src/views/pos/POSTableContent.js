@@ -65,7 +65,6 @@ const POSTableContent = () => {
   const [selectedCategoryId, setSelectedCategoryId] = useState(null)
   const [showSubCategoryModal, setShowSubCategoryModal] = useState(false)
   const [selectedMenuItemForSubcategory, setSelectedMenuItemForSubcategory] = useState(null)
-
   const [cart, setCart] = useState(() => {
     const savedCart = localStorage.getItem(`cart_${tableNumber}`)
     return savedCart ? JSON.parse(savedCart) : []
@@ -79,7 +78,7 @@ const POSTableContent = () => {
     pdfUrl: null,
     message: '',
   })
-
+  const token = localStorage.getItem('authToken');
   useEffect(() => {
     if (startTime) {
       const interval = setInterval(() => {
@@ -92,12 +91,12 @@ const POSTableContent = () => {
   }, [startTime])
 
   useEffect(() => {
-    if (restaurantId) {
-      const token = localStorage.getItem('authToken');
-      dispatch(fetchMenuItems({ restaurantId }))
-      dispatch(fetchCustomers({ restaurantId }))
-      dispatch(fetchCategories({ restaurantId, token }))
-      dispatch(fetchSubCategories({ token, restaurantId }))
+    if (token) {
+      // const token = localStorage.getItem('authToken');
+      dispatch(fetchMenuItems({ token }))
+      dispatch(fetchCustomers({ token }))
+      dispatch(fetchCategories({ token }))
+      dispatch(fetchSubCategories({ token }))
     }
   }, [dispatch, restaurantId])
 
@@ -269,20 +268,36 @@ const POSTableContent = () => {
       ),
     )
   }
-
   const handleAddCustomer = (formValues) => {
-    const customerData = { ...formValues, restaurantId }
+    const token = localStorage.getItem("token");
+    const restaurantId = localStorage.getItem("restaurantId");
+
+    const customerData = { ...formValues, restaurantId, token };
 
     dispatch(addCustomer(customerData))
       .unwrap()
-      .then((newCustomer) => {
-        setSelectedCustomerName(newCustomer.name)
-        setShowCustomerModal(false)
+      .then((response) => {
+        setSelectedCustomerName(response.customer.name); // ✅ get from backend response
+        setShowCustomerModal(false);
       })
       .catch((error) => {
-        toast.error('Failed to add customer: ' + error.message)
-      })
-  }
+        toast.error('Failed to add customer: ' + error.message);
+      });
+  };
+
+  // const handleAddCustomer = (formValues) => {
+  //   const customerData = { ...formValues , restaurantId }
+
+  //   dispatch(addCustomer(customerData))
+  //     .unwrap()
+  //     .then((newCustomer) => {
+  //       setSelectedCustomerName(newCustomer.name)
+  //       setShowCustomerModal(false)
+  //     })
+  //     .catch((error) => {
+  //       toast.error('Failed to add customer: ' + error.message)
+  //     })
+  // }
 
   const handlePaymentSubmit = async () => {
     const payload = {

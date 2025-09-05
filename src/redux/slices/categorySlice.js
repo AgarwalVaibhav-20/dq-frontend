@@ -12,16 +12,23 @@ const configureHeaders = (token) => ({
 // Async thunk to create a new category
 export const createCategory = createAsyncThunk(
   'category/createCategory',
-  async ({ categoryName, categoryImage, token }, { rejectWithValue }) => {
+  async ({ categoryName, categoryImage, token, basePrice, size, description }, { rejectWithValue }) => {
     try {
       const formData = new FormData();
       formData.append('categoryName', categoryName);
       formData.append('categoryImage', categoryImage);
+      if (basePrice !== undefined && basePrice !== null) {
+        formData.append("basePrice", basePrice);
+      }
+
+      formData.append('size', size);
+      formData.append('description', description)
       const response = await axios.post(
         `${BASE_URL}/category`,
         formData,
         configureHeaders(token)
       );
+      console.log(response.data)
       console.log(token + "this is token")
       console.log(response.data);
       return response.data;

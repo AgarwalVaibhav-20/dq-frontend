@@ -11,10 +11,31 @@ const headers = {
 // POST API: Create a transaction
 export const createTransaction = createAsyncThunk(
   'transactions/createTransaction',
-  async (transactionData, { rejectWithValue }) => {
+  async ({
+    userName,
+    tableNumber,
+    items,
+    sub_total,
+    tax,
+    discount,
+    total,
+    payment_type,
+    phoneNumber, }, { rejectWithValue }) => {
     try {
-      
-      const response = await axios.post(`${BASE_URL}/transactions`, transactionData, { headers })
+      const restaurantId = localStorage.getItem('restaurantId')
+      const response = await axios.post(`${BASE_URL}/transaction`, {
+        restaurantId,
+        userId,
+        userName,
+        tableNumber,
+        items,
+        sub_total,
+        tax,
+        discount,
+        total,
+        payment_type,
+        phoneNumber,
+      }, { headers })
       return response.data
     } catch (error) {
       return rejectWithValue(error.response?.data || 'Something went wrong')
@@ -27,7 +48,7 @@ export const fetchTransactionsByRestaurant = createAsyncThunk(
   'transactions/fetchTransactionsByRestaurant',
   async ({ restaurantId }, { rejectWithValue }) => {
     try {
-     
+
       const response = await axios.get(`${BASE_URL}/transactions/${restaurantId}`, { headers })
       return response.data
     } catch (error) {
@@ -41,7 +62,7 @@ export const fetchTransactionDetails = createAsyncThunk(
   'transactions/fetchTransactionDetails',
   async ({ transactionId }, { rejectWithValue }) => {
     try {
-      
+
       const response = await axios.get(`${BASE_URL}/transactionById/${transactionId}`, { headers })
       return response.data
     } catch (error) {
@@ -54,7 +75,7 @@ export const deleteTransaction = createAsyncThunk(
   'transactions/deleteTransaction',
   async ({ id, note }, { rejectWithValue }) => {
     try {
-      
+
 
       await axios.delete(`${BASE_URL}/deleteTransaction/${id}`, { headers }, { note })
       return id
@@ -69,7 +90,7 @@ export const fetchPOSTransactions = createAsyncThunk(
   'transactions/fetchPOSTransactions',
   async (_, { rejectWithValue }) => {
     try {
-     
+
       const response = await axios.get(`${BASE_URL}/POStransactions`, { headers })
       // console.log("pos transactions",response.data);
       return response.data

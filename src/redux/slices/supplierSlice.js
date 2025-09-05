@@ -30,20 +30,24 @@ export const fetchSuppliers = createAsyncThunk(
 // Add a new supplier
 export const addSupplier = createAsyncThunk(
   'suppliers/addSupplier',
-  async ({ supplierName, email, phoneNumber, rawItem, restaurantId, token }, { rejectWithValue }) => {
+  async ({ supplierName, email, phoneNumber, rawItem, token ,  inventoryId }, { rejectWithValue }) => {
     try {
+      // ✅ Get restaurantId directly from localStorage
+      const restaurantId = localStorage.getItem("restaurantId");
 
       const response = await axios.post(
-        `${BASE_URL}/suppliers`,
-        { supplierName, email, phoneNumber, rawItem, restaurantId },
+        `${BASE_URL}/create/suppliers`, 
+        { supplierName, email, phoneNumber, rawItem, restaurantId , inventoryId },
         configureHeaders(token)
       );
+
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to add supplier');
+      return rejectWithValue(error.response?.data?.message || "Failed to add supplier");
     }
   }
 );
+
 
 
 // Update a supplier
@@ -68,19 +72,22 @@ export const updateSupplier = createAsyncThunk(
 // Delete a supplier
 export const deleteSupplier = createAsyncThunk(
   'suppliers/deleteSupplier',
-  async ({ id, restaurantId }, { rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
+      const restaurantId = localStorage.getItem('restaurantId'); // 👈 only restaurantId
 
       const response = await axios.delete(
-        `${BASE_URL}/suppliers/${id}`,
+        `${BASE_URL}/suppliers/${restaurantId}`, // 👈 restaurantId in path
         { headers: getAuthHeaders() }
       );
-      return { id, message: response.data.message };
+
+      return { restaurantId, message: response.data.message };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to delete supplier');
     }
   }
 );
+
 
 
 // Slice

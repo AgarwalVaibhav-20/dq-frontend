@@ -8,18 +8,19 @@ const getAuthHeaders = () => {
   const token = localStorage.getItem("authToken");
   return {
     Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
   };
 };
 
 // ------------------ GET: Fetch restaurant profile ------------------
 export const getRestaurantProfile = createAsyncThunk(
   'restaurantProfile/getRestaurantProfile',
-  async ({ userId }, { rejectWithValue }) => {
+  async ({ userId , token }, { rejectWithValue }) => {
     try {
       console.log(`${BASE_URL}/account/${userId}`);
       const response = await axios.get(
         `${BASE_URL}/account/${userId}`,
-        { headers: getAuthHeaders() }
+        { headers: getAuthHeaders(token) }
       );
       
       if (response.data?.user?._id) {
@@ -41,14 +42,16 @@ export const checkRestaurantPermission = createAsyncThunk(
   async (_, { rejectWithValue }) => {
     try {
       const userId = localStorage.getItem("userId"); // ✅ auto get
-      if (!userId) throw new Error("No userId found");
+      if (!userId) throw new Error("No user id found");
 
       const response = await axios.get(
         `${BASE_URL}/account/user-profile/check-permission/${userId}`,
         { headers: getAuthHeaders() }
       );
+      console.log(response.data , "response -- >")
       return response.data;
     } catch (error) {
+      console.log(error)
       return rejectWithValue(error.response?.data || 'Something went wrong');
     }
   }
@@ -145,6 +148,7 @@ const restaurantProfileSlice = createSlice({
       })
       .addCase(getRestaurantProfile.fulfilled, (state, action) => {
         state.loading = false;
+        console.log("this is action payload",action.payload.data)
         state.restaurantProfile = action.payload;
       })
       .addCase(getRestaurantProfile.rejected, (state, action) => {

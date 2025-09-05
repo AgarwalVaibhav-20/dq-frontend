@@ -38,7 +38,7 @@ export default function SubCategory() {
   const restaurantId = useSelector((state) => state.auth.restaurantId)
   const { subCategories, loading: subCategoriesLoading } = useSelector((state) => state.subCategory)
   const { categories, loading: categoriesLoading } = useSelector((state) => state.category)
-
+  console.log(fetchCategories, "Fetching category")
   useEffect(() => {
     if (token && restaurantId) {
       dispatch(fetchSubCategories({ token, restaurantId }))
@@ -48,14 +48,14 @@ export default function SubCategory() {
 
   // ✅ Add Subcategory
   const handleAddSubCategory = async () => {
-    if (!subCategoryName ) {
+    if (!subCategoryName) {
       toast.error('Please provide all required fields.')
       return
     }
 
     try {
       await dispatch(
-        createSubCategory({ sub_category_name: subCategoryName, token })
+        createSubCategory({ sub_category_name: subCategoryName, categoryId, token })
       ).unwrap()
       dispatch(fetchSubCategories({ token }))
       setSubCategoryName('')
@@ -153,6 +153,7 @@ export default function SubCategory() {
         <CFormInput
           type="text"
           placeholder="Subcategory Name"
+          name="sub_category_name"
           value={subCategoryName}
           onChange={(e) => setSubCategoryName(e.target.value)}
           className="mb-3"
@@ -195,6 +196,7 @@ export default function SubCategory() {
             <label className="form-label">Subcategory Name</label>
             <CFormInput
               type="text"
+              name="sub_category_name"
               value={editedSubCategory.sub_category_name || ''}
               onChange={(e) =>
                 setEditedSubCategory((prev) => ({ ...prev, sub_category_name: e.target.value }))
@@ -205,6 +207,7 @@ export default function SubCategory() {
             <label className="form-label">Category</label>
             <CFormSelect
               value={editedSubCategory.categoryId || ''}
+              name="categoryId"
               onChange={(e) =>
                 setEditedSubCategory((prev) => ({ ...prev, categoryId: e.target.value }))
               }
@@ -264,7 +267,7 @@ export default function SubCategory() {
                 <div>
                   <h5 className="fw-bold mb-1">{sub.sub_category_name}</h5>
                   <small className="text-muted">
-                    Category: {sub.categoryId?.categoryName || 'No category'}
+                    Category: {sub.categoryName || 'No category'}
                   </small>
                 </div>
                 <div className="position-relative mt-3 text-end">

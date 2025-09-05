@@ -247,20 +247,20 @@ export default function Category() {
                   >
                     <div className="flex-grow-1">
                       <CFormInput
-                        placeholder="Size Name"
+                        placeholder="eg: Small , Medium , Large , hHalf , Full"
                         value={size.sizeName}
                         onChange={e => handleSizeChange(index, 'sizeName', e.target.value)}
                         className="mb-2"
                       />
                       <CFormInput
                         type="number"
-                        placeholder="Base Price"
+                        placeholder="Enter base price for the size"
                         value={size.basePrice}
                         onChange={e => handleSizeChange(index, 'basePrice', e.target.value)}
                         className="mb-2"
                       />
                       <CFormInput
-                        placeholder="Description (optional)"
+                        placeholder="Description "
                         value={size.description}
                         onChange={e => handleSizeChange(index, 'description', e.target.value)}
                       />

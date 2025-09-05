@@ -3,7 +3,11 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { BASE_URL } from '../../utils/constants';
-
+const configureHeaders = (token) => ({
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+});
 // Fetch customers
 export const fetchCustomers = createAsyncThunk(
   'customers/fetchCustomers',
@@ -12,24 +16,35 @@ export const fetchCustomers = createAsyncThunk(
       const response = await axios.get(`${BASE_URL}/customer/${restaurantId}`);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
 
+
 // Add customer
 export const addCustomer = createAsyncThunk(
   'customers/addCustomer',
-  async (customerData, { rejectWithValue }) => {
+  async ({ token, name, email, address, phoneNumber }, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('authToken');
-      const headers = {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      };
-      const response = await axios.post(`${BASE_URL}/customer`, customerData, { headers });
+      const restaurantId = localStorage.getItem("restaurantId");
+      if (!restaurantId) {
+        return rejectWithValue("Restaurant ID not found in localStorage");
+      }
+      const response = await axios.post(`${BASE_URL}/customer/add`,
+        {
+          name,
+          email,
+          address,
+          phoneNumber,
+          restaurantId,
+        },
+         configureHeaders(token));
+      console.log(response.data)
       return response.data;
     } catch (error) {
+      console.log("This is error" , error)
+      console.error(error)
       return rejectWithValue(error.response?.data || error.message);
     }
   }
@@ -38,19 +53,19 @@ export const addCustomer = createAsyncThunk(
 // Delete customer
 export const deleteCustomer = createAsyncThunk(
   'customers/deleteCustomer',
-  async ({ id }, { rejectWithValue }) => {
+  async ({ _id }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('authToken');
-      const headers = {
-        Authorization: `Bearer ${token}`,
-      };
-      const response = await axios.delete(`${BASE_URL}/customer/${id}`, { headers });
+      const headers = { Authorization: `Bearer ${token}` };
+
+      const response = await axios.delete(`${BASE_URL}/customer/delete/${_id}`, { headers });
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data);
+      return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
+
 
 // Customer slice
 const customerSlice = createSlice({
@@ -82,7 +97,9 @@ const customerSlice = createSlice({
       })
       .addCase(addCustomer.fulfilled, (state, action) => {
         state.loading = false;
+        console.log(action.payload)
         state.customers.push(action.payload);
+        console.log(action.payload)
         toast.success('Customer added successfully.');
       })
       .addCase(addCustomer.rejected, (state, action) => {

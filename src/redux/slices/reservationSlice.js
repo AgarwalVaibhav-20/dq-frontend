@@ -31,12 +31,12 @@ export const fetchReservations = createAsyncThunk(
 // Add a new reservation
 export const addReservation = createAsyncThunk(
   "reservations/addReservation",
-  async ({ restaurantId, startTime, endTime, customerId, payment, advance, notes, tableNumber }, { rejectWithValue }) => {
+  async ({startTime, endTime, customerId,customerName, payment, advance, notes, tableNumber }, { rejectWithValue }) => {
     try {
-
+      const  restaurantId = localStorage.getItem(' restaurantId')
       const response = await axios.post(
         `${BASE_URL}/reservations`,
-        { restaurantId, startTime, endTime, customerId, payment, advance, notes, tableNumber },
+        { restaurantId, startTime, endTime, customerId,customerName, payment, advance, notes, tableNumber },
         { headers: getAuthHeaders() }
       );
       return response.data;

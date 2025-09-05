@@ -24,52 +24,79 @@ export const fetchMenuItems = createAsyncThunk(
   }
 );
 
+
 export const addMenuItem = createAsyncThunk(
   'menu/addMenuItem',
-  async (
-    { itemName, itemImage, price, categoryId, restaurantId, stockItems },
-    { rejectWithValue }
-  ) => {
+  async ({ itemName, price, categoryId, sub_category, status, stockItems, itemImageFile }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('authToken');
-      const headers = {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data',
-      };
+      const restaurantId = localStorage.getItem('restaurantId');
 
+      // Validation on frontend
+      if (!itemName?.trim()) {
+        return rejectWithValue('Item name is required');
+      }
+      if (!price || isNaN(Number(price)) || Number(price) <= 0) {
+        return rejectWithValue('Valid price is required');
+      }
+      if (!categoryId) {
+        return rejectWithValue('Category is required');
+      }
+      if (!restaurantId) {
+        return rejectWithValue('Restaurant ID not found');
+      }
+
+      // Create FormData to handle file upload + JSON
       const formData = new FormData();
-      formData.append('restaurantId', restaurantId);
-      formData.append('itemName', itemName);
-      formData.append('price', price);
+      formData.append('itemName', itemName.trim());
+      formData.append('price', Number(price));
       formData.append('categoryId', categoryId);
+      formData.append('restaurantId', restaurantId);
+      formData.append('sub_category', sub_category || '');
+      formData.append('status', status || 1);
 
-      // Append each stock item individually
+      if (itemImageFile) {
+        formData.append('itemImage', itemImageFile);
+      }
+
       if (stockItems && stockItems.length > 0) {
-        stockItems.forEach((stock, index) => {
-          formData.append(`stockItems[${index}][stockId]`, stock.stockId);
-          formData.append(`stockItems[${index}][quantity]`, stock.quantity);
-        });
+        formData.append('stockItems', JSON.stringify(stockItems));
       }
 
-      // Append the image file if it exists
-      if (itemImage) {
-        formData.append('itemImage', itemImage);
-      }
+      console.log('Sending form data:', {
+        itemName: itemName.trim(),
+        price: Number(price),
+        categoryId,
+        restaurantId,
+        sub_category: sub_category || '',
+        status: status || 1,
+        stockItems: stockItems || [],
+        hasImage: !!itemImageFile
+      });
 
-      const response = await axios.post(`${BASE_URL}/menu`, formData, { headers });
+      const response = await axios.post(`${BASE_URL}/menu/add`, formData, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+
+      console.log('Response:', response.data);
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to add menu item');
+      console.error('Add menu item error:', error);
+      const errorMessage = error.response?.data?.message || 
+                          error.response?.data?.error || 
+                          error.message || 
+                          'Failed to add menu item';
+      return rejectWithValue(errorMessage);
     }
   }
 );
-
-
-
 // Update a menu item
 export const updateMenuItem = createAsyncThunk(
   'menu/updateMenuItem',
-  async ({ id, formData, token}, { rejectWithValue }) => {
+  async ({ id, formData, token }, { rejectWithValue }) => {
     try {
       const headers = {
         Authorization: `Bearer ${token}`,
@@ -160,7 +187,7 @@ const menuSlice = createSlice({
       .addCase(addMenuItem.fulfilled, (state, action) => {
         state.loading = false;
         state.menuItems = [...state.menuItems, action.payload.data.menu];
-        // state.menuItems = [...state.menuItems, action.payload]; 
+        // state.menuItems = [...state.menuItems, action.payload];
         // toast.success('Menu item added successfully!');
       })
       .addCase(addMenuItem.rejected, (state, action) => {
@@ -196,7 +223,7 @@ const menuSlice = createSlice({
       })
       .addCase(deleteMenuItem.fulfilled, (state, action) => {
         state.loading = false;
-        state.menuItems = state.menuItems.filter((item) => item.id !== action.payload.id); 
+        state.menuItems = state.menuItems.filter((item) => item.id !== action.payload.id);
         toast.success('Menu item deleted successfully!');
       })
       .addCase(deleteMenuItem.rejected, (state, action) => {
@@ -205,26 +232,26 @@ const menuSlice = createSlice({
         toast.error(action.payload || 'Failed to delete menu item.');
       });
 
-      // Update menu item status
+    // Update menu item status
     builder
-    .addCase(updateMenuItemStatus.pending, (state) => {
-      state.loading = true;
-      state.error = null;
-    })
-    .addCase(updateMenuItemStatus.fulfilled, (state, action) => {
-      state.loading = false;
-      const { id, status } = action.payload;
-      const menuItem = state.menuItems.find((item) => item.id === id);
-      if (menuItem) {
-        menuItem.status = status;
-      }
-      toast.success('Menu item status updated successfully!');
-    })
-    .addCase(updateMenuItemStatus.rejected, (state, action) => {
-      state.loading = false;
-      state.error = action.payload;
-      toast.error(action.payload || 'Failed to update menu status.');
-    });
+      .addCase(updateMenuItemStatus.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateMenuItemStatus.fulfilled, (state, action) => {
+        state.loading = false;
+        const { id, status } = action.payload;
+        const menuItem = state.menuItems.find((item) => item.id === id);
+        if (menuItem) {
+          menuItem.status = status;
+        }
+        toast.success('Menu item status updated successfully!');
+      })
+      .addCase(updateMenuItemStatus.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        toast.error(action.payload || 'Failed to update menu status.');
+      });
   },
 });
 

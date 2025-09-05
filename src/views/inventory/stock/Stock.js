@@ -29,7 +29,7 @@ const Stock = () => {
   const dispatch = useDispatch()
   const { inventories, loading: inventoryLoading } = useSelector((state) => state.inventories)
   const { suppliers, loading: supplierLoading } = useSelector((state) => state.suppliers)
-  const restaurantId = useSelector((state) => state.auth.restaurantId)
+  // const restaurantId = useSelector((state) => state.auth.restaurantId)
 
   const [modalVisible, setModalVisible] = useState(false)
   const [editModalVisible, setEditModalVisible] = useState(false)
@@ -43,12 +43,16 @@ const Stock = () => {
   const [selectedStock, setSelectedStock] = useState(null)
 
   // Fetch inventories and suppliers on component mount
+  const { token, restaurantId } = useSelector((state) => state.auth)
+  console.log("Auth:", token, restaurantId)
+
+  // Fetch inventories and suppliers
   useEffect(() => {
-    if (restaurantId) {
-      dispatch(fetchInventories({ restaurantId }))
-      dispatch(fetchSuppliers({ restaurantId }))
+    if (restaurantId || token) {
+      dispatch(fetchInventories({ token }))
+      dispatch(fetchSuppliers({ restaurantId, token }))
     }
-  }, [restaurantId, dispatch])
+  }, [restaurantId, token, dispatch])
 
 
   const handleChange = (e) => {
@@ -79,7 +83,7 @@ const Stock = () => {
 
   const handleDeleteInventory = () => {
     dispatch(deleteInventory({ id: selectedStock.id, restaurantId })).unwrap()
-    // dispatch(fetchInventories({ restaurantId }))
+    dispatch(fetchInventories({ restaurantId }))
     setDeleteModalVisible(false)
   }
 
@@ -120,57 +124,64 @@ const Stock = () => {
     doc.save('inventories.pdf')
   }, [inventories])
 
-  const columns = [
-    { field: 'id', headerName: 'Stock ID', flex: 1 },
-    { field: 'itemName', headerName: 'Item Name', flex: 1 },
-    { field: 'quantity', headerName: 'Quantity', flex: 1 },
-    { field: 'unit', headerName: 'Unit', flex: 1 },
-    {
-      field: 'supplierName',
-      headerName: 'Supplier Name',
-      flex: 1,
-      valueGetter: (params) => params?.row?.supplier?.supplierName || 'N/A',
-    },
-    {
-      field: 'actions',
-      headerName: 'Actions',
-      flex: 1,
-      sortable: false,
-      filterable: false,
-      renderCell: (params) => (
-        <div style={{ display: 'flex', gap: '10px' }}>
-          {/* Edit Button */}
-          <CButton
-            color="secondary"
-            size="sm"
-            onClick={() => {
-              setSelectedStock(params.row)
-              setFormData({
-                itemName: params.row.itemName || '',
-                quantity: params.row.quantity || '',
-                unit: params.row.unit || '',
-                supplierId: params.row.supplier?.id || '',
-              })
-              setEditModalVisible(true)
-            }}
-          >
-            <CIcon icon={cilPencil} />
-          </CButton>
-          {/* Delete Button */}
-          <CButton
-            color="danger"
-            size="sm"
-            onClick={() => {
-              setSelectedStock(params.row)
-              setDeleteModalVisible(true)
-            }}
-          >
-            <CIcon icon={cilTrash} />
-          </CButton>
-        </div>
-      ),
-    },
-  ]
+ const rows = inventories.map((s) => ({
+  id: s.restaurantId || s._id,   // ✅ small typo fix: restuarantId → restaurantId
+  ...s,
+}));
+
+const columns = [
+  { field: 'id', headerName: 'Stock ID', flex: 1 },
+  { field: 'itemName', headerName: 'Item Name', flex: 1 },
+  { field: 'quantity', headerName: 'Quantity', flex: 1 },
+  { field: 'unit', headerName: 'Unit', flex: 1 },
+  {
+    field: 'supplierName',
+    headerName: 'Supplier Name',
+    flex: 1,
+    valueGetter: (params) => params?.row?.supplierName || 'N/A', // ✅ fix here
+  },
+  {
+    field: 'actions',
+    headerName: 'Actions',
+    flex: 1,
+    sortable: false,
+    filterable: false,
+    renderCell: (params) => (
+      <div style={{ display: 'flex', gap: '10px' }}>
+        {/* Edit Button */}
+        <CButton
+          color="secondary"
+          size="sm"
+          onClick={() => {
+            setSelectedStock(params.row);
+            setFormData({
+              itemName: params.row.itemName || '',
+              quantity: params.row.quantity || '',
+              unit: params.row.unit || '',
+              supplierId: params.row.supplierId || '',  // ✅ because it's saved in inventory
+            });
+            setEditModalVisible(true);
+          }}
+        >
+          <CIcon icon={cilPencil} />
+        </CButton>
+
+        {/* Delete Button */}
+        <CButton
+          color="danger"
+          size="sm"
+          onClick={() => {
+            setSelectedStock(params.row);
+            setDeleteModalVisible(true);
+          }}
+        >
+          <CIcon icon={cilTrash} />
+        </CButton>
+      </div>
+    ),
+  },
+];
+
 
   return (
     <div className="p-4">
@@ -224,7 +235,7 @@ const Stock = () => {
           </div>
         ) : (
           <DataGrid
-            rows={inventories || []}
+            rows={rows}
             columns={columns}
             autoHeight
             className="border-0"
@@ -269,12 +280,16 @@ const Stock = () => {
             onChange={handleChange}
           >
             <option key="default-add" value="">Select Supplier</option>
-            {suppliers?.map((supplier) => (
-              <option key={`add-${supplier.id}`} value={supplier.id}>
+            {suppliers?.map((supplier, index) => (
+              <option
+                key={supplier._id ?? `supplier-${index}`} // use _id or fallback
+                value={supplier._id ?? ''}
+              >
                 {supplier.supplierName}
               </option>
             ))}
           </CFormSelect>
+
         </CModalBody>
         <CModalFooter className="bg-light">
           <CButton color="secondary" variant="outline" onClick={() => setModalVisible(false)}>

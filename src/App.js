@@ -50,6 +50,7 @@ const ForgotPassword = React.lazy(()=>import('./views/pages/forgotPassword/Forgo
 const Otp = React.lazy(() => import('./views/pages/otp/Otp'))
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
 const Orders = React.lazy(() => import('./views/orders/Orders'))
+const Waiter  = React.lazy(()=>import('./views/waiter/Waiter.js'))
 const Supplier = React.lazy(() => import('./views/inventory/supplier/Supplier'))
 const QRCode = React.lazy(() => import('./views/qrCode/QRCode'))
 const Category = React.lazy(() => import('./views/category/Category'))
@@ -244,6 +245,7 @@ const App = () => {
                         </PermissionRestrictedRoute>
                       }
                     />
+                    <Route paht="waiters" element={<PermissionRestrictedRoute permission={restaurantPermission?.permission}><Waiter /></PermissionRestrictedRoute>} />
                     <Route
                       path="qr-code"
                       element={

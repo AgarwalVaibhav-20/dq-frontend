@@ -11,36 +11,33 @@ const configureHeaders = (token) => ({
 // ...existing code...
 export const createSubCategory = createAsyncThunk(
   "subCategory/create",
-  async ({ sub_category_name, token , categoryId  }, { rejectWithValue }) => {
+  async ({ sub_category_name, categoryId, token , categoryName }, { rejectWithValue }) => {
     try {
       const restaurantId = localStorage.getItem("restaurantId");
-
       if (!restaurantId) {
         return rejectWithValue("Restaurant ID not found in localStorage");
       }
 
-      // Use JSON instead of FormData for better debugging
-      const requestData = {
-        sub_category_name,
-        restaurantId ,
-        categoryId
-      };
-
-      console.log("Sending subcategory data:", requestData);
-
       const response = await axios.post(
-        `${BASE_URL}/subCategory`,
-        requestData,
+        `${BASE_URL}/create/subCategory`,
+        {
+          sub_category_name,
+          categoryName,
+          categoryId,
+          restaurantId,
+        },
         configureHeaders(token)
       );
+
       return response.data;
     } catch (error) {
-      console.log(error)
-      console.error("Frontend subcategory error:", error.response?.data);
-      return rejectWithValue(error.response?.data?.message || "Failed to create subcategory");
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to create subcategory"
+      );
     }
   }
 );
+
 // ...existing code...
 
 // ✅ Fetch SubCategories
@@ -49,18 +46,19 @@ export const fetchSubCategories = createAsyncThunk(
   async ({ token }, { rejectWithValue }) => {
     try {
       const response = await axios.get(
-        `${BASE_URL}/subCategory`,
+        `${BASE_URL}/data/subCategory`,
         configureHeaders(token)
       );
       return response.data;
     } catch (error) {
-      console.log("Yer error >",error.response?.data?.message)
+      console.log("Yer error >", error.response?.data?.message)
       return rejectWithValue(error.response?.data?.message || "Failed to fetch subcategories");
     }
   }
 );
 
-// ✅ Fetch SubCategories
+
+
 // export const fetchSubCategories = createAsyncThunk(
 //   "subCategory/fetch",
 //   async ({ token, restaurantId }, { rejectWithValue }) => {
