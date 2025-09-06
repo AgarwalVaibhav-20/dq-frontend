@@ -3,40 +3,44 @@ import axios from 'axios'
 import { toast } from 'react-toastify'
 import { BASE_URL } from '../../utils/constants'
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem('authToken')
-  return {
+const configureHeaders = (token) => ({
+  headers: {
     Authorization: `Bearer ${token}`,
-  }
-}
-
+    'Content-Type': 'application/json',
+  },
+})
 // Fetch all dues
 export const fetchDues = createAsyncThunk(
   'dues/fetchDues',
-  async ({ restaurantId }, { rejectWithValue }) => {
+  async ({ token}, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${BASE_URL}/dues/byRestaurantId/${restaurantId}`, {
-        headers: getAuthHeaders(),
-      })
+      const response = await axios.get(
+        `${BASE_URL}/alldue/due`,
+        configureHeaders(token)
+      )
+      console.log(response.data , "due data ")
       return response.data
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch dues')
     }
-  },
+  }
 )
+
 
 // Add a new due
 export const addDue = createAsyncThunk(
   'dues/addDue',
-  async ({ transaction_id, total, status, restaurantId }, { rejectWithValue }) => {
+  async ({ customerName, customer_id, total, status, token }, { rejectWithValue }) => {
     try {
+      const restaurantId = localStorage.getItem('restaurantId')
       const response = await axios.post(
-        `${BASE_URL}/dues`,
-        { transaction_id, total, status, restaurantId },
-        { headers: getAuthHeaders() },
+        `${BASE_URL}/due/add`,
+        { customerName, customer_id, total, status, restaurantId },
+        configureHeaders(token),
       )
       return response.data
     } catch (error) {
+      console.log(error, "adding duw error")
       return rejectWithValue(error.response?.data?.message || 'Failed to add due')
     }
   },
@@ -50,7 +54,7 @@ export const updateDue = createAsyncThunk(
       const response = await axios.put(
         `${BASE_URL}/dues/${id}`,
         { transaction_id, total, status },
-        { headers: getAuthHeaders() },
+        configureHeaders(token),
       )
       return response.data
     } catch (error) {
@@ -89,6 +93,7 @@ const dueSlice = createSlice({
       })
       .addCase(fetchDues.fulfilled, (state, action) => {
         state.loading = false;
+        console.log("action payload" ,  action.payload)
         state.dues = action.payload;
       })
       .addCase(fetchDues.rejected, (state, action) => {

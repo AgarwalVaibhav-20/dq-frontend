@@ -40,7 +40,7 @@ const Cart = ({
           <CIcon icon={cilPlus} />
         </CButton>
       </CCardHeader>
-      
+
       {startTime && (
         <div className="bg-light text-center py-2 fw-bold text-dark">
           Time: {formatTime(elapsedTime)}

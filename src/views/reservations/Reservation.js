@@ -28,19 +28,17 @@ import Select from 'react-select';
 const Reservation = () => {
   const dispatch = useDispatch();
   const { reservations, loading } = useSelector((state) => state.reservations);
-  const { customers, loading: customerLoading } = useSelector((state) => state.customers)
-  const restaurantId = useSelector((state) => state.auth.restaurantId);
-
+  const { customers, loading: customerLoading } = useSelector((state) => state.customers);
+  // const restaurantId = useSelector((state) => state.auth.restaurantId);
+  const restaurantId = localStorage.getItem('restaurantId') // Remove the trailing space
   const isMobile = useMediaQuery('(max-width:600px)');
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [formData, setFormData] = useState({
-    restaurantId: '',
     startTime: '',
     endTime: '',
-    customerId: '',
     payment: '',
     advance: '',
     notes: '',
@@ -49,26 +47,37 @@ const Reservation = () => {
   const [selectedReservation, setSelectedReservation] = useState(null);
 
   useEffect(() => {
+    console.log("RestaurantId from localStorage:", restaurantId);
+    console.log("All localStorage keys:", Object.keys(localStorage));
+
     if (restaurantId) {
+      console.log("Dispatching fetchReservations...");
       dispatch(fetchReservations({ restaurantId }));
-      dispatch(fetchCustomers({ restaurantId }))
+      dispatch(fetchCustomers({ restaurantId }));
+    } else {
+      console.log("No restaurantId found!");
     }
   }, [dispatch, restaurantId]);
 
-
+  useEffect(() => {
+    console.log("Reservations state:", reservations);
+    console.log("Loading state:", loading);
+    console.log("Customers state:", customers);
+  }, [reservations, loading, customers]);
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData({ ...formData, [name]: value });
   };
 
-  const handleSaveReservation = () => {
+  const handleSaveReservation = (e) => {
+    e.preventDefault();
+
     // Validate required fields
-    if (!formData.startTime || !formData.endTime || !formData.customerId) {
+    if (!formData.startTime || !formData.endTime) {
       alert('Please fill out all required fields.');
       return;
     }
 
-    // Validate date strings
     const startTime = new Date(formData.startTime);
     const endTime = new Date(formData.endTime);
 
@@ -79,18 +88,16 @@ const Reservation = () => {
 
     const payload = {
       ...formData,
-      restaurantId, // Ensure restaurantId is included
-      startTime: startTime.toISOString(), // Convert to ISO string
-      endTime: endTime.toISOString(), // Convert to ISO string
+      restaurantId,
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
     };
 
     dispatch(addReservation(payload)).then(() => {
       dispatch(fetchReservations({ restaurantId }));
       setFormData({
-        restaurantId: '',
         startTime: '',
         endTime: '',
-        customerId: '',
         payment: '',
         advance: '',
         notes: '',
@@ -99,6 +106,7 @@ const Reservation = () => {
       setModalVisible(false);
     });
   };
+
 
   const handleUpdateReservation = () => {
     const payload = {
@@ -163,11 +171,11 @@ const Reservation = () => {
             <label htmlFor="customerId">Customer Name</label>
             <Select
               options={customers.map((customer) => ({
-                value: customer.id,
+                value: customer._id,
                 label: customer.name,
               }))}
               onChange={(selectedOption) =>
-                setFormData({ ...formData, customerId: selectedOption.value })
+                setFormData({ ...formData, customerId: selectedOption.value, customerName: selectedOption.label })
               }
               placeholder="Search or select a customer"
               isLoading={customerLoading}
@@ -336,7 +344,7 @@ const Reservation = () => {
 
   const columns = [
     {
-      field: 'reservationDetails.id', headerName: 'ID', flex: isMobile ? undefined : 0.5,
+      field: 'reservationDetails._id', headerName: 'ID', flex: isMobile ? undefined : 0.5,
       minWidth: isMobile ? 150 : undefined, valueGetter: (params) => params.row?.reservationDetails?.id
     },
     {
@@ -418,7 +426,7 @@ const Reservation = () => {
   ];
 
   const validatedReservations = reservations
-    .filter((reservation) => reservation?.reservationDetails?.id) // Filter valid reservations
+    .filter((reservation) => reservation?.reservationDetails?._id) // Filter valid reservations
     .sort((a, b) => {
       // Sort by reservation ID in descending order (higher ID first)
       return b.reservationDetails.id - a.reservationDetails.id;

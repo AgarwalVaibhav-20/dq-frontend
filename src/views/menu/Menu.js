@@ -54,7 +54,7 @@ const Menu = () => {
         await Promise.all([
           dispatch(fetchCategories({ restaurantId, token })),
           dispatch(fetchInventories({ restaurantId, token })),
-          dispatch(fetchMenuItems({ restaurantId, token })),
+          dispatch(fetchMenuItems({token})),
         ]);
 
         const subCategoryResult = await dispatch(

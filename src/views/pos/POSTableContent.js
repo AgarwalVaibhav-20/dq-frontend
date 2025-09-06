@@ -65,6 +65,9 @@ const POSTableContent = () => {
   const [selectedCategoryId, setSelectedCategoryId] = useState(null)
   const [showSubCategoryModal, setShowSubCategoryModal] = useState(false)
   const [selectedMenuItemForSubcategory, setSelectedMenuItemForSubcategory] = useState(null)
+  // const user = useSelector((state) => state.auth.user);
+  // const loggedInUserId = user?._id;
+  const userId = localStorage.getItem('userId')
   const [cart, setCart] = useState(() => {
     const savedCart = localStorage.getItem(`cart_${tableNumber}`)
     return savedCart ? JSON.parse(savedCart) : []
@@ -299,38 +302,70 @@ const POSTableContent = () => {
   //     })
   // }
 
+  // Fixed handlePaymentSubmit function in POSTableContent component
   const handlePaymentSubmit = async () => {
+    const token = localStorage.getItem('authToken');
+    const userId = localStorage.getItem('userId'); // Fixed: get from localStorage
+    const restaurantId = localStorage.getItem('restaurantId'); // Fixed: get from localStorage
+
+    // Validate required fields
+    if (!token) {
+      toast.error('Authentication token missing');
+      return;
+    }
+
+    if (!restaurantId) {
+      toast.error('Restaurant ID missing');
+      return;
+    }
+
+    if (cart.length === 0) {
+      toast.error('Cart is empty');
+      return;
+    }
+
     const payload = {
-      user_id: 1,
+      token,
+      userId,
+      restaurantId,
+      tableNumber,
       items: cart?.map((item) => ({
-        itemId: item.id,
+        itemId: item._id || item.id, // Handle both _id and id
         itemName: item.itemName,
         price: item.price,
         quantity: item.quantity,
+        selectedSubcategoryId: item.selectedSubcategoryId || null,
+        subtotal: item.price * item.quantity // Calculate subtotal
       })),
-      tax: tax,
-      discount: discount,
+      tax,
+      discount,
       sub_total: calculateSubtotal(),
       total: calculateTotal(),
       type: paymentType,
-      restaurantId: restaurantId,
-      tableNumber: tableNumber,
+    };
+
+    // Add split details if payment type is split
+    if (paymentType === "split") {
+      payload.split_details = {
+        cash: splitPercentages.cash || 0,
+        online: splitPercentages.online || 0,
+        due: splitPercentages.due || 0,
+      };
     }
 
-    if (paymentType === 'split') {
-      payload.split_details = { ...splitPercentages }
+    try {
+      const result = await dispatch(createTransaction(payload)).unwrap();
+      console.log('Transaction created:', result);
+      setShowPaymentModal(false);
+      clearCart();
+      toast.success('Payment processed successfully!');
+    } catch (error) {
+      console.error("Error submitting payment:", error);
+      toast.error('Failed to process payment: ' + (error.message || 'Unknown error'));
     }
+  };
 
-    dispatch(createTransaction(payload))
-      .unwrap()
-      .then(() => {
-        setShowPaymentModal(false)
-        clearCart()
-      })
-      .catch((error) => {
-        console.error('Error submitting payment:', error)
-      })
-  }
+
 
   const generateInvoice = () => {
     const invoiceElement = invoiceRef.current
@@ -436,7 +471,7 @@ const POSTableContent = () => {
         </body>
       </html>
     `);
-      printWindow.document.close();
+      printWindow.document.close(); createTransaction
     } else {
       setMobilePrintOptions({
         show: true,

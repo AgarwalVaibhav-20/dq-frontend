@@ -2,27 +2,33 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { BASE_URL } from '../../utils/constants';
-
+const configureHeaders = (token) => ({
+  headers: {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': 'application/json',
+  },
+})
 // Fetch menu items
 export const fetchMenuItems = createAsyncThunk(
-  'menu/fetchMenuItems',
-  async ({ restaurantId }, { rejectWithValue }) => {
+  "menu/fetchMenuItems",
+  async (_, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem("authToken");
       const headers = {
         Authorization: `Bearer ${token}`,
       };
 
-      const response = await axios.get(
-        `${BASE_URL}/menu?restaurantId=${restaurantId}`,
-        { headers }
-      );
-      return response.data.data.menus;
+      const response = await axios.get(`${BASE_URL}/menu/allmenues`, { headers });
+
+      return response.data; // because backend returns array of menuItems
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || 'Failed to fetch menu items');
+      return rejectWithValue(
+        error.response?.data?.error || "Failed to fetch menu items"
+      );
     }
   }
 );
+
 
 
 export const addMenuItem = createAsyncThunk(
@@ -85,9 +91,9 @@ export const addMenuItem = createAsyncThunk(
       return response.data;
     } catch (error) {
       console.error('Add menu item error:', error);
-      const errorMessage = error.response?.data?.message || 
-                          error.response?.data?.error || 
-                          error.message || 
+      const errorMessage = error.response?.data?.message ||
+                          error.response?.data?.error ||
+                          error.message ||
                           'Failed to add menu item';
       return rejectWithValue(errorMessage);
     }
@@ -170,6 +176,7 @@ const menuSlice = createSlice({
       })
       .addCase(fetchMenuItems.fulfilled, (state, action) => {
         state.loading = false;
+        console.log(action.payload , "action payload")
         state.menuItems = action.payload;
       })
       .addCase(fetchMenuItems.rejected, (state, action) => {

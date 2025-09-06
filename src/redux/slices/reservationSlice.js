@@ -3,27 +3,25 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { BASE_URL } from "../../utils/constants";
 
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("authToken");
-  return {
+const configureHeaders = (token) => ({
+  headers: {
     Authorization: `Bearer ${token}`,
-  };
-};
-
+  },
+})
 // Fetch reservations by restaurant ID
 export const fetchReservations = createAsyncThunk(
   "reservations/fetchReservations",
   async ({ restaurantId }, { rejectWithValue }) => {
     try {
-
-
       const response = await axios.get(
-        `${BASE_URL}/reservations/AllByRestaurantId/${restaurantId}`,
-        { headers: getAuthHeaders() }
+        `${BASE_URL}/AllByRestaurantId/${restaurantId}`,
+        configureHeaders(localStorage.getItem("authToken"))
       );
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || "Failed to fetch reservations");
+      return rejectWithValue(
+        error.response?.data?.error || "Failed to fetch reservations"
+      );
     }
   }
 );
@@ -31,13 +29,14 @@ export const fetchReservations = createAsyncThunk(
 // Add a new reservation
 export const addReservation = createAsyncThunk(
   "reservations/addReservation",
-  async ({startTime, endTime, customerId,customerName, payment, advance, notes, tableNumber }, { rejectWithValue }) => {
+  async ({ startTime, endTime, customerId, customerName, payment, advance, notes, tableNumber , token }, { rejectWithValue }) => {
     try {
-      const  restaurantId = localStorage.getItem(' restaurantId')
+      const restaurantId = localStorage.getItem('restaurantId')
+      console.log("the data is : ",{ startTime, endTime, customerId, customerName, payment, advance, notes, tableNumber , token })
       const response = await axios.post(
-        `${BASE_URL}/reservations`,
-        { restaurantId, startTime, endTime, customerId,customerName, payment, advance, notes, tableNumber },
-        { headers: getAuthHeaders() }
+        `${BASE_URL}/reservations/add`,
+        { restaurantId, startTime, endTime, customerId, customerName, payment, advance, notes, tableNumber },
+        configureHeaders(localStorage.getItem('authToken'))
       );
       return response.data;
     } catch (error) {
@@ -121,35 +120,35 @@ const reservationSlice = createSlice({
         toast.error(action.payload || "Failed to add reservation.");
       });
 
-      builder
+    builder
       .addCase(updateReservation.pending, (state) => {
-          state.loading = true;
-          state.error = null;
+        state.loading = true;
+        state.error = null;
       })
       .addCase(updateReservation.fulfilled, (state, action) => {
-          state.loading = false;
-  
-          const updatedReservation = action.payload;
-          const index = state.reservations.findIndex(
-              (reservation) => reservation.reservationDetails.id === updatedReservation.id
-          );
-  
-          if (index !== -1) {
-              // Update the specific reservation details in the Redux state
-              state.reservations[index].reservationDetails = {
-                  ...state.reservations[index].reservationDetails,
-                  ...updatedReservation,
-              };
-          }
-  
-          toast.success("Reservation updated successfully!");
+        state.loading = false;
+
+        const updatedReservation = action.payload;
+        const index = state.reservations.findIndex(
+          (reservation) => reservation.reservationDetails.id === updatedReservation.id
+        );
+
+        if (index !== -1) {
+          // Update the specific reservation details in the Redux state
+          state.reservations[index].reservationDetails = {
+            ...state.reservations[index].reservationDetails,
+            ...updatedReservation,
+          };
+        }
+
+        toast.success("Reservation updated successfully!");
       })
       .addCase(updateReservation.rejected, (state, action) => {
-          state.loading = false;
-          state.error = action.payload;
-          toast.error(action.payload || "Failed to update reservation.");
+        state.loading = false;
+        state.error = action.payload;
+        toast.error(action.payload || "Failed to update reservation.");
       });
-  
+
 
     // Delete reservation
     builder

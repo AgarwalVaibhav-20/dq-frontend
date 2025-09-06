@@ -9,36 +9,90 @@ const headers = {
 }
 
 // POST API: Create a transaction
+// export const createTransaction = createAsyncThunk(
+//   'transactions/createTransaction',
+//   async ({
+//     username,
+//     tableNumber,
+//     items,
+//     sub_total,
+//     tax,
+//     discount,
+//     total,
+//     payment_type,
+//     phoneNumber, }, { rejectWithValue }) => {
+//     try {
+//       const restaurantId = localStorage.getItem('restaurantId')
+//       const response = await axios.post(`${BASE_URL}/transaction`, {
+//         restaurantId,
+//         userId,
+//         username,
+//         tableNumber,
+//         items,
+//         sub_total,
+//         tax,
+//         discount,
+//         total,
+//         payment_type,
+//         phoneNumber,
+//       }, { headers })
+//       return response.data
+//     } catch (error) {
+//       return rejectWithValue(error.response?.data || 'Something went wrong')
+//     }
+//   },
+// )
 export const createTransaction = createAsyncThunk(
   'transactions/createTransaction',
-  async ({
-    userName,
-    tableNumber,
-    items,
-    sub_total,
-    tax,
-    discount,
-    total,
-    payment_type,
-    phoneNumber, }, { rejectWithValue }) => {
+  async (payload, { rejectWithValue }) => {
     try {
-      const restaurantId = localStorage.getItem('restaurantId')
-      const response = await axios.post(`${BASE_URL}/transaction`, {
-        restaurantId,
+      const {
+        username,
+        token,
         userId,
-        userName,
         tableNumber,
         items,
         sub_total,
         tax,
         discount,
         total,
-        payment_type,
-        phoneNumber,
-      }, { headers })
-      return response.data
+        type,
+        split_details,
+        notes,
+        restaurantId
+      } = payload;
+
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      // Fix: Get restaurantId and userId from localStorage correctly
+      const finalRestaurantId = restaurantId || localStorage.getItem('restaurantId');
+      const finalUserId = userId || localStorage.getItem('userId');
+
+      const requestData = {
+        username,
+        restaurantId: finalRestaurantId,
+        userId: finalUserId,
+        tableNumber,
+        items,
+        sub_total,
+        tax,
+        discount,
+        total,
+        type, 
+        // split_details,
+        notes,
+      };
+
+      console.log('Transaction payload:', requestData); // Debug log
+
+      const response = await axios.post(`${BASE_URL}/transaction`, requestData, { headers });
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || 'Something went wrong')
+      console.error('Transaction creation error:', error.response?.data || error.message);
+      return rejectWithValue(error.response?.data || { message: 'Something went wrong' });
     }
   },
 )
