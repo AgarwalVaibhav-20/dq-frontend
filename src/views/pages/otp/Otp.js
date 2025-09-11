@@ -18,8 +18,8 @@ import {
 } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
 import { cilLockLocked } from '@coreui/icons';
-import { getMessaging, getToken, isSupported } from "firebase/messaging";
-import { messaging } from '../../../firebase';
+//import { getMessaging, getToken, isSupported } from "firebase/messaging";
+//import { messaging } from '../../../firebase';
 import { useDispatch, useSelector } from 'react-redux';
 import { updateRestaurantFCM, resetFCMStatus } from '../../../redux/slices/restaurantProfileSlice';
 
