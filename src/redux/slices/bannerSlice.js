@@ -3,13 +3,20 @@ import axios from 'axios'
 import { toast } from 'react-toastify'
 import { BASE_URL } from '../../utils/constants'
 
+
+
+const configureHeaders = (token) => ({
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+});
 // Fetch banners for the specific restaurant
 export const fetchBanners = createAsyncThunk(
   'banner/fetchBanners',
-  async ({ token, restaurantId }, thunkAPI) => { // Ensure restaurantId is received here
+  async ({ token }, thunkAPI) => { // Ensure restaurantId is received here
     try {
       // Pass restaurantId as a query parameter
-      const response = await axios.get(`${BASE_URL}/admin/banners?restaurantId=${restaurantId}`, {
+      const response = await axios.get(`${BASE_URL}/all/banner`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -28,7 +35,7 @@ export const createBanner = createAsyncThunk(
   async ({ banner_1, banner_2, banner_3, restaurantId, token }, thunkAPI) => {
     try {
       const formData = new FormData()
-      formData.append('restaurantId', restaurantId)
+      // formData.append('restaurantId', restaurantId)
 
       if (!banner_1) {
         throw new Error('banner_1 is required')
@@ -42,12 +49,7 @@ export const createBanner = createAsyncThunk(
         formData.append('banner_3', banner_3)
       }
 
-      const response = await axios.post(`${BASE_URL}/admin/banners/upload`, formData, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
-        },
-      })
+      const response = await axios.post(`${BASE_URL}/upload/banner-images`, formData, configureHeaders(token))
       toast.success('Banner created successfully!')
       return response.data.data
     } catch (error) {
@@ -150,7 +152,7 @@ const bannerSlice = createSlice({
         state.error = action.payload
       })
       .addCase(updateBanner.pending, (state) => {
-        state.loadingUpdate= true
+        state.loadingUpdate = true
       })
       .addCase(updateBanner.fulfilled, (state, action) => {
         state.loadingUpdate = false

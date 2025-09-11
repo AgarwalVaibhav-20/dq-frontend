@@ -2,6 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { CButton, CSpinner, CForm, CFormInput, CFormSelect } from '@coreui/react';
 import { toast } from 'react-toastify';
+import Pagination from '@mui/material/Pagination';
+import Stack from '@mui/material/Stack';
 import {
   addDeliveryTiming,
   deleteDeliveryTiming,
@@ -13,20 +15,27 @@ import CommonModal from '../../components/CommonModal';
 const DeliveryTiming = () => {
   const dispatch = useDispatch();
   const { deliveryTimings, isLoading, error } = useSelector((state) => state.deliveryTimings);
-  const { restaurantId, token } = useSelector((state) => state.auth);
+  const { restaurantId } = useSelector((state) => state.auth);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [selectedTiming, setSelectedTiming] = useState(null);
+  const token = localStorage.getItem("authToken");
   const [formData, setFormData] = useState({
     start_time: '',
     end_time: '',
     delivery_status: '1',
   });
 
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const rowsPerPage = 5; // change as needed
+
   useEffect(() => {
-    dispatch(fetchDeliveryTimings({ token }));
-  }, [dispatch, token]);
+    if (restaurantId) {
+      dispatch(fetchDeliveryTimings({ token, restaurantId }));
+    }
+  }, [dispatch, token, restaurantId]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -42,11 +51,10 @@ const DeliveryTiming = () => {
   const handleAddDeliveryTiming = async (e) => {
     e.preventDefault();
     try {
-      dispatch(addDeliveryTiming({ ...formData, restaurantId, token })).unwrap();
+      await dispatch(addDeliveryTiming({ ...formData, restaurantId, token })).unwrap();
       resetForm();
-      fetchDeliveryTimings()
+      dispatch(fetchDeliveryTimings({ token, restaurantId }));
       toast.success('Delivery timing added successfully!');
-      // return response; 
     } catch (error) {
       toast.error(error.message || 'Failed to add delivery timing.');
     }
@@ -54,23 +62,35 @@ const DeliveryTiming = () => {
 
   const handleDeleteDeliveryTiming = async () => {
     try {
-      await dispatch(deleteDeliveryTiming({ id: selectedTiming.id, token })).unwrap();
+      await dispatch(deleteDeliveryTiming({ id: selectedTiming._id, token })).unwrap();
       setDeleteModalVisible(false);
       toast.success('Delivery timing deleted successfully!');
+      dispatch(fetchDeliveryTimings({ token, restaurantId }));
     } catch (error) {
       toast.error(error.message || 'Failed to delete delivery timing.');
     }
   };
 
   const handleStatusToggle = async (id, currentStatus) => {
-    const newStatus = currentStatus === '1' ? '0' : '1';
+    const newStatus = currentStatus ? false : true;
     try {
       await dispatch(updateDeliveryTimingStatus({ id, delivery_status: newStatus, token })).unwrap();
       toast.success('Status updated successfully!');
+      dispatch(fetchDeliveryTimings({ token, restaurantId }));
     } catch (error) {
       toast.error(error.message || 'Failed to update status.');
     }
   };
+
+  // Pagination logic
+  const handleChangePage = (event, value) => {
+    setPage(value);
+  };
+
+  const paginatedData = deliveryTimings?.slice(
+    (page - 1) * rowsPerPage,
+    page * rowsPerPage
+  );
 
   return (
     <div className="px-5">
@@ -86,51 +106,66 @@ const DeliveryTiming = () => {
       {isLoading ? (
         <div className="flex justify-center"><CSpinner /></div>
       ) : (
-        <div className="overflow-x-auto">
-          <table className="table-auto w-full border-collapse border border-gray-200">
-            <thead className="bg-gray-100">
-              <tr>
-                <th className="border px-4 py-2">Start Time</th>
-                <th className="border px-4 py-2">End Time</th>
-                <th className="border px-4 py-2">Status</th>
-                <th className="border px-4 py-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {deliveryTimings?.map((timing) => (
-                <tr key={timing.id} className="hover:bg-gray-50">
-                  <td className="border px-4 py-2">{timing.start_time}</td>
-                  <td className="border px-4 py-2">{timing.end_time}</td>
-                  <td className="border px-4 py-2">
-                    <CButton
-                      color={timing.delivery_status ==true ? 'success' : 'danger'}
-                      onClick={() => handleStatusToggle(timing.id, timing.delivery_status)}
-                      disabled={isLoading}
-                      size="sm"
-                    >
-                      {timing.delivery_status ==true ? 'Active' : 'Inactive'}
-                    </CButton>
-                  </td>
-                  <td className="border px-4 py-2">
-                    <CButton
-                      color="danger"
-                      onClick={() => {
-                        setSelectedTiming(timing);
-                        setDeleteModalVisible(true);
-                      }}
-                      disabled={isLoading}
-                      size="sm"
-                    >
-                      Delete
-                    </CButton>
-                  </td>
+        <>
+          <div className="overflow-x-auto rounded-lg shadow-md border border-gray-200">
+            <table className="table-auto w-full border-collapse">
+              <thead className="bg-gray-100 text-gray-700">
+                <tr>
+                  <th className="border px-4 py-2">Start Time</th>
+                  <th className="border px-4 py-2">End Time</th>
+                  <th className="border px-4 py-2">Status</th>
+                  <th className="border px-4 py-2">Actions</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+              </thead>
+              <tbody>
+                {paginatedData?.map((timing) => (
+                  <tr key={timing._id} className="hover:bg-gray-50">
+                    <td className="border px-4 py-2">{timing.start_time}</td>
+                    <td className="border px-4 py-2">{timing.end_time}</td>
+                    <td className="border px-4 py-2 text-center">
+                      <CButton
+                        color={timing.delivery_status ? 'success' : 'danger'}
+                        onClick={() => handleStatusToggle(timing._id, timing.delivery_status)}
+                        disabled={isLoading}
+                        size="sm"
+                      >
+                        {timing.delivery_status ? 'Active' : 'Inactive'}
+                      </CButton>
+                    </td>
+                    <td className="border px-4 py-2 text-center">
+                      <CButton
+                        color="danger"
+                        onClick={() => {
+                          setSelectedTiming(timing);
+                          setDeleteModalVisible(true);
+                        }}
+                        disabled={isLoading}
+                        size="sm"
+                      >
+                        Delete
+                      </CButton>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Pagination */}
+          <div className="flex justify-center my-4">
+            <Stack spacing={2}>
+              <Pagination
+                count={Math.ceil(deliveryTimings.length / rowsPerPage)}
+                page={page}
+                onChange={handleChangePage}
+                color="primary"
+              />
+            </Stack>
+          </div>
+        </>
       )}
 
+      {/* Add Modal */}
       <CommonModal
         visible={modalVisible}
         onClose={resetForm}
@@ -154,7 +189,7 @@ const DeliveryTiming = () => {
           <CFormInput
             type="time"
             label="End Time"
-with            name="end_time"
+            name="end_time"
             value={formData.end_time}
             onChange={handleInputChange}
             required
@@ -174,6 +209,7 @@ with            name="end_time"
         </CForm>
       </CommonModal>
 
+      {/* Delete Modal */}
       <CommonModal
         visible={deleteModalVisible}
         onClose={() => setDeleteModalVisible(false)}

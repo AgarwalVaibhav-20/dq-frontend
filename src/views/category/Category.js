@@ -69,28 +69,6 @@ export default function Category() {
       .finally(() => setSaving(false));
   };
 
-  // const handleAddCategory = () => {
-  //   if (!categoryName || !categoryImage) return toast.error('Provide all fields.');
-  //   setSaving(true);
-
-  //   const formData = new FormData();
-  //   formData.append('categoryName', categoryName);
-  //   formData.append('categoryImage', categoryImage);
-  //   // formData.append('sizes', JSON.stringify(sizes));
-
-  //   dispatch(createCategory({ formData, token }))
-  //     .unwrap()
-  //     .then(() => {
-  //       toast.success('Category added!');
-  //       setCategoryName('');
-  //       setCategoryImage(null);
-  //       // setSizes([{ sizeName: '', basePrice: '', description: '' }]);
-  //       setModalVisible(false);
-  //       dispatch(fetchCategories({ token }));
-  //     })
-  //     .finally(() => setSaving(false));
-  // };
-
   const handleEditCategory = (cat) => {
     setEditedCategory(cat);
     setSizes(cat.sizes || [{ sizeName: '', basePrice: '', description: '' }]);
@@ -121,14 +99,19 @@ export default function Category() {
   };
 
   const handleDeleteCategory = (id) => {
-    if (!window.confirm('Are you sure?')) return;
+    if (!window.confirm('Are you sure you want to delete this category?')) return;
+
     dispatch(deleteCategory({ id, token }))
       .unwrap()
       .then(() => {
         toast.success('Category deleted!');
         dispatch(fetchCategories({ token }));
+      })
+      .catch((err) => {
+        toast.error(err || 'Failed to delete category');
       });
   };
+
 
   const toggleDropdown = (id) => setDropdownOpen(prev => ({ ...prev, [id]: !prev[id] }));
   const handleImageChange = (e) => {

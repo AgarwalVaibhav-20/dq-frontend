@@ -8,34 +8,80 @@ import {
   uploadRestaurantImage,
   checkRestaurantPermission,
 } from '../../redux/slices/restaurantProfileSlice'
+import { fetchUserProfile } from '../../redux/slices/authSlice'
 
 export default function Account() {
   const dispatch = useDispatch()
-  const { userId } = useParams()
+  const userId = localStorage.getItem('userId')
   const { restaurantProfile, loading } = useSelector((state) => state.restaurantProfile)
 
   const [profileData, setProfileData] = useState({})
   const [editMode, setEditMode] = useState(false)
   const [tempData, setTempData] = useState({})
   const [isUpdating, setIsUpdating] = useState(false)
-  const [isCreateMode, setIsCreateMode] = useState(!userId) 
+  const [isCreateMode, setIsCreateMode] = useState(!userId)
+  const token = localStorage.getItem('authToken')
 
   useEffect(() => {
-    if (userId) {
-      dispatch(getRestaurantProfile({ userId }))
+    if (userId && token) {
+      // ✅ Fetch user profile first
+      dispatch(fetchUserProfile({ userId, token }))
         .then(({ payload }) => {
-          console.log("Fetched profile payload:", payload)
-          setProfileData(payload.user ?? payload)
-          setTempData(payload.user ?? payload)
-          dispatch(checkRestaurantPermission({ userId }))
+          console.log("Fetched user profile payload:", payload)
+          // Handle user profile data structure
+          const userData = payload.user || {}
+          const userProfileData = payload.profile || {}
+
+          // Combine user and profile data
+          const combinedData = {
+            ...userData,
+            ...userProfileData,
+          }
+
+          setProfileData(combinedData)
+          setTempData(combinedData)
+        })
+        .catch((error) => {
+          console.log("User profile fetch failed:", error)
+        })
+
+      // ✅ Fetch restaurant details if restaurantId exists
+      // You might need to get restaurantId from user profile or use userId if that's your setup
+      dispatch(getRestaurantProfile({ restaurantId: userId, token }))
+        .then(({ payload }) => {
+          console.log("Fetched restaurant payload:", payload)
+          // Handle restaurant data structure
+          const restaurantData = payload.restaurant || {}
+
+          // Merge with existing profile data
+          setProfileData(prevData => ({
+            ...prevData,
+            ...restaurantData,
+          }))
+          setTempData(prevData => ({
+            ...prevData,
+            ...restaurantData,
+          }))
+        })
+        .catch((error) => {
+          console.log("Restaurant profile fetch failed:", error)
+          // This is OK if no restaurant profile exists yet
+        })
+
+      // Check permissions separately
+      dispatch(checkRestaurantPermission({ userId, token }))
+        .then((result) => {
+          console.log("Permission check result:", result)
+        })
+        .catch((error) => {
+          console.log("Permission check failed:", error)
         })
     } else {
-      // ✅ If no userId → creating new profile
       setIsCreateMode(true)
       setEditMode(true)
       setTempData({})
     }
-  }, [dispatch, userId])
+  }, [dispatch, userId, token])
 
   const handleEdit = () => {
     setTempData(profileData)
@@ -45,6 +91,8 @@ export default function Account() {
   const handleCancel = () => {
     if (isCreateMode) {
       setTempData({})
+    } else {
+      setTempData(profileData) // ✅ Reset to original data
     }
     setEditMode(false)
   }
@@ -53,12 +101,12 @@ export default function Account() {
     setIsUpdating(true)
     try {
       if (isCreateMode) {
-        // ✅ Create new profile
+        // ✅ Create new profile - make sure this action exists
         await dispatch(createRestaurantProfile(tempData))
         setIsCreateMode(false)
       } else {
         // ✅ Update existing
-        await dispatch(updateRestaurantProfile(tempData))
+        await dispatch(updateRestaurantProfile({ ...tempData, userId, token }))
       }
       setProfileData(tempData)
       setEditMode(false)
@@ -76,14 +124,23 @@ export default function Account() {
   const handleImageUpload = async (e) => {
     const file = e.target.files[0]
     if (file && userId) {
-      await dispatch(uploadRestaurantImage({ id: userId, imageFile: file }))
-      const { payload } = await dispatch(getRestaurantProfile({ userId }))
-      setProfileData(payload)
-      setTempData(payload)
+      try {
+        await dispatch(uploadRestaurantImage({ id: userId, imageFile: file }))
+        // Refresh the profile data after image upload
+        const { payload } = await dispatch(fetchUserProfile({ userId, token }))
+        const userData = payload.user || {}
+        const userProfileData = payload.profile || {}
+        const combinedData = { ...userData, ...userProfileData }
+
+        setProfileData(combinedData)
+        setTempData(combinedData)
+      } catch (error) {
+        console.error('Image upload failed:', error)
+      }
     }
   }
 
-  const renderField = (field, label, type = "text") => (
+  const renderField = (field, label, type = "text", toUpper = false) => (
     <div className="mb-3">
       <label className="fw-bold d-block mb-1">{label}</label>
       {editMode ? (
@@ -95,10 +152,19 @@ export default function Account() {
           className="form-control"
         />
       ) : (
-        <p className="mb-0">{profileData[field] || "data"}</p>
+        <p className="mb-0">
+          {toUpper
+            ? (profileData[field]?.toUpperCase() || "DATA")
+            : (profileData[field] || "data")}
+        </p>
       )}
     </div>
   )
+
+  // ✅ Add debugging info
+  console.log("Current profileData:", profileData)
+  console.log("Current tempData:", tempData)
+  console.log("Loading state:", loading)
 
   return (
     <div className="card w-75 mx-auto my-5 shadow-lg border-0 rounded-4 overflow-hidden">
@@ -109,7 +175,7 @@ export default function Account() {
       >
         <div className="d-flex flex-column align-items-center">
           <img
-            src={profileData?.profilePhoto || profileData?.image || '/default.png'}
+            src={profileData?.profileImage || profileData?.image || '/default.png'}
             alt="Profile"
             width={120}
             height={120}
@@ -153,7 +219,7 @@ export default function Account() {
             <div className="col-md-6">
               <h6 className="fw-bold text-primary mb-3">Restaurant & Identity</h6>
               {renderField('restName', 'Restaurant Name')}
-              {renderField('restaurantId', 'Restaurant ID')}
+              {renderField('restaurantId', 'Restaurant ID', 'text', true)}
               {renderField('identity', 'Identity Type')}
               {renderField('identityNumber', 'Identity Number')}
               {renderField('email', 'Email', 'email')}
@@ -191,188 +257,3 @@ export default function Account() {
     </div>
   )
 }
-
-
-
-
-// 'use client'
-// import React, { useState, useEffect } from 'react'
-// import {
-//   CCard,
-//   CCardHeader,
-//   CCardBody,
-//   CCardTitle,
-//   CRow,
-//   CCol,
-//   CButton,
-//   CFormInput,
-//   CFormLabel,
-//   CImage,
-//   CSpinner,
-// } from '@coreui/react'
-// import { useDispatch, useSelector } from 'react-redux'
-// import {
-//   getRestaurantProfile,
-//   updateRestaurantProfile,
-//   uploadRestaurantImage,
-// } from '../../redux/slices/restaurantProfileSlice'
-
-// export default function Account() {
-//   const dispatch = useDispatch()
-//   const { restaurantProfile, loading } = useSelector((state) => state.restaurantProfile)
-
-//   // ✅ Initialize userId from Redux auth state
-//   const authUserId = useSelector((state) => state.auth.userId)
-//   const [userId, setUserId] = useState(authUserId || null)
-
-//   const [profileData, setProfileData] = useState({})
-//   const [editingField, setEditingField] = useState(null)
-//   const [editValue, setEditValue] = useState('')
-//   const [isUpdating, setIsUpdating] = useState(false)
-//   useEffect(() => {
-//     if (userId) {
-//       dispatch(getRestaurantProfile({ userId }))
-//         .then(({ payload }) => setProfileData(payload))
-//     }
-//   }, [dispatch, userId])
-
-//   const handleEdit = (field) => {
-//     setEditingField(field)
-//     setEditValue(profileData[field] || '')
-//   }
-
-//   const handleUpdate = async (field) => {
-//     setIsUpdating(true)
-//     try {
-//       const updateData = {
-//         [field]: editValue,
-//         userId
-//       }
-
-//       await dispatch(updateRestaurantProfile({
-//         userId,
-//         profileData: updateData
-//       }))
-
-//       setProfileData((prev) => ({ ...prev, [field]: editValue }))
-//       setEditingField(null)
-//     } catch (error) {
-//       console.error('Error updating profile:', error)
-//     } finally {
-//       setIsUpdating(false)
-//     }
-//   }
-
-//   const handleImageUpload = async (e) => {
-//     const file = e.target.files[0]
-//     if (file && userId) {
-//       await dispatch(uploadRestaurantImage({ id: userId, imageFile: file }))
-//       await dispatch(getRestaurantProfile({ userId }))
-//     }
-//   }
-
-//   const renderField = (field, label) => (
-//     <div className="mb-4">
-//       <CFormLabel htmlFor={field} className="fw-bold">
-//         {label}
-//       </CFormLabel>
-//       {editingField === field ? (
-//         <div className="d-flex align-items-center mt-1">
-//           <CFormInput
-//             id={field}
-//             value={editValue}
-//             onChange={(e) => setEditValue(e.target.value)}
-//             className="me-2"
-//           />
-//           <CButton
-//             color="success"
-//             size="sm"
-//             onClick={() => handleUpdate(field)}
-//             disabled={isUpdating}
-//           >
-//             {isUpdating ? <CSpinner size="sm" /> : 'Update'}
-//           </CButton>
-//         </div>
-//       ) : (
-//         <div className="d-flex align-items-center mt-1">
-//           <span className="me-auto">{profileData[field] || '-'}</span>
-//           <CButton color="primary" size="sm" className="ms-2" onClick={() => handleEdit(field)}>
-//             Edit
-//           </CButton>
-//         </div>
-//       )}
-//     </div>
-//   )
-
-//   return (
-//     <CCard className="w-75 mx-auto my-5 shadow-lg border-0 rounded-4 overflow-hidden">
-//       {/* Header */}
-//       <CCardHeader className="bg-gradient text-white text-center py-4" style={{ background: "linear-gradient(90deg, #007bff, #0056d2)" }}>
-//         <div className="d-flex flex-column align-items-center">
-//           <CImage
-//             roundedCircle
-//             src={profileData?.profilePhoto}
-//             alt="Profile"
-//             width={120}
-//             height={120}
-//             className="border border-3 border-white shadow-sm mb-3"
-//           />
-//           <CCardTitle className="mb-0 fs-4 fw-bold">
-//             {profileData?.firstName} {profileData?.lastName}
-//           </CCardTitle>
-//           <p className="text-white-50 small">{profileData?.email}</p>
-//           <CButton
-//             color="light"
-//             size="sm"
-//             className="rounded-pill px-3 fw-semibold"
-//             onClick={() => document.getElementById('fileInput').click()}
-//           >
-//             Change Photo
-//           </CButton>
-//           <CFormInput
-//             type="file"
-//             id="fileInput"
-//             className="d-none"
-//             onChange={handleImageUpload}
-//             accept="image/*"
-//           />
-//         </div>
-//       </CCardHeader>
-
-//       <CCardBody className="p-4">
-//         {loading ? (
-//           <div className="text-center my-5">
-//             <CSpinner color="primary" />
-//           </div>
-//         ) : (
-//           <CRow className="gy-4">
-//             {/* Left Section - Personal Info */}
-//             <CCol md={6}>
-//               <h6 className="fw-bold text-primary mb-3">Personal Information</h6>
-//               <div className="d-grid gap-3">
-//                 {renderField('firstName', 'First Name')}
-//                 {renderField('lastName', 'Last Name')}
-//                 {renderField('gender', 'Gender')}
-//                 {renderField('phoneNumber', 'Phone Number')}
-//                 {renderField('address', 'Address')}
-//                 {renderField('pinCode', 'Pin Code')}
-//               </div>
-//             </CCol>
-
-//             {/* Right Section - Restaurant Info */}
-//             <CCol md={6}>
-//               <h6 className="fw-bold text-primary mb-3">Restaurant & Identity</h6>
-//               <div className="d-grid gap-3">
-//                 {renderField('restName', 'Restaurant Name')}
-//                 {renderField('restaurantId', 'Restaurant ID')}
-//                 {renderField('identity', 'Identity Type')}
-//                 {renderField('identityNumber', 'Identity Number')}
-//                 {renderField('email', 'Email')}
-//               </div>
-//             </CCol>
-//           </CRow>
-//         )}
-//       </CCardBody>
-//     </CCard>
-//   )
-// }

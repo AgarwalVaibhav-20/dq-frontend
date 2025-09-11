@@ -1,19 +1,17 @@
-// WeeklyChartReport.jsx
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { CCard, CCardHeader, CCardBody, CFormSelect, CSpinner } from '@coreui/react';
 import { CChartLine } from '@coreui/react-chartjs';
-import { fetchWeeklyChartData } from '../../redux/slices/dashboardSlice';   // ← adjust path if needed
+import { fetchWeeklyChartData } from '../../redux/slices/reportSlice'; // updated
 
 const WeeklyChartReport = () => {
-  const dispatch       = useDispatch();
-  const restaurantId   = useSelector((state) => state.auth.restaurantId);
-  const { weeklyChartData, loading } = useSelector((state) => state.dashboard);
+  const dispatch = useDispatch();
+  const restaurantId = localStorage.getItem('restaurantId'); // or from auth slice
+  const { weeklyChartData, loading } = useSelector((state) => state.reports); // updated
 
-  const currentYear    = new Date().getFullYear();
+  const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
 
-  /* ---------- Drop-down with the last 10 years ---------- */
   const yearOptions = Array.from({ length: 10 }, (_, i) => {
     const year = currentYear - i;
     return (
@@ -23,18 +21,16 @@ const WeeklyChartReport = () => {
     );
   });
 
-  /* ---------- Fetch whenever year or restaurant changes ---------- */
   useEffect(() => {
     if (restaurantId) {
       dispatch(fetchWeeklyChartData({ year: selectedYear, restaurantId }));
     }
   }, [selectedYear, restaurantId, dispatch]);
 
-  /* ---------- Massage the datasets (string ➜ number, add styling) ---------- */
   const formattedDatasets =
     weeklyChartData?.datasets?.map((ds) => ({
       ...ds,
-      data: ds.data.map((val) => parseFloat(val)),   // convert "435.00" ➜ 435
+      data: ds.data.map((val) => parseFloat(val)),
       tension: 0.4,
       fill: false,
       borderWidth: 2,
@@ -71,15 +67,16 @@ const WeeklyChartReport = () => {
               responsive: true,
               plugins: {
                 legend: { position: 'top' },
-                title : {
+                title: {
                   display: true,
-                  text   : `Weekly Performance for ${selectedYear}`,
+                  text: `Weekly Performance for ${selectedYear}`,
                 },
                 tooltip: {
                   callbacks: {
                     label: (ctx) =>
-                      `${ctx.dataset.label}: ` +
-                      (ctx.dataset.label.includes('Collection') ? `₹${ctx.parsed.y}` : ctx.parsed.y),
+                      `${ctx.dataset.label}: ${
+                        ctx.dataset.label.includes('Collection') ? `₹${ctx.parsed.y}` : ctx.parsed.y
+                      }`,
                   },
                 },
               },
@@ -87,11 +84,12 @@ const WeeklyChartReport = () => {
                 y: {
                   beginAtZero: true,
                   ticks: {
-                    callback: (value) => (formattedDatasets[0]?.label === 'Total Collection' ? `₹${value}` : value),
+                    callback: (value) =>
+                      formattedDatasets[0]?.label === 'Total Collection' ? `₹${value}` : value,
                   },
                 },
                 x: {
-                  ticks: { autoSkip: true, maxTicksLimit: 13 }, // show roughly one tick / 4 weeks
+                  ticks: { autoSkip: true, maxTicksLimit: 13 },
                 },
               },
             }}

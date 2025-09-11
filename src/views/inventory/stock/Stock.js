@@ -29,7 +29,6 @@ const Stock = () => {
   const dispatch = useDispatch()
   const { inventories, loading: inventoryLoading } = useSelector((state) => state.inventories)
   const { suppliers, loading: supplierLoading } = useSelector((state) => state.suppliers)
-  // const restaurantId = useSelector((state) => state.auth.restaurantId)
 
   const [modalVisible, setModalVisible] = useState(false)
   const [editModalVisible, setEditModalVisible] = useState(false)
@@ -42,18 +41,14 @@ const Stock = () => {
   })
   const [selectedStock, setSelectedStock] = useState(null)
 
-  // Fetch inventories and suppliers on component mount
   const { token, restaurantId } = useSelector((state) => state.auth)
-  console.log("Auth:", token, restaurantId)
 
-  // Fetch inventories and suppliers
   useEffect(() => {
     if (restaurantId || token) {
       dispatch(fetchInventories({ token }))
       dispatch(fetchSuppliers({ restaurantId, token }))
     }
   }, [restaurantId, token, dispatch])
-
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -62,7 +57,6 @@ const Stock = () => {
   const handleSaveStock = () => {
     dispatch(addInventory({ restaurantId, ...formData }))
     dispatch(fetchSuppliers({ restaurantId }))
-
     dispatch(fetchInventories({ restaurantId }))
     resetForm()
     setModalVisible(false)
@@ -70,7 +64,6 @@ const Stock = () => {
 
   const handleUpdateInventory = async () => {
     try {
-      // console.log('formData', formData);
       dispatch(updateInventory({ id: selectedStock.id, restaurantId, ...formData }))
       dispatch(fetchSuppliers({ restaurantId }))
       dispatch(fetchInventories({ restaurantId }))
@@ -98,7 +91,7 @@ const Stock = () => {
       '\n' +
       inventories
         ?.map((row) =>
-          [row.id, row.itemName, row.quantity, row.unit, row.supplier?.supplierName || 'N/A'].join(
+          [row._id, row.itemName, row.quantity, row.unit, row.supplier?.supplierName || 'N/A'].join(
             ',',
           ),
         )
@@ -114,7 +107,7 @@ const Stock = () => {
     doc.text('Stock Management', 10, 10)
     const tableColumn = ['Stock ID', 'Item Name', 'Quantity', 'Unit', 'Supplier Name']
     const tableRows = inventories?.map((row) => [
-      row?.id,
+      row?._id,
       row?.itemName,
       row?.quantity,
       row?.unit,
@@ -124,64 +117,66 @@ const Stock = () => {
     doc.save('inventories.pdf')
   }, [inventories])
 
- const rows = inventories.map((s) => ({
-  id: s.restaurantId || s._id,   // ✅ small typo fix: restuarantId → restaurantId
-  ...s,
-}));
+  const rows = inventories.map((s) => ({
+    id: s._id,
+    ...s,
+  }))
 
-const columns = [
-  { field: 'id', headerName: 'Stock ID', flex: 1 },
-  { field: 'itemName', headerName: 'Item Name', flex: 1 },
-  { field: 'quantity', headerName: 'Quantity', flex: 1 },
-  { field: 'unit', headerName: 'Unit', flex: 1 },
-  {
-    field: 'supplierName',
-    headerName: 'Supplier Name',
-    flex: 1,
-    valueGetter: (params) => params?.row?.supplierName || 'N/A', // ✅ fix here
-  },
-  {
-    field: 'actions',
-    headerName: 'Actions',
-    flex: 1,
-    sortable: false,
-    filterable: false,
-    renderCell: (params) => (
-      <div style={{ display: 'flex', gap: '10px' }}>
-        {/* Edit Button */}
-        <CButton
-          color="secondary"
-          size="sm"
-          onClick={() => {
-            setSelectedStock(params.row);
-            setFormData({
-              itemName: params.row.itemName || '',
-              quantity: params.row.quantity || '',
-              unit: params.row.unit || '',
-              supplierId: params.row.supplierId || '',  // ✅ because it's saved in inventory
-            });
-            setEditModalVisible(true);
-          }}
-        >
-          <CIcon icon={cilPencil} />
-        </CButton>
+  const columns = [
+    {
+      field: 'id',
+      headerName: 'Stock ID',
+      flex: 1,
+      valueGetter: (params) => `SUP-${params.row.id.slice(0, 14).toUpperCase()}`,
+    },
+    { field: 'itemName', headerName: 'Item Name', flex: 1 },
+    { field: 'quantity', headerName: 'Quantity', flex: 1 },
+    { field: 'unit', headerName: 'Unit', flex: 1 },
+    {
+      field: 'supplierName',
+      headerName: 'Supplier Name',
+      flex: 1,
+      valueGetter: (params) => params?.row?.supplierName || 'N/A',
+    },
+    {
+      field: 'actions',
+      headerName: 'Actions',
+      flex: 1,
+      sortable: false,
+      filterable: false,
+      renderCell: (params) => (
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <CButton
+            color="secondary"
+            size="sm"
+            onClick={() => {
+              setSelectedStock(params.row)
+              setFormData({
+                itemName: params.row.itemName || '',
+                quantity: params.row.quantity || '',
+                unit: params.row.unit || '',
+                supplierId: params.row.supplierId || '',
+              })
+              setEditModalVisible(true)
+            }}
+          >
+            <CIcon icon={cilPencil} />
+          </CButton>
 
-        {/* Delete Button */}
-        <CButton
-          color="danger"
-          size="sm"
-          onClick={() => {
-            setSelectedStock(params.row);
-            setDeleteModalVisible(true);
-          }}
-        >
-          <CIcon icon={cilTrash} />
-        </CButton>
-      </div>
-    ),
-  },
-];
-
+          <CButton
+            color="danger"
+            size="sm"
+            onClick={() => {
+              setSelectedStock(params.row)
+              setDeleteModalVisible(true)
+            }}
+          >
+            <CIcon icon={cilTrash} />
+          </CButton>
+        </div>
+      ),
+    },
+  ]
 
   return (
     <div className="p-4">
@@ -198,12 +193,12 @@ const columns = [
         <CButton
           className="px-4 py-2 shadow-sm fw-semibold text-white"
           style={{
-            background: "#4361ee",
-            border: "none",
-            borderRadius: "8px",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
+            background: '#4361ee',
+            border: 'none',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
           }}
           onClick={exportToCSV}
         >
@@ -213,21 +208,20 @@ const columns = [
         <CButton
           className="px-4 py-2 shadow-sm fw-semibold text-white"
           style={{
-            background: "#212121", // darker tone
-            border: "none",
-            borderRadius: "8px",
-            display: "flex",
-            alignItems: "center",
-            gap: "8px",
+            background: '#212121',
+            border: 'none',
+            borderRadius: '8px',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
           }}
           onClick={exportToPDF}
         >
           📄 <span>Export PDF</span>
         </CButton>
-
       </div>
 
-      {/* Inventory Table */}
+      {/* Inventory Table (Improved) */}
       <div className="bg-white rounded shadow-sm p-3">
         {inventoryLoading || supplierLoading ? (
           <div className="d-flex justify-content-center py-5">
@@ -238,9 +232,34 @@ const columns = [
             rows={rows}
             columns={columns}
             autoHeight
+            pageSize={10}
+            rowsPerPageOptions={[5, 10, 20]}
             className="border-0"
+            disableRowSelectionOnClick
             slots={{
               toolbar: CustomToolbar,
+            }}
+            sx={{
+              '& .MuiDataGrid-columnHeaders': {
+                backgroundColor: '#f5f6fa',
+                color: '#333',
+                fontWeight: 'bold',
+                fontSize: '0.95rem',
+              },
+              '& .MuiDataGrid-row': {
+                '&:nth-of-type(odd)': {
+                  backgroundColor: '#fafafa',
+                },
+                '&:hover': {
+                  backgroundColor: '#e9f2ff',
+                },
+              },
+              '& .MuiDataGrid-cell': {
+                borderBottom: '1px solid #f0f0f0',
+              },
+              '& .MuiDataGrid-footerContainer': {
+                backgroundColor: '#f5f6fa',
+              },
             }}
           />
         )}
@@ -279,17 +298,15 @@ const columns = [
             value={formData.supplierId}
             onChange={handleChange}
           >
-            <option key="default-add" value="">Select Supplier</option>
+            <option key="default-add" value="">
+              Select Supplier
+            </option>
             {suppliers?.map((supplier, index) => (
-              <option
-                key={supplier._id ?? `supplier-${index}`} // use _id or fallback
-                value={supplier._id ?? ''}
-              >
+              <option key={supplier._id ?? `supplier-${index}`} value={supplier._id ?? ''}>
                 {supplier.supplierName}
               </option>
             ))}
           </CFormSelect>
-
         </CModalBody>
         <CModalFooter className="bg-light">
           <CButton color="secondary" variant="outline" onClick={() => setModalVisible(false)}>
@@ -334,9 +351,11 @@ const columns = [
             value={formData.supplierId}
             onChange={handleChange}
           >
-            <option key="default-edit" value="">Select Supplier</option>
+            <option key="default-edit" value="">
+              Select Supplier
+            </option>
             {suppliers?.map((supplier) => (
-              <option key={`edit-${supplier.id}`} value={supplier.id}>
+              <option key={`edit-${supplier._id}`} value={supplier._id}>
                 {supplier.supplierName}
               </option>
             ))}
@@ -353,7 +372,11 @@ const columns = [
       </CModal>
 
       {/* Delete Confirmation Modal */}
-      <CModal visible={deleteModalVisible} alignment="center" onClose={() => setDeleteModalVisible(false)}>
+      <CModal
+        visible={deleteModalVisible}
+        alignment="center"
+        onClose={() => setDeleteModalVisible(false)}
+      >
         <CModalHeader className="bg-light">
           <CModalTitle className="fw-bold text-danger">⚠️ Delete Inventory</CModalTitle>
         </CModalHeader>
@@ -370,7 +393,6 @@ const columns = [
         </CModalFooter>
       </CModal>
     </div>
-
   )
 }
 

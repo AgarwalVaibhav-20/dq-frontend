@@ -117,7 +117,7 @@ const ProductList = ({
                 <CTooltip content={`Click to add ${product.itemName}`} placement="top">
                   <div
                     onClick={() => onMenuItemClick(product)}
-                    className={`p-3 d-flex flex-column align-items-center justify-content-between text-center border rounded-4 h-100 w-100 shadow-sm transition-all hover-scale bg-gradient ${
+                    className={`p-3  flex-column align-items-center justify-content-between text-center border rounded-4 h-10 w-100 shadow-sm transition-all hover-scale bg-gradient ${
                       isDarkMode ? 'bg-secondary text-light' : 'bg-white'
                     }`}
                     style={{
@@ -128,36 +128,9 @@ const ProductList = ({
                       transition: 'transform 0.15s',
                     }}
                   >
-                    {product.itemImage && (
-                      <div
-                        style={{
-                          width: '100%',
-                          height: 90,
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          background: isDarkMode ? '#23272b' : '#f8f9fa',
-                          padding: 6,
-                          borderRadius: 12,
-                          marginBottom: 12,
-                          overflow: 'hidden',
-                        }}
-                      >
-                        <img
-                          src={product.itemImage}
-                          alt={product.itemName}
-                          style={{
-                            width: '100%',
-                            height: '100%',
-                            objectFit: 'cover',
-                            borderRadius: 8,
-                            display: 'block',
-                          }}
-                        />
-                      </div>
-                    )}
-                    <h6 className="mb-1 fw-semibold" style={{ fontSize: '1rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{product.itemName}</h6>
-                    <span className="text-primary fw-bold" style={{ fontSize: '1.1rem' }}>₹{product.price}</span>
+                    
+                    <h6 className="mb-1 fw-semibold" style={{ fontSize: '15px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', width: '100%' }}>{product.itemName}</h6>
+                    <span className="text-primary fw-bold" style={{ fontSize: '15px' }}>₹{product.price}</span>
                   </div>
                 </CTooltip>
               </CCol>

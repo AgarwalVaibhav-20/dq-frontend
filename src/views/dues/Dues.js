@@ -32,7 +32,7 @@ const Dues = () => {
   const { dues, loading, error } = useSelector((state) => state.dues);
   const { customers, loading: customersLoading, error: customersError } = useSelector((state) => state.customers);
   const restaurantId = useSelector((state) => state.auth.restaurantId);
-  
+
   console.log("Dues-->", dues);
   const isMobile = useMediaQuery('(max-width:600px)');
 
@@ -40,7 +40,7 @@ const Dues = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
-  
+
   // Form state
   const [formData, setFormData] = useState({
     transaction_id: '',
@@ -50,15 +50,15 @@ const Dues = () => {
   const [selectedDue, setSelectedDue] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
 
-  // Utility functions for consistent ID handling
+  // FIXED: Utility functions for consistent ID handling
   const getCustomerId = useCallback((customer) => customer?.id || customer?._id, []);
-  const getDueId = useCallback((due) => due?.due_details?.id || due?.due_details?._id, []);
+  const getDueId = useCallback((due) => due?.id || due?._id, []); // Fixed: removed due_details nesting
   const getCustomerName = useCallback((customer) => customer?.name || customer?.customerName, []);
 
   // Fetch data function with error handling
   const fetchData = useCallback(async () => {
     const token = localStorage.getItem('authToken');
-    
+
     if (!restaurantId || !token) {
       console.warn('Missing restaurantId or token');
       return;
@@ -74,7 +74,7 @@ const Dues = () => {
 
     try {
       // Fetch customers with error handling
-      await dispatch(fetchCustomers({ restaurantId,token })).unwrap();
+      await dispatch(fetchCustomers({ restaurantId, token })).unwrap();
     } catch (error) {
       console.error('Failed to fetch customers:', error);
       toast.error('Failed to load customers data');
@@ -132,11 +132,11 @@ const Dues = () => {
   // Add due handler
   const handleSaveDue = async (e) => {
     e.preventDefault();
-    
+
     if (!validateForm()) return;
 
     setFormLoading(true);
-    
+
     try {
       const payload = {
         ...formData,
@@ -154,7 +154,7 @@ const Dues = () => {
     }
   };
 
-  // Update due handler
+  // FIXED: Update due handler
   const handleUpdateDue = async () => {
     if (!validateForm()) return;
 
@@ -165,7 +165,7 @@ const Dues = () => {
 
     try {
       const payload = {
-        id: getDueId(selectedDue),
+        id: getDueId(selectedDue), // Fixed: now gets correct ID
         transaction_id: formData.transaction_id,
         total: parseFloat(formData.total),
         status: formData.status,
@@ -204,14 +204,15 @@ const Dues = () => {
     }
   };
 
-  // Edit handler
+  // FIXED: Edit handler
   const handleEdit = (dueRow) => {
     setSelectedDue(dueRow);
-    const customerId = dueRow?.due_details?.customer_id;
+    // Fixed: get customer_id directly from the due object
+    const customerId = dueRow?.customer_id || dueRow?.transaction_id;
     setFormData({
       transaction_id: customerId || '',
-      total: dueRow?.due_details?.total?.toString() || '',
-      status: dueRow?.due_details?.status || 'unpaid',
+      total: dueRow?.total?.toString() || '', // Fixed: get total directly
+      status: dueRow?.status || 'unpaid', // Fixed: get status directly
     });
     setEditModalVisible(true);
   };
@@ -251,27 +252,27 @@ const Dues = () => {
       </CModalHeader>
       <CModalBody>
         <CForm onSubmit={handleSaveDue}>
-             <div className="mb-3">
-          <label htmlFor="transaction_id">Customer</label>
-          <Select
-            options={customers?.map((customer) => ({
-              value: customer.id || customer._id,
-              label: customer.name || customer.customerName,
-            }))}
-            onChange={(selectedOption) =>
-              setFormData({ ...formData, transaction_id: selectedOption?.value || '' })
-            }
-            value={customers?.find(c => (c.id || c._id) === formData.transaction_id) ?
-              { value: formData.transaction_id, label: customers.find(c => (c.id || c._id) === formData.transaction_id)?.name || customers.find(c => (c.id || c._id) === formData.transaction_id)?.customerName } : null}
-            placeholder="Search or select a customer"
-            isLoading={customersLoading}
-            isClearable
-            isSearchable
-            className="basic-single"
-            classNamePrefix="select"
-            required
-          />
-        </div>
+          <div className="mb-3">
+            <label htmlFor="transaction_id">Customer</label>
+            <Select
+              options={customers?.map((customer) => ({
+                value: customer.id || customer._id,
+                label: customer.name || customer.customerName,
+              }))}
+              onChange={(selectedOption) =>
+                setFormData({ ...formData, transaction_id: selectedOption?.value || '' })
+              }
+              value={customers?.find(c => (c.id || c._id) === formData.transaction_id) ?
+                { value: formData.transaction_id, label: customers.find(c => (c.id || c._id) === formData.transaction_id)?.name || customers.find(c => (c.id || c._id) === formData.transaction_id)?.customerName } : null}
+              placeholder="Search or select a customer"
+              isLoading={customersLoading}
+              isClearable
+              isSearchable
+              className="basic-single"
+              classNamePrefix="select"
+              required
+            />
+          </div>
           <div className="mb-3">
             <label htmlFor="total">Total Amount *</label>
             <CFormInput
@@ -306,9 +307,9 @@ const Dues = () => {
         <CButton color="secondary" onClick={closeModals} disabled={formLoading}>
           Cancel
         </CButton>
-        <CButton 
-          color="primary" 
-          onClick={handleSaveDue} 
+        <CButton
+          color="primary"
+          onClick={handleSaveDue}
           disabled={formLoading || !formData.transaction_id || !formData.total}
         >
           {formLoading ? <><CSpinner size="sm" /> Saving...</> : 'Save Due'}
@@ -373,9 +374,9 @@ const Dues = () => {
         <CButton color="secondary" onClick={closeModals} disabled={formLoading}>
           Cancel
         </CButton>
-        <CButton 
-          color="primary" 
-          onClick={handleUpdateDue} 
+        <CButton
+          color="primary"
+          onClick={handleUpdateDue}
           disabled={formLoading || !formData.transaction_id || !formData.total}
         >
           {formLoading ? <><CSpinner size="sm" /> Saving...</> : 'Update Due'}
@@ -384,12 +385,10 @@ const Dues = () => {
     </CModal>
   );
 
-  // Delete Confirmation Modal
+  // FIXED: Delete Confirmation Modal
   const renderDeleteDueModal = () => {
-    const customerName = selectedDue?.due_details?.customerName || 
-                        selectedDue?.transaction_details?.original?.[0]?.userName || 
-                        'Unknown Customer';
-    
+    const customerName = selectedDue?.customerName || 'Unknown Customer'; // Fixed: get customerName directly
+
     return (
       <CModal visible={deleteModalVisible} onClose={closeModals}>
         <CModalHeader>
@@ -411,14 +410,29 @@ const Dues = () => {
     );
   };
 
-  // DataGrid columns
+  // FIXED: DataGrid columns
   const columns = [
     {
       field: 'id',
-      headerName: 'ID',
-      flex: isMobile ? undefined : 0.5,
-      minWidth: isMobile ? 80 : 100,
-      valueGetter: (params) => getDueId(params.row)
+      headerName: 'Due ID',
+      flex: isMobile ? undefined : 0.7,
+      minWidth: isMobile ? 120 : 150,
+      valueGetter: (params) => {
+        const rawId = getDueId(params.row);
+        if (rawId) {
+          const shortId = rawId.slice(0.7).toUpperCase();
+          return `DUE-${shortId}`;
+        }
+        return 'N/A';
+      },
+      renderCell: (params) => (
+        <span style={{
+          padding: '2px 6px',
+          borderRadius: '4px',
+        }}>
+          {params.value}
+        </span>
+      )
     },
     {
       field: 'customerName',
@@ -426,9 +440,8 @@ const Dues = () => {
       flex: isMobile ? undefined : 1,
       minWidth: isMobile ? 150 : 200,
       valueGetter: (params) => {
-        return params.row?.due_details?.customerName ||
-          params.row?.transaction_details?.original?.[0]?.userName ||
-          'Unknown Customer';
+        // Fixed: get customerName directly from the row
+        return params.row?.customerName || 'Unknown Customer';
       }
     },
     {
@@ -436,7 +449,7 @@ const Dues = () => {
       headerName: 'Total Amount',
       flex: isMobile ? undefined : 1,
       minWidth: isMobile ? 120 : 150,
-      valueGetter: (params) => params.row?.due_details?.total,
+      valueGetter: (params) => params.row.total, // Fixed: direct access
       renderCell: (params) => {
         return `₹${parseFloat(params.value || 0).toFixed(2)}`;
       }
@@ -446,7 +459,7 @@ const Dues = () => {
       headerName: 'Status',
       flex: isMobile ? undefined : 1,
       minWidth: isMobile ? 100 : 120,
-      valueGetter: (params) => params.row?.due_details?.status,
+      valueGetter: (params) => params.row?.status, // Fixed: direct access
       renderCell: (params) => {
         const status = params.value;
         const statusColors = {
@@ -504,14 +517,14 @@ const Dues = () => {
     },
   ];
 
-  // Process and validate dues data
+  // FIXED: Process and validate dues data
   const validatedDues = React.useMemo(() => {
     if (!dues || !Array.isArray(dues)) return [];
-    
+
     return dues
       .filter((due) => {
         const id = getDueId(due);
-        return id && due?.due_details;
+        return id && due; // Fixed: removed due_details check since it's flat structure
       })
       .sort((a, b) => {
         const idA = getDueId(a) || 0;
@@ -533,7 +546,8 @@ const Dues = () => {
           alignItems: 'center',
           marginBottom: '20px',
           flexWrap: 'wrap',
-          gap: '10px'
+          gap: '10px',
+          width: '100%'
         }}
       >
         <h2>Dues Management</h2>
@@ -559,12 +573,12 @@ const Dues = () => {
       </div>
 
       {/* Error Messages */}
-      {error && (
+      {/* {error && (
         <CAlert color="danger" className="mb-3">
           <strong>Error loading dues:</strong> {error}
         </CAlert>
-      )}
-      
+      // )} */}
+
       {customersError && (
         <CAlert color="warning" className="mb-3">
           <strong>Error loading customers:</strong> {customersError}
@@ -572,10 +586,10 @@ const Dues = () => {
       )}
 
       {/* Data Grid Container */}
-      <div style={{ 
-        height: 'auto', 
-        width: '100%', 
-        backgroundColor: 'white', 
+      <div style={{
+        height: 'auto',
+        width: '100%',
+        backgroundColor: 'white',
         overflowX: 'auto',
         position: 'relative'
       }}>

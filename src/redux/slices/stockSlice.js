@@ -57,9 +57,9 @@ export const updateInventory = createAsyncThunk(
     try {
       const restaurantId = localStorage.getItem('restaurantId');
       const response = await axios.put(
-        `${BASE_URL}/inventories/${id}`,
+        `${BASE_URL}/update/${id}`,
         { restaurantId, itemName, quantity, unit, price, supplierId },
-        configureHeaders(token)
+        configureHeaders(localStorage.getItem("authToken"))
       );
       return response.data;
     } catch (error) {
@@ -73,7 +73,7 @@ export const deleteInventory = createAsyncThunk(
   'inventories/deleteInventory',
   async ({ id, token }, { rejectWithValue }) => {
     try {
-      const response = await axios.delete(`${BASE_URL}/inventories/${id}`, configureHeaders(token));
+      const response = await axios.delete(`${BASE_URL}/delete/${id}`, configureHeaders(localStorage.getItem("authToken")));
       return { id, message: response.data.message };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to delete inventory item');

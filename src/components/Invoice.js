@@ -46,7 +46,7 @@ const Invoice = React.forwardRef(
           width: "2in",
           maxWidth: "2in",
           padding: '10px',
-          marginBottom:'20px',
+          marginBottom: '20px',
           fontFamily: 'monospace',
           fontSize: '12px',
           lineHeight: '1.2',
@@ -119,7 +119,7 @@ const Invoice = React.forwardRef(
         <h3 style={{ fontSize: '14px', margin: '5px 0' }}>
           Total: ₹{calculateTotal()}
         </h3>
-        <h3 style={{ fontSize: '10px', margin: '5px 0', textAlign:'center', paddingBottom:'10px' }}>
+        <h3 style={{ fontSize: '10px', margin: '5px 0', textAlign: 'center', paddingBottom: '10px' }}>
           ---Thank you for visiting---
         </h3>
       </div>

@@ -10,7 +10,7 @@ import { fetchSubCategories } from '../../redux/slices/subCategorySlice'
 import { fetchCategories } from '../../redux/slices/categorySlice'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
-
+import { createOrder } from '../../redux/slices/orderSlice'
 import CustomerModal from '../../components/CustomerModal'
 import ProductList from '../../components/ProductList'
 import Cart from '../../components/Cart'
@@ -65,8 +65,7 @@ const POSTableContent = () => {
   const [selectedCategoryId, setSelectedCategoryId] = useState(null)
   const [showSubCategoryModal, setShowSubCategoryModal] = useState(false)
   const [selectedMenuItemForSubcategory, setSelectedMenuItemForSubcategory] = useState(null)
-  // const user = useSelector((state) => state.auth.user);
-  // const loggedInUserId = user?._id;
+
   const userId = localStorage.getItem('userId')
   const [cart, setCart] = useState(() => {
     const savedCart = localStorage.getItem(`cart_${tableNumber}`)
@@ -95,7 +94,6 @@ const POSTableContent = () => {
 
   useEffect(() => {
     if (token) {
-      // const token = localStorage.getItem('authToken');
       dispatch(fetchMenuItems({ token }))
       dispatch(fetchCustomers({ token }))
       dispatch(fetchCategories({ token }))
@@ -140,22 +138,31 @@ const POSTableContent = () => {
   }, [menuItems, selectedCategoryId, searchProduct]);
 
   const handleAddToCartWithSubcategory = useCallback((item) => {
+    const itemId = item._id || item.id;
     const existingItemIndex = cart.findIndex(
-      (cartItem) =>
-        cartItem.id === item.id &&
-        cartItem.selectedSubcategoryId === item.selectedSubcategoryId
+      (cartItem) => {
+        const cartItemId = cartItem._id || cartItem.id;
+        return cartItemId === itemId && cartItem.selectedSubcategoryId === item.selectedSubcategoryId;
+      }
     );
 
     if (existingItemIndex > -1) {
-      setCart(
-        cart.map((cartItem, index) =>
+      setCart(prevCart =>
+        prevCart.map((cartItem, index) =>
           index === existingItemIndex
             ? { ...cartItem, quantity: cartItem.quantity + 1 }
             : cartItem,
         ),
       );
     } else {
-      setCart([...cart, { ...item, quantity: 1 }]);
+      const newCartItem = {
+        ...item,
+        id: itemId, // Ensure consistent ID
+        _id: item._id, // Keep original _id if it exists
+        quantity: 1,
+        price: Number(item.price) || 0
+      };
+      setCart(prevCart => [...prevCart, newCartItem]);
     }
 
     if (!startTime) {
@@ -176,6 +183,7 @@ const POSTableContent = () => {
     setSearchProduct(e.target.value)
   }
 
+  // FIXED: Main menu item click handler with proper ID handling
   const handleMenuItemClick = useCallback((product) => {
     const relevantSubcategoriesExist = subCategories.some(sub => sub.category_id === product.categoryId);
 
@@ -183,16 +191,34 @@ const POSTableContent = () => {
       setSelectedMenuItemForSubcategory(product);
       setShowSubCategoryModal(true);
     } else {
-      const existingItem = cart.find((item) => item.id === product.id);
-      if (existingItem) {
-        setCart(
-          cart.map((item) =>
-            item.id === product.id ? { ...item, quantity: item.quantity + 1 } : item,
-          ),
+      // FIXED: Use consistent ID handling
+      const productId = product._id || product.id;
+      const existingItemIndex = cart.findIndex((item) => {
+        const cartItemId = item._id || item.id;
+        return cartItemId === productId;
+      });
+
+      if (existingItemIndex > -1) {
+        // Item exists, increase quantity
+        setCart(prevCart =>
+          prevCart.map((item, index) =>
+            index === existingItemIndex
+              ? { ...item, quantity: item.quantity + 1 }
+              : item
+          )
         );
       } else {
-        setCart([...cart, { ...product, quantity: 1 }]);
+        // New item, add to cart
+        const newCartItem = {
+          ...product,
+          id: productId, // Ensure consistent ID
+          _id: product._id, // Keep original _id if it exists
+          quantity: 1,
+          price: Number(product.price) || 0
+        };
+        setCart(prevCart => [...prevCart, newCartItem]);
       }
+
       if (!startTime) {
         const now = new Date();
         setStartTime(now);
@@ -206,9 +232,13 @@ const POSTableContent = () => {
     handleMenuItemClick(product);
   };
 
+  // FIXED: Remove from cart with proper ID handling
   const removeFromCart = (productId) => {
-    const updatedCart = cart.filter((item) => item.id !== productId)
-    setCart(updatedCart)
+    const updatedCart = cart.filter((item) => {
+      const cartItemId = item._id || item.id;
+      return cartItemId !== productId;
+    });
+    setCart(updatedCart);
 
     if (updatedCart.length === 0) {
       setStartTime(null)
@@ -231,7 +261,7 @@ const POSTableContent = () => {
     setShowTaxModal(false)
     setInputValue('')
   }
-
+  
   const handleDiscountSubmit = () => {
     setDiscount(Number(inputValue))
     setShowDiscountModal(false)
@@ -264,15 +294,20 @@ const POSTableContent = () => {
     return subtotal + taxAmount - discountAmount - roundOff
   }, [calculateSubtotal, tax, discount, roundOff])
 
+  // FIXED: Quantity change handler with proper ID matching
   const handleQuantityChange = (productId, newQuantity) => {
     setCart((prevCart) =>
-      prevCart.map((item) =>
-        item.id === productId ? { ...item, quantity: Math.max(1, newQuantity) } : item,
-      ),
-    )
+      prevCart.map((item) => {
+        const cartItemId = item._id || item.id;
+        return cartItemId === productId 
+          ? { ...item, quantity: Math.max(1, newQuantity) } 
+          : item;
+      })
+    );
   }
+
   const handleAddCustomer = (formValues) => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem("authToken");
     const restaurantId = localStorage.getItem("restaurantId");
 
     const customerData = { ...formValues, restaurantId, token };
@@ -280,7 +315,7 @@ const POSTableContent = () => {
     dispatch(addCustomer(customerData))
       .unwrap()
       .then((response) => {
-        setSelectedCustomerName(response.customer.name); // ✅ get from backend response
+        setSelectedCustomerName(response.customer.name);
         setShowCustomerModal(false);
       })
       .catch((error) => {
@@ -288,21 +323,6 @@ const POSTableContent = () => {
       });
   };
 
-  // const handleAddCustomer = (formValues) => {
-  //   const customerData = { ...formValues , restaurantId }
-
-  //   dispatch(addCustomer(customerData))
-  //     .unwrap()
-  //     .then((newCustomer) => {
-  //       setSelectedCustomerName(newCustomer.name)
-  //       setShowCustomerModal(false)
-  //     })
-  //     .catch((error) => {
-  //       toast.error('Failed to add customer: ' + error.message)
-  //     })
-  // }
-
-  // Fixed handlePaymentSubmit function in POSTableContent component
   const handlePaymentSubmit = async () => {
     const token = localStorage.getItem('authToken');
     const userId = localStorage.getItem('userId'); // Fixed: get from localStorage
@@ -364,8 +384,6 @@ const POSTableContent = () => {
       toast.error('Failed to process payment: ' + (error.message || 'Unknown error'));
     }
   };
-
-
 
   const generateInvoice = () => {
     const invoiceElement = invoiceRef.current
@@ -471,7 +489,7 @@ const POSTableContent = () => {
         </body>
       </html>
     `);
-      printWindow.document.close(); createTransaction
+      printWindow.document.close();
     } else {
       setMobilePrintOptions({
         show: true,
@@ -510,7 +528,7 @@ const POSTableContent = () => {
           });
         } else if (platform === 'android') {
           const pdfOutput = doc.output('blob');
-          const pdfUrl = URL.createObjectURL(pdfOutput);
+          const pdfUrl = URL.createObjectURL(pdfUrl);
 
           setMobilePrintOptions({
             show: true,
@@ -533,38 +551,88 @@ const POSTableContent = () => {
     });
   };
 
-
   const handleSendEmail = () => {
     alert('Send via Email functionality to be implemented.')
   }
 
-  const generateKOT = () => {
-    const newItems = cart.filter((item) => !kotItems.some((kot) => kot.id === item.id))
+  const generateKOT = async () => {
+    const newItems = cart.filter((item) => {
+      const cartItemId = item._id || item.id;
+      return !kotItems.some((kot) => {
+        const kotItemId = kot._id || kot.id;
+        return kotItemId === cartItemId;
+      });
+    });
 
     if (newItems.length === 0) {
       toast.info('No new items to generate KOT!', { autoClose: 3000 })
       return
     }
 
-    setKotItems((prevKotItems) => [...prevKotItems, ...newItems])
+    try {
+      // Calculate subtotal for new items
+      const kotSubtotal = newItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+      const kotTaxAmount = (kotSubtotal * tax) / 100;
+      const kotDiscountAmount = (kotSubtotal * discount) / 100;
+      const kotTotal = kotSubtotal + kotTaxAmount - kotDiscountAmount;
 
-    const kotElement = kotRef.current
-    if (!kotElement) return
+      // Prepare order data for backend
+      const orderData = {
+        token: localStorage.getItem('authToken'),
+        restaurantId: localStorage.getItem('restaurantId'),
+        userId: localStorage.getItem('userId'),
+        tableNumber: tableNumber,
+        customerName: selectedCustomerName || 'Walk-in Customer',
+        items: newItems.map((item) => ({
+          itemId: item._id || item.id,
+          itemName: item.itemName,
+          price: item.price,
+          quantity: item.quantity,
+          selectedSubcategoryId: item.selectedSubcategoryId || null,
+          subtotal: item.price * item.quantity
+        })),
+        orderType: 'KOT',
+        status: 'pending',
+        tax: tax,
+        discount: discount,
+        subtotal: kotSubtotal,
+        totalAmount: kotTotal, // This matches your existing controller
+        kotGenerated: true,
+        paymentStatus: 'pending'
+      }
 
-    kotElement.style.display = 'block'
+      // Dispatch the createOrder action
+      const result = await dispatch(createOrder(orderData)).unwrap()
 
-    html2canvas(kotElement, { scale: 2 })
-      .then((canvas) => {
-        const imgData = canvas.toDataURL('image/png')
-        setKOTImage(imgData)
-        setShowKOTModal(true)
-      })
-      .catch((error) => {
-        toast.error(`Error generating KOT: ${error}`, { autoClose: 3000 })
-      })
-      .finally(() => {
-        kotElement.style.display = 'none'
-      })
+      console.log('Order created successfully:', result)
+      toast.success('Order saved successfully!', { autoClose: 3000 })
+
+      // Update local state
+      setKotItems((prevKotItems) => [...prevKotItems, ...newItems])
+
+      // Generate visual KOT
+      const kotElement = kotRef.current
+      if (!kotElement) return
+
+      kotElement.style.display = 'block'
+
+      html2canvas(kotElement, { scale: 2 })
+        .then((canvas) => {
+          const imgData = canvas.toDataURL('image/png')
+          setKOTImage(imgData)
+          setShowKOTModal(true)
+        })
+        .catch((error) => {
+          toast.error(`Error generating KOT preview: ${error}`, { autoClose: 3000 })
+        })
+        .finally(() => {
+          kotElement.style.display = 'none'
+        })
+
+    } catch (error) {
+      console.error('Error creating order:', error)
+      toast.error(`Failed to save order: ${error}`, { autoClose: 3000 })
+    }
   }
 
   const handlePrint = () => {
@@ -729,6 +797,7 @@ const POSTableContent = () => {
             startTime={startTime}
             elapsedTime={elapsedTime}
             cart={cart}
+            setCart={setCart} // Pass setCart to the Cart component
             handleDeleteClick={handleDeleteClick}
             tax={tax}
             calculateTaxAmount={calculateTaxAmount}

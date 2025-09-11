@@ -4,55 +4,70 @@ import { toast } from 'react-toastify';
 import { BASE_URL } from '../../utils/constants';
 
 // Helper: Get auth headers
-const getAuthHeaders = () => {
-  const token = localStorage.getItem("authToken");
-  return {
+const configureHeaders = (token) => ({
+  headers: {
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
-  };
-};
-
+  },
+})
 // ------------------ GET: Fetch restaurant profile ------------------
 export const getRestaurantProfile = createAsyncThunk(
   'restaurantProfile/getRestaurantProfile',
-  async ({ userId , token }, { rejectWithValue }) => {
+  async ({ _, token }, { rejectWithValue }) => {
     try {
-      console.log(`${BASE_URL}/account/${userId}`);
-      const response = await axios.get(
-        `${BASE_URL}/account/${userId}`,
-        { headers: getAuthHeaders(token) }
-      );
-      
-      if (response.data?.user?._id) {
-        localStorage.setItem("userId", response.data.user._id);
+      const userId = localStorage.getItem("userId");
+      if (!userId) {
+        throw new Error('User ID is required');
       }
-      console.log(response)
+      const response = await axios.get(`${BASE_URL}/account/${userId}`,
+        configureHeaders(token))
       console.log("Restaurant profile fetched:", response.data);
       return response.data;
-    } catch (error) {
-      console.log("Error fetching restaurant profile:", error);
-      return rejectWithValue(error.response?.data || 'Something went wrong');
+    }
+    catch (error) {
+      console.error("Error fetching restaurant profile:", error);
+
+      // Provide meaningful error message
+      let message =
+        error.response?.data?.message ||
+        error.message ||
+        'Something went wrong while fetching restaurant profile';
+
+      return rejectWithValue(message);
     }
   }
-);
+)
 
 // ------------------ GET: Check restaurant permission ------------------
 export const checkRestaurantPermission = createAsyncThunk(
   'restaurantProfile/checkRestaurantPermission',
-  async (_, { rejectWithValue }) => {
+  async ({ userIdOfUser, token }, { rejectWithValue }) => {
     try {
-      const userId = localStorage.getItem("userId"); // ✅ auto get
-      if (!userId) throw new Error("No user id found");
+      // Use the passed userIdOfUser or fall back to localStorage
+      const userId = userIdOfUser || localStorage.getItem("userId");
+      const authToken = token || localStorage.getItem("authToken");
+
+      if (!userId) {
+        throw new Error("No user ID found");
+      }
+
+      if (!authToken) {
+        throw new Error("No authentication token found");
+      }
+
+      console.log("Permission check - userId:", userId);
+      console.log("Permission check - token exists:", !!authToken);
 
       const response = await axios.get(
-        `${BASE_URL}/account/user-profile/check-permission/${userId}`,
-        { headers: getAuthHeaders() }
+        `${BASE_URL}/check-permission/${userId}`,
+        configureHeaders(authToken)
       );
-      console.log(response.data , "response -- >")
+
+      console.log("Permission response:", response.data);
       return response.data;
     } catch (error) {
-      console.log(error)
-      return rejectWithValue(error.response?.data || 'Something went wrong');
+      console.log("Permission check error:", error.response?.data || error.message);
+      return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
@@ -148,7 +163,7 @@ const restaurantProfileSlice = createSlice({
       })
       .addCase(getRestaurantProfile.fulfilled, (state, action) => {
         state.loading = false;
-        console.log("this is action payload",action.payload.data)
+        console.log("this is action payload", action.payload.data)
         state.restaurantProfile = action.payload;
       })
       .addCase(getRestaurantProfile.rejected, (state, action) => {

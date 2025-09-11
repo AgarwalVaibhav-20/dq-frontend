@@ -42,7 +42,7 @@ export default function Banner() {
 
   const dispatch = useDispatch()
   const { banners, loading } = useSelector((state) => state.banner)
-  const token = useSelector((state) => state.auth.token)
+  const token = localStorage.getItem('authToken')
   const restaurantId = useSelector((state) => state.auth.restaurantId)
 
   useEffect(() => {
@@ -85,7 +85,6 @@ export default function Banner() {
       banner_1: bannerData.banner_1,
       banner_2: bannerData.banner_2,
       banner_3: bannerData.banner_3,
-      restaurantId,
       token,
     }
 

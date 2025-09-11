@@ -12,9 +12,9 @@ const configureHeaders = (token) => ({
 // Fetch all days' reports
 export const fetchAllDaysReports = createAsyncThunk(
   'reports/fetchAllDaysReports',
-  async ({ restaurantId }, { rejectWithValue }) => {
+  async ({ customerId}, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${BASE_URL}/reports/${restaurantId}/all-days`)
+      const response = await axios.get(`${BASE_URL}report/daily/${customerId}`)
       return response.data
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message)
@@ -258,7 +258,7 @@ export const fetchDashboardChartData = createAsyncThunk(
 
 export const fetchWeeklyChartData = createAsyncThunk(
   'report/fetchWeeklyChartData',
-  async ({ year, restaurantId }, { rejectWithValue }) => {
+  async ({ year, restaurantId, token }, { rejectWithValue }) => {
     try {
       const { data } = await axios.get(
         `${BASE_URL}/dashboard/weekly-chart-data`,
@@ -266,15 +266,17 @@ export const fetchWeeklyChartData = createAsyncThunk(
           params: { year, restaurantId },
           ...configureHeaders(token),
         },
-      );
-      return data;             
+      )
+      return data
     } catch (err) {
       const message =
-        err.response?.data?.error || err.message || 'Unable to fetch weekly data';
-      return rejectWithValue(message);
+        err.response?.data?.error || err.message || 'Unable to fetch weekly data'
+      toast.error(message)
+      return rejectWithValue(message)
     }
   },
-);
+)
+
 
 
 // Report slice

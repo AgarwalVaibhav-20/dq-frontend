@@ -3,17 +3,69 @@ import axios from 'axios'
 import { toast } from 'react-toastify'
 import { BASE_URL } from '../../utils/constants'
 
+// Create a new order
+export const createOrder = createAsyncThunk(
+  'orders/createOrder',
+  async ({
+    customerId,
+    items,
+    totalAmount,
+    status,
+    deliveryId,
+    restaurantId,
+    userId,
+    tableNumber,
+    customerName,
+    orderType,
+    tax,
+    discount,
+    subtotal,
+    orderId,
+    kotGenerated,
+    paymentStatus }, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('authToken')
+      const headers = {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      }
+
+      const response = await axios.post(`${BASE_URL}/create/order`, {
+        customerId,
+        items,
+        totalAmount,
+        status,
+        deliveryId,
+        restaurantId,
+        userId,
+        tableNumber,
+        customerName,
+        orderType,
+        tax,
+        discount,
+        subtotal,
+        kotGenerated,
+        paymentStatus,
+        orderId
+      }, { headers })
+      return response.data
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.error || 'Failed to create order')
+    }
+  }
+)
+
 // Fetch all orders for a restaurant
 export const fetchOrders = createAsyncThunk(
   'orders/fetchOrders',
-  async ({ restaurantId }, { rejectWithValue }) => {
+  async (_, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('authToken')
       const headers = {
         Authorization: `Bearer ${token}`,
       }
 
-      const response = await axios.get(`${BASE_URL}/orders?restaurantId=${restaurantId}`, {
+      const response = await axios.get(`${BASE_URL}/all/order`, {
         headers,
       })
       return response.data
@@ -22,6 +74,7 @@ export const fetchOrders = createAsyncThunk(
     }
   },
 )
+
 // Fetch all delivery orders for a restaurant
 export const fetchDeliveryOrders = createAsyncThunk(
   'orders/fetchDeliveryOrders',
@@ -70,19 +123,19 @@ export const updateOrderStatus = createAsyncThunk(
   'orders/updateOrderStatus',
   async ({ id, status }, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('authToken')
-      const headers = {
-        Authorization: `Bearer ${token}`,
-      }
+      console.log("Updating order:", id, status);  // 🔍 check here
+      const token = localStorage.getItem('authToken');
+      const headers = { Authorization: `Bearer ${token}` };
 
-      const response = await axios.put(`${BASE_URL}/orders/${id}/status`, { status }, { headers })
-      return response.data
+      const response = await axios.put(`${BASE_URL}/orders/${id}/status`, { status }, { headers });
+      return response.data;
     } catch (error) {
-      console.error('Error in API:', error.response?.data)
-      return rejectWithValue(error.response?.data?.error || 'Failed to change order status')
+      console.error('Error in API:', error.response?.data);
+      return rejectWithValue(error.response?.data?.error || 'Failed to change order status');
     }
   },
-)
+);
+
 
 export const updateOrder = createAsyncThunk(
   'orders/updateOrder',
@@ -189,8 +242,29 @@ const orderSlice = createSlice({
     resetNewOrderCount: (state) => {
       state.newOrderCount = 0
     },
+    clearOrderError: (state) => {
+      state.error = null
+    },
   },
   extraReducers: (builder) => {
+    // Create order
+    builder
+      .addCase(createOrder.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(createOrder.fulfilled, (state, action) => {
+        state.loading = false
+        // Add the new order to the beginning of the orders array
+        state.orders.unshift(action.payload.data || action.payload.order || action.payload)
+        toast.success('Order created successfully!')
+      })
+      .addCase(createOrder.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload
+        toast.error('Failed to create order.')
+      })
+
     // Fetch orders
     builder
       .addCase(fetchOrders.pending, (state) => {
@@ -206,22 +280,23 @@ const orderSlice = createSlice({
         state.error = action.payload
         toast.error('Failed to fetch orders.')
       })
+
     // Fetch notifications
-    builder.addCase(fetchNotificationOrders.pending, (state) => {
-      state.notificationLoading = true
-      state.error = null
-    })
-    .addCase(fetchNotificationOrders.fulfilled, (state, action) => {
-      state.notificationLoading = false
-      state.notificationOrders = action.payload
-    })
-   
-      
+    builder
+      .addCase(fetchNotificationOrders.pending, (state) => {
+        state.notificationLoading = true
+        state.error = null
+      })
+      .addCase(fetchNotificationOrders.fulfilled, (state, action) => {
+        state.notificationLoading = false
+        state.notificationOrders = action.payload
+      })
       .addCase(fetchNotificationOrders.rejected, (state, action) => {
         state.notificationLoading = false
         state.error = action.payload
         toast.error('Failed to fetch orders.')
       })
+
     // Fetch delivery orders
     builder
       .addCase(fetchDeliveryOrders.pending, (state) => {
@@ -270,6 +345,7 @@ const orderSlice = createSlice({
         } else {
           console.log('Order not found.')
         }
+        toast.success('Order status updated successfully!')
       })
       .addCase(updateOrderStatus.rejected, (state, action) => {
         state.loading = false
@@ -348,7 +424,6 @@ const orderSlice = createSlice({
   },
 })
 
-// export const { resetNewOrderCount } = orderSlice.actions;
+export const { resetNewOrderCount, clearOrderError } = orderSlice.actions
 
 export default orderSlice.reducer
-

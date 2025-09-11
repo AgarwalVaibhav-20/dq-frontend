@@ -1,6 +1,9 @@
 import React from "react";
 
 const KOT = React.forwardRef(({ tableNumber, cart }, ref) => {
+  // Calculate total for the entire order
+  const totalAmount = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+
   return (
     <div
       ref={ref}
@@ -8,7 +11,6 @@ const KOT = React.forwardRef(({ tableNumber, cart }, ref) => {
         width: "2in",
         maxWidth: "2in",
         padding: "10px",
-        // border: "1px solid #000",
         fontFamily: "monospace",
         fontSize: "14px",
         lineHeight: "1.5",
@@ -20,18 +22,38 @@ const KOT = React.forwardRef(({ tableNumber, cart }, ref) => {
         Order Details
       </h2>
       <hr style={{ borderTop: "1px solid #000", margin: "5px 0" }} />
+
       <p style={{ margin: "2px 0" }}>
         <strong>Table:</strong> {tableNumber}
       </p>
       <hr style={{ borderTop: "1px solid #000", margin: "5px 0" }} />
+
       <h4 style={{ fontSize: "12px", margin: "5px 0" }}>Order Details:</h4>
       <ul style={{ listStyle: "none", padding: "0", margin: "0" }}>
         {cart.map((item) => (
           <li key={item.id} style={{ margin: "2px 0" }}>
-            {item.itemName} x {item.quantity}
+            <div>
+              <strong>{item.itemName}</strong> x {item.quantity}
+            </div>
+            <div style={{ fontSize: "12px", color: "#555" }}>
+              Price: ₹{item.price.toFixed(2)}
+            </div>
+            <div style={{ fontSize: "12px", color: "#555" }}>
+               Total: ₹{(item.price * item.quantity).toFixed(2)}
+            </div>
+            {item.notes && (
+              <div style={{ fontSize: "11px", fontStyle: "italic", color: "#777" }}>
+                Notes: {item.notes}
+              </div>
+            )}
           </li>
         ))}
       </ul>
+
+      <hr style={{ borderTop: "1px solid #000", margin: "5px 0" }} />
+      <p style={{ textAlign: "right", margin: "5px 0", fontWeight: "bold" }}>
+        Total: ₹{totalAmount.toFixed(2)}
+      </p>
     </div>
   );
 });

@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { CCard, CCardHeader, CCardBody, CFormSelect, CSpinner } from '@coreui/react';
 import { CChartLine } from '@coreui/react-chartjs';
 import { fetchChartData } from '../../redux/slices/dashboardSlice';
-
+import {fetchTransactionsByRestaurant} from '../../redux/slices/transactionSlice'  
 const YearlyChartReport = () => {
   const dispatch = useDispatch();
   const restaurantId = useSelector((state) => state.auth.restaurantId);
@@ -21,12 +21,12 @@ const YearlyChartReport = () => {
       </option>
     );
   });
-
+  const token = localStorage.getItem('authToken')
   useEffect(() => {
-    if (restaurantId) {
-      dispatch(fetchChartData({ year: selectedYear, restaurantId }));
+    if (token) {
+      dispatch(fetchTransactionsByRestaurant({  token }));
     }
-  }, [selectedYear, restaurantId, dispatch]);
+  }, [selectedYear, token, dispatch]);
 
   const formattedDatasets =
     chartData?.datasets?.map((ds) => ({

@@ -2,28 +2,36 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { BASE_URL } from '../../utils/constants';
-
+const configureHeaders = (token) => ({
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+});
 export const fetchDeliveryTimings = createAsyncThunk(
   'deliveryTiming/fetchDeliveryTimings',
-  async ({ token }, { rejectWithValue }) => {
+  async ({ token, restaurantId }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${BASE_URL}/deliveries`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      return response.data.data;
+      const response = await axios.get(
+        `${BASE_URL}/delivery-timings/${restaurantId}`,
+        configureHeaders(token)
+      );
+      return response.data.deliveries; // matches backend response
     } catch (error) {
-      const message = error.response?.data?.error || 'Failed to fetch delivery timings';
+      const message = error.response?.data?.message || 'Failed to fetch delivery timings';
       return rejectWithValue(message);
     }
   }
 );
 
+
+
 export const addDeliveryTiming = createAsyncThunk(
   'deliveryTiming/addDeliveryTiming',
-  async ({ restaurantId, start_time, end_time, delivery_status, token }, { rejectWithValue }) => {
+  async ({ start_time, end_time, delivery_status, token }, { rejectWithValue }) => {
     try {
+      const restaurantId = localStorage.getItem('restaurantId');
       const response = await axios.post(
-        `${BASE_URL}/deliveries`,
+        `${BASE_URL}/assign`,
         { restaurantId, start_time, end_time, delivery_status },
         {
           headers: {
@@ -32,13 +40,14 @@ export const addDeliveryTiming = createAsyncThunk(
           },
         }
       );
-      return response.data; // Ensure we return the new timing object
+      return response.data;
     } catch (error) {
       const message = error.response?.data?.message || 'Failed to add delivery timing';
       return rejectWithValue(message);
     }
   }
 );
+
 
 export const deleteDeliveryTiming = createAsyncThunk(
   'deliveryTiming/deleteDeliveryTiming',
@@ -59,9 +68,9 @@ export const updateDeliveryTimingStatus = createAsyncThunk(
   'deliveryTiming/updateDeliveryTimingStatus',
   async ({ id, delivery_status, token }, { rejectWithValue }) => {
     try {
-      const response = await axios.patch(
-        `${BASE_URL}/deliveries/${id}/status`,
-        { delivery_status },
+      const response = await axios.put(
+        `${BASE_URL}/delivery-timings/${id}/status`,
+        { delivery_status }, 
         {
           headers: {
             Authorization: `Bearer ${token}`,
@@ -69,13 +78,16 @@ export const updateDeliveryTimingStatus = createAsyncThunk(
           },
         }
       );
-      return { id, status: response.data.data };
+
+      return response.data.delivery; // backend sends { delivery }
     } catch (error) {
-      const message = error.response?.data?.message || 'Failed to update delivery timing status';
+      const message =
+        error.response?.data?.message || 'Failed to update delivery timing status';
       return rejectWithValue(message);
     }
   }
 );
+
 
 const deliveryTimingSlice = createSlice({
   name: 'deliveryTimings',

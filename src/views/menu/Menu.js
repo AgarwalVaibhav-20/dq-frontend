@@ -8,6 +8,7 @@ import {
   deleteMenuItem,
   fetchMenuItems,
   updateMenuItem,
+  updateMenuItemStatus
 } from "../../redux/slices/menuSlice";
 import { fetchCategories } from "../../redux/slices/categorySlice";
 import { fetchSubCategories } from "../../redux/slices/subCategorySlice";
@@ -54,7 +55,7 @@ const Menu = () => {
         await Promise.all([
           dispatch(fetchCategories({ restaurantId, token })),
           dispatch(fetchInventories({ restaurantId, token })),
-          dispatch(fetchMenuItems({token})),
+          dispatch(fetchMenuItems({ token })),
         ]);
 
         const subCategoryResult = await dispatch(
@@ -146,7 +147,7 @@ const Menu = () => {
 
       await dispatch(
         updateMenuItem({
-          id: selectedMenu.id,
+          id: selectedMenu._id,
           formData: formDataToSend,
           restaurantId,
           token,
@@ -174,6 +175,23 @@ const Menu = () => {
       setIsSubmitting(false);
     }
   };
+  // ------------------ Status Handler ------------------
+  const handleUpdateStatus = async (id, currentStatus) => {
+    const newStatus = currentStatus === "available" ? "unavailable" : "available";
+    try {
+      await dispatch(
+        updateMenuItemStatus({
+          id: params.row._id || params.row.id, 
+          status: newStatus,
+        })
+      ).unwrap();
+      await dispatch(fetchMenuItems({ restaurantId, token }));
+      toast.success(`Menu item marked as ${newStatus}`);
+    } catch (error) {
+      toast.error(error.message || "Failed to update status");
+    }
+  };
+
 
   // ------------------ UI ------------------
   return (
@@ -200,6 +218,7 @@ const Menu = () => {
             setEditModalVisible={setEditModalVisible}
             setDeleteModalVisible={setDeleteModalVisible}
             setEditStockModalVisible={setEditStockModalVisible}
+            onUpdateStatus={handleUpdateStatus}
           />
         </CCardBody>
       </CCard>

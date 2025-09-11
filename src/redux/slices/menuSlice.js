@@ -108,13 +108,14 @@ export const updateMenuItem = createAsyncThunk(
         Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
       };
-      const response = await axios.post(`${BASE_URL}/menu/update/${id}`, formData, { headers });
+      const response = await axios.put(`${BASE_URL}/menu/${id}`, formData, { headers });
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to update menu item');
     }
   }
 );
+
 
 // Delete a menu item
 export const deleteMenuItem = createAsyncThunk(
@@ -126,7 +127,7 @@ export const deleteMenuItem = createAsyncThunk(
         Authorization: `Bearer ${token}`,
       };
 
-      const response = await axios.delete(`${BASE_URL}/menu/${id}`, { headers });
+      const response = await axios.delete(`${BASE_URL}/menu/delete/${id}`, { headers });
       return { id, message: response.data.message };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to delete menu item');

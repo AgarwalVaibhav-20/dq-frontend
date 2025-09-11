@@ -78,7 +78,7 @@ export const updateCategory = createAsyncThunk(
 
 
       const response = await axios.post(
-        `${BASE_URL}/category/${id}`,
+        `${BASE_URL}category/update/${id}`,
         formData,
         configureHeaders(token)
       );
@@ -93,18 +93,25 @@ export const updateCategory = createAsyncThunk(
 // Async thunk to delete a category
 export const deleteCategory = createAsyncThunk(
   'category/deleteCategory',
-  async ({ id, token, restaurantId }, { rejectWithValue }) => {
+  async ({ id, token }, { rejectWithValue }) => {
     try {
-      const response = await axios.delete(`${BASE_URL}/category/${id}`, {
-        ...configureHeaders(token),
-        data: { restaurantId }
-      });
-      return response.data;
+      const response = await axios.delete(
+        `${BASE_URL}/delete/category/${id}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+      return { id, ...response.data }; // return id so reducer can update state
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || 'Category deletion failed');
+      return rejectWithValue(
+        error.response?.data?.error || 'Category deletion failed'
+      );
     }
   }
 );
+
 
 // Category Slice
 const categorySlice = createSlice({
@@ -187,14 +194,12 @@ const categorySlice = createSlice({
         state.error = null;
       })
       .addCase(deleteCategory.fulfilled, (state, action) => {
-        state.loading = false;
-        state.categories = state.categories.filter((cat) => cat.id !== action.meta.arg.id);
-        toast.success('Category deleted successfully!');
+        state.categories = state.categories.filter(
+          (cat) => cat._id !== action.payload.id
+        );
       })
       .addCase(deleteCategory.rejected, (state, action) => {
-        state.loading = false;
         state.error = action.payload;
-        toast.error(action.payload);
       });
   },
 });

@@ -7,7 +7,6 @@ import { useDispatch, useSelector, shallowEqual } from 'react-redux'
 import { onMessage, isSupported } from 'firebase/messaging'
 import { messaging } from './firebase'
 import { toast } from 'react-toastify'
-// import { useSelector } from "react-redux";
 import { useParams } from "react-router-dom";
 import './scss/style.scss'
 import './scss/examples.scss'
@@ -45,12 +44,12 @@ const SubCategory = React.lazy(() => import('./views/subCategory/SubCategory'))
 const DefaultLayout = React.lazy(() => import('./layout/DefaultLayout'))
 const Login = React.lazy(() => import('./views/pages/login/Login'))
 const Register = React.lazy(() => import('./views/pages/register/Register'))
-const ResetPassword = React.lazy(()=>import('./views/pages/resetpassword/ResetPassword'))
-const ForgotPassword = React.lazy(()=>import('./views/pages/forgotPassword/ForgotPassword'))
+const ResetPassword = React.lazy(() => import('./views/pages/resetpassword/ResetPassword'))
+const ForgotPassword = React.lazy(() => import('./views/pages/forgotPassword/ForgotPassword'))
 const Otp = React.lazy(() => import('./views/pages/otp/Otp'))
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
 const Orders = React.lazy(() => import('./views/orders/Orders'))
-const Waiter  = React.lazy(()=>import('./views/waiter/Waiter.js'))
+const Waiter = React.lazy(() => import('./views/Permssion/Permission.js'))
 const Supplier = React.lazy(() => import('./views/inventory/supplier/Supplier'))
 const QRCode = React.lazy(() => import('./views/qrCode/QRCode'))
 const Category = React.lazy(() => import('./views/category/Category'))
@@ -97,21 +96,27 @@ const PermissionRestrictedRoute = ({ children, permission }) => {
 }
 
 const App = () => {
-  const { userId } = useParams();
-  // const userId = useSelector((state) => state.auth.userId);
   const dispatch = useDispatch()
+
+  // Get userId and token from localStorage (more reliable than useParams in this context)
+  const userId = localStorage.getItem('userId')
+  const token = localStorage.getItem('authToken')
+
   const { restaurantPermission } = useSelector((state) => ({
     restaurantPermission: state.restaurantProfile.restaurantPermission,
   }))
+
   const { restaurantId } = useSelector(
     (state) => ({
       restaurantId: state.auth.restaurantId,
     }),
     shallowEqual,
   )
+
   const audioRef = useRef(null)
   const [previousOrderCount, setPreviousOrderCount] = useState(0)
   const [isInitialLoad, setIsInitialLoad] = useState(true)
+  const [permissionCheckAttempted, setPermissionCheckAttempted] = useState(false)
   const { orders, loading } = useSelector((state) => state.orders)
 
   const audioPlayer = useMemo(() => {
@@ -127,16 +132,17 @@ const App = () => {
     }
   }
 
-  // useEffect(() => {
-  //   if (restaurantId) {
-  //     dispatch(fetchOrders({ restaurantId }))
-  //     const intervalId = setInterval(() => {
-  //       dispatch(fetchOrders({ restaurantId }))
-  //     }, 30000)
+  // ✅ Fixed: Fetch orders with restaurantId
+  useEffect(() => {
+    if (restaurantId) {
+      dispatch(fetchOrders({ restaurantId }))
+      const intervalId = setInterval(() => {
+        dispatch(fetchOrders({ restaurantId }))
+      }, 30000)
 
-  //     return () => clearInterval(intervalId)
-  //   }
-  // }, [dispatch, restaurantId])
+      return () => clearInterval(intervalId)
+    }
+  }, [dispatch, restaurantId])
 
   useEffect(() => {
     if (!loading && orders.length > 0) {
@@ -154,11 +160,34 @@ const App = () => {
 
   const { isColorModeSet, setColorMode } = useColorModes('coreui-free-react-admin-template-theme')
 
+  // ✅ Fixed: Check permissions with userId and token
   useEffect(() => {
-    if (restaurantId) {
-      dispatch(checkRestaurantPermission({ restaurantId }))
+    if (userId && token && !permissionCheckAttempted) {
+      console.log('Checking permissions for userId:', userId)
+      dispatch(checkRestaurantPermission({ userId, token }))
+        .then((result) => {
+          console.log('Permission check result:', result)
+          setPermissionCheckAttempted(true)
+        })
+        .catch((error) => {
+          console.error('Permission check failed:', error)
+          setPermissionCheckAttempted(true)
+        })
+    } else if (!userId || !token) {
+      console.log('Missing userId or token for permission check')
+      console.log('UserId:', userId ? 'Present' : 'Missing')
+      console.log('Token:', token ? 'Present' : 'Missing')
     }
-  }, [dispatch, restaurantId])
+  }, [dispatch, userId, token, permissionCheckAttempted])
+
+  // ✅ Also check permissions when restaurantId changes (if needed)
+  useEffect(() => {
+    if (restaurantId && userId && token && permissionCheckAttempted) {
+      // Only re-check if restaurantId changes after initial check
+      console.log('Restaurant ID changed, re-checking permissions')
+      dispatch(checkRestaurantPermission({ userId, token }))
+    }
+  }, [dispatch, restaurantId, userId, token, permissionCheckAttempted])
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.href.split('?')[1])
@@ -172,7 +201,19 @@ const App = () => {
     }
   }, [])
 
-  const isPermissionLoaded = restaurantPermission !== undefined
+  // ✅ Better loading state handling
+  const isPermissionLoaded = restaurantPermission !== undefined || permissionCheckAttempted
+
+  // ✅ Add debug logging
+  useEffect(() => {
+    console.log('App State Debug:')
+    console.log('- UserId:', userId)
+    console.log('- Token:', token ? 'Present' : 'Missing')
+    console.log('- RestaurantId:', restaurantId)
+    console.log('- RestaurantPermission:', restaurantPermission)
+    console.log('- Permission Check Attempted:', permissionCheckAttempted)
+    console.log('- Is Permission Loaded:', isPermissionLoaded)
+  }, [userId, token, restaurantId, restaurantPermission, permissionCheckAttempted, isPermissionLoaded])
 
   return (
     <>
@@ -182,17 +223,25 @@ const App = () => {
           fallback={
             <div className="pt-3 text-center">
               <CSpinner color="primary" variant="grow" />
+              <div className="mt-2">Loading application...</div>
             </div>
           }
         >
-          {isPermissionLoaded && (
+          {/* ✅ Show loading while checking permissions */}
+          {!isPermissionLoaded ? (
+            <div className="pt-3 text-center" style={{ marginTop: '200px' }}>
+              <CSpinner color="primary" variant="grow" />
+              <div className="mt-2">Checking permissions...</div>
+            </div>
+          ) : (
             <Routes>
               {/* Public Routes */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/otp" element={<Otp />} />
-              <Route path="/forgotpassword" element={<ForgotPassword />}  />
+              <Route path="/forgotpassword" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+
               {/* Private Routes */}
               <Route
                 path="/*"
@@ -224,11 +273,6 @@ const App = () => {
                         </PermissionRestrictedRoute>
                       }
                     />
-                    {/* <Route path="delivery" element={
-                      <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                        <Delivery />
-                      </PermissionRestrictedRoute>
-                    } /> */}
                     <Route
                       path="delivery-timing"
                       element={
@@ -245,7 +289,11 @@ const App = () => {
                         </PermissionRestrictedRoute>
                       }
                     />
-                    <Route paht="waiters" element={<PermissionRestrictedRoute permission={restaurantPermission?.permission}><Waiter /></PermissionRestrictedRoute>} />
+                    <Route path="permission" element={
+                      <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                        <Waiter />
+                      </PermissionRestrictedRoute>
+                    } />
                     <Route
                       path="qr-code"
                       element={
@@ -262,8 +310,6 @@ const App = () => {
                         </PermissionRestrictedRoute>
                       }
                     />
-
-                    {/* adding subcategory route */}
                     <Route
                       path="subCategory"
                       element={
@@ -440,14 +486,6 @@ const App = () => {
                         </PermissionRestrictedRoute>
                       }
                     />
-                    {/* <Route
-                      path="most-ordered-dishes-report"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <MostOrderedDishesReport/>
-                        </PermissionRestrictedRoute>
-                      }
-                    /> */}
                     <Route
                       path="yearly-chart-report"
                       element={

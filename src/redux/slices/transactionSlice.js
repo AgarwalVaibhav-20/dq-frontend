@@ -3,45 +3,12 @@ import axios from 'axios'
 import { toast } from 'react-toastify'
 import { BASE_URL } from '../../utils/constants'
 
-const token = localStorage.getItem('authToken')
-const headers = {
-  Authorization: `Bearer ${token}`,
-}
+const configureHeaders = (token) => ({
+  headers: {
+    Authorization: `Bearer ${token}`,
+  },
+});
 
-// POST API: Create a transaction
-// export const createTransaction = createAsyncThunk(
-//   'transactions/createTransaction',
-//   async ({
-//     username,
-//     tableNumber,
-//     items,
-//     sub_total,
-//     tax,
-//     discount,
-//     total,
-//     payment_type,
-//     phoneNumber, }, { rejectWithValue }) => {
-//     try {
-//       const restaurantId = localStorage.getItem('restaurantId')
-//       const response = await axios.post(`${BASE_URL}/transaction`, {
-//         restaurantId,
-//         userId,
-//         username,
-//         tableNumber,
-//         items,
-//         sub_total,
-//         tax,
-//         discount,
-//         total,
-//         payment_type,
-//         phoneNumber,
-//       }, { headers })
-//       return response.data
-//     } catch (error) {
-//       return rejectWithValue(error.response?.data || 'Something went wrong')
-//     }
-//   },
-// )
 export const createTransaction = createAsyncThunk(
   'transactions/createTransaction',
   async (payload, { rejectWithValue }) => {
@@ -57,9 +24,9 @@ export const createTransaction = createAsyncThunk(
         discount,
         total,
         type,
-        split_details,
-        notes,
-        restaurantId
+        restaurantId,
+        customerId,
+        transactionId,
       } = payload;
 
       const headers = {
@@ -81,14 +48,14 @@ export const createTransaction = createAsyncThunk(
         tax,
         discount,
         total,
-        type, 
-        // split_details,
-        notes,
+        type,
+        customerId,
+        transactionId
       };
 
       console.log('Transaction payload:', requestData); // Debug log
 
-      const response = await axios.post(`${BASE_URL}/transaction`, requestData, { headers });
+      const response = await axios.post(`${BASE_URL}/create/transaction`, requestData, { headers });
       return response.data;
     } catch (error) {
       console.error('Transaction creation error:', error.response?.data || error.message);
@@ -100,13 +67,17 @@ export const createTransaction = createAsyncThunk(
 // GET API: Fetch transactions by restaurantId
 export const fetchTransactionsByRestaurant = createAsyncThunk(
   'transactions/fetchTransactionsByRestaurant',
-  async ({ restaurantId }, { rejectWithValue }) => {
+  async ({ token }, { rejectWithValue }) => {
     try {
-
-      const response = await axios.get(`${BASE_URL}/transactions/${restaurantId}`, { headers })
-      return response.data
+      console.log("Fetching transactions with token:", token);
+      const response = await axios.get(`${BASE_URL}/get-all/transaction`, configureHeaders(token))
+      console.log("Response data:", response.data)
+      
+      // Return the actual data array, not the wrapper object
+      return response.data.data || response.data;
     } catch (error) {
-      return rejectWithValue(error.response.data)
+      console.log("Error fetching transactions:", error);
+      return rejectWithValue(error.response?.data || { message: 'Failed to fetch transactions' });
     }
   },
 )
@@ -116,25 +87,45 @@ export const fetchTransactionDetails = createAsyncThunk(
   'transactions/fetchTransactionDetails',
   async ({ transactionId }, { rejectWithValue }) => {
     try {
+      const token = localStorage.getItem('authToken');
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
 
       const response = await axios.get(`${BASE_URL}/transactionById/${transactionId}`, { headers })
-      return response.data
+      console.log("Transaction details response:", response.data)
+      
+      // Return data in array format for consistency with component expectations
+      return Array.isArray(response.data) ? response.data : [response.data];
     } catch (error) {
-      return rejectWithValue(error.response.data)
+      console.error('Error fetching transaction details:', error);
+      return rejectWithValue(error.response?.data || { message: 'Failed to fetch transaction details' });
     }
   },
 )
+
 // DELETE API: Delete transaction by transactionId
 export const deleteTransaction = createAsyncThunk(
   'transactions/deleteTransaction',
   async ({ id, note }, { rejectWithValue }) => {
     try {
+      const token = localStorage.getItem('authToken');
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
 
-
-      await axios.delete(`${BASE_URL}/deleteTransaction/${id}`, { headers }, { note })
-      return id
+      // Fix: Send note in request body, not as separate object
+      await axios.delete(`${BASE_URL}/deleteTransaction/${id}`, {
+        headers,
+        data: { note }
+      });
+      
+      return id;
     } catch (error) {
-      return rejectWithValue(error.response?.data || 'Something went wrong')
+      console.error('Error deleting transaction:', error);
+      return rejectWithValue(error.response?.data || { message: 'Failed to delete transaction' });
     }
   },
 )
@@ -144,12 +135,20 @@ export const fetchPOSTransactions = createAsyncThunk(
   'transactions/fetchPOSTransactions',
   async (_, { rejectWithValue }) => {
     try {
+      const token = localStorage.getItem('authToken');
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
 
       const response = await axios.get(`${BASE_URL}/POStransactions`, { headers })
-      // console.log("pos transactions",response.data);
-      return response.data
+      console.log("POS transactions:", response.data);
+      
+      // Return the actual data array
+      return response.data.data || response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data || 'Something went wrong')
+      console.error('Error fetching POS transactions:', error);
+      return rejectWithValue(error.response?.data || { message: 'Failed to fetch POS transactions' });
     }
   }
 )
@@ -158,12 +157,18 @@ const transactionSlice = createSlice({
   name: 'transactions',
   initialState: {
     transactions: [],
-    // posTransactions: [],
     transactionDetails: null,
     loading: false,
     error: null,
   },
-  reducers: {},
+  reducers: {
+    clearError: (state) => {
+      state.error = null;
+    },
+    clearTransactions: (state) => {
+      state.transactions = [];
+    }
+  },
   extraReducers: (builder) => {
     builder
       // Create Transaction
@@ -173,7 +178,8 @@ const transactionSlice = createSlice({
       })
       .addCase(createTransaction.fulfilled, (state, action) => {
         state.loading = false
-        state.transactions = action.payload
+        // Add new transaction to the beginning of the array
+        state.transactions = [action.payload.transaction, ...state.transactions];
         state.error = null
         toast.success('Transaction created successfully.')
       })
@@ -191,6 +197,7 @@ const transactionSlice = createSlice({
       .addCase(fetchTransactionsByRestaurant.fulfilled, (state, action) => {
         state.loading = false
         state.transactions = action.payload
+        state.error = null
       })
       .addCase(fetchTransactionsByRestaurant.rejected, (state, action) => {
         state.loading = false
@@ -206,6 +213,7 @@ const transactionSlice = createSlice({
       .addCase(fetchTransactionDetails.fulfilled, (state, action) => {
         state.loading = false
         state.transactionDetails = action.payload
+        state.error = null
       })
       .addCase(fetchTransactionDetails.rejected, (state, action) => {
         state.loading = false
@@ -226,6 +234,7 @@ const transactionSlice = createSlice({
           )
           toast.success('Transaction deleted successfully.')
         }
+        state.error = null
       })
       .addCase(deleteTransaction.rejected, (state, action) => {
         state.loading = false
@@ -241,6 +250,7 @@ const transactionSlice = createSlice({
       .addCase(fetchPOSTransactions.fulfilled, (state, action) => {
         state.loading = false
         state.transactions = action.payload
+        state.error = null
       })
       .addCase(fetchPOSTransactions.rejected, (state, action) => {
         state.loading = false
@@ -250,4 +260,5 @@ const transactionSlice = createSlice({
   },
 })
 
+export const { clearError, clearTransactions } = transactionSlice.actions;
 export default transactionSlice.reducer

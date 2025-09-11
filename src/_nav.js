@@ -3,7 +3,7 @@ import CIcon from '@coreui/icons-react'
 import {
   cilSpeedometer,
   cilStar,
-  cilUser,
+   cilLockLocked,
   cilRestaurant,
   cilPizza,
   cilMenu,
@@ -20,7 +20,7 @@ import {
   cibMessenger,
   cilImage,
 } from '@coreui/icons'
-import { CNavGroup, CNavItem} from '@coreui/react'
+import { CNavGroup, CNavItem } from '@coreui/react'
 
 const _nav = [
   {
@@ -39,89 +39,87 @@ const _nav = [
     component: CNavItem,
     name: 'Category',
     to: '/category',
-    icon: <CIcon icon={cilMenu} customClassName="nav-icon"/>,
+    icon: <CIcon icon={cilMenu} customClassName="nav-icon" />,
   },
   //  adding subcategory
   {
     component: CNavItem,
     name: 'SubCategory',
     to: '/subCategory',
-    icon: <CIcon icon={cilMenu} customClassName="nav-icon"/>,
+    icon: <CIcon icon={cilMenu} customClassName="nav-icon" />,
   },
   {
     component: CNavItem,
     name: 'Menu',
     to: '/menu',
-    icon: <CIcon icon={cilPizza} customClassName="nav-icon"/>,
+    icon: <CIcon icon={cilPizza} customClassName="nav-icon" />,
   },
   {
     component: CNavItem,
     name: 'Orders',
     to: '/orders',
-    icon: <CIcon icon={cilRestaurant} customClassName="nav-icon"/>,
+    icon: <CIcon icon={cilRestaurant} customClassName="nav-icon" />,
   },
   {
     component: CNavItem,
     name: 'Delivery',
     to: '/delivery',
-    icon: <CIcon icon={cilRestaurant} customClassName="nav-icon"/>,
+    icon: <CIcon icon={cilRestaurant} customClassName="nav-icon" />,
   },
   {
     component: CNavItem,
     name: 'Delivery Timing',
     to: '/delivery-timing',
-    icon: <CIcon icon={cilRestaurant} customClassName="nav-icon"/>,
+    icon: <CIcon icon={cilRestaurant} customClassName="nav-icon" />,
   },
   {
     component: CNavItem,
     name: 'Transactions',
     to: '/transactions',
-    icon: <CIcon icon={cilWallet} customClassName="nav-icon"/>,
+    icon: <CIcon icon={cilWallet} customClassName="nav-icon" />,
   },
   {
-    component:CNavItem,
-    name:'Waiter',
-    to:'/waiters',
-    icons:<CIcon icon={cilUser} customClassName={'nav-icon'}/>,
+    component: CNavItem,
+    name: 'Permission',
+    to: '/permission',
+    icon: <CIcon icon={cilLockLocked} customClassName={'nav-icon'} />,
   },
   {
     component: CNavItem,
     name: 'Customers',
     to: '/customers',
-    icon: <CIcon icon={cilPeople} customClassName="nav-icon"/>,
+    icon: <CIcon icon={cilPeople} customClassName="nav-icon" />,
   },
   {
     component: CNavItem,
     name: 'QR Code',
     to: '/qr-code',
-    icon: <CIcon icon={cilQrCode} customClassName="nav-icon"/>,
+    icon: <CIcon icon={cilQrCode} customClassName="nav-icon" />,
   },
   {
     component: CNavItem,
     name: 'Reservations',
     to: '/reservations',
-    icon: <CIcon icon={cilQrCode} customClassName="nav-icon"/>,
+    icon: <CIcon icon={cilQrCode} customClassName="nav-icon" />,
   },
   {
     component: CNavItem,
     name: 'Dues',
     to: '/dues',
-    icon: <CIcon icon={cilMoney} customClassName="nav-icon"/>,
+    icon: <CIcon icon={cilMoney} customClassName="nav-icon" />,
   },
   {
     component: CNavItem,
     name: 'Feedbacks',
     to: '/feedback',
-    icon: <CIcon icon={cibMessenger} customClassName="nav-icon"/>,
+    icon: <CIcon icon={cibMessenger} customClassName="nav-icon" />,
   },
   {
     component: CNavItem,
     name: 'Banners',
     to: '/banners',
-    icon: <CIcon icon={cilImage} customClassName="nav-icon"/>,
+    icon: <CIcon icon={cilImage} customClassName="nav-icon" />,
   },
-
-
   {
     component: CNavGroup,
     name: 'Inventory',
@@ -239,7 +237,6 @@ const _nav = [
         name: 'Weekly Chart Report',
         to: '/weekly-chart-report',
       },
-    
     ],
   },
   {
