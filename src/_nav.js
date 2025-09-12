@@ -3,7 +3,8 @@ import CIcon from '@coreui/icons-react'
 import {
   cilSpeedometer,
   cilStar,
-   cilLockLocked,
+  cilGroup,
+  cilLockLocked,
   cilRestaurant,
   cilPizza,
   cilMenu,
@@ -47,6 +48,12 @@ const _nav = [
     name: 'SubCategory',
     to: '/subCategory',
     icon: <CIcon icon={cilMenu} customClassName="nav-icon" />,
+  },
+  {
+    component: CNavItem,
+    name: 'Customer Loyality',
+    to: '/customerloyality',
+    icon: <CIcon icon={cilGroup} customClassName="nav-icon" />,
   },
   {
     component: CNavItem,

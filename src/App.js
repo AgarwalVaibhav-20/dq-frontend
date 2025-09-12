@@ -17,6 +17,7 @@ import Dues from './views/dues/Dues'
 import Help from './views/help/Help'
 import License from './views/license/License'
 import Downloads from './views/downloads/Downloads'
+import CustomerLoyality from './views/customer loyality/CustomerLoylity.js'
 import Delivery from './views/delivery/Delivery'
 import { checkRestaurantPermission } from './redux/slices/restaurantProfileSlice'
 import DeliveryTiming from './views/deliveryTiming/DeliveryTiming'
@@ -50,6 +51,7 @@ const Otp = React.lazy(() => import('./views/pages/otp/Otp'))
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
 const Orders = React.lazy(() => import('./views/orders/Orders'))
 const Waiter = React.lazy(() => import('./views/Permssion/Permission.js'))
+const CutomerLoyality = React.lazy(()=>import('./views/customer loyality/CustomerLoylity.js'))
 const Supplier = React.lazy(() => import('./views/inventory/supplier/Supplier'))
 const QRCode = React.lazy(() => import('./views/qrCode/QRCode'))
 const Category = React.lazy(() => import('./views/category/Category'))
@@ -294,6 +296,15 @@ const App = () => {
                         <Waiter />
                       </PermissionRestrictedRoute>
                     } />
+
+                    <Route
+                      path="customerloyality"
+                      element={
+                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                          <CutomerLoyality />
+                        </PermissionRestrictedRoute>
+                      }
+                    />
                     <Route
                       path="qr-code"
                       element={
