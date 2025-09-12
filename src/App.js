@@ -17,7 +17,8 @@ import Dues from './views/dues/Dues'
 import Help from './views/help/Help'
 import License from './views/license/License'
 import Downloads from './views/downloads/Downloads'
-import CustomerLoyality from './views/customer loyality/CustomerLoylity.js'
+// import PurchaseAnalytics from  './views/purchaseanalytics/PurchaseAnalytics.js'
+// import CustomerLoyality from './views/customer loyality/CustomerLoylity.js'
 import Delivery from './views/delivery/Delivery'
 import { checkRestaurantPermission } from './redux/slices/restaurantProfileSlice'
 import DeliveryTiming from './views/deliveryTiming/DeliveryTiming'
@@ -46,12 +47,15 @@ const DefaultLayout = React.lazy(() => import('./layout/DefaultLayout'))
 const Login = React.lazy(() => import('./views/pages/login/Login'))
 const Register = React.lazy(() => import('./views/pages/register/Register'))
 const ResetPassword = React.lazy(() => import('./views/pages/resetpassword/ResetPassword'))
+const CheckOtp = React.lazy(() => import('./views/pages/CheckOtp/CheckOtp.js'))
 const ForgotPassword = React.lazy(() => import('./views/pages/forgotPassword/ForgotPassword'))
 const Otp = React.lazy(() => import('./views/pages/otp/Otp'))
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
 const Orders = React.lazy(() => import('./views/orders/Orders'))
+const SalesAnalytics = React.lazy(()=>import('./views/salesanalytics/SalesAnalytics.js'))
 const Waiter = React.lazy(() => import('./views/Permssion/Permission.js'))
-const CutomerLoyality = React.lazy(()=>import('./views/customer loyality/CustomerLoylity.js'))
+const PurchaseAnalytics = React.lazy(() => import('./views/purchaseanalytics/PurchaseAnalytics.js'))
+const CustomerLoyality = React.lazy(() => import('./views/customer loyality/CustomerLoylity.js'))
 const Supplier = React.lazy(() => import('./views/inventory/supplier/Supplier'))
 const QRCode = React.lazy(() => import('./views/qrCode/QRCode'))
 const Category = React.lazy(() => import('./views/category/Category'))
@@ -243,6 +247,7 @@ const App = () => {
               <Route path="/otp" element={<Otp />} />
               <Route path="/forgotpassword" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
+              <Route path='/check-otp' element={<CheckOtp />} />
 
               {/* Private Routes */}
               <Route
@@ -276,6 +281,14 @@ const App = () => {
                       }
                     />
                     <Route
+                      path="purchaseanalytics"
+                      element={
+                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                          <PurchaseAnalytics />
+                        </PermissionRestrictedRoute>
+                      }
+                    />
+                    <Route
                       path="delivery-timing"
                       element={
                         <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
@@ -301,7 +314,15 @@ const App = () => {
                       path="customerloyality"
                       element={
                         <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <CutomerLoyality />
+                          <CustomerLoyality />
+                        </PermissionRestrictedRoute>
+                      }
+                    />
+                    <Route
+                      path="salesanalytics"
+                      element={
+                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                          <SalesAnalytics />
                         </PermissionRestrictedRoute>
                       }
                     />
