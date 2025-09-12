@@ -8,9 +8,11 @@ import {
   CCol,
   CModal,
   CModalHeader,
+  CModalTitle,
   CModalBody,
   CModalFooter,
   CFormInput,
+  CInputGroup,
 } from '@coreui/react';
 import { cilPlus, cilTrash, cilMinus, cilPeople } from '@coreui/icons';
 import CIcon from '@coreui/icons-react';
@@ -22,20 +24,22 @@ const Cart = ({
   elapsedTime,
   cart,
   setCart,
+  calculateSubtotal,
+  calculateTotalTaxAmount,
+  calculateDiscountAmount,
+  calculateTotal,
+  discount,
+  tax,
+  roundOff,
+  setRoundOff, 
+  setShowTaxModal,       
+  setShowDiscountModal,   
+  setShowRoundOffModal,  
 }) => {
-  // Modal states
-  const [taxModal, setTaxModal] = useState(false);
-  const [discountModal, setDiscountModal] = useState(false);
-  const [roundOffModal, setRoundOffModal] = useState(false);
-
-  // Tax, discount, and round off states
-  const [tax, setTax] = useState(0);
-  const [discount, setDiscount] = useState(0);
-  const [roundOff, setRoundOff] = useState(0);
-  const [tempTax, setTempTax] = useState(0);
   const [tempDiscount, setTempDiscount] = useState(0);
-  const [tempRoundOff, setTempRoundOff] = useState(0);
-  const [taxType, setTaxType] = useState('percentage'); // 'percentage' or 'fixed'
+  const [tempRoundOff, setTempRoundOff] = useState(roundOff || 0);
+  const [localDiscountModal, setLocalDiscountModal] = useState(false);
+  const [localRoundOffModal, setLocalRoundOffModal] = useState(false);
 
   // Format time function
   const formatTime = (seconds) => {
@@ -45,22 +49,56 @@ const Cart = ({
     return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  // FIXED: Quantity change handler - use proper ID matching
+  // Helper function to get the correct price for an item
+  const getItemPrice = (item) => {
+    // Use adjustedPrice if available (from size selection), otherwise use original price
+    return Number(item.adjustedPrice || item.price);
+  };
+
+  const getSubtotal = () => {
+    if (calculateSubtotal) return calculateSubtotal();
+    return cart.reduce((acc, item) => acc + getItemPrice(item) * item.quantity, 0);
+  };
+
+  const getTotalTaxAmount = () => {
+    if (calculateTotalTaxAmount) return calculateTotalTaxAmount();
+    return cart.reduce((acc, item) => acc + (Number(item.taxAmount) || 0), 0);
+  };
+
+  const getDiscountAmount = () => {
+    if (calculateDiscountAmount) return calculateDiscountAmount();
+    return (getSubtotal() * (discount || 0)) / 100;
+  };
+
+  const getTotal = () => {
+    if (calculateTotal) return calculateTotal();
+    return getSubtotal() + getTotalTaxAmount() - getDiscountAmount() - (roundOff || 0);
+  };
+
   const handleQuantityChange = (itemId, newQty) => {
     if (newQty < 1) return;
-    
     const updatedCart = cart.map((item) => {
-      // Use both id and _id for matching to handle different ID formats
       const currentItemId = item._id || item.id;
       if (currentItemId === itemId) {
-        return { ...item, quantity: newQty };
+        const updatedItem = { ...item, quantity: newQty };
+        const itemPrice = getItemPrice(item);
+        
+        if (item.taxPercentage) {
+          updatedItem.taxAmount = (itemPrice * newQty * item.taxPercentage) / 100;
+        }
+        // Discount calculation example (add your logic as needed)
+        if (item.discountPercentage) {
+          updatedItem.discountAmount = (itemPrice * newQty * item.discountPercentage) / 100;
+        } else if (item.fixedDiscountAmount) {
+          updatedItem.discountAmount = Number(item.fixedDiscountAmount) * newQty;
+        }
+        return updatedItem;
       }
       return item;
     });
     setCart(updatedCart);
   };
 
-  // FIXED: Delete item handler - use proper ID matching
   const handleDeleteClick = (itemId) => {
     const updatedCart = cart.filter((item) => {
       const currentItemId = item._id || item.id;
@@ -69,56 +107,40 @@ const Cart = ({
     setCart(updatedCart);
   };
 
-  // Tax calculation per item
-  const calculateItemTax = (item) => {
-    if (taxType === 'percentage') return (Number(item.price) * tax) / 100;
-    return Number(tax); // fixed amount per item
+  // Round Off Modal Functions
+  const handleRoundOffIncrement = () => {
+    const currentValue = parseFloat(tempRoundOff) || 0;
+    setTempRoundOff((currentValue + 1).toString());
   };
 
-  const calculateItemTotal = (item) => Number(item.price) + calculateItemTax(item);
-
-  // Calculation functions
-  const calculateSubtotal = () =>
-    cart.reduce((acc, item) => acc + Number(item.price) * item.quantity, 0);
-
-  const calculateTaxAmount = () =>
-    cart.reduce((acc, item) => acc + calculateItemTax(item) * item.quantity, 0);
-
-  const calculateDiscountAmount = () => (calculateSubtotal() * discount) / 100;
-
-  const calculateTotal = () =>
-    calculateSubtotal() + calculateTaxAmount() - calculateDiscountAmount() - roundOff;
-
-  // Modal apply functions
-  const applyTax = () => {
-    setTax(Number(tempTax));
-    setTaxModal(false);
+  const handleRoundOffDecrement = () => {
+    const currentValue = parseFloat(tempRoundOff) || 0;
+    if (currentValue > 0) {
+      setTempRoundOff((currentValue - 1).toString());
+    }
   };
 
-  const applyDiscount = () => {
-    setDiscount(Number(tempDiscount));
-    setDiscountModal(false);
+  const handleRoundOffInputChange = (e) => {
+    const value = e.target.value;
+    // Allow only positive numbers and decimal points
+    if (value === '' || /^\d*\.?\d*$/.test(value)) {
+      setTempRoundOff(value);
+    }
   };
 
-  const applyRoundOff = () => {
-    setRoundOff(Number(tempRoundOff));
-    setRoundOffModal(false);
+  const getRoundedValue = () => {
+    const value = parseFloat(tempRoundOff);
+    if (isNaN(value) || value === 0) return 0;
+    return Math.round(value);
   };
 
-  // Modal open functions
-  const openTaxModal = () => {
-    setTempTax(tax);
-    setTaxModal(true);
-  };
-
-  const openDiscountModal = () => {
-    setTempDiscount(discount);
-    setDiscountModal(true);
-  };
-
-  const openRoundOffModal = () => {
-    setTempRoundOff(roundOff);
-    setRoundOffModal(true);
+  const handleRoundOffApply = () => {
+    const finalRoundOff = getRoundedValue();
+    if (setRoundOff) {
+      setRoundOff(finalRoundOff);
+    }
+    console.log('Round Off Applied:', finalRoundOff);
+    setLocalRoundOffModal(false);
   };
 
   return (
@@ -151,7 +173,7 @@ const Cart = ({
 
         <CCardBody className="d-flex flex-column p-3">
           <div
-            style={{ maxHeight: '270px', overflowY: 'auto', flexGrow: 1 }}
+            style={{ maxHeight: '220px', overflowY: 'auto', flexGrow: 1 }}
             className="custom-scrollbar p-2 border"
           >
             {cart.length === 0 ? (
@@ -159,33 +181,91 @@ const Cart = ({
                 <p className="m-0">Your cart is empty</p>
               </div>
             ) : (
-              // FIXED: Display items normally without expanding by quantity
               cart.map((item) => {
                 const itemId = item._id || item.id;
+                const itemPrice = getItemPrice(item);
+                const itemSubtotal = itemPrice * item.quantity;
+                const itemTaxAmount = Number(item.taxAmount) || 0;
+                const itemDiscountAmount = Number(item.discountAmount) || 0;
+                const itemTotal = itemSubtotal + itemTaxAmount - itemDiscountAmount;
+
                 return (
                   <div
                     key={itemId}
                     className="d-flex justify-content-between align-items-center mb-2 p-2 border-bottom"
                   >
                     <div style={{ flex: '1 1 0%' }}>
-                      <h6 className="mb-1 fw-bold text-dark">{item.itemName}</h6>
-                      <div className="text-muted small">
-                        ₹{Number(item.price).toFixed(2)} x {item.quantity}
-                        {tax > 0 && (
-                          <span className="ms-2">
-                            (Tax: {taxType === 'percentage' ? `${tax}%` : `₹${tax.toFixed(2)}`})
+                      <div className="d-flex align-items-center mb-1">
+                        <h6 className="mb-0 fw-bold text-dark me-2">{item.itemName}</h6>
+                        {/* Show size if available */}
+                        {item.selectedSize && (
+                          <span className="badge bg-primary">
+                            {item.selectedSize}
                           </span>
                         )}
-                        {item.discount > 0 && (
-                          <span className="ms-2">(Discount: ₹{item.discount.toFixed(2)})</span>
+                      </div>
+                      
+                      <div className="text-muted small">
+                        ₹{itemPrice.toFixed(2)} x {item.quantity}
+                        
+                        {/* Show original price if different from adjusted price */}
+                        {item.adjustedPrice && item.adjustedPrice !== item.price && (
+                          <span className="text-muted ms-1">
+                            (was ₹{Number(item.originalPrice || item.price).toFixed(2)})
+                          </span>
+                        )}
+
+                        {/* Tax Info */}
+                        {((item.taxPercentage > 0) || (item.fixedTaxAmount > 0) || (item.taxAmount > 0)) && (
+                          <div className="mt-1">
+                            <span className="badge bg-info text-dark me-1">
+                              Tax: {
+                                item.taxType === 'percentage'
+                                  ? `${item.taxPercentage}% (₹${itemTaxAmount.toFixed(2)})`
+                                  : item.taxType === 'fixed'
+                                    ? `₹${item.fixedTaxAmount} fixed`
+                                    : `₹${itemTaxAmount.toFixed(2)}`
+                              }
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Discount Info */}
+                        {((item.discountPercentage > 0) || (item.fixedDiscountAmount > 0) || (item.discountAmount > 0)) && (
+                          <div className="mt-1">
+                            <span className="badge bg-warning text-dark me-1">
+                              Discount: {
+                                item.discountType === 'percentage'
+                                  ? `${item.discountPercentage}% (₹${itemDiscountAmount.toFixed(2)})`
+                                  : item.discountType === 'fixed'
+                                    ? `₹${item.fixedDiscountAmount} fixed`
+                                    : `₹${itemDiscountAmount.toFixed(2)}`
+                              }
+                            </span>
+                          </div>
+                        )}
+
+                        {/* Subcategory Info */}
+                        {item.selectedSubcategoryName && (
+                          <div className="mt-1">
+                            <span className="badge bg-secondary">
+                              {item.selectedSubcategoryName}
+                            </span>
+                          </div>
                         )}
                       </div>
+                      
                       <div className="fw-bold text-primary">
-                        Total: ₹{(Number(item.price) * item.quantity).toFixed(2)}
+                        Total: ₹{itemTotal.toFixed(2)}
+                        {itemTaxAmount > 0 && (
+                          <span className="text-muted small"> (incl. tax)</span>
+                        )}
+                        {itemDiscountAmount > 0 && (
+                          <span className="text-muted small"> (after discount)</span>
+                        )}
                       </div>
                     </div>
-
-                    {/* FIXED: Quantity Controls with proper ID handling */}
+                    
                     <div className="d-flex align-items-center">
                       <CButton
                         variant="outline"
@@ -207,8 +287,7 @@ const Cart = ({
                         <CIcon icon={cilPlus} />
                       </CButton>
                     </div>
-
-                    {/* FIXED: Remove Item with proper ID handling */}
+                    
                     <CButton
                       color="danger"
                       variant="ghost"
@@ -226,34 +305,54 @@ const Cart = ({
           <div className="mt-auto pt-3">
             <div className="d-flex justify-content-between mb-2">
               <span>Subtotal</span>
-              <span>₹{calculateSubtotal().toFixed(2)}</span>
+              <span>₹{getSubtotal().toFixed(2)}</span>
             </div>
             <div className="d-flex justify-content-between mb-2">
-              <span>Tax {taxType === 'percentage' ? `(${tax}%)` : `(₹${tax})`}</span>
-              <span>₹{calculateTaxAmount().toFixed(2)}</span>
+              <span>Total Tax</span>
+              <span>₹{getTotalTaxAmount().toFixed(2)}</span>
             </div>
             <div className="d-flex justify-content-between mb-2">
-              <span>Discount ({discount}%)</span>
-              <span className="text-danger">- ₹{calculateDiscountAmount().toFixed(2)}</span>
+              <span>Discount ({discount || 0}%)</span>
+              <span className="text-danger">- ₹{getDiscountAmount().toFixed(2)}</span>
             </div>
             <div className="d-flex justify-content-between">
               <span>Round Off</span>
-              <span className="text-danger">- ₹{Number(roundOff).toFixed(2)}</span>
+              <span className="text-danger">- ₹{Number(roundOff || 0).toFixed(2)}</span>
             </div>
             <hr />
             <CRow className="g-2 my-2">
               <CCol>
-                <CButton color="light" className="w-100 shadow-sm" onClick={openTaxModal}>
+                <CButton
+                  color="light"
+                  className="w-100 shadow-sm"
+                  onClick={() => setShowTaxModal && setShowTaxModal(true)}
+                  disabled={cart.length === 0}
+                >
                   Tax
                 </CButton>
               </CCol>
               <CCol>
-                <CButton color="light" className="w-100 shadow-sm" onClick={openDiscountModal}>
+                <CButton
+                  color="light"
+                  className="w-100 shadow-sm"
+                  onClick={() => setShowDiscountModal ? setShowDiscountModal(true) : setLocalDiscountModal(true)}
+                >
                   Discount
                 </CButton>
               </CCol>
               <CCol>
-                <CButton color="light" className="w-100 shadow-sm" onClick={openRoundOffModal}>
+                <CButton
+                  color="light"
+                  className="w-100 shadow-sm"
+                  onClick={() => {
+                    if (setShowRoundOffModal) {
+                      setShowRoundOffModal(true);
+                    } else {
+                      setTempRoundOff(roundOff || 0);
+                      setLocalRoundOffModal(true);
+                    }
+                  }}
+                >
                   Round Off
                 </CButton>
               </CCol>
@@ -263,93 +362,183 @@ const Cart = ({
               style={{ borderRadius: '10px' }}
             >
               <h5 className="fw-bold mb-0">Total</h5>
-              <h5 className="fw-bold mb-0">₹{calculateTotal().toFixed(2)}</h5>
+              <h5 className="fw-bold mb-0">₹{getTotal().toFixed(2)}</h5>
             </div>
           </div>
         </CCardBody>
       </CCard>
 
-      {/* Tax Modal */}
-      <CModal visible={taxModal} onClose={() => setTaxModal(false)}>
-        <CModalHeader>Set Tax</CModalHeader>
-        <CModalBody>
-          <CFormInput
-            type="number"
-            value={tempTax}
-            onChange={(e) => setTempTax(e.target.value)}
-            placeholder={taxType === 'percentage' ? 'Enter tax %' : 'Enter tax amount'}
-            step="0.01"
-          />
-          <div className="d-flex justify-content-between mt-3">
-            <CButton
-              color={taxType === 'percentage' ? 'primary' : 'secondary'}
-              onClick={() => setTaxType('percentage')}
-              className="w-50 me-1"
-            >
-              Percentage
+      {/* Local Discount Modal (fallback if parent doesn't provide one) */}
+      {!setShowDiscountModal && (
+        <CModal visible={localDiscountModal} onClose={() => setLocalDiscountModal(false)}>
+          <CModalHeader>
+            <CModalTitle>Set Discount %</CModalTitle>
+          </CModalHeader>
+          <CModalBody>
+            <CFormInput
+              type="number"
+              value={tempDiscount}
+              onChange={(e) => setTempDiscount(e.target.value)}
+              placeholder="Enter discount percentage"
+              step="0.01"
+            />
+          </CModalBody>
+          <CModalFooter>
+            <CButton color="secondary" onClick={() => setLocalDiscountModal(false)}>
+              Cancel
             </CButton>
-            <CButton
-              color={taxType === 'fixed' ? 'primary' : 'secondary'}
-              onClick={() => setTaxType('fixed')}
-              className="w-50 ms-1"
-            >
-              Fixed Amount
+            <CButton color="primary" onClick={() => {
+              console.log('Discount:', tempDiscount);
+              setLocalDiscountModal(false);
+            }}>
+              Apply
             </CButton>
-          </div>
-        </CModalBody>
-        <CModalFooter>
-          <CButton color="secondary" onClick={() => setTaxModal(false)}>
-            Cancel
-          </CButton>
-          <CButton color="primary" onClick={applyTax}>
-            Apply
-          </CButton>
-        </CModalFooter>
-      </CModal>
+          </CModalFooter>
+        </CModal>
+      )}
 
-      {/* Discount Modal */}
-      <CModal visible={discountModal} onClose={() => setDiscountModal(false)}>
-        <CModalHeader>Set Discount %</CModalHeader>
-        <CModalBody>
-          <CFormInput
-            type="number"
-            value={tempDiscount}
-            onChange={(e) => setTempDiscount(e.target.value)}
-            placeholder="Enter discount percentage"
-            step="0.01"
-          />
-        </CModalBody>
-        <CModalFooter>
-          <CButton color="secondary" onClick={() => setDiscountModal(false)}>
-            Cancel
-          </CButton>
-          <CButton color="primary" onClick={applyDiscount}>
-            Apply
-          </CButton>
-        </CModalFooter>
-      </CModal>
+      {/* Enhanced Local Round Off Modal (fallback if parent doesn't provide one) */}
+      {!setShowRoundOffModal && (
+        <CModal visible={localRoundOffModal} onClose={() => setLocalRoundOffModal(false)}>
+          <CModalHeader>
+            <CModalTitle>Enter Round Off Number</CModalTitle>
+          </CModalHeader>
+          <CModalBody>
+            {/* Individual Items Display */}
+            <div className="mb-3">
+              <h6 className="mb-3 text-primary">Cart Items:</h6>
+              <div style={{ maxHeight: '200px', overflowY: 'auto' }} className="border rounded p-2">
+                {cart.map((item) => {
+                  const itemId = item._id || item.id;
+                  const itemPrice = getItemPrice(item);
+                  const itemSubtotal = itemPrice * item.quantity;
+                  const itemTaxAmount = Number(item.taxAmount) || 0;
+                  const itemDiscountAmount = Number(item.discountAmount) || 0;
+                  const itemTotal = itemSubtotal + itemTaxAmount - itemDiscountAmount;
 
-      {/* Round Off Modal */}
-      <CModal visible={roundOffModal} onClose={() => setRoundOffModal(false)}>
-        <CModalHeader>Set Round Off</CModalHeader>
-        <CModalBody>
-          <CFormInput
-            type="number"
-            value={tempRoundOff}
-            onChange={(e) => setTempRoundOff(e.target.value)}
-            placeholder="Enter round off amount"
-            step="0.01"
-          />
-        </CModalBody>
-        <CModalFooter>
-          <CButton color="secondary" onClick={() => setRoundOffModal(false)}>
-            Cancel
-          </CButton>
-          <CButton color="primary" onClick={applyRoundOff}>
-            Apply
-          </CButton>
-        </CModalFooter>
-      </CModal>
+                  return (
+                    <div key={itemId} className="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
+                      <div className="flex-grow-1">
+                        <div className="fw-bold text-dark">{item.itemName}</div>
+                        <div className="text-muted small">
+                          ₹{itemPrice.toFixed(2)} × {item.quantity}
+                          {item.selectedSize && (
+                            <span className="badge bg-primary ms-1">{item.selectedSize}</span>
+                          )}
+                        </div>
+                        {(itemTaxAmount > 0 || itemDiscountAmount > 0) && (
+                          <div className="text-muted small">
+                            {itemTaxAmount > 0 && <span className="me-2">Tax: ₹{itemTaxAmount.toFixed(2)}</span>}
+                            {itemDiscountAmount > 0 && <span className="text-warning">Discount: -₹{itemDiscountAmount.toFixed(2)}</span>}
+                          </div>
+                        )}
+                      </div>
+                      <div className="text-end">
+                        <div className="fw-bold">₹{itemTotal.toFixed(2)}</div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Current Cart Summary */}
+            <div className="mb-3 p-3 bg-light rounded">
+              <h6 className="mb-2 text-primary">Cart Summary:</h6>
+              <div className="d-flex justify-content-between mb-1">
+                <span>Subtotal:</span>
+                <span>₹{getSubtotal().toFixed(2)}</span>
+              </div>
+              <div className="d-flex justify-content-between mb-1">
+                <span>Total Tax:</span>
+                <span>₹{getTotalTaxAmount().toFixed(2)}</span>
+              </div>
+              <div className="d-flex justify-content-between mb-1">
+                <span>Discount:</span>
+                <span className="text-danger">-₹{getDiscountAmount().toFixed(2)}</span>
+              </div>
+              <hr className="my-2" />
+              <div className="d-flex justify-content-between fw-bold">
+                <span>Current Total:</span>
+                <span>₹{(getSubtotal() + getTotalTaxAmount() - getDiscountAmount()).toFixed(2)}</span>
+              </div>
+              <div className="d-flex justify-content-between text-success">
+                <span>After Round Off:</span>
+                <span>₹{(getSubtotal() + getTotalTaxAmount() - getDiscountAmount() - getRoundedValue()).toFixed(2)}</span>
+              </div>
+            </div>
+
+            <CRow className="mb-3">
+              <CCol>
+                <label className="form-label">Current Total to Round Off:</label>
+                <div className="mb-2 p-2 bg-primary text-white text-center rounded fs-5 fw-bold">
+                  ₹{(getSubtotal() + getTotalTaxAmount() - getDiscountAmount()).toFixed(2)}
+                </div>
+                <label className="form-label">Adjust Round Off Value:</label>
+                <CInputGroup>
+                  <CButton 
+                    type="button" 
+                    color="outline-secondary" 
+                    onClick={handleRoundOffDecrement}
+                    disabled={parseFloat(tempRoundOff) <= 0}
+                  >
+                    -
+                  </CButton>
+                  <div className="form-control text-center fw-bold bg-white fs-5 text-primary">
+                    ₹{getRoundedValue().toFixed(2)}
+                  </div>
+                  <CButton 
+                    type="button" 
+                    color="outline-secondary" 
+                    onClick={handleRoundOffIncrement}
+                  >
+                    +
+                  </CButton>
+                </CInputGroup>
+                <small className="text-muted">Use +/- buttons to set round off amount based on total above</small>
+              </CCol>
+            </CRow>
+            
+            {tempRoundOff && parseFloat(tempRoundOff) > 0 && (
+              <CRow>
+                <CCol>
+                  <div className="alert alert-success">
+                    <div className="d-flex justify-content-between align-items-center">
+                      <div>
+                        <strong>Round Off Applied: ₹{getRoundedValue().toFixed(2)}</strong>
+                        <br />
+                        <small className="text-muted">
+                          Original Total: ₹{(getSubtotal() + getTotalTaxAmount() - getDiscountAmount()).toFixed(2)}
+                        </small>
+                      </div>
+                      <div className="text-end">
+                        <div className="fw-bold text-success fs-5">
+                          Final: ₹{(getSubtotal() + getTotalTaxAmount() - getDiscountAmount() - getRoundedValue()).toFixed(2)}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CCol>
+              </CRow>
+            )}
+          </CModalBody>
+          <CModalFooter>
+            <CButton 
+              color="secondary" 
+              onClick={() => setLocalRoundOffModal(false)}
+            >
+              Cancel
+            </CButton>
+            <CButton 
+              color="primary" 
+              onClick={handleRoundOffApply}
+              disabled={!tempRoundOff || parseFloat(tempRoundOff) <= 0}
+            >
+              Apply
+            </CButton>
+          </CModalFooter>
+        </CModal>
+      )}
     </>
   );
 };

@@ -6,6 +6,7 @@ import {
   addInventory,
   updateInventory,
   deleteInventory,
+  reduceStock, // NEW: Import the new action
 } from '../../../redux/slices/stockSlice'
 import { fetchSuppliers } from '../../../redux/slices/supplierSlice'
 import CustomToolbar from '../../../utils/CustomToolbar'
@@ -19,27 +20,31 @@ import {
   CFormInput,
   CSpinner,
   CFormSelect,
+  CAlert, // NEW: For displaying stock warnings
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilPencil, cilTrash } from '@coreui/icons'
+import { cilPencil, cilTrash, cilMinus } from '@coreui/icons' // NEW: Import cilMinus for sell button
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 
 const Stock = () => {
   const dispatch = useDispatch()
-  const { inventories, loading: inventoryLoading } = useSelector((state) => state.inventories)
+  const { inventories, loading: inventoryLoading, saleProcessing } = useSelector((state) => state.inventories) // NEW: Added saleProcessing
   const { suppliers, loading: supplierLoading } = useSelector((state) => state.suppliers)
 
   const [modalVisible, setModalVisible] = useState(false)
   const [editModalVisible, setEditModalVisible] = useState(false)
   const [deleteModalVisible, setDeleteModalVisible] = useState(false)
+  const [sellModalVisible, setSellModalVisible] = useState(false) // NEW: Sell modal state
   const [formData, setFormData] = useState({
     itemName: '',
     quantity: '',
     unit: '',
     supplierId: '',
   })
+  const [sellData, setSellData] = useState({ quantityToSell: '' }) // NEW: Sell form data
   const [selectedStock, setSelectedStock] = useState(null)
+  const [lowStockItems, setLowStockItems] = useState([]) // NEW: Track low stock items
 
   const { token, restaurantId } = useSelector((state) => state.auth)
 
@@ -50,8 +55,19 @@ const Stock = () => {
     }
   }, [restaurantId, token, dispatch])
 
+  // NEW: Monitor low stock items
+  useEffect(() => {
+    const lowStock = inventories.filter(item => item.quantity <= 5) // Threshold of 5 units
+    setLowStockItems(lowStock)
+  }, [inventories])
+
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
+  }
+
+  // NEW: Handle sell form changes
+  const handleSellChange = (e) => {
+    setSellData({ ...sellData, [e.target.name]: e.target.value })
   }
 
   const handleSaveStock = () => {
@@ -80,8 +96,29 @@ const Stock = () => {
     setDeleteModalVisible(false)
   }
 
+  // NEW: Handle sell item
+  const handleSellItem = async () => {
+    try {
+      await dispatch(reduceStock({
+        itemId: selectedStock.id,
+        quantitySold: parseInt(sellData.quantityToSell)
+      })).unwrap()
+      
+      setSellData({ quantityToSell: '' })
+      setSellModalVisible(false)
+      setSelectedStock(null)
+    } catch (error) {
+      console.error('Sale failed:', error)
+    }
+  }
+
   const resetForm = () => {
     setFormData({ itemName: '', quantity: '', unit: '', supplierId: '' })
+  }
+
+  // NEW: Reset sell form
+  const resetSellForm = () => {
+    setSellData({ quantityToSell: '' })
   }
 
   const exportToCSV = useCallback(() => {
@@ -129,8 +166,37 @@ const Stock = () => {
       flex: 1,
       valueGetter: (params) => `SUP-${params.row.id.slice(0, 14).toUpperCase()}`,
     },
-    { field: 'itemName', headerName: 'Item Name', flex: 1 },
-    { field: 'quantity', headerName: 'Quantity', flex: 1 },
+    { 
+      field: 'itemName', 
+      headerName: 'Item Name', 
+      flex: 1,
+      // NEW: Add styling for low stock items
+      renderCell: (params) => (
+        <div style={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          color: params.row.quantity <= 5 ? '#dc3545' : 'inherit',
+          fontWeight: params.row.quantity <= 5 ? 'bold' : 'normal'
+        }}>
+          {params.row.quantity <= 5 && <span style={{ marginRight: '5px' }}>⚠️</span>}
+          {params.value}
+        </div>
+      )
+    },
+    { 
+      field: 'quantity', 
+      headerName: 'Quantity', 
+      flex: 1,
+      // NEW: Add color coding for quantity levels
+      renderCell: (params) => (
+        <span style={{
+          color: params.value <= 5 ? '#dc3545' : params.value <= 10 ? '#fd7e14' : '#28a745',
+          fontWeight: params.value <= 5 ? 'bold' : 'normal'
+        }}>
+          {params.value}
+        </span>
+      )
+    },
     { field: 'unit', headerName: 'Unit', flex: 1 },
     {
       field: 'supplierName',
@@ -141,11 +207,25 @@ const Stock = () => {
     {
       field: 'actions',
       headerName: 'Actions',
-      flex: 1,
+      flex: 1.5, // NEW: Made wider to accommodate sell button
       sortable: false,
       filterable: false,
       renderCell: (params) => (
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          {/* NEW: Sell Button */}
+          <CButton
+            color="success"
+            size="sm"
+            disabled={params.row.quantity <= 0}
+            onClick={() => {
+              setSelectedStock(params.row)
+              setSellModalVisible(true)
+            }}
+            title="Sell Item"
+          >
+            <CIcon icon={cilMinus} />
+          </CButton>
+
           <CButton
             color="secondary"
             size="sm"
@@ -159,6 +239,7 @@ const Stock = () => {
               })
               setEditModalVisible(true)
             }}
+            title="Edit Item"
           >
             <CIcon icon={cilPencil} />
           </CButton>
@@ -170,6 +251,7 @@ const Stock = () => {
               setSelectedStock(params.row)
               setDeleteModalVisible(true)
             }}
+            title="Delete Item"
           >
             <CIcon icon={cilTrash} />
           </CButton>
@@ -180,6 +262,20 @@ const Stock = () => {
 
   return (
     <div className="p-4">
+      {/* NEW: Low Stock Alert */}
+      {lowStockItems.length > 0 && (
+        <CAlert color="warning" className="mb-4">
+          <strong>⚠️ Low Stock Alert!</strong>
+          <div className="mt-2">
+            {lowStockItems.map(item => (
+              <div key={item._id} className="mb-1">
+                <strong>{item.itemName}</strong>: Only {item.quantity} {item.unit} remaining
+              </div>
+            ))}
+          </div>
+        </CAlert>
+      )}
+
       {/* Header Section */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="fw-bold text-dark m-0">📦 Inventory Stock</h2>
@@ -223,7 +319,7 @@ const Stock = () => {
 
       {/* Inventory Table (Improved) */}
       <div className="bg-white rounded shadow-sm p-3">
-        {inventoryLoading || supplierLoading ? (
+        {inventoryLoading || supplierLoading || saleProcessing ? (
           <div className="d-flex justify-content-center py-5">
             <CSpinner color="primary" variant="grow" />
           </div>
@@ -282,6 +378,7 @@ const Stock = () => {
             className="mb-3 shadow-sm"
             placeholder="Quantity"
             name="quantity"
+            type="number"
             value={formData.quantity}
             onChange={handleChange}
           />
@@ -318,6 +415,71 @@ const Stock = () => {
         </CModalFooter>
       </CModal>
 
+      {/* NEW: Sell Item Modal */}
+      <CModal visible={sellModalVisible} alignment="center" onClose={() => {
+        setSellModalVisible(false)
+        resetSellForm()
+        setSelectedStock(null)
+      }}>
+        <CModalHeader className="bg-light">
+          <CModalTitle className="fw-bold">💰 Sell Item</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          {selectedStock && (
+            <>
+              <div className="mb-3 p-3 bg-light rounded">
+                <h6 className="fw-bold mb-2">{selectedStock.itemName}</h6>
+                <p className="mb-1 text-muted">Available Stock: <strong>{selectedStock.quantity} {selectedStock.unit}</strong></p>
+                <p className="mb-0 text-muted">Supplier: <strong>{selectedStock.supplierName || 'N/A'}</strong></p>
+              </div>
+              
+              <CFormInput
+                className="mb-3 shadow-sm"
+                placeholder="Quantity to sell"
+                name="quantityToSell"
+                type="number"
+                min="1"
+                max={selectedStock.quantity}
+                value={sellData.quantityToSell}
+                onChange={handleSellChange}
+              />
+              
+              {sellData.quantityToSell && (
+                <div className="mb-3 p-2 bg-info bg-opacity-10 rounded">
+                  <small className="text-info">
+                    Remaining after sale: <strong>
+                      {selectedStock.quantity - parseInt(sellData.quantityToSell || 0)} {selectedStock.unit}
+                    </strong>
+                  </small>
+                </div>
+              )}
+            </>
+          )}
+        </CModalBody>
+        <CModalFooter className="bg-light">
+          <CButton color="secondary" variant="outline" onClick={() => {
+            setSellModalVisible(false)
+            resetSellForm()
+            setSelectedStock(null)
+          }}>
+            Cancel
+          </CButton>
+          <CButton 
+            color="success" 
+            className="px-4" 
+            onClick={handleSellItem}
+            disabled={
+              !sellData.quantityToSell || 
+              parseInt(sellData.quantityToSell) <= 0 || 
+              parseInt(sellData.quantityToSell) > selectedStock?.quantity ||
+              saleProcessing
+            }
+          >
+            {saleProcessing ? 'Processing...' : 'Confirm Sale'}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
       {/* Edit Inventory Modal */}
       <CModal visible={editModalVisible} alignment="center" onClose={() => setEditModalVisible(false)}>
         <CModalHeader className="bg-light">
@@ -335,6 +497,7 @@ const Stock = () => {
             className="mb-3 shadow-sm"
             placeholder="Quantity"
             name="quantity"
+            type="number"
             value={formData.quantity}
             onChange={handleChange}
           />

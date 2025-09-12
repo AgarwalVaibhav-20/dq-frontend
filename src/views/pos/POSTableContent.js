@@ -71,6 +71,7 @@ const POSTableContent = () => {
     const savedCart = localStorage.getItem(`cart_${tableNumber}`)
     return savedCart ? JSON.parse(savedCart) : []
   })
+
   const [startTime, setStartTime] = useState(() => {
     const savedStartTime = localStorage.getItem(`start_time_${tableNumber}`)
     return savedStartTime ? new Date(savedStartTime) : null
@@ -81,6 +82,7 @@ const POSTableContent = () => {
     message: '',
   })
   const token = localStorage.getItem('authToken');
+
   useEffect(() => {
     if (startTime) {
       const interval = setInterval(() => {
@@ -148,19 +150,31 @@ const POSTableContent = () => {
 
     if (existingItemIndex > -1) {
       setCart(prevCart =>
-        prevCart.map((cartItem, index) =>
-          index === existingItemIndex
-            ? { ...cartItem, quantity: cartItem.quantity + 1 }
-            : cartItem,
-        ),
+        prevCart.map((cartItem, index) => {
+          if (index === existingItemIndex) {
+            const newQuantity = cartItem.quantity + 1;
+            return {
+              ...cartItem,
+              quantity: newQuantity,
+              // Recalculate tax amount if item has tax
+              taxAmount: cartItem.taxPercentage ?
+                (cartItem.price * newQuantity * cartItem.taxPercentage) / 100 : 0
+            };
+          }
+          return cartItem;
+        }),
       );
     } else {
       const newCartItem = {
         ...item,
-        id: itemId, // Ensure consistent ID
-        _id: item._id, // Keep original _id if it exists
+        id: itemId,
+        _id: item._id,
         quantity: 1,
-        price: Number(item.price) || 0
+        price: Number(item.price) || 0,
+        taxType: null,
+        taxPercentage: 0,
+        fixedTaxAmount: 0,
+        taxAmount: 0
       };
       setCart(prevCart => [...prevCart, newCartItem]);
     }
@@ -174,16 +188,6 @@ const POSTableContent = () => {
     setSelectedMenuItemForSubcategory(null);
   }, [cart, startTime, tableNumber]);
 
-  const handleCustomerSelect = (customer) => {
-    setSelectedCustomerName(customer.name)
-    setShowCustomerModal(false)
-  }
-
-  const handleSearchProduct = (e) => {
-    setSearchProduct(e.target.value)
-  }
-
-  // FIXED: Main menu item click handler with proper ID handling
   const handleMenuItemClick = useCallback((product) => {
     const relevantSubcategoriesExist = subCategories.some(sub => sub.category_id === product.categoryId);
 
@@ -191,7 +195,6 @@ const POSTableContent = () => {
       setSelectedMenuItemForSubcategory(product);
       setShowSubCategoryModal(true);
     } else {
-      // FIXED: Use consistent ID handling
       const productId = product._id || product.id;
       const existingItemIndex = cart.findIndex((item) => {
         const cartItemId = item._id || item.id;
@@ -199,22 +202,32 @@ const POSTableContent = () => {
       });
 
       if (existingItemIndex > -1) {
-        // Item exists, increase quantity
         setCart(prevCart =>
-          prevCart.map((item, index) =>
-            index === existingItemIndex
-              ? { ...item, quantity: item.quantity + 1 }
-              : item
-          )
+          prevCart.map((item, index) => {
+            if (index === existingItemIndex) {
+              const newQuantity = item.quantity + 1;
+              return {
+                ...item,
+                quantity: newQuantity,
+                // Recalculate tax amount if item has tax
+                taxAmount: item.taxPercentage ?
+                  (item.price * newQuantity * item.taxPercentage) / 100 : 0
+              };
+            }
+            return item;
+          })
         );
       } else {
-        // New item, add to cart
         const newCartItem = {
           ...product,
-          id: productId, // Ensure consistent ID
-          _id: product._id, // Keep original _id if it exists
+          id: productId,
+          _id: product._id,
           quantity: 1,
-          price: Number(product.price) || 0
+          price: Number(product.price) || 0,
+          taxType: null,
+          taxPercentage: 0,
+          fixedTaxAmount: 0,
+          taxAmount: 0
         };
         setCart(prevCart => [...prevCart, newCartItem]);
       }
@@ -226,6 +239,15 @@ const POSTableContent = () => {
       }
     }
   }, [cart, startTime, tableNumber, subCategories]);
+
+  const handleCustomerSelect = (customer) => {
+    setSelectedCustomerName(customer.name)
+    setShowCustomerModal(false)
+  }
+
+  const handleSearchProduct = (e) => {
+    setSearchProduct(e.target.value)
+  }
 
   // The 'addToCart' function is now just a wrapper for the new logic, which can be removed if not used elsewhere
   const addToCart = (product) => {
@@ -256,17 +278,70 @@ const POSTableContent = () => {
     localStorage.removeItem(`start_time_${tableNumber}`)
   }
 
-  const handleTaxSubmit = () => {
-    setTax(Number(inputValue))
-    setShowTaxModal(false)
-    setInputValue('')
-  }
-  
-  const handleDiscountSubmit = () => {
-    setDiscount(Number(inputValue))
-    setShowDiscountModal(false)
-    setInputValue('')
-  }
+  const handleTaxSubmit = (selectedItemIds, taxValue, taxType) => {
+    setCart(prevCart =>
+      prevCart.map(item => {
+        const itemId = item._id || item.id;
+        if (selectedItemIds.includes(itemId)) {
+          let taxAmount = 0;
+          let taxPercentage = 0;
+          let fixedTaxAmount = 0;
+
+          if (taxType === 'percentage') {
+            taxPercentage = taxValue;
+            taxAmount = (item.price * item.quantity * taxValue) / 100;
+          } else if (taxType === 'fixed') {
+            fixedTaxAmount = taxValue;
+            taxAmount = taxValue; // Fixed amount per item (not multiplied by quantity)
+          }
+
+          return {
+            ...item,
+            taxType: taxType, // Store the tax type
+            taxPercentage: taxPercentage,
+            fixedTaxAmount: fixedTaxAmount,
+            taxAmount: taxAmount
+          };
+        }
+        return item;
+      })
+    );
+
+    toast.success(`${taxType === 'percentage' ? 'Percentage' : 'Fixed'} tax applied to ${selectedItemIds.length} item(s)!`);
+  };
+
+  const handleDiscountSubmit = (selectedItemIds, discountValue, discountType) => {
+    setCart(prevCart =>
+      prevCart.map(item => {
+        const itemId = item._id || item.id;
+        if (selectedItemIds.includes(itemId)) {
+          let discountAmount = 0;
+          let discountPercentage = 0;
+          let fixedDiscountAmount = 0;
+
+          if (discountType === 'percentage') {
+            discountPercentage = discountValue;
+            discountAmount = (item.price * item.quantity * discountValue) / 100;
+          } else if (discountType === 'fixed') {
+            fixedDiscountAmount = discountValue;
+            discountAmount = discountValue;
+          }
+
+          return {
+            ...item,
+            discountType: discountType,
+            discountPercentage: discountPercentage,
+            fixedDiscountAmount: fixedDiscountAmount,
+            discountAmount: discountAmount
+          };
+        }
+        return item;
+      })
+    );
+
+    toast.success(`${discountType === 'percentage' ? 'Percentage' : 'Fixed'} discount applied to ${selectedItemIds.length} item(s)!`);
+  };
+
   const handleRoundOffSubmit = () => {
     setRoundOff(Number(inputValue))
     setShowRoundOffModal(false)
@@ -277,10 +352,9 @@ const POSTableContent = () => {
     return cart.reduce((total, item) => total + item.quantity * item.price, 0)
   }, [cart])
 
-  const calculateTaxAmount = () => {
-    const subtotal = calculateSubtotal()
-    return (subtotal * tax) / 100
-  }
+  const calculateTotalTaxAmount = useCallback(() => {
+    return cart.reduce((total, item) => total + (Number(item.taxAmount) || 0), 0);
+  }, [cart]);
 
   const calculateDiscountAmount = () => {
     const subtotal = calculateSubtotal()
@@ -289,22 +363,33 @@ const POSTableContent = () => {
 
   const calculateTotal = useCallback(() => {
     const subtotal = calculateSubtotal()
-    const taxAmount = (subtotal * tax) / 100
+    const totalTaxAmount = calculateTotalTaxAmount()
     const discountAmount = (subtotal * discount) / 100
-    return subtotal + taxAmount - discountAmount - roundOff
-  }, [calculateSubtotal, tax, discount, roundOff])
+    return subtotal + totalTaxAmount - discountAmount - roundOff
+  }, [calculateSubtotal, calculateTotalTaxAmount, discount, roundOff])
 
   // FIXED: Quantity change handler with proper ID matching
-  const handleQuantityChange = (productId, newQuantity) => {
-    setCart((prevCart) =>
-      prevCart.map((item) => {
-        const cartItemId = item._id || item.id;
-        return cartItemId === productId 
-          ? { ...item, quantity: Math.max(1, newQuantity) } 
-          : item;
-      })
-    );
-  }
+  const handleQuantityChange = (itemId, newQty) => {
+    if (newQty < 1) return;
+
+    const updatedCart = cart.map((item) => {
+      const currentItemId = item._id || item.id;
+      if (currentItemId === itemId) {
+        const updatedItem = { ...item, quantity: newQty };
+
+        // Recalculate tax amount based on tax type
+        if (item.taxType === 'percentage' && item.taxPercentage > 0) {
+          updatedItem.taxAmount = (item.price * newQty * item.taxPercentage) / 100;
+        } else if (item.taxType === 'fixed' && item.fixedTaxAmount > 0) {
+          updatedItem.taxAmount = item.fixedTaxAmount; // Fixed amount doesn't change with quantity
+        }
+
+        return updatedItem;
+      }
+      return item;
+    });
+    setCart(updatedCart);
+  };
 
   const handleAddCustomer = (formValues) => {
     const token = localStorage.getItem("authToken");
@@ -325,10 +410,9 @@ const POSTableContent = () => {
 
   const handlePaymentSubmit = async () => {
     const token = localStorage.getItem('authToken');
-    const userId = localStorage.getItem('userId'); // Fixed: get from localStorage
-    const restaurantId = localStorage.getItem('restaurantId'); // Fixed: get from localStorage
+    const userId = localStorage.getItem('userId');
+    const restaurantId = localStorage.getItem('restaurantId');
 
-    // Validate required fields
     if (!token) {
       toast.error('Authentication token missing');
       return;
@@ -350,21 +434,24 @@ const POSTableContent = () => {
       restaurantId,
       tableNumber,
       items: cart?.map((item) => ({
-        itemId: item._id || item.id, // Handle both _id and id
+        itemId: item._id || item.id,
         itemName: item.itemName,
         price: item.price,
         quantity: item.quantity,
         selectedSubcategoryId: item.selectedSubcategoryId || null,
-        subtotal: item.price * item.quantity // Calculate subtotal
+        subtotal: item.price * item.quantity,
+        taxType: item.taxType || null,
+        taxPercentage: item.taxPercentage || 0,
+        fixedTaxAmount: item.fixedTaxAmount || 0,
+        taxAmount: item.taxAmount || 0
       })),
-      tax,
+      tax: calculateTotalTaxAmount(),
       discount,
       sub_total: calculateSubtotal(),
       total: calculateTotal(),
       type: paymentType,
     };
 
-    // Add split details if payment type is split
     if (paymentType === "split") {
       payload.split_details = {
         cash: splitPercentages.cash || 0,
@@ -570,13 +657,12 @@ const POSTableContent = () => {
     }
 
     try {
-      // Calculate subtotal for new items
+      // Calculate subtotal and tax for new items
       const kotSubtotal = newItems.reduce((total, item) => total + (item.price * item.quantity), 0);
-      const kotTaxAmount = (kotSubtotal * tax) / 100;
+      const kotTaxAmount = newItems.reduce((total, item) => total + (Number(item.taxAmount) || 0), 0);
       const kotDiscountAmount = (kotSubtotal * discount) / 100;
       const kotTotal = kotSubtotal + kotTaxAmount - kotDiscountAmount;
 
-      // Prepare order data for backend
       const orderData = {
         token: localStorage.getItem('authToken'),
         restaurantId: localStorage.getItem('restaurantId'),
@@ -589,28 +675,26 @@ const POSTableContent = () => {
           price: item.price,
           quantity: item.quantity,
           selectedSubcategoryId: item.selectedSubcategoryId || null,
-          subtotal: item.price * item.quantity
+          subtotal: item.price * item.quantity,
+          taxPercentage: item.taxPercentage || 0,
+          taxAmount: item.taxAmount || 0
         })),
         orderType: 'KOT',
         status: 'pending',
-        tax: tax,
+        tax: kotTaxAmount, // Use calculated tax amount
         discount: discount,
         subtotal: kotSubtotal,
-        totalAmount: kotTotal, // This matches your existing controller
+        totalAmount: kotTotal,
         kotGenerated: true,
         paymentStatus: 'pending'
       }
 
-      // Dispatch the createOrder action
       const result = await dispatch(createOrder(orderData)).unwrap()
-
       console.log('Order created successfully:', result)
       toast.success('Order saved successfully!', { autoClose: 3000 })
 
-      // Update local state
       setKotItems((prevKotItems) => [...prevKotItems, ...newItems])
 
-      // Generate visual KOT
       const kotElement = kotRef.current
       if (!kotElement) return
 
@@ -797,18 +881,19 @@ const POSTableContent = () => {
             startTime={startTime}
             elapsedTime={elapsedTime}
             cart={cart}
-            setCart={setCart} // Pass setCart to the Cart component
-            handleDeleteClick={handleDeleteClick}
-            tax={tax}
-            calculateTaxAmount={calculateTaxAmount}
-            discount={discount}
-            roundOffer={roundOff}
-            calculateDiscountAmount={calculateDiscountAmount}
-            setShowTaxModal={setShowTaxModal}
-            setShowRoundOffModal={setShowRoundOffModal}
-            setShowDiscountModal={setShowDiscountModal}
-            calculateTotal={calculateTotal}
+            setCart={setCart}
             handleQuantityChange={handleQuantityChange}
+            handleDeleteClick={handleDeleteClick}
+            calculateSubtotal={calculateSubtotal}
+            calculateTotalTaxAmount={calculateTotalTaxAmount}
+            calculateDiscountAmount={calculateDiscountAmount}
+            calculateTotal={calculateTotal}
+            tax={tax}
+            discount={discount}
+            roundOff={roundOff}
+            setShowTaxModal={setShowTaxModal}
+            setShowDiscountModal={setShowDiscountModal}
+            setShowRoundOffModal={setShowRoundOffModal}
           />
         </CCol>
       </CRow>
@@ -816,7 +901,7 @@ const POSTableContent = () => {
         <CRow className="align-items-center">
           <CCol md={4}>
             <h4 className="fw-bold mb-0">
-              Total: ₹{calculateTotal()}
+              Total: ₹{calculateTotal().toFixed(2)}
             </h4>
           </CCol>
           <CCol md={8} className="d-flex justify-content-end gap-2">
@@ -836,6 +921,7 @@ const POSTableContent = () => {
         subCategories={subCategories}
         onAddToCartWithSubcategory={handleAddToCartWithSubcategory}
       />
+
       <KOTModal isVisible={showKOTModal} onClose={() => setShowKOTModal(false)}>
         <div style={{ textAlign: 'center' }}>
           <h3>KOT Preview</h3>
@@ -862,6 +948,7 @@ const POSTableContent = () => {
           </button>
         </div>
       </KOTModal>
+
       <InvoiceModal isVisible={showInvoiceModal} onClose={() => setShowInvoiceModal(false)}>
         <div style={{ textAlign: 'center' }}>
           <h3>Invoice Preview</h3>
@@ -878,6 +965,7 @@ const POSTableContent = () => {
           </div>
         </div>
       </InvoiceModal>
+
       <div style={{ position: 'absolute', left: '-9999px' }}>
         <Invoice
           ref={invoiceRef}
@@ -885,13 +973,14 @@ const POSTableContent = () => {
           selectedCustomerName={selectedCustomerName}
           cart={cart}
           calculateSubtotal={calculateSubtotal}
-          tax={tax}
-          calculateTaxAmount={calculateTaxAmount}
+          tax={calculateTotalTaxAmount()} // Pass total tax amount
+          calculateTaxAmount={calculateTotalTaxAmount} // Pass function
           discount={discount}
           calculateDiscountAmount={calculateDiscountAmount}
           calculateTotal={calculateTotal}
         />
       </div>
+
       <div style={{ position: 'absolute', left: '-9999px' }}>
         <KOT
           ref={kotRef}
@@ -899,18 +988,19 @@ const POSTableContent = () => {
           cart={cart.filter((item) => !kotItems.includes(item))}
         />
       </div>
+
+      {/* FIXED: TaxModal with proper props */}
       <TaxModal
         showTaxModal={showTaxModal}
         setShowTaxModal={setShowTaxModal}
-        inputValue={inputValue}
-        setInputValue={setInputValue}
+        cart={cart}
         handleTaxSubmit={handleTaxSubmit}
       />
+
       <DiscountModal
         showDiscountModal={showDiscountModal}
         setShowDiscountModal={setShowDiscountModal}
-        inputValue={inputValue}
-        setInputValue={setInputValue}
+        cart={cart} // This was missing!
         handleDiscountSubmit={handleDiscountSubmit}
       />
       <RoundOffAmountModal
@@ -920,6 +1010,7 @@ const POSTableContent = () => {
         setInputValue={setInputValue}
         handleRoundOffSubmit={handleRoundOffSubmit}
       />
+
       <PaymentModal
         showPaymentModal={showPaymentModal}
         setShowPaymentModal={setShowPaymentModal}
@@ -929,11 +1020,13 @@ const POSTableContent = () => {
         setSplitPercentages={setSplitPercentages}
         handlePaymentSubmit={handlePaymentSubmit}
       />
+
       <DeleteModal
         showDeleteModal={showDeleteModal}
         cancelDelete={cancelDelete}
         confirmDelete={confirmDelete}
       />
+
       <CustomerModal
         showCustomerModal={showCustomerModal}
         setShowCustomerModal={setShowCustomerModal}
@@ -944,6 +1037,7 @@ const POSTableContent = () => {
         customerLoading={customerLoading}
         handleAddCustomer={handleAddCustomer}
       />
+
       <MobilePrintOptionsModal
         isVisible={mobilePrintOptions.show}
         options={mobilePrintOptions}

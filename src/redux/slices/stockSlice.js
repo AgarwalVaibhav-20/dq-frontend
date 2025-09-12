@@ -30,7 +30,6 @@ export const fetchInventories = createAsyncThunk(
   }
 )
 
-
 // Add inventory
 export const addInventory = createAsyncThunk(
   'inventories/addInventory',
@@ -81,6 +80,99 @@ export const deleteInventory = createAsyncThunk(
   }
 );
 
+// NEW: Reduce stock when item is sold
+export const reduceStock = createAsyncThunk(
+  'inventories/reduceStock',
+  async ({ itemId, quantitySold }, { rejectWithValue, getState }) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const restaurantId = localStorage.getItem('restaurantId');
+      
+      // Check if item exists in current state
+      const currentState = getState();
+      const currentItem = currentState.inventories.inventories.find(item => item._id === itemId);
+      
+      if (!currentItem) {
+        return rejectWithValue('Item not found in inventory');
+      }
+      
+      if (currentItem.quantity < quantitySold) {
+        return rejectWithValue(`Insufficient stock. Available: ${currentItem.quantity}, Requested: ${quantitySold}`);
+      }
+
+      const newQuantity = currentItem.quantity - quantitySold;
+      
+      const response = await axios.put(
+        `${BASE_URL}/update/${itemId}`,
+        { 
+          restaurantId,
+          itemName: currentItem.itemName,
+          quantity: newQuantity,
+          unit: currentItem.unit,
+          price: currentItem.price,
+          supplierId: currentItem.supplierId
+        },
+        configureHeaders(token)
+      );
+      
+      return { 
+        itemId, 
+        quantitySold, 
+        newQuantity,
+        updatedItem: response.data.data 
+      };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to reduce stock');
+    }
+  }
+);
+
+// NEW: Process multiple item sale (for orders with multiple items)
+export const processItemsSale = createAsyncThunk(
+  'inventories/processItemsSale',
+  async ({ saleItems }, { rejectWithValue, dispatch, getState }) => {
+    try {
+      // saleItems format: [{ itemId, quantitySold, itemName }, ...]
+      const results = [];
+      const errors = [];
+      
+      for (const saleItem of saleItems) {
+        try {
+          const result = await dispatch(reduceStock({
+            itemId: saleItem.itemId,
+            quantitySold: saleItem.quantitySold
+          })).unwrap();
+          
+          results.push({
+            ...result,
+            itemName: saleItem.itemName
+          });
+        } catch (error) {
+          errors.push({
+            itemName: saleItem.itemName,
+            error: error
+          });
+        }
+      }
+      
+      if (errors.length > 0) {
+        return rejectWithValue({
+          message: 'Some items could not be processed',
+          errors,
+          successfulItems: results
+        });
+      }
+      
+      return {
+        message: 'All items processed successfully',
+        processedItems: results
+      };
+    } catch (error) {
+      return rejectWithValue('Failed to process sale items');
+    }
+  }
+);
+
 // ------------------ SLICE ------------------
 const stockSlice = createSlice({
   name: 'inventories',
@@ -88,8 +180,22 @@ const stockSlice = createSlice({
     inventories: [],
     loading: false,
     error: null,
+    saleProcessing: false, // New state for tracking sale processing
   },
-  reducers: {},
+  reducers: {
+    // Utility reducer to clear errors
+    clearError: (state) => {
+      state.error = null;
+    },
+    // Local stock reduction (for optimistic updates)
+    reduceStockLocally: (state, action) => {
+      const { itemId, quantitySold } = action.payload;
+      const item = state.inventories.find(item => item._id === itemId);
+      if (item && item.quantity >= quantitySold) {
+        item.quantity -= quantitySold;
+      }
+    }
+  },
   extraReducers: (builder) => {
     // Fetch inventories
     builder
@@ -99,7 +205,6 @@ const stockSlice = createSlice({
       })
       .addCase(fetchInventories.fulfilled, (state, action) => {
         state.loading = false;
-        // console.log("this is action payload",action.payload.data)
         state.inventories = action.payload;
       })
       .addCase(fetchInventories.rejected, (state, action) => {
@@ -116,13 +221,12 @@ const stockSlice = createSlice({
       })
       .addCase(addInventory.fulfilled, (state, action) => {
         state.loading = false;
-        const newItem = action.payload?.data || action.payload; // handle both cases
+        const newItem = action.payload?.data || action.payload;
         if (newItem) {
           state.inventories.push(newItem);
         }
         toast.success('Inventory item added successfully!');
       })
-
       .addCase(addInventory.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
@@ -164,7 +268,58 @@ const stockSlice = createSlice({
         state.error = action.payload;
         toast.error(action.payload || 'Failed to delete inventory item.');
       });
+
+    // NEW: Reduce stock cases
+    builder
+      .addCase(reduceStock.pending, (state) => {
+        state.saleProcessing = true;
+        state.error = null;
+      })
+      .addCase(reduceStock.fulfilled, (state, action) => {
+        state.saleProcessing = false;
+        const { itemId, updatedItem } = action.payload;
+        
+        // Update the inventory item with new quantity
+        const index = state.inventories.findIndex((item) => item._id === itemId);
+        if (index !== -1) {
+          state.inventories[index] = updatedItem || {
+            ...state.inventories[index],
+            quantity: action.payload.newQuantity
+          };
+        }
+        
+        toast.success(`Stock reduced successfully! New quantity: ${action.payload.newQuantity}`);
+      })
+      .addCase(reduceStock.rejected, (state, action) => {
+        state.saleProcessing = false;
+        state.error = action.payload;
+        toast.error(action.payload || 'Failed to reduce stock.');
+      });
+
+    // NEW: Process multiple items sale cases
+    builder
+      .addCase(processItemsSale.pending, (state) => {
+        state.saleProcessing = true;
+        state.error = null;
+      })
+      .addCase(processItemsSale.fulfilled, (state, action) => {
+        state.saleProcessing = false;
+        toast.success(action.payload.message);
+      })
+      .addCase(processItemsSale.rejected, (state, action) => {
+        state.saleProcessing = false;
+        state.error = action.payload;
+        
+        if (action.payload.errors) {
+          action.payload.errors.forEach(error => {
+            toast.error(`${error.itemName}: ${error.error}`);
+          });
+        } else {
+          toast.error(action.payload.message || 'Failed to process sale items.');
+        }
+      });
   },
 });
 
+export const { clearError, reduceStockLocally } = stockSlice.actions;
 export default stockSlice.reducer;

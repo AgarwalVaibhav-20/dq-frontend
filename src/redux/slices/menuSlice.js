@@ -2,104 +2,120 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { BASE_URL } from '../../utils/constants';
+
 const configureHeaders = (token) => ({
   headers: {
     Authorization: `Bearer ${token}`,
     'Content-Type': 'application/json',
   },
-})
+});
+
 // Fetch menu items
 export const fetchMenuItems = createAsyncThunk(
   "menu/fetchMenuItems",
-  async (_, { rejectWithValue }) => {
+  async ({ restaurantId, token }, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem("authToken");
       const headers = {
         Authorization: `Bearer ${token}`,
       };
 
-      const response = await axios.get(`${BASE_URL}/menu/allmenues`, { headers });
+      const url = restaurantId
+        ? `${BASE_URL}/menu/allmenues?restaurantId=${restaurantId}`
+        : `${BASE_URL}/menu/allmenues`;
 
-      return response.data; // because backend returns array of menuItems
+      const response = await axios.get(url, { headers });
+      return response.data; // Array of menu items
     } catch (error) {
       return rejectWithValue(
-        error.response?.data?.error || "Failed to fetch menu items"
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        "Failed to fetch menu items"
       );
     }
   }
 );
 
-
-
 export const addMenuItem = createAsyncThunk(
-  'menu/addMenuItem',
-  async ({ itemName, price, categoryId, sub_category, status, stockItems, itemImageFile }, { rejectWithValue }) => {
+  "menu/addMenuItem",
+  async (
+    {
+      menuId,
+      itemName,
+      price,
+      categoryId,
+      sub_category,
+      status,
+      stockItems,
+      itemImage,
+      sizes,
+      token,
+    },
+    { rejectWithValue }
+  ) => {
     try {
-      const token = localStorage.getItem('authToken');
-      const restaurantId = localStorage.getItem('restaurantId');
+      const restaurantId = localStorage.getItem("restaurantId");
 
-      // Validation on frontend
-      if (!itemName?.trim()) {
-        return rejectWithValue('Item name is required');
-      }
-      if (!price || isNaN(Number(price)) || Number(price) <= 0) {
-        return rejectWithValue('Valid price is required');
-      }
-      if (!categoryId) {
-        return rejectWithValue('Category is required');
-      }
-      if (!restaurantId) {
-        return rejectWithValue('Restaurant ID not found');
-      }
+      console.log("=== FRONTEND DEBUG ===");
+      console.log("Received sizes array:", JSON.stringify(sizes, null, 2));
 
-      // Create FormData to handle file upload + JSON
+      // Create FormData
       const formData = new FormData();
-      formData.append('itemName', itemName.trim());
-      formData.append('price', Number(price));
-      formData.append('categoryId', categoryId);
-      formData.append('restaurantId', restaurantId);
-      formData.append('sub_category', sub_category || '');
-      formData.append('status', status || 1);
+      formData.append("menuId", menuId);
+      formData.append("itemName", itemName.trim());
+      if (price) formData.append("price", Number(price));
+      formData.append("categoryId", categoryId);
+      formData.append("restaurantId", restaurantId);
+      formData.append("sub_category", sub_category || "");
+      formData.append("status", status || 1);
 
-      if (itemImageFile) {
-        formData.append('itemImage', itemImageFile);
+      // ✅ Handle sizes dynamically
+      if (sizes && Array.isArray(sizes)) {
+        // Send entire sizes array as JSON
+        formData.append("sizes", JSON.stringify(sizes));
       }
 
+      // Handle image
+      if (itemImage instanceof File) {
+        formData.append("itemImage", itemImage);
+      }
+
+      // Handle stockItems
       if (stockItems && stockItems.length > 0) {
-        formData.append('stockItems', JSON.stringify(stockItems));
+        const validStockItems = stockItems.filter(
+          (item) => item.stockId && item.quantity !== undefined
+        );
+        if (validStockItems.length > 0) {
+          formData.append("stockItems", JSON.stringify(validStockItems));
+        }
       }
 
-      console.log('Sending form data:', {
-        itemName: itemName.trim(),
-        price: Number(price),
-        categoryId,
-        restaurantId,
-        sub_category: sub_category || '',
-        status: status || 1,
-        stockItems: stockItems || [],
-        hasImage: !!itemImageFile
-      });
+      // Debug FormData contents
+      console.log("=== FORMDATA CONTENTS ===");
+      for (let pair of formData.entries()) {
+        console.log(`${pair[0]}: ${pair[1]}`);
+      }
 
       const response = await axios.post(`${BASE_URL}/menu/add`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data',
+          "Content-Type": "multipart/form-data",
         },
       });
 
-      console.log('Response:', response.data);
       return response.data;
     } catch (error) {
-      console.error('Add menu item error:', error);
-      const errorMessage = error.response?.data?.message ||
-                          error.response?.data?.error ||
-                          error.message ||
-                          'Failed to add menu item';
+      console.error("Add menu item error:", error);
+      const errorMessage =
+        error.response?.data?.message ||
+        error.response?.data?.error ||
+        error.message ||
+        "Failed to add menu item";
       return rejectWithValue(errorMessage);
     }
   }
 );
-// Update a menu item
+
+// Update menu item
 export const updateMenuItem = createAsyncThunk(
   'menu/updateMenuItem',
   async ({ id, formData, token }, { rejectWithValue }) => {
@@ -108,29 +124,37 @@ export const updateMenuItem = createAsyncThunk(
         Authorization: `Bearer ${token}`,
         'Content-Type': 'multipart/form-data',
       };
+
       const response = await axios.put(`${BASE_URL}/menu/${id}`, formData, { headers });
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to update menu item');
+      return rejectWithValue(
+        error.response?.data?.message ||
+        'Failed to update menu item'
+      );
     }
   }
 );
 
-
-// Delete a menu item
+// Delete menu item
 export const deleteMenuItem = createAsyncThunk(
   'menu/deleteMenuItem',
-  async ({ id }, { rejectWithValue }) => {
+  async ({ id, token }, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('authToken');
       const headers = {
         Authorization: `Bearer ${token}`,
       };
 
       const response = await axios.delete(`${BASE_URL}/menu/delete/${id}`, { headers });
-      return { id, message: response.data.message };
+      return {
+        _id: id,
+        message: response.data.message
+      };
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to delete menu item');
+      return rejectWithValue(
+        error.response?.data?.message ||
+        'Failed to delete menu item'
+      );
     }
   }
 );
@@ -146,15 +170,25 @@ export const updateMenuItemStatus = createAsyncThunk(
         'Content-Type': 'application/json',
       };
 
+      // Convert status from string to number for backend
+      const numericStatus = status === 'available' ? 1 : 0;
+
       const response = await axios.put(
-        `${BASE_URL}/menus/status`,
-        { id, status },
+        `${BASE_URL}/menu/status`, // Fixed endpoint path
+        { id, status: numericStatus },
         { headers }
       );
-      fetchMenuItems();
-      return { id, status: response.data.status };
+
+      return {
+        _id: id,
+        status: numericStatus,
+        data: response.data
+      };
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to update menu status');
+      return rejectWithValue(
+        error.response?.data?.message ||
+        'Failed to update menu status'
+      );
     }
   }
 );
@@ -167,7 +201,14 @@ const menuSlice = createSlice({
     loading: false,
     error: null,
   },
-  reducers: {},
+  reducers: {
+    clearError: (state) => {
+      state.error = null;
+    },
+    setLoading: (state, action) => {
+      state.loading = action.payload;
+    }
+  },
   extraReducers: (builder) => {
     // Fetch menu items
     builder
@@ -177,13 +218,12 @@ const menuSlice = createSlice({
       })
       .addCase(fetchMenuItems.fulfilled, (state, action) => {
         state.loading = false;
-        console.log(action.payload , "action payload")
-        state.menuItems = action.payload;
+        state.menuItems = Array.isArray(action.payload) ? action.payload : [];
       })
       .addCase(fetchMenuItems.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-        toast.error('Failed to fetch menu items.');
+        toast.error(action.payload || 'Failed to fetch menu items.');
       });
 
     // Add menu item
@@ -194,14 +234,16 @@ const menuSlice = createSlice({
       })
       .addCase(addMenuItem.fulfilled, (state, action) => {
         state.loading = false;
-        state.menuItems = [...state.menuItems, action.payload.data.menu];
-        // state.menuItems = [...state.menuItems, action.payload];
-        // toast.success('Menu item added successfully!');
+        // Add new item to the beginning of the array
+        if (action.payload.data) {
+          state.menuItems = [action.payload.data, ...state.menuItems];
+        }
+        // Don't show toast here - handle in component
       })
       .addCase(addMenuItem.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-        // toast.error(action.payload || 'Failed to add menu item.');
+        // Don't show toast here - handle in component
       });
 
     // Update menu item
@@ -212,10 +254,12 @@ const menuSlice = createSlice({
       })
       .addCase(updateMenuItem.fulfilled, (state, action) => {
         state.loading = false;
-        const updatedItem = action.payload;
-        const index = state.menuItems.findIndex((item) => item.id === updatedItem.id);
-        if (index !== -1) {
-          state.menuItems[index] = updatedItem;
+        if (action.payload.data) {
+          const updatedItem = action.payload.data;
+          const index = state.menuItems.findIndex((item) => item._id === updatedItem._id);
+          if (index !== -1) {
+            state.menuItems[index] = updatedItem;
+          }
         }
       })
       .addCase(updateMenuItem.rejected, (state, action) => {
@@ -231,8 +275,14 @@ const menuSlice = createSlice({
       })
       .addCase(deleteMenuItem.fulfilled, (state, action) => {
         state.loading = false;
-        state.menuItems = state.menuItems.filter((item) => item.id !== action.payload.id);
-        toast.success('Menu item deleted successfully!');
+        // For soft delete, update the item's status instead of removing it
+        const itemId = action.payload._id;
+        const index = state.menuItems.findIndex((item) => item._id === itemId);
+        if (index !== -1) {
+          state.menuItems[index].status = 0; // Mark as deleted
+        }
+        // Optionally, you can remove it from the array entirely
+        // state.menuItems = state.menuItems.filter((item) => item._id !== itemId);
       })
       .addCase(deleteMenuItem.rejected, (state, action) => {
         state.loading = false;
@@ -248,12 +298,11 @@ const menuSlice = createSlice({
       })
       .addCase(updateMenuItemStatus.fulfilled, (state, action) => {
         state.loading = false;
-        const { id, status } = action.payload;
-        const menuItem = state.menuItems.find((item) => item.id === id);
+        const { _id, status } = action.payload;
+        const menuItem = state.menuItems.find((item) => item._id === _id);
         if (menuItem) {
           menuItem.status = status;
         }
-        toast.success('Menu item status updated successfully!');
       })
       .addCase(updateMenuItemStatus.rejected, (state, action) => {
         state.loading = false;
@@ -263,4 +312,5 @@ const menuSlice = createSlice({
   },
 });
 
+export const { clearError, setLoading } = menuSlice.actions;
 export default menuSlice.reducer;

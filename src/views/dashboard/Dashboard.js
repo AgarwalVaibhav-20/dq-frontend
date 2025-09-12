@@ -1,42 +1,21 @@
-import React, { useEffect, useState, useCallback, useMemo } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
-import {
-  CCard,
-  CCardBody,
-  CCardHeader,
-  CCol,
-  CRow,
-  CFormSelect,
-  CFormInput,
-  CButton,
-  CSpinner,
-  CAlert,
-  CTooltip,
-} from '@coreui/react';
-import { CChartLine, CChartBar, CChartPie } from '@coreui/react-chartjs';
-import {
-  fetchChartData,
-  fetchWeeklyChartData,
-  fetchOverallReport,
-  fetchPaymentTypeStats,
-  // clearDashboardError,
-} from '../../redux/slices/dashboardSlice';
+import { CChartLine, CChartPie, CChartBar } from '@coreui/react-chartjs';
+import { CFormSelect, CSpinner, CRow, CCol, CCard, CCardBody, CCardHeader, CFormInput, CButton } from '@coreui/react';
+import { fetchChartData, fetchWeeklyChartData, fetchOverallReport, fetchPaymentTypeStats } from '../../redux/slices/dashboardSlice';
 
 const Dashboard = () => {
   const dispatch = useDispatch();
-  const restaurantId = useSelector((state) => state.auth.restaurantId);
-  const token = localStorage.getItem('authToken');
-
   const {
     chartData,
     weeklyChartData,
     overallReport,
     paymentTypeStats,
     loading,
-    error,
+    error
   } = useSelector((state) => state.dashboard);
+  const restaurantId = useSelector((state) => state.auth.restaurantId);
 
-  // State management
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedWeekYear, setSelectedWeekYear] = useState(new Date().getFullYear());
   const [dropdownStates, setDropdownStates] = useState({
@@ -47,443 +26,294 @@ const Dashboard = () => {
   });
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
-  const [paymentLoading, setPaymentLoading] = useState(false);
-
-  // Initial data fetch
-  useEffect(() => {
-    if (restaurantId && token) {
-      // Clear any previous errors
-      // dispatch(clearDashboardError?.() || { type: 'dashboard/clearError' });
-
-      // Fetch initial data
-      dispatch(fetchOverallReport({ token }));
-      dispatch(fetchChartData({ year: selectedYear, restaurantId, token }));
-      dispatch(fetchWeeklyChartData({ year: selectedWeekYear, restaurantId, token }));
-    }
-  }, [dispatch, restaurantId, token]);
-
-  // Handle year changes
-  useEffect(() => {
-    if (restaurantId && token && selectedYear) {
-      dispatch(fetchChartData({ year: selectedYear, restaurantId, token }));
-    }
-  }, [dispatch, selectedYear, restaurantId, token]);
 
   useEffect(() => {
-    if (restaurantId && token && selectedWeekYear) {
-      dispatch(fetchWeeklyChartData({ year: selectedWeekYear, restaurantId, token }));
+    if (restaurantId) {
+      dispatch(fetchOverallReport({ restaurantId }));
+      dispatch(fetchChartData({ year: selectedYear, restaurantId }));
+      dispatch(fetchWeeklyChartData({ year: selectedWeekYear, restaurantId }));
     }
-  }, [dispatch, selectedWeekYear, restaurantId, token]);
+  }, [dispatch, selectedYear, selectedWeekYear, restaurantId]);
 
-  // Memoized year options
-  const yearOptions = useMemo(() =>
-    Array.from({ length: 10 }, (_, i) => {
-      const year = new Date().getFullYear() - i;
-      return (
-        <option key={year} value={year}>
-          {year}
-        </option>
+  const handleFetchReport = () => {
+    if (startDate && endDate) {
+      dispatch(
+        fetchPaymentTypeStats({
+          startDate,
+          endDate,
+          restaurantId: restaurantId,
+        })
       );
-    }), []
-  );
-
-  // Handle payment type report fetch
-  const handleFetchReport = useCallback(async () => {
-    if (!startDate || !endDate) {
+    } else {
       alert('Please select both start and end dates');
-      return;
     }
+  };
 
-    if (new Date(startDate) > new Date(endDate)) {
-      alert('Start date cannot be greater than end date');
-      return;
-    }
+  const paymentReportData = paymentTypeStats?.data?.map((item) => ({
+    label: item.payment_type,
+    count: item.total_count,
+    amount: parseFloat(item.total_amount),
+  })) || [];
 
-    if (!token) {
-      alert('Authentication token not found. Please log in again.');
-      return;
-    }
-
-    setPaymentLoading(true);
-    try {
-      await dispatch(fetchPaymentTypeStats({
-        startDate,
-        endDate,
-        restaurantId,
-        token,
-      })).unwrap();
-    } catch (error) {
-      console.error('Failed to fetch payment type stats:', error);
-    } finally {
-      setPaymentLoading(false);
-    }
-  }, [dispatch, startDate, endDate, restaurantId, token]);
-
-  // Handle dropdown changes
-  const handleDropdownChange = useCallback((key, value) => {
-    setDropdownStates((prev) => ({
-      ...prev,
+  const handleDropdownChange = (key, value) => {
+    setDropdownStates((prevState) => ({
+      ...prevState,
       [key]: value,
     }));
-  }, []);
+  };
 
-  // Get report data based on dropdown selection
-  const getReportData = useCallback((key) => {
-    const state = dropdownStates[key];
-    const capitalizedState = state.charAt(0).toUpperCase() + state.slice(1);
-
-    const dataMap = {
-      collection: overallReport?.[`${state}Collection`],
-      invoices: overallReport?.[`totalInvoice${capitalizedState}`],
-      completedOrders: overallReport?.[`totalCompleteOrder${capitalizedState}`],
-      rejectedOrders: overallReport?.[`totalRejectOrder${capitalizedState}`],
-    };
-
-    return dataMap[key];
-  }, [dropdownStates, overallReport]);
-
-  // Format number for display
-  const formatNumber = useCallback((value) => {
-    if (typeof value !== 'number') return '0';
-    return value.toLocaleString('en-IN');
-  }, []);
-
-  // Format currency
-  const formatCurrency = useCallback((value) => {
-    if (typeof value !== 'number') return '₹0';
-    return `₹${value.toLocaleString('en-IN')}`;
-  }, []);
-
-  // Process payment report data
-  const paymentReportData = useMemo(() =>
-    paymentTypeStats?.data?.map((item) => ({
-      label: item.payment_type,
-      count: item.total_count,
-      amount: parseFloat(item.total_amount),
-    })) || [], [paymentTypeStats]);
-
-  // Render report card
-  const renderReportCard = useCallback((title, key) => {
-    const value = getReportData(key);
-    const isCollection = key === 'collection';
-
+  const yearOptions = Array.from({ length: 10 }, (_, i) => {
+    const year = new Date().getFullYear() - i;
     return (
-      <CCol md={3} className="mb-3" key={key}>
-        <CCard className="h-100">
-          <CCardHeader className="d-flex justify-content-between align-items-center">
-            <span>{title}</span>
-            <CFormSelect
-              value={dropdownStates[key]}
-              onChange={(e) => handleDropdownChange(key, e.target.value)}
-              style={{ width: '120px' }}
-              size="sm"
-            >
-              <option value="today">Today</option>
-              <option value="weekly">Weekly</option>
-              <option value="monthly">Monthly</option>
-            </CFormSelect>
-          </CCardHeader>
-          <CCardBody className="text-center">
-            <div
-              style={{
-                fontSize: '2rem',
-                fontWeight: 'bold',
-                margin: '20px 0',
-                color: value > 0 ? '#28a745' : '#6c757d',
-              }}
-            >
-              {isCollection ? formatCurrency(value || 0) : formatNumber(value || 0)}
-            </div>
-            {loading && (
-              <CSpinner size="sm" color="primary" />
-            )}
-          </CCardBody>
-        </CCard>
-      </CCol>
+      <option key={year} value={year}>
+        {year}
+      </option>
     );
-  }, [dropdownStates, getReportData, handleDropdownChange, loading, formatCurrency, formatNumber]);
+  });
 
-  // Error component
-  const ErrorAlert = ({ message, onRetry }) => (
-    <CAlert color="danger" className="mb-4">
-      <div className="d-flex justify-content-between align-items-center">
-        <span><strong>Error:</strong> {message}</span>
-        <CButton color="danger" size="sm" variant="outline" onClick={onRetry}>
-          Retry
-        </CButton>
-      </div>
-    </CAlert>
+  const getReportData = (key) => {
+    const state = dropdownStates[key];
+    return {
+      collection: overallReport?.[`${state}Collection`],
+      invoices: overallReport?.[`totalInvoice${state.charAt(0).toUpperCase() + state.slice(1)}`],
+      completedOrders: overallReport?.[`totalCompleteOrder${state.charAt(0).toUpperCase() + state.slice(1)}`],
+      rejectedOrders: overallReport?.[`totalRejectOrder${state.charAt(0).toUpperCase() + state.slice(1)}`],
+    }[key];
+  };
+
+  const renderReportCard = (title, key) => (
+    <CCol md={3}>
+      <CCard>
+        <CCardHeader className="d-flex justify-content-between align-items-center">
+          {title}
+          <CFormSelect
+            value={dropdownStates[key]}
+            onChange={(e) => handleDropdownChange(key, e.target.value)}
+            style={{ width: '120px' }}
+          >
+            <option value="today">Today</option>
+            <option value="weekly">Weekly</option>
+            <option value="monthly">Monthly</option>
+          </CFormSelect>
+        </CCardHeader>
+        <CCardBody>
+          <div
+            style={{
+              fontSize: '2rem',
+              fontWeight: 'bold',
+              textAlign: 'center',
+              margin: '20px 0',
+            }}
+          >
+            {getReportData(key) || 0}
+          </div>
+        </CCardBody>
+      </CCard>
+    </CCol>
   );
 
-  // Handle retry
-  const handleRetry = useCallback(() => {
-    if (restaurantId && token) {
-      // dispatch(clearDashboardError?.() || { type: 'dashboard/clearError' });
-      dispatch(fetchOverallReport({ restaurantId, token }));
-      dispatch(fetchChartData({ year: selectedYear, restaurantId, token }));
-      dispatch(fetchWeeklyChartData({ year: selectedWeekYear, restaurantId, token }));
-    }
-  }, [dispatch, restaurantId, token, selectedYear, selectedWeekYear]);
-
-  // Loading component
-  if (loading && !overallReport) {
-    return (
-      <div style={{ padding: '20px' }}>
-        <div className="d-flex justify-content-center align-items-center" style={{ height: '50vh' }}>
-          <CSpinner color="primary" variant="grow" size="lg" />
-          <span className="ms-3">Loading dashboard data...</span>
-        </div>
-      </div>
-    );
-  }
-
   return (
-    <div style={{ padding: '20px' }}>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Dashboard Overview</h2>
-        <div className="text-muted small">
-          Restaurant ID: {restaurantId || 'Not Found'}
+    <div style={{ paddingLeft: '20px', paddingRight: '20px' }}>
+      <h2 className="mb-4">Overview</h2>
+      {loading ? (
+        <div className="d-flex justify-content-center">
+          <CSpinner color="primary" variant="grow" />
         </div>
-      </div>
+      ) : (
+        <>
+          {/* Overall Report Section */}
+          <CRow className="mb-4" style={{ width: '100%' }}>
+            {renderReportCard('Collection (₹)', 'collection')}
+            {renderReportCard('Total Invoices', 'invoices')}
+            {renderReportCard('Completed Orders', 'completedOrders')}
+            {renderReportCard('Rejected Orders', 'rejectedOrders')}
+          </CRow>
 
-      {error && (
-        <ErrorAlert
-          message={error}
-          onRetry={handleRetry}
-        />
+          {/* Chart Section */}
+          <CRow className="justify-content-center" style={{ width: '100%' }}>
+            <CCol md={6}>
+              <CCard>
+                <CCardHeader className="d-flex justify-content-between align-items-center">
+                  Yearly Performance
+                  <CFormSelect
+                    value={selectedYear}
+                    onChange={(e) => setSelectedYear(e.target.value)}
+                    style={{ width: '120px' }}
+                  >
+                    {yearOptions}
+                  </CFormSelect>
+                </CCardHeader>
+                <CCardBody>
+                  <CChartLine
+                    data={{
+                      labels: chartData?.labels || [],
+                      datasets: chartData?.datasets || [],
+                    }}
+                    options={{
+                      responsive: true,
+                      plugins: {
+                        legend: {
+                          position: 'top',
+                        },
+                        title: {
+                          display: true,
+                          text: `Yearly Performance for ${selectedYear}`,
+                        },
+                      },
+                    }}
+                    style={{ height: '400px' }}
+                  />
+                </CCardBody>
+              </CCard>
+            </CCol>
+
+            <CCol md={6}>
+              <CCard>
+                <CCardHeader className="d-flex justify-content-between align-items-center">
+                  Weekly Performance
+                  <CFormSelect
+                    value={selectedWeekYear}
+                    onChange={(e) => setSelectedWeekYear(e.target.value)}
+                    style={{ width: '120px' }}
+                  >
+                    {yearOptions}
+                  </CFormSelect>
+                </CCardHeader>
+                <CCardBody>
+                  <CChartPie
+                    data={{
+                      labels: weeklyChartData?.datasets?.map((ds) => ds.label) || [],
+                      datasets: [
+                        {
+                          data: weeklyChartData?.datasets?.map((ds) =>
+                            ds.data.reduce((acc, val) => acc + parseFloat(val || 0), 0)
+                          ) || [],
+                          backgroundColor:
+                            weeklyChartData?.datasets?.map((ds) => ds.backgroundColor) || [],
+                          borderColor:
+                            weeklyChartData?.datasets?.map((ds) => ds.borderColor) || [],
+                        },
+                      ],
+                    }}
+                    options={{
+                      responsive: true,
+                      plugins: {
+                        legend: {
+                          position: 'top',
+                        },
+                        title: {
+                          display: true,
+                          text: `Weekly Performance for ${selectedWeekYear}`,
+                        },
+                      },
+                    }}
+                    style={{ height: '400px' }}
+                  />
+                </CCardBody>
+              </CCard>
+            </CCol>
+          </CRow>
+
+          {/* Payment Report Section */}
+          <CRow className="justify-content-center my-4" style={{ width: '100%' }}>
+            <CCol md={12}>
+              <CCard>
+                <h3 className="d-flex p-4 fw-semibold justify-content-between align-items-center">
+                Get Report by Payment Type
+                </h3>
+                <h6 className='text-danger px-4 fw-medium cil-italic'>Select start date and end to get Report</h6>
+                <CCardBody>
+                  <CRow className="align-items-center mb-4">
+                    <CCol md={5}>
+                      <label htmlFor="start-date" className="form-label">Start Date</label>
+                      <CFormInput
+                        type="date"
+                        id="start-date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        placeholder="Start Date"
+                      />
+                    </CCol>
+                    <CCol md={5}>
+                      <label htmlFor="end-date" className="form-label">End Date</label>
+                      <CFormInput
+                        type="date"
+                        id="end-date"
+                        value={endDate}
+                        onChange={(e) => setEndDate(e.target.value)}
+                        placeholder="End Date"
+                      />
+                    </CCol>
+                    <CCol md={2} className="text-end mt-4">
+                      <CButton color="primary" onClick={handleFetchReport} style={{ width: '100%' }}>
+                        Fetch Report
+                      </CButton>
+                    </CCol>
+                  </CRow>
+                  <CRow>
+                    <CCol>
+                      {loading && <p>Loading...</p>}
+                      {error && <p className="text-danger">Error: {error}</p>}
+                      {(!loading && paymentTypeStats?.status === 'success' && paymentReportData.length > 0) ? (
+                        <CChartBar
+                          data={{
+                            labels: paymentReportData?.map((item) => item.label),
+                            datasets: [
+                              {
+                                label: 'Total Count',
+                                backgroundColor: '#3399ff',
+                                data: paymentReportData?.map((item) => item.count),
+                              },
+                              {
+                                label: 'Total Amount',
+                                backgroundColor: '#66cc66',
+                                data: paymentReportData?.map((item) => item.amount),
+                              },
+                            ],
+                          }}
+                          options={{
+                            plugins: {
+                              legend: {
+                                position: 'top',
+                              },
+                            },
+                            responsive: true,
+                            maintainAspectRatio: false,
+                          }}
+                          style={{ height: '400px' }}
+                        />
+                      ) : (
+                        <CChartBar
+                          data={{
+                            labels: ['Default'],
+                            datasets: [
+                              {
+                                label: 'No Data',
+                                backgroundColor: '#d3d3d3',
+                                data: [0],
+                              },
+                            ],
+                          }}
+                          options={{
+                            plugins: {
+                              legend: {
+                                display: false,
+                              },
+                            },
+                            responsive: true,
+                            maintainAspectRatio: false,
+                          }}
+                          style={{ height: '400px' }}
+                        />
+                      )}
+                    </CCol>
+                  </CRow>
+                </CCardBody>
+              </CCard>
+            </CCol>
+          </CRow>
+        </>
       )}
-
-      {/* Overall Report Cards */}
-      <CRow>
-        {renderReportCard('Collection', 'collection')}
-        {renderReportCard('Total Invoices', 'invoices')}
-        {renderReportCard('Completed Orders', 'completedOrders')}
-        {renderReportCard('Rejected Orders', 'rejectedOrders')}
-      </CRow>
-
-      {/* Charts Row */}
-      <CRow className="mt-4">
-        {/* Yearly Chart */}
-        <CCol md={6} className="mb-4">
-          <CCard className="h-100">
-            <CCardHeader className="d-flex justify-content-between align-items-center">
-              <span>Yearly Performance</span>
-              <CFormSelect
-                value={selectedYear}
-                onChange={(e) => setSelectedYear(parseInt(e.target.value))}
-                style={{ width: '120px' }}
-                size="sm"
-              >
-                {yearOptions}
-              </CFormSelect>
-            </CCardHeader>
-            <CCardBody>
-              {chartData?.labels?.length > 0 ? (
-                <CChartLine
-                  data={{
-                    labels: chartData.labels,
-                    datasets: chartData.datasets || [],
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { position: 'top' },
-                      title: {
-                        display: true,
-                        text: `Performance for ${selectedYear}`,
-                      },
-                    },
-                    scales: {
-                      y: {
-                        beginAtZero: true,
-                      },
-                    },
-                  }}
-                  style={{ height: '300px' }}
-                />
-              ) : (
-                <div className="d-flex justify-content-center align-items-center" style={{ height: '300px' }}>
-                  <span className="text-muted">No yearly data available</span>
-                </div>
-              )}
-            </CCardBody>
-          </CCard>
-        </CCol>
-
-        {/* Weekly Pie Chart */}
-        <CCol md={6} className="mb-4">
-          <CCard className="h-100">
-            <CCardHeader className="d-flex justify-content-between align-items-center">
-              <span>Weekly Performance</span>
-              <CFormSelect
-                value={selectedWeekYear}
-                onChange={(e) => setSelectedWeekYear(parseInt(e.target.value))}
-                style={{ width: '120px' }}
-                size="sm"
-              >
-                {yearOptions}
-              </CFormSelect>
-            </CCardHeader>
-            <CCardBody>
-              {weeklyChartData?.datasets?.length > 0 ? (
-                <CChartPie
-                  data={{
-                    labels: weeklyChartData.datasets.map((ds) => ds.label) || [],
-                    datasets: [
-                      {
-                        data: weeklyChartData.datasets.map((ds) =>
-                          ds.data.reduce((acc, val) => acc + parseFloat(val || 0), 0)
-                        ),
-                        backgroundColor: weeklyChartData.datasets.map((ds) => ds.backgroundColor),
-                        borderColor: weeklyChartData.datasets.map((ds) => ds.borderColor),
-                        borderWidth: 1,
-                      },
-                    ],
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    plugins: {
-                      legend: { position: 'top' },
-                      title: {
-                        display: true,
-                        text: `Weekly Performance for ${selectedWeekYear}`,
-                      },
-                    },
-                  }}
-                  style={{ height: '300px' }}
-                />
-              ) : (
-                <div className="d-flex justify-content-center align-items-center" style={{ height: '300px' }}>
-                  <span className="text-muted">No weekly data available</span>
-                </div>
-              )}
-            </CCardBody>
-          </CCard>
-        </CCol>
-      </CRow>
-
-      {/* Payment Type Report */}
-      <CRow className="mt-4">
-        <CCol md={12}>
-          <CCard>
-            <CCardHeader>
-              <div className="d-flex justify-content-between align-items-center">
-                <span>Payment Type Report</span>
-                {paymentLoading && <CSpinner size="sm" />}
-              </div>
-            </CCardHeader>
-            <CCardBody>
-              <CRow className="mb-3">
-                <CCol md={4}>
-                  <label className="form-label">Start Date</label>
-                  <CFormInput
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    max={new Date().toISOString().split('T')[0]}
-                  />
-                </CCol>
-                <CCol md={4}>
-                  <label className="form-label">End Date</label>
-                  <CFormInput
-                    type="date"
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    max={new Date().toISOString().split('T')[0]}
-                    min={startDate}
-                  />
-                </CCol>
-                <CCol md={4} className="d-flex align-items-end">
-                  <CTooltip content="Fetch payment report for selected date range">
-                    <CButton
-                      color="primary"
-                      onClick={handleFetchReport}
-                      style={{ width: '100%' }}
-                      disabled={paymentLoading || !startDate || !endDate}
-                    >
-                      {paymentLoading ? <CSpinner size="sm" /> : 'Fetch Report'}
-                    </CButton>
-                  </CTooltip>
-                </CCol>
-              </CRow>
-
-              <div style={{ height: '400px' }}>
-                <CChartBar
-                  data={{
-                    labels: paymentReportData.length > 0
-                      ? paymentReportData.map((item) => item.label)
-                      : ['No Data'],
-                    datasets: paymentReportData.length > 0
-                      ? [
-                          {
-                            label: 'Transaction Count',
-                            backgroundColor: '#36a2eb',
-                            borderColor: '#36a2eb',
-                            data: paymentReportData.map((item) => item.count),
-                            yAxisID: 'y',
-                          },
-                          {
-                            label: 'Total Amount (₹)',
-                            backgroundColor: '#4bc0c0',
-                            borderColor: '#4bc0c0',
-                            data: paymentReportData.map((item) => item.amount),
-                            yAxisID: 'y1',
-                          },
-                        ]
-                      : [
-                          {
-                            label: 'No Data',
-                            backgroundColor: '#d3d3d3',
-                            data: [0],
-                          },
-                        ],
-                  }}
-                  options={{
-                    responsive: true,
-                    maintainAspectRatio: false,
-                    interaction: {
-                      mode: 'index',
-                      intersect: false,
-                    },
-                    plugins: {
-                      legend: { position: 'top' },
-                      title: {
-                        display: paymentReportData.length > 0,
-                        text: `Payment Report: ${startDate} to ${endDate}`,
-                      },
-                    },
-                    scales: paymentReportData.length > 0 ? {
-                      y: {
-                        type: 'linear',
-                        display: true,
-                        position: 'left',
-                        title: {
-                          display: true,
-                          text: 'Transaction Count',
-                        },
-                      },
-                      y1: {
-                        type: 'linear',
-                        display: true,
-                        position: 'right',
-                        title: {
-                          display: true,
-                          text: 'Amount (₹)',
-                        },
-                        grid: {
-                          drawOnChartArea: false,
-                        },
-                      },
-                    } : {},
-                  }}
-                />
-              </div>
-            </CCardBody>
-          </CCard>
-        </CCol>
-      </CRow>
     </div>
   );
 };

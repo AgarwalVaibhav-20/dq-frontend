@@ -41,66 +41,77 @@ export default function Banner() {
   const [dropdownOpen, setDropdownOpen] = useState({})
 
   const dispatch = useDispatch()
-  const { banners, loading } = useSelector((state) => state.banner)
+  const { banners, loading, loadingUpdate } = useSelector((state) => state.banner)
   const token = localStorage.getItem('authToken')
-  const restaurantId = useSelector((state) => state.auth.restaurantId)
 
   useEffect(() => {
-    if (restaurantId) {
-      dispatch(fetchBanners({ restaurantId, token }))
+    if (token) {
+      dispatch(fetchBanners({ token }))
     }
-  }, [dispatch, token, restaurantId])
+  }, [dispatch, token])
 
   const filteredBanners = (banners || [])
     .filter((banner) => banner && typeof banner === 'object')
     .filter((banner) => {
       if (filter === 'All') return true
 
-      const createdAt = new Date(banner.created_at)
+      const createdAt = new Date(banner.createdAt || banner.created_at)
       const now = new Date()
 
       switch (filter) {
         case 'This week':
-          return createdAt >= new Date(now.setDate(now.getDate() - 7))
+          const weekAgo = new Date(now)
+          weekAgo.setDate(now.getDate() - 7)
+          return createdAt >= weekAgo
         case 'This month':
-          return createdAt.getMonth() === new Date().getMonth()
+          return createdAt.getMonth() === now.getMonth() && createdAt.getFullYear() === now.getFullYear()
         case 'Last 3 Months':
-          return createdAt >= new Date(now.setMonth(now.getMonth() - 3))
+          const threeMonthsAgo = new Date(now)
+          threeMonthsAgo.setMonth(now.getMonth() - 3)
+          return createdAt >= threeMonthsAgo
         default:
           return true
       }
     })
     .filter((banner) => {
+      if (!searchTerm) return true
       const urls = [banner.banner_1, banner.banner_2, banner.banner_3].filter(Boolean)
-      return urls.some((url) => url.toLowerCase().includes(searchTerm.toLowerCase()))
+      return urls.some((url) =>
+        url && url.toLowerCase().includes(searchTerm.toLowerCase())
+      )
     })
 
-  const handleAddBanner = () => {
+  const handleAddBanner = async () => {
     if (!bannerData.banner_1) {
       toast.error('Please upload the first banner image (banner_1) as it is required.')
       return
     }
 
-    const formData = {
-      banner_1: bannerData.banner_1,
-      banner_2: bannerData.banner_2,
-      banner_3: bannerData.banner_3,
-      token,
-    }
+    try {
+      const resultAction = await dispatch(createBanner({
+        banner_1: bannerData.banner_1,
+        banner_2: bannerData.banner_2,
+        banner_3: bannerData.banner_3,
+        token,
+      }))
 
-    dispatch(createBanner(formData)).then(() => {
-      dispatch(fetchBanners({ restaurantId, token }))
-      setBannerData({ banner_1: null, banner_2: null, banner_3: null })
-      setModalVisible(false)
-    })
+      if (createBanner.fulfilled.match(resultAction)) {
+        setBannerData({ banner_1: null, banner_2: null, banner_3: null })
+        setModalVisible(false)
+        // Refresh banners list
+        dispatch(fetchBanners({ token }))
+      }
+    } catch (error) {
+      console.error('Error creating banner:', error)
+    }
   }
 
   const handleEditBanner = (banner) => {
-    setEditedBanner(banner)
+    setEditedBanner({ ...banner })
     setEditModalVisible(true)
   }
 
-  const handleUpdateBanner = () => {
+  const handleUpdateBanner = async () => {
     if (
       !editedBanner.banner_1 &&
       !editedBanner.banner_2 &&
@@ -110,31 +121,40 @@ export default function Banner() {
       return
     }
 
-    const payload = {
-      id: editedBanner.id,
-      banner_1: editedBanner.banner_1 instanceof File ? editedBanner.banner_1 : null,
-      banner_2: editedBanner.banner_2 instanceof File ? editedBanner.banner_2 : null,
-      banner_3: editedBanner.banner_3 instanceof File ? editedBanner.banner_3 : null,
-      restaurantId,
-      token,
-    }
+    try {
+      const payload = {
+        id: editedBanner._id || editedBanner.id,
+        banner_1: editedBanner.banner_1 instanceof File ? editedBanner.banner_1 : editedBanner.banner_1,
+        banner_2: editedBanner.banner_2 instanceof File ? editedBanner.banner_2 : editedBanner.banner_2,
+        banner_3: editedBanner.banner_3 instanceof File ? editedBanner.banner_3 : editedBanner.banner_3,
+        token,
+      }
 
-    dispatch(updateBanner(payload))
-      .unwrap()
-      .then(() => {
+      const resultAction = await dispatch(updateBanner(payload))
 
-
+      if (updateBanner.fulfilled.match(resultAction)) {
         setEditModalVisible(false)
         setEditedBanner({})
-        return dispatch(fetchBanners({ restaurantId, token }))
-      })
-      .catch((error) => {
-        toast.error(error || 'Failed to update banner.')
-      })
+        // Refresh banners list
+        dispatch(fetchBanners({ token }))
+      }
+    } catch (error) {
+      console.error('Error updating banner:', error)
+    }
   }
 
-  const handleDeleteBanner = (id) => {
-    dispatch(deleteBanner({ id, token }))
+  const handleDeleteBanner = async (id) => {
+    if (window.confirm('Are you sure you want to delete this banner?')) {
+      try {
+        const resultAction = await dispatch(deleteBanner({ id, token }))
+        if (deleteBanner.fulfilled.match(resultAction)) {
+          // Refresh banners list
+          dispatch(fetchBanners({ token }))
+        }
+      } catch (error) {
+        console.error('Error deleting banner:', error)
+      }
+    }
   }
 
   const toggleDropdown = (id) => {
@@ -147,6 +167,20 @@ export default function Banner() {
   const handleFileChange = (e, bannerKey, isEdit = false) => {
     const file = e.target.files[0]
     if (!file) return
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
+    if (!allowedTypes.includes(file.type)) {
+      toast.error('Only JPEG, JPG, PNG, and WebP files are allowed.')
+      return
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('File size should not exceed 5MB.')
+      return
+    }
+
     if (isEdit) {
       setEditedBanner((prev) => ({
         ...prev,
@@ -160,7 +194,7 @@ export default function Banner() {
     }
   }
 
-  if (loading) {
+  if (loading && !banners.length) {
     return (
       <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '100vh' }}>
         <CSpinner className="m-auto" />
@@ -178,11 +212,12 @@ export default function Banner() {
           {['banner_1', 'banner_2', 'banner_3'].map((key) => (
             <div key={key} className="mb-3">
               <label htmlFor={key} className="form-label">
-                {key.replace('_', ' ').toUpperCase()}
+                {key.replace('_', ' ').toUpperCase()} {key === 'banner_1' && <span className="text-danger">*</span>}
               </label>
               <CFormInput
                 id={key}
                 type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
                 onChange={(e) => handleFileChange(e, key)}
               />
               {bannerData[key] && (
@@ -202,7 +237,7 @@ export default function Banner() {
           Close
         </CButton>
         <CButton color="primary" onClick={handleAddBanner} disabled={loading}>
-          {loading ? 'Saving...' : 'Save'}
+          {loading ? <CSpinner as="span" size="sm" aria-hidden="true" /> : 'Save'}
         </CButton>
       </CModalFooter>
     </CModal>
@@ -223,14 +258,15 @@ export default function Banner() {
               <CFormInput
                 id={'edit_' + key}
                 type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
                 onChange={(e) => handleFileChange(e, key, true)}
               />
               {editedBanner[key] && (
                 <img
                   src={
-                    typeof editedBanner[key] === 'string'
-                      ? editedBanner[key]
-                      : URL.createObjectURL(editedBanner[key])
+                    editedBanner[key] instanceof File
+                      ? URL.createObjectURL(editedBanner[key])
+                      : editedBanner[key]
                   }
                   alt="preview"
                   className="img-fluid rounded mt-2"
@@ -245,8 +281,8 @@ export default function Banner() {
         <CButton color="secondary" onClick={() => setEditModalVisible(false)}>
           Cancel
         </CButton>
-        <CButton color="primary" onClick={handleUpdateBanner}>
-          {loading ? <CSpinner as="span" size="sm" aria-hidden="true" /> : 'Save Changes'}
+        <CButton color="primary" onClick={handleUpdateBanner} disabled={loadingUpdate}>
+          {loadingUpdate ? <CSpinner as="span" size="sm" aria-hidden="true" /> : 'Save Changes'}
         </CButton>
       </CModalFooter>
     </CModal>
@@ -255,7 +291,7 @@ export default function Banner() {
   return (
     <div className="p-4">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1 className="fs-4 fw-semibold">Banners</h1>
+        <h1 className="fs-4 fw-semibold">Banners ({filteredBanners.length})</h1>
         <CButton color="primary" onClick={() => setModalVisible(true)}>
           Add Banner
         </CButton>
@@ -276,70 +312,100 @@ export default function Banner() {
         </CFormSelect>
       </div>
 
-      <CRow>
-        {filteredBanners?.map((banner) => (
-          <CCol key={banner.id} xs="12" sm="6" md="4" lg="3" className="mb-4">
-            <CCard className="shadow-sm border rounded h-100">
-              {(() => {
-                const images = [banner.banner_1, banner.banner_2, banner.banner_3].filter(Boolean)
+      {filteredBanners.length === 0 ? (
+        <div className="text-center py-5">
+          <p className="text-muted">No banners found. Click "Add Banner" to create your first banner.</p>
+        </div>
+      ) : (
+        <CRow>
+          {filteredBanners.map((banner) => (
+            <CCol key={banner._id || banner.id} xs="12" sm="6" md="4" lg="3" className="mb-4">
+              <CCard className="shadow-sm border rounded h-100">
+                {(() => {
+                  const images = [banner.banner_1, banner.banner_2, banner.banner_3].filter(Boolean)
 
-                if (images.length === 0) return null
+                  if (images.length === 0) {
+                    return (
+                      <div className="d-flex align-items-center justify-content-center" style={{ height: '150px', backgroundColor: '#f8f9fa' }}>
+                        <span className="text-muted">No images</span>
+                      </div>
+                    )
+                  }
 
-                if (images.length === 1) {
+                  if (images.length === 1) {
+                    return (
+                      <CCardImage
+                        src={images[0]}
+                        alt="Banner"
+                        className="img-fluid"
+                        style={{ height: '150px', objectFit: 'cover' }}
+                        onError={(e) => {
+                          e.target.style.display = 'none'
+                          e.target.nextSibling.style.display = 'flex'
+                        }}
+                      />
+                    )
+                  }
+
                   return (
-                    <CCardImage
-                      src={images[0]}
-                      alt="Banner"
-                      className="img-fluid"
-                      style={{ height: '150px', objectFit: 'cover' }}
-                    />
+                    <CCarousel controls indicators transition="crossfade" style={{ height: '150px' }}>
+                      {images.map((url, idx) => (
+                        <CCarouselItem key={idx}>
+                          <img
+                            src={url}
+                            className="d-block w-100"
+                            alt={`Banner ${idx + 1}`}
+                            style={{ height: '150px', objectFit: 'cover' }}
+                            onError={(e) => {
+                              e.target.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2RkZCIvPjx0ZXh0IHg9IjUwIiB5PSI1MCIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOTk5IiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkeT0iLjNlbSI+SW1hZ2UgTm90IEZvdW5kPC90ZXh0Pjwvc3ZnPg=='
+                            }}
+                          />
+                        </CCarouselItem>
+                      ))}
+                    </CCarousel>
                   )
-                }
-
-                return (
-                  <CCarousel controls indicators transition="crossfade" style={{ height: '150px' }}>
-                    {images.map((url, idx) => (
-                      <CCarouselItem key={idx}>
-                        <img
-                          src={url}
-                          className="d-block w-100"
-                          alt={`Banner ${idx + 1}`}
-                          style={{ height: '150px', objectFit: 'contain' }}
-                        />
-                      </CCarouselItem>
-                    ))}
-                  </CCarousel>
-                )
-              })()}
-              <CCardBody className="d-flex justify-content-between align-items-center">
-                <p className="mb-0">
-                  <strong>Restaurant ID:</strong> {banner.restaurantId || 'N/A'}
-                </p>
-                <div className="position-relative">
-                  <CButton
-                    color="light"
-                    className="p-0 border-0"
-                    style={{ fontSize: '20px' }}
-                    onClick={() => toggleDropdown(banner.id)}
-                  >
-                    &#8942;
-                  </CButton>
-                  {dropdownOpen[banner.id] && (
-                    <div className="dropdown-menu show position-absolute" style={{ right: 0, zIndex: 1000 }}>
-                      <button className="dropdown-item" onClick={() => handleEditBanner(banner)}>
-                        Edit
-                      </button>
-                      <button className="dropdown-item text-danger" onClick={() => handleDeleteBanner(banner.id)}>
-                        Delete
-                      </button>
-                    </div>
-                  )}
-                </div>
-              </CCardBody>
-            </CCard>
-          </CCol>
-        ))}
-      </CRow>
+                })()}
+                <CCardBody className="d-flex justify-content-between align-items-center">
+                  <div>
+                    <p className="mb-1">
+                      <strong>Restaurant ID:</strong> {banner.restaurantId || 'N/A'}
+                    </p>
+                    <p className="mb-0 text-muted small">
+                      Created: {new Date(banner.createdAt || banner.created_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="position-relative">
+                    <CButton
+                      color="light"
+                      className="p-0 border-0"
+                      style={{ fontSize: '20px' }}
+                      onClick={() => toggleDropdown(banner._id || banner.id)}
+                    >
+                      &#8942;
+                    </CButton>
+                    {dropdownOpen[banner._id || banner.id] && (
+                      <div className="dropdown-menu show position-absolute" style={{ right: 0, zIndex: 1000 }}>
+                        <button className="dropdown-item" onClick={() => {
+                          handleEditBanner(banner)
+                          toggleDropdown(banner._id || banner.id)
+                        }}>
+                          Edit
+                        </button>
+                        <button className="dropdown-item text-danger" onClick={() => {
+                          handleDeleteBanner(banner._id || banner.id)
+                          toggleDropdown(banner._id || banner.id)
+                        }}>
+                          Delete
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </CCardBody>
+              </CCard>
+            </CCol>
+          ))}
+        </CRow>
+      )}
 
       {AddBannerModal()}
       {EditBannerModal()}

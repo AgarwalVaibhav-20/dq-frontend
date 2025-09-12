@@ -1,195 +1,147 @@
-import React, { useState } from 'react'
+import React from 'react'
 import { CButton, CFormSwitch, CSpinner } from '@coreui/react'
-import { useDispatch } from 'react-redux'
-import { cilPencil, cilTrash, cilStorage } from '@coreui/icons'
-import { DataGrid } from '@mui/x-data-grid'
-import CustomToolbar from '../utils/CustomToolbar'
+import { cilPencil, cilTrash } from '@coreui/icons'
 import CIcon from '@coreui/icons-react'
+import { DataGrid } from '@mui/x-data-grid'
+import { useDispatch } from 'react-redux'
 import { updateMenuItemStatus, fetchMenuItems } from '../redux/slices/menuSlice'
-import { useMediaQuery } from '@mui/material';
-import { toast } from 'react-toastify';
+import { toast } from 'react-toastify'
+import { useMediaQuery } from '@mui/material'
+import CustomToolbar from '../utils/CustomToolbar'
 
-const MenuItemList = ({ menuItems, menuItemsLoading, setSelectedMenu, setEditModalVisible, setDeleteModalVisible, setEditStockModalVisible }) => {
-  const isMobile = useMediaQuery('(max-width:600px)');
+const MenuItemList = ({
+  menuItems,
+  menuItemsLoading,
+  setSelectedMenu,
+  setEditModalVisible,
+  setDeleteModalVisible
+}) => {
   const dispatch = useDispatch()
+  const isMobile = useMediaQuery('(max-width:600px)')
 
-  // Transform menuItems to ensure they have id property and handle missing data
+  // ✅ transform menuItems safely
   const transformedMenuItems = React.useMemo(() => {
-    if (!menuItems || !Array.isArray(menuItems)) {
-      return [];
-    }
-
+    if (!menuItems || !Array.isArray(menuItems)) return []
     return menuItems
-      .filter(item => item != null) // Filter out null/undefined items
+      .filter(item => item != null)
       .map((item, index) => ({
         ...item,
-        id: item._id || item.id || `temp-id-${index}`, // Use _id, fallback to id, or create temp id
-        itemImage: item.itemImage || '', // Ensure itemImage exists
-        itemName: item.itemName || 'Unknown Item',
+        id: item._id || item.id || `temp-${index}`,
+        itemName: item.itemName || 'Unknown',
         price: item.price || 0,
-        status: item.status !== undefined ? item.status : 1
-      }));
-  }, [menuItems]);
+        itemImage: item.itemImage || '',
+        status: item.status !== undefined ? item.status : 1,
+      }))
+  }, [menuItems])
+
+  const handleToggleStatus = async (row) => {
+    try {
+      const newStatus = row.status === 1 ? 0 : 1
+      await dispatch(updateMenuItemStatus({ id: row._id || row.id, status: newStatus })).unwrap()
+      const restaurantId = localStorage.getItem('restaurantId')
+      if (restaurantId) await dispatch(fetchMenuItems({ restaurantId }))
+      toast.success('Status updated!')
+    } catch (err) {
+      toast.error('Failed to update status')
+    }
+  }
 
   const columns = [
     {
       field: 'itemImage',
       headerName: 'Image',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
-      renderCell: (params) => {
-        const imageUrl = params.value;
-        return imageUrl ? (
+      flex: 1,
+      minWidth: 120,
+      renderCell: (params) =>
+        params.value ? (
           <img
-            src={imageUrl}
+            src={params.value}
             alt={params.row.itemName}
             style={{
-              maxWidth: '100px',
-              height: '60px',
+              width: 100,
+              height: 60,
               objectFit: 'cover',
-              borderRadius: '4px'
-            }}
-            onError={(e) => {
-              e.target.src = '/placeholder-image.png'; // Add a placeholder image
-              e.target.style.display = 'none'; // Or hide if no placeholder
+              borderRadius: 6,
             }}
           />
         ) : (
-          <div style={{
-            width: '100px',
-            height: '60px',
-            backgroundColor: '#f0f0f0',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            borderRadius: '4px',
-            fontSize: '12px',
-            color: '#666'
-          }}>
+          <div
+            style={{
+              width: 100,
+              height: 60,
+              backgroundColor: '#f5f5f5',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              borderRadius: 6,
+              fontSize: 12,
+              color: '#777',
+            }}
+          >
             No Image
           </div>
-        );
-      },
+        ),
+    },
+    {
+      field: 'menuId',
+      headerName: 'Menu Id',
+      flex: 1.5,
+      minWidth: '150'
     },
     {
       field: 'itemName',
       headerName: 'Item Name',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
+      flex: 1.5,
+      minWidth: 150,
     },
     {
       field: 'price',
       headerName: 'Price',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
-      renderCell: (params) => `₹${params.value || 0}`,
+      flex: 1,
+      minWidth: 100,
+      renderCell: (params) => `₹${params.value}`,
     },
     {
       field: 'status',
       headerName: 'Status',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
-      renderCell: (params) => {
-        const [loading, setLoading] = React.useState(false);
-        const [localStatus, setLocalStatus] = React.useState(params.row.status);
-
-        React.useEffect(() => {
-          setLocalStatus(params.row.status);
-        }, [params.row.status]);
-
-        const handleToggle = async () => {
-          try {
-            setLoading(true);
-            const newStatus = localStatus === 0 ? 1 : 0;
-            setLocalStatus(newStatus);
-
-            // Get restaurantId from localStorage or props
-            const restaurantId = localStorage.getItem('restaurantId');
-
-            await dispatch(
-              updateMenuItemStatus({
-                id: params.row._id || params.row.id, // Use _id if available
-                status: newStatus,
-              })
-            ).unwrap();
-
-            if (restaurantId) {
-              await dispatch(fetchMenuItems({ restaurantId }));
-            }
-
-            toast.success('Menu item status updated successfully!');
-          } catch (error) {
-            console.error('Status update error:', error);
-            // Revert local status on error
-            setLocalStatus(params.row.status);
-            toast.error(error || 'Status update failed');
-          } finally {
-            setLoading(false);
-          }
-        };
-
-        return (
-          <div className="d-flex align-items-center">
-            {loading ? (
-              <CSpinner size="sm" />
-            ) : (
-              <CFormSwitch
-                className="mx-1"
-                color="primary"
-                shape="rounded-pill"
-                checked={localStatus === 1} // Fixed: 1 should be active/checked
-                onChange={handleToggle}
-                label={localStatus === 1 ? 'Active' : 'Inactive'}
-              />
-            )}
-          </div>
-        );
-      },
+      flex: 1,
+      minWidth: 130,
+      renderCell: (params) => (
+        <CFormSwitch
+          color="primary"
+          shape="rounded-pill"
+          checked={params.row.status === 1}
+          onChange={() => handleToggleStatus(params.row)}
+          label={params.row.status === 1 ? 'Active' : 'Inactive'}
+        />
+      ),
     },
     {
       field: 'actions',
       headerName: 'Actions',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 200 : undefined,
+      flex: 1,
+      minWidth: 160,
       sortable: false,
-      filterable: false,
       renderCell: (params) => (
         <div>
-          {/* Uncomment if you need stock editing
-                    <CButton
-                        color="warning"
-                        size="sm"
-                        className='mx-1'
-                        onClick={() => {
-                            setSelectedMenu(params.row);
-                            setEditStockModalVisible(true)
-                        }}
-                        title="Edit Stock"
-                    >
-                        <CIcon icon={cilStorage} />
-                    </CButton> */}
-
           <CButton
             color="info"
             size="sm"
+            className="me-1"
             onClick={() => {
               setSelectedMenu(params.row)
               setEditModalVisible(true)
             }}
-            title="Edit Item"
           >
             <CIcon icon={cilPencil} />
           </CButton>
-
           <CButton
             color="danger"
             size="sm"
-            className="ms-1"
             onClick={() => {
               setSelectedMenu(params.row)
               setDeleteModalVisible(true)
             }}
-            title="Delete Item"
           >
             <CIcon icon={cilTrash} />
           </CButton>
@@ -199,27 +151,33 @@ const MenuItemList = ({ menuItems, menuItemsLoading, setSelectedMenu, setEditMod
   ]
 
   return (
-    <div style={{ height: 'auto', width: '100%', backgroundColor: 'white' }}>
+    <div style={{ width: '100%', backgroundColor: 'white' }}>
       <DataGrid
         rows={transformedMenuItems}
         columns={columns}
         getRowId={(row) => row.id}
-        initialState={{
-          pagination: {
-            paginationModel: { pageSize: 5 },
-          },
-        }}
-        pageSizeOptions={[5, 10, 20]}
         loading={menuItemsLoading}
+        disableRowSelectionOnClick
         autoHeight
+        pagination
+        initialState={{
+          pagination: { paginationModel: { pageSize: 10 } },
+        }}
+        pageSizeOptions={[10, 20, 30]}
         slots={{ Toolbar: CustomToolbar }}
         sx={{
+          border: 'none',
           '& .MuiDataGrid-cell': {
-            padding: '8px',
+            padding: '10px',
           },
-          '& .MuiDataGrid-row': {
-            minHeight: '80px !important',
-          }
+          '& .MuiDataGrid-columnHeaders': {
+            backgroundColor: '#f8f9fa',
+            fontWeight: 'bold',
+          },
+          '& .MuiDataGrid-footerContainer': {
+            justifyContent: 'space-between',
+            padding: '0 10px',
+          },
         }}
       />
     </div>
