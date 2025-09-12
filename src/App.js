@@ -5,7 +5,7 @@ import 'react-toastify/dist/ReactToastify.css'
 import { CSpinner, useColorModes } from '@coreui/react'
 import { useDispatch, useSelector, shallowEqual } from 'react-redux'
 import { onMessage, isSupported } from 'firebase/messaging'
-import { messaging } from './firebase'
+//import { messaging } from './firebase'
 import { toast } from 'react-toastify'
 import { useParams } from "react-router-dom";
 import './scss/style.scss'
