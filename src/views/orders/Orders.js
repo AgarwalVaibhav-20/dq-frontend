@@ -20,6 +20,7 @@ const Order = () => {
   const [showBill, setShowBill] = useState(false)
 
   const [selectedOrder, setSelectedOrder] = useState(null)
+  const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const isMobile = useMediaQuery('(max-width:600px)')
   const { restaurantProfile } = useSelector((state) => state.restaurantProfile)
   const token = localStorage.getItem("authToken")
@@ -37,10 +38,30 @@ const Order = () => {
   }, [])
   const handleStatusChange = async (_id, newStatus) => {
     try {
-      await dispatch(updateOrderStatus({ id: _id, status: newStatus }))
-      closeSidebar()
+      setIsUpdatingStatus(true);
+      console.log('Updating order status:', _id, newStatus);
+      console.log('Selected order object:', selectedOrder);
+      
+      // Use the correct ID field - try both _id and order_id
+      const orderId = selectedOrder._id || selectedOrder.order_id || _id;
+      console.log('Using order ID:', orderId);
+      
+      const result = await dispatch(updateOrderStatus({ id: orderId, status: newStatus }));
+      
+      if (result.type === 'orders/updateOrderStatus/fulfilled') {
+        console.log('Status updated successfully');
+        // Refresh the orders list
+        dispatch(fetchOrders({ token }));
+        closeSidebar();
+      } else {
+        console.error('Failed to update status:', result.payload);
+        // alert('Failed to update order status. Please try again.');
+      }
     } catch (error) {
-      console.error('Error updating status:', error)
+      console.error('Error updating status:', error);
+      // alert('Error updating order status. Please try again.');
+    } finally {
+      setIsUpdatingStatus(false);
     }
   }
 
@@ -481,17 +502,19 @@ const Order = () => {
           >
             <CButton
               color="success"
-              onClick={() => handleStatusChange(selectedOrder.order_id, 'complete')}
+              onClick={() => handleStatusChange(selectedOrder._id || selectedOrder.order_id, 'complete')}
               style={{ flex: '0 0 48%' }}
+              disabled={isUpdatingStatus}
             >
-              Mark as Complete
+              {isUpdatingStatus ? <CSpinner size="sm" /> : 'Mark as Complete'}
             </CButton>
             <CButton
               color="danger"
-              onClick={() => handleStatusChange(selectedOrder.order_id, 'reject')}
+              onClick={() => handleStatusChange(selectedOrder._id || selectedOrder.order_id, 'reject')}
               style={{ flex: '0 0 48%' }}
+              disabled={isUpdatingStatus}
             >
-              Reject Order
+              {isUpdatingStatus ? <CSpinner size="sm" /> : 'Reject Order'}
             </CButton>
           </div>
           <div

@@ -4,7 +4,7 @@ import { CChartLine, CChartPie, CChartBar } from '@coreui/react-chartjs';
 import { CFormSelect, CSpinner, CRow, CCol, CCard, CCardBody, CCardHeader, CFormInput, CButton } from '@coreui/react';
 import { fetchChartData, fetchWeeklyChartData, fetchOverallReport, fetchPaymentTypeStats } from '../../redux/slices/dashboardSlice';
 
-const Dashboard = () => {
+const Account = () => {
   const dispatch = useDispatch();
   const {
     chartData,
@@ -114,7 +114,7 @@ const Dashboard = () => {
 
   return (
     <div style={{ paddingLeft: '20px', paddingRight: '20px' }}>
-      <h2 className="mb-4">Overview</h2>
+      <h2 className="mb-4">Account Profile</h2>
       {loading ? (
         <div className="d-flex justify-content-center">
           <CSpinner color="primary" variant="grow" />
@@ -318,4 +318,4 @@ const Dashboard = () => {
   );
 };
 
-export default Dashboard;
+export default Account;

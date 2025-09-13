@@ -15,15 +15,16 @@ import {
   Tooltip
 } from '@mui/material';
 import {
-  Loyalty as LoyaltyIcon,
-  ContentCopy as CopyIcon,
-  Refresh as RefreshIcon,
-  CalendarToday as CalendarIcon
-} from '@mui/icons-material';
+  Heart as LoyaltyIcon,
+  Copy as CopyIcon,
+  RefreshCw as RefreshIcon,
+  Calendar as CalendarIcon
+} from 'lucide-react';
 
 function CustomerLoyalty() {
   const [couponCode, setCouponCode] = useState('');
   const [expiryDate, setExpiryDate] = useState('');
+  const [discountPercentage, setDiscountPercentage] = useState('');
   const [generatedCoupons, setGeneratedCoupons] = useState([]);
   const [alertMessage, setAlertMessage] = useState('');
 
@@ -51,23 +52,32 @@ function CustomerLoyalty() {
   const handleGenerateCoupon = () => {
     const newCode = generateCouponCode();
     const expiry = expiryDate || getDefaultExpiryDate();
+    const discount = discountPercentage || '10'; // Default 10% if not specified
     
     setCouponCode(newCode);
     
-    // Console log the generated coupon code
-    console.log('Generated Coupon Code:', newCode);
-    console.log('Expiry Date:', expiry);
+    // Console log the generated coupon details
+    console.log('🎫 Generated Coupon Code:', newCode);
+    console.log('📅 Expiry Date:', expiry);
+    console.log('💰 Discount Percentage:', discount + '%');
+    console.log('📊 Full Coupon Details:', {
+      code: newCode,
+      expiryDate: expiry,
+      discountPercentage: discount + '%',
+      generatedAt: new Date().toLocaleString()
+    });
     
     // Add to generated coupons list
     const newCoupon = {
       id: Date.now(),
       code: newCode,
       expiryDate: expiry,
+      discountPercentage: discount,
       generatedAt: new Date().toLocaleString()
     };
     
     setGeneratedCoupons(prev => [newCoupon, ...prev]);
-    setAlertMessage(`Coupon "${newCode}" generated successfully!`);
+    setAlertMessage(`Coupon "${newCode}" with ${discount}% discount generated successfully!`);
     
     // Clear alert after 3 seconds
     setTimeout(() => setAlertMessage(''), 3000);
@@ -126,6 +136,21 @@ function CustomerLoyalty() {
                   helperText="Leave empty for default 7 days from today"
                 />
                 
+                <TextField
+                  fullWidth
+                  label="Discount Percentage"
+                  type="number"
+                  value={discountPercentage}
+                  onChange={(e) => setDiscountPercentage(e.target.value)}
+                  inputProps={{
+                    min: 1,
+                    max: 100,
+                    step: 1
+                  }}
+                  sx={{ mb: 2 }}
+                  helperText="Enter discount percentage (1-100). Leave empty for default 10%"
+                />
+                
                 <Button
                   variant="contained"
                   color="primary"
@@ -166,7 +191,7 @@ function CustomerLoyalty() {
                     </Tooltip>
                   </Box>
                   <Typography variant="body2" sx={{ mt: 1 }}>
-                    Expires: {formatDate(expiryDate || getDefaultExpiryDate())}
+                    Discount: {discountPercentage || '10'}% | Expires: {formatDate(expiryDate || getDefaultExpiryDate())}
                   </Typography>
                 </Paper>
               )}
@@ -228,6 +253,12 @@ function CustomerLoyalty() {
                           color="warning"
                           variant="outlined"
                         />
+                        <Chip 
+                          label={`${coupon.discountPercentage || '10'}% OFF`}
+                          size="small"
+                          color="success"
+                          variant="filled"
+                        />
                       </Box>
                       
                       <Typography variant="caption" color="text.secondary">
@@ -252,6 +283,9 @@ function CustomerLoyalty() {
           <Box component="ul" sx={{ pl: 2 }}>
             <Typography component="li" variant="body2" sx={{ mb: 1 }}>
               Set an expiry date (optional) - defaults to 7 days from today
+            </Typography>
+            <Typography component="li" variant="body2" sx={{ mb: 1 }}>
+              Set discount percentage (optional) - defaults to 10% if not specified
             </Typography>
             <Typography component="li" variant="body2" sx={{ mb: 1 }}>
               Click "Generate Coupon Code" to create a 6-8 digit alphanumeric code
