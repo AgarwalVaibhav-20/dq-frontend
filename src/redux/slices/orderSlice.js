@@ -97,7 +97,26 @@ export const fetchDeliveryOrders = createAsyncThunk(
     }
   },
 )
+export const fetchCombinedOrders = createAsyncThunk(
+  'orders/fetchCombinedOrders',
+  async ({ tableNumber }, { rejectWithValue }) => {
+    try {
+      const restaurantId = localStorage.getItem('restaurantId')
+      const token = localStorage.getItem('authToken')
+      const headers = { Authorization: `Bearer ${token}` }
 
+      const response = await axios.post(
+        `${BASE_URL}/orders/active-tables?restaurantId=${restaurantId}`,
+        { tableNumber, restaurantId },
+        { headers }
+      )
+
+      return response.data // { success: true, orders: [...] }
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.error || 'Failed to fetch combined orders')
+    }
+  }
+);
 // Fetch order by ID
 export const fetchOrderById = createAsyncThunk(
   'orders/fetchOrderById',
@@ -230,6 +249,7 @@ const orderSlice = createSlice({
   initialState: {
     orders: [],
     deliveryOrders: [],
+    combinedOrders: [],
     deliveryOrdersLoading: false,
     orderDetails: null,
     notificationOrders: [],
@@ -263,6 +283,18 @@ const orderSlice = createSlice({
         state.loading = false
         state.error = action.payload
         toast.error('Failed to create order.')
+      })
+      .addCase(fetchCombinedOrders.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(fetchCombinedOrders.fulfilled, (state, action) => {
+        state.loading = false
+        state.combinedOrders = action.payload.orders
+      })
+      .addCase(fetchCombinedOrders.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload
       })
 
     // Fetch orders
