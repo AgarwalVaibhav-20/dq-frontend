@@ -1,5 +1,16 @@
 import React, { useState } from 'react';
-import { CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter, CButton, CFormInput, CFormTextarea, CForm, CAlert } from '@coreui/react';
+import {
+  CModal,
+  CModalHeader,
+  CModalTitle,
+  CModalBody,
+  CModalFooter,
+  CButton,
+  CFormInput,
+  CFormTextarea,
+  CForm,
+  CAlert,
+} from '@coreui/react';
 import CIcon from '@coreui/icons-react';
 import { cilSearch, cilPlus } from '@coreui/icons';
 
@@ -18,9 +29,12 @@ const CustomerModal = ({
     email: '',
     phoneNumber: '',
     address: '',
+    birthday: '',
+    anniversary: '',
   });
 
   const [formErrors, setFormErrors] = useState({});
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
 
   // Handle input changes
   const handleInputChange = (e) => {
@@ -30,7 +44,6 @@ const CustomerModal = ({
       [name]: value,
     }));
 
-    // Clear error when user starts typing
     if (formErrors[name]) {
       setFormErrors((prevErrors) => ({
         ...prevErrors,
@@ -51,7 +64,10 @@ const CustomerModal = ({
       errors.email = 'Please enter a valid email address';
     }
 
-    if (formValues.phoneNumber && !/^\d{10}$/.test(formValues.phoneNumber.replace(/\D/g, ''))) {
+    if (
+      formValues.phoneNumber &&
+      !/^\d{10}$/.test(formValues.phoneNumber.replace(/\D/g, ''))
+    ) {
       errors.phoneNumber = 'Please enter a valid 10-digit phone number';
     }
 
@@ -62,10 +78,15 @@ const CustomerModal = ({
   // Handle form submission
   const handleSubmit = () => {
     if (validateForm()) {
-      console.log('Submitting customer data:', formValues); // Debug log
       handleAddCustomer(formValues);
-      // Reset form after successful submission
-      setFormValues({ name: '', email: '', phoneNumber: '', address: '' });
+      setFormValues({
+        name: '',
+        email: '',
+        phoneNumber: '',
+        address: '',
+        birthday: '',
+        anniversary: '',
+      });
       setFormErrors({});
     }
   };
@@ -73,8 +94,22 @@ const CustomerModal = ({
   // Handle modal close
   const handleClose = () => {
     setShowCustomerModal(false);
-    setFormValues({ name: '', email: '', phoneNumber: '', address: '' });
+    setFormValues({
+      name: '',
+      email: '',
+      phoneNumber: '',
+      address: '',
+      birthday: '',
+      anniversary: '',
+    });
     setFormErrors({});
+    setSelectedCustomer(null);
+  };
+
+  // Handle selecting an existing customer
+  const handleSelectCustomer = (customer) => {
+    setSelectedCustomer(customer);
+    handleCustomerSelect(customer); // keep parent logic
   };
 
   return (
@@ -103,7 +138,10 @@ const CustomerModal = ({
             <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
               {customerLoading ? (
                 <div className="text-center p-3">
-                  <div className="spinner-border spinner-border-sm" role="status">
+                  <div
+                    className="spinner-border spinner-border-sm"
+                    role="status"
+                  >
                     <span className="visually-hidden">Loading...</span>
                   </div>
                   <p className="mt-2">Loading customers...</p>
@@ -112,19 +150,18 @@ const CustomerModal = ({
                 filteredCustomers.map((customer) => (
                   <div
                     key={customer.id || customer._id}
-                    className="d-flex justify-content-between align-items-center border rounded p-2 mb-2 hover-bg-light"
-                    onClick={() => handleCustomerSelect(customer)}
-                    style={{
-                      cursor: 'pointer',
-                      transition: 'background-color 0.2s'
-                    }}
-                    onMouseEnter={(e) => e.target.style.backgroundColor = '#f8f9fa'}
-                    onMouseLeave={(e) => e.target.style.backgroundColor = 'transparent'}
+                    className={`d-flex justify-content-between align-items-center border rounded p-2 mb-2 ${
+                      selectedCustomer?._id === customer._id ? 'bg-light' : ''
+                    }`}
+                    onClick={() => handleSelectCustomer(customer)}
+                    style={{ cursor: 'pointer' }}
                   >
                     <div>
                       <div className="fw-bold">{customer.name}</div>
                       {customer.phoneNumber && (
-                        <small className="text-muted">{customer.phoneNumber}</small>
+                        <small className="text-muted">
+                          {customer.phoneNumber}
+                        </small>
                       )}
                     </div>
                     <span className="badge bg-success">
@@ -138,6 +175,34 @@ const CustomerModal = ({
                 </div>
               )}
             </div>
+
+            {/* Show details of selected customer */}
+            {selectedCustomer && (
+              <div className="mt-3 p-2 border rounded bg-light">
+                <h6 className="fw-bold">Customer Details</h6>
+                <p className="mb-1">
+                  <strong>Name:</strong> {selectedCustomer.name}
+                </p>
+                <p className="mb-1">
+                  <strong>Email:</strong> {selectedCustomer.email || 'N/A'}
+                </p>
+                <p className="mb-1">
+                  <strong>Phone:</strong>{' '}
+                  {selectedCustomer.phoneNumber || 'N/A'}
+                </p>
+                <p className="mb-1">
+                  <strong>Address:</strong> {selectedCustomer.address || 'N/A'}
+                </p>
+                <p className="mb-1">
+                  <strong>Birthday:</strong>{' '}
+                  {selectedCustomer.birthday || 'N/A'}
+                </p>
+                <p className="mb-0">
+                  <strong>Anniversary:</strong>{' '}
+                  {selectedCustomer.anniversary || 'N/A'}
+                </p>
+              </div>
+            )}
           </div>
 
           {/* Right side - Add new customer */}
@@ -147,79 +212,109 @@ const CustomerModal = ({
               Add New Customer
             </h5>
 
-            {/* Show validation errors */}
             {Object.keys(formErrors).length > 0 && (
               <CAlert color="warning" className="mb-3">
                 <small>Please fix the following errors:</small>
                 <ul className="mb-0 mt-1">
                   {Object.values(formErrors).map((error, index) => (
-                    <li key={index}><small>{error}</small></li>
+                    <li key={index}>
+                      <small>{error}</small>
+                    </li>
                   ))}
                 </ul>
               </CAlert>
             )}
 
             <CForm>
+              {/* Name */}
               <div className="mb-3">
+                <label htmlFor="name" className="form-label fw-semibold">
+                  Customer Name *
+                </label>
                 <CFormInput
                   type="text"
+                  id="name"
                   name="name"
-                  placeholder="Customer Name *"
                   value={formValues.name}
                   onChange={handleInputChange}
                   invalid={!!formErrors.name}
                   required
                 />
-                {formErrors.name && (
-                  <div className="invalid-feedback d-block">
-                    {formErrors.name}
-                  </div>
-                )}
               </div>
 
+              {/* Email */}
               <div className="mb-3">
+                <label htmlFor="email" className="form-label fw-semibold">
+                  Email Address
+                </label>
                 <CFormInput
                   type="email"
+                  id="email"
                   name="email"
-                  placeholder="Email Address"
                   value={formValues.email}
                   onChange={handleInputChange}
                   invalid={!!formErrors.email}
                 />
-                {formErrors.email && (
-                  <div className="invalid-feedback d-block">
-                    {formErrors.email}
-                  </div>
-                )}
               </div>
 
+              {/* Phone */}
               <div className="mb-3">
+                <label htmlFor="phoneNumber" className="form-label fw-semibold">
+                  Phone Number
+                </label>
                 <CFormInput
                   type="tel"
+                  id="phoneNumber"
                   name="phoneNumber"
-                  placeholder="Phone Number"
                   value={formValues.phoneNumber}
                   onChange={handleInputChange}
                   invalid={!!formErrors.phoneNumber}
                 />
-                {formErrors.phoneNumber && (
-                  <div className="invalid-feedback d-block">
-                    {formErrors.phoneNumber}
-                  </div>
-                )}
               </div>
 
+              {/* Address */}
               <div className="mb-3">
+                <label htmlFor="address" className="form-label fw-semibold">
+                  Address
+                </label>
                 <CFormTextarea
+                  id="address"
                   name="address"
                   rows="3"
-                  placeholder="Address"
                   value={formValues.address}
                   onChange={handleInputChange}
                 />
               </div>
 
-              {/* Add Customer Button - Also in form area */}
+              {/* Birthday */}
+              <div className="mb-3">
+                <label htmlFor="birthday" className="form-label fw-semibold">
+                  Birthday
+                </label>
+                <CFormInput
+                  type="date"
+                  id="birthday"
+                  name="birthday"
+                  value={formValues.birthday}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              {/* Anniversary */}
+              <div className="mb-3">
+                <label htmlFor="anniversary" className="form-label fw-semibold">
+                  Anniversary
+                </label>
+                <CFormInput
+                  type="date"
+                  id="anniversary"
+                  name="anniversary"
+                  value={formValues.anniversary}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              {/* Add Button */}
               <CButton
                 color="primary"
                 onClick={handleSubmit}
@@ -229,25 +324,25 @@ const CustomerModal = ({
                 <CIcon icon={cilPlus} className="me-2" />
                 {customerLoading ? (
                   <>
-                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                    <span
+                      className="spinner-border spinner-border-sm me-2"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
                     Adding Customer...
                   </>
                 ) : (
                   'Add Customer'
                 )}
               </CButton>
-
-              <small className="text-muted">* Required field</small>
             </CForm>
           </div>
         </div>
       </CModalBody>
       <CModalFooter className="d-flex justify-content-between">
-        <div>
-          <small className="text-muted">
-            Select an existing customer or add a new one
-          </small>
-        </div>
+        <small className="text-muted">
+          Select an existing customer or add a new one
+        </small>
         <div>
           <CButton color="secondary" onClick={handleClose} className="me-2">
             Cancel
@@ -261,7 +356,11 @@ const CustomerModal = ({
             <CIcon icon={cilPlus} className="me-1" />
             {customerLoading ? (
               <>
-                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                <span
+                  className="spinner-border spinner-border-sm me-2"
+                  role="status"
+                  aria-hidden="true"
+                ></span>
                 Saving...
               </>
             ) : (

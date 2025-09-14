@@ -19,20 +19,16 @@ const DiscountModal = ({
   const [selectedItemIds, setSelectedItemIds] = useState([]);
   const [discountValue, setDiscountValue] = useState('');
   const [discountType, setDiscountType] = useState('percentage'); // 'percentage' or 'fixed'
+  const [couponCode, setCouponCode] = useState('');
+  const [couponDiscount, setCouponDiscount] = useState(0);
 
-  // Debug logging
-  useEffect(() => {
-    console.log('DiscountModal - Cart received:', cart);
-    console.log('DiscountModal - Cart length:', cart?.length || 0);
-  }, [cart]);
-
-  // Reset state when modal opens
   useEffect(() => {
     if (showDiscountModal) {
       setSelectedItemIds([]);
       setDiscountValue('');
       setDiscountType('percentage');
-      console.log('DiscountModal opened with cart:', cart);
+      setCouponCode('');
+      setCouponDiscount(0);
     }
   }, [showDiscountModal, cart]);
 
@@ -48,225 +44,214 @@ const DiscountModal = ({
     if (selectedItemIds.length === cart.length) {
       setSelectedItemIds([]);
     } else {
-      setSelectedItemIds(cart.map(item => item.id || item._id));
+      setSelectedItemIds(cart.map((item) => item.id || item._id));
     }
+  };
+
+  const validateCoupon = (code) => {
+    let discount = 0;
+    if (code.toUpperCase() === 'DISCOUNT10') {
+      discount = { type: 'percentage', value: 10 };
+    } else if (code.toUpperCase() === 'SAVE100') {
+      discount = { type: 'fixed', value: 100 };
+    }
+    setCouponDiscount(discount);
   };
 
   const onSubmit = () => {
-    if (selectedItemIds.length === 0 || !discountValue || Number(discountValue) <= 0) {
-      console.warn('Invalid submission:', { selectedItemIds, discountValue });
+    if (
+      (selectedItemIds.length === 0 && !couponDiscount.value) ||
+      (!discountValue && !couponDiscount.value)
+    ) {
+      console.warn('Invalid submission');
       return;
     }
-    
-    console.log('Submitting discount:', { selectedItemIds, discountValue, discountType });
-    handleDiscountSubmit(selectedItemIds, Number(discountValue), discountType);
-    setSelectedItemIds([]);
-    setDiscountValue('');
-    setDiscountType('percentage');
-    setShowDiscountModal(false);
-  };
 
-  const handleClose = () => {
+    const discounts = {
+      selectedItemDiscount: {
+        ids: selectedItemIds,
+        value: Number(discountValue),
+        type: discountType,
+      },
+      coupon: couponDiscount,
+    };
+
+    handleDiscountSubmit(discounts);
     setSelectedItemIds([]);
     setDiscountValue('');
     setDiscountType('percentage');
+    setCouponCode('');
+    setCouponDiscount(0);
     setShowDiscountModal(false);
   };
 
   const calculatePreview = () => {
-    if (!discountValue || selectedItemIds.length === 0 || Number(discountValue) <= 0) return 0;
-    return selectedItemIds.reduce((total, itemId) => {
-      const item = cart.find(cartItem => (cartItem.id || cartItem._id) === itemId);
-      if (!item) return total;
-      const itemSubtotal = item.price * item.quantity;
-      let itemDiscount = 0;
-      if (discountType === 'percentage') {
-        itemDiscount = (itemSubtotal * Number(discountValue)) / 100;
-      } else if (discountType === 'fixed') {
-        itemDiscount = Number(discountValue);
+    let totalDiscount = 0;
+
+    if (discountValue && selectedItemIds.length > 0) {
+      totalDiscount += selectedItemIds.reduce((total, itemId) => {
+        const item = cart.find(
+          (cartItem) => (cartItem.id || cartItem._id) === itemId
+        );
+        if (!item) return total;
+        const itemSubtotal = item.price * item.quantity;
+        let itemDiscount = 0;
+        if (discountType === 'percentage') {
+          itemDiscount = (itemSubtotal * Number(discountValue)) / 100;
+        } else if (discountType === 'fixed') {
+          itemDiscount = Number(discountValue);
+        }
+        return total + itemDiscount;
+      }, 0);
+    }
+
+    if (couponDiscount.value) {
+      if (couponDiscount.type === 'percentage') {
+        const subtotal = cart.reduce(
+          (sum, item) => sum + item.price * item.quantity,
+          0
+        );
+        totalDiscount += (subtotal * couponDiscount.value) / 100;
+      } else if (couponDiscount.type === 'fixed') {
+        totalDiscount += couponDiscount.value;
       }
-      return total + itemDiscount;
-    }, 0);
+    }
+
+    return totalDiscount;
   };
 
-  // Ensure cart is an array and has items
   const validCart = Array.isArray(cart) ? cart : [];
   const hasItems = validCart.length > 0;
 
   return (
-    <CModal visible={showDiscountModal} onClose={handleClose} size="lg">
+    <CModal visible={showDiscountModal} onClose={() => setShowDiscountModal(false)} size="lg">
       <CModalHeader>
-        <CModalTitle>Apply Discount to Items</CModalTitle>
+        <CModalTitle>Apply Discount / Coupon</CModalTitle>
       </CModalHeader>
       <CModalBody style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-        {/* Debug Info (remove in production) */}
-        {/* <div className="alert alert-info mb-3">
-          <small>
-            <strong>Debug Info:</strong> Cart items: {validCart.length}
-            {validCart.length > 0 && (
-              <div>First item: {validCart[0]?.itemName || 'Unknown'}</div>
-            )}
-          </small>
-        </div> */}
-
-        {/* Discount Type Selection */}
+        {/* Discount Type */}
         <div className="mb-4">
-          <label className="form-label fw-bold mb-2">Select Discount Type:</label>
+          <label className="form-label fw-bold mb-2">Discount Type:</label>
           <div className="btn-group w-100" role="group">
             <button
               type="button"
               className={`btn ${discountType === 'percentage' ? 'btn-primary' : 'btn-outline-primary'}`}
               onClick={() => setDiscountType('percentage')}
             >
-              Percentage Discount (%)
+              Percentage (%)
             </button>
             <button
               type="button"
               className={`btn ${discountType === 'fixed' ? 'btn-primary' : 'btn-outline-primary'}`}
               onClick={() => setDiscountType('fixed')}
             >
-              Fixed Amount Discount (₹)
+              Fixed (₹)
             </button>
           </div>
-          <small className="text-muted mt-2 d-block">
-            <strong>Selected:</strong> {discountType === 'percentage' ? 'Percentage Discount' : 'Fixed Amount Discount'}
-          </small>
         </div>
 
-        {/* Discount Value Input */}
+        {/* Discount Value */}
         <div className="mb-4">
           <label className="form-label fw-bold">
-            {discountType === 'percentage' ? 'Enter Discount Percentage (%)' : 'Enter Fixed Discount Amount (₹)'}
+            {discountType === 'percentage' ? 'Discount %' : 'Discount ₹'}
           </label>
           <CFormInput
             type="number"
-            placeholder={
-              discountType === 'percentage'
-                ? 'e.g., 10 (for 10% off)'
-                : 'e.g., 100 (for ₹100 discount per item)'
-            }
+            placeholder={discountType === 'percentage' ? '10 (for 10%)' : '100 (for ₹100 off)'}
             value={discountValue}
             onChange={(e) => setDiscountValue(e.target.value)}
-            step={discountType === 'percentage' ? '0.01' : '1'}
-            min="0"
-            className="form-control-lg"
           />
-          <small className="text-muted mt-1">
-            {discountType === 'percentage'
-              ? "Discount percentage will be applied to each item's subtotal (price × quantity)"
-              : 'Fixed discount amount will be subtracted from each selected item'
-            }
-          </small>
         </div>
 
-        {/* Items Selection */}
+        {/* Coupon Code */}
+        <div className="mb-4">
+          <label className="form-label fw-bold">Coupon Code</label>
+          <div className="d-flex">
+            <CFormInput
+              type="text"
+              placeholder="Enter coupon (e.g., DISCOUNT10)"
+              value={couponCode}
+              onChange={(e) => setCouponCode(e.target.value)}
+            />
+            <CButton
+              color="success"
+              className="ms-2"
+              onClick={() => validateCoupon(couponCode)}
+            >
+              Apply
+            </CButton>
+          </div>
+          {couponDiscount.value ? (
+            <small className="text-success fw-semibold d-block mt-2">
+              ✅ Coupon applied: {couponDiscount.type === 'percentage'
+                ? `${couponDiscount.value}%`
+                : `₹${couponDiscount.value}`} off
+            </small>
+          ) : couponCode ? (
+            <small className="text-danger d-block mt-2">
+              ❌ Invalid Coupon
+            </small>
+          ) : null}
+        </div>
+
+        {/* Items */}
         <div className="border rounded p-3 mb-3">
-          <div className="d-flex justify-content-between align-items-center mb-3">
-            <h6 className="fw-bold mb-0">Select Items for Discount Application:</h6>
-            {hasItems && (
+          <h6 className="fw-bold mb-2">Select Items:</h6>
+          {hasItems ? (
+            <>
               <CButton
                 size="sm"
-                variant="outline"
-                color="primary"
+                color="secondary"
+                className="mb-2"
                 onClick={selectAll}
               >
                 {selectedItemIds.length === validCart.length ? 'Deselect All' : 'Select All'}
               </CButton>
-            )}
-          </div>
-          
-          {!hasItems ? (
-            <div className="text-center py-3">
-              <p className="text-muted mb-2">No items in cart</p>
-              <small className="text-muted">
-                Add items to your cart first, then apply discounts.
-              </small>
-            </div>
-          ) : (
-            <div className="item-list">
               {validCart.map((item) => {
                 const itemId = item.id || item._id;
-                const itemSubtotal = item.price * item.quantity;
-                const hasCurrentDiscount =
-                  (item.discountPercentage > 0) ||
-                  (item.fixedDiscountAmount > 0) ||
-                  (item.discountAmount > 0);
-                const isSelected = selectedItemIds.includes(itemId);
-
                 return (
-                  <div
-                    key={itemId}
-                    className={`p-2 mb-2 rounded ${
-                      isSelected ? 'bg-light border-primary' : 'bg-white'
-                    } border`}
-                  >
-                    <div className="d-flex align-items-start">
-                      <CFormCheck
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleSelection(itemId)}
-                        className="me-3 mt-1"
-                      />
-                      <div className="flex-grow-1">
-                        <div className="fw-semibold text-dark">{item.itemName || 'Unknown Item'}</div>
-                        <div className="text-muted small">
-                          <span className="me-3">Qty: {item.quantity || 0}</span>
-                          <span className="me-3">Price: ₹{Number(item.price || 0).toFixed(2)}</span>
-                          <span className="fw-medium">Subtotal: ₹{itemSubtotal.toFixed(2)}</span>
-                        </div>
-                        {hasCurrentDiscount && (
-                          <div className="text-danger small mt-1">
-                            Current Discount: {
-                              item.discountType === 'percentage'
-                                ? `${item.discountPercentage}% (₹${item.discountAmount?.toFixed(2)})`
-                                : item.discountType === 'fixed'
-                                  ? `₹${item.fixedDiscountAmount} fixed`
-                                  : `₹${item.discountAmount?.toFixed(2)}`
-                            }
-                          </div>
-                        )}
-                      </div>
+                  <div key={itemId} className="d-flex align-items-center border p-2 mb-2 rounded">
+                    <CFormCheck
+                      type="checkbox"
+                      checked={selectedItemIds.includes(itemId)}
+                      onChange={() => toggleSelection(itemId)}
+                      className="me-2"
+                    />
+                    <div className="flex-grow-1">
+                      <div>{item.itemName}</div>
+                      <small className="text-muted">
+                        Qty: {item.quantity}, Price: ₹{item.price}
+                      </small>
                     </div>
                   </div>
                 );
               })}
-            </div>
+            </>
+          ) : (
+            <p className="text-muted">No items in cart.</p>
           )}
         </div>
 
-        {/* Discount Preview */}
-        {selectedItemIds.length > 0 && discountValue && Number(discountValue) > 0 && (
+        {/* Preview */}
+        {(selectedItemIds.length > 0 || couponDiscount.value) && (
           <div className="alert alert-info">
-            <div className="d-flex justify-content-between align-items-center">
-              <div>
-                <strong>Discount Preview:</strong>
-                <div className="small text-muted mt-1">
-                  {discountType === 'percentage'
-                    ? `${discountValue}% discount on ${selectedItemIds.length} selected item(s)`
-                    : `₹${discountValue} fixed discount on ${selectedItemIds.length} selected item(s)`
-                  }
-                </div>
-              </div>
-              <div className="text-end">
-                <span className="h5 text-danger fw-bold">
-                  -₹{calculatePreview().toFixed(2)}
-                </span>
-                <div className="small text-muted">Total Discount Amount</div>
-              </div>
-            </div>
+            <strong>Total Discount: </strong> ₹{calculatePreview().toFixed(2)}
           </div>
         )}
       </CModalBody>
       <CModalFooter>
-        <CButton color="secondary" onClick={handleClose}>
+        <CButton color="secondary" onClick={() => setShowDiscountModal(false)}>
           Cancel
         </CButton>
         <CButton
           color="primary"
           onClick={onSubmit}
-          disabled={selectedItemIds.length === 0 || !discountValue || Number(discountValue) <= 0 || !hasItems}
+          disabled={
+            (selectedItemIds.length === 0 && !couponDiscount.value) ||
+            (!discountValue && !couponDiscount.value)
+          }
         >
-          Apply {discountType === 'percentage' ? 'Percentage' : 'Fixed'} Discount
+          Apply Discount
         </CButton>
       </CModalFooter>
     </CModal>
