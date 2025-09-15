@@ -207,12 +207,11 @@ const Dues = () => {
   // FIXED: Edit handler
   const handleEdit = (dueRow) => {
     setSelectedDue(dueRow);
-    // Fixed: get customer_id directly from the due object
     const customerId = dueRow?.customer_id || dueRow?.transaction_id;
     setFormData({
       transaction_id: customerId || '',
-      total: dueRow?.total?.toString() || '', // Fixed: get total directly
-      status: dueRow?.status || 'unpaid', // Fixed: get status directly
+      total: dueRow?.total?.toString() || '',
+      status: dueRow?.status || 'unpaid', 
     });
     setEditModalVisible(true);
   };
