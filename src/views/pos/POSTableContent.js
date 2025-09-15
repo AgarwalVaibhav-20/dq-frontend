@@ -30,6 +30,7 @@ const POSTableContent = () => {
   const invoiceRef = useRef(null)
   const kotRef = useRef(null)
   const { tableNumber } = useParams()
+  const [appliedDiscounts, setAppliedDiscounts] = useState(null);
   const { customers, loading: customerLoading } = useSelector((state) => state.customers)
   const { menuItems, loading: menuItemsLoading } = useSelector((state) => state.menuItems)
   const { categories, loading: categoryLoading } = useSelector((state) => state.category)
@@ -310,37 +311,64 @@ const POSTableContent = () => {
     toast.success(`${taxType === 'percentage' ? 'Percentage' : 'Fixed'} tax applied to ${selectedItemIds.length} item(s)!`);
   };
 
-  const handleDiscountSubmit = (selectedItemIds, discountValue, discountType) => {
-    setCart(prevCart =>
-      prevCart.map(item => {
-        const itemId = item._id || item.id;
-        if (selectedItemIds.includes(itemId)) {
-          let discountAmount = 0;
-          let discountPercentage = 0;
-          let fixedDiscountAmount = 0;
+  const handleDiscountSubmit = (discounts) => {
+    console.log('Received discounts:', discounts);
 
-          if (discountType === 'percentage') {
-            discountPercentage = discountValue;
-            discountAmount = (item.price * item.quantity * discountValue) / 100;
-          } else if (discountType === 'fixed') {
-            fixedDiscountAmount = discountValue;
-            discountAmount = discountValue;
+    // Handle item-specific discounts
+    if (discounts.selectedItemDiscount && discounts.selectedItemDiscount.ids && discounts.selectedItemDiscount.ids.length > 0) {
+      const { ids, value, type } = discounts.selectedItemDiscount;
+
+      setCart(prevCart =>
+        prevCart.map(item => {
+          const itemId = item._id || item.id;
+          if (ids.includes(itemId)) {
+            let discountAmount = 0;
+            let discountPercentage = 0;
+            let fixedDiscountAmount = 0;
+
+            if (type === 'percentage') {
+              discountPercentage = value;
+              discountAmount = (item.price * item.quantity * value) / 100;
+            } else if (type === 'fixed') {
+              fixedDiscountAmount = value;
+              discountAmount = value;
+            }
+
+            return {
+              ...item,
+              discountType: type,
+              discountPercentage: discountPercentage,
+              fixedDiscountAmount: fixedDiscountAmount,
+              discountAmount: discountAmount
+            };
           }
+          return item;
+        })
+      );
 
-          return {
-            ...item,
-            discountType: discountType,
-            discountPercentage: discountPercentage,
-            fixedDiscountAmount: fixedDiscountAmount,
-            discountAmount: discountAmount
-          };
-        }
-        return item;
-      })
-    );
+      toast.success(`${type === 'percentage' ? 'Percentage' : 'Fixed'} discount applied to ${ids.length} item(s)!`);
+    }
 
-    toast.success(`${discountType === 'percentage' ? 'Percentage' : 'Fixed'} discount applied to ${selectedItemIds.length} item(s)!`);
+    // Handle coupon discounts (apply to entire cart)
+    if (discounts.coupon && discounts.coupon.value) {
+      const { value, type } = discounts.coupon;
+
+      if (type === 'percentage') {
+        setDiscount(value);
+        toast.success(`Coupon discount of ${value}% applied to entire order!`);
+      } else if (type === 'fixed') {
+        // For fixed coupon discounts, we can add it to round off or handle it separately
+        // Option 1: Add to existing discount calculation
+        const subtotal = calculateSubtotal();
+        const percentageEquivalent = (value / subtotal) * 100;
+        setDiscount(percentageEquivalent);
+        toast.success(`Fixed coupon discount of ₹${value} applied!`);
+      }
+    }
+
+    setShowDiscountModal(false);
   };
+
 
   const handleRoundOffSubmit = () => {
     setRoundOff(Number(inputValue))
@@ -356,17 +384,32 @@ const POSTableContent = () => {
     return cart.reduce((total, item) => total + (Number(item.taxAmount) || 0), 0);
   }, [cart]);
 
-  const calculateDiscountAmount = () => {
-    const subtotal = calculateSubtotal()
-    return (subtotal * discount) / 100
-  }
+  // const calculateDiscountAmount = () => {
+  //   const subtotal = calculateSubtotal()
+  //   return (subtotal * discount) / 100
+  // }
+  const calculateDiscountAmount = useCallback(() => {
+    const subtotal = calculateSubtotal();
+    let totalDiscount = 0;
 
+    // Add percentage discount from coupon or manual discount
+    totalDiscount += (subtotal * discount) / 100;
+
+    // Add item-specific discounts
+    cart.forEach(item => {
+      if (item.discountAmount) {
+        totalDiscount += Number(item.discountAmount);
+      }
+    });
+
+    return totalDiscount;
+  }, [calculateSubtotal, discount, cart]);
   const calculateTotal = useCallback(() => {
-    const subtotal = calculateSubtotal()
-    const totalTaxAmount = calculateTotalTaxAmount()
-    const discountAmount = (subtotal * discount) / 100
-    return subtotal + totalTaxAmount - discountAmount - roundOff
-  }, [calculateSubtotal, calculateTotalTaxAmount, discount, roundOff])
+    const subtotal = calculateSubtotal();
+    const totalTaxAmount = calculateTotalTaxAmount();
+    const discountAmount = calculateDiscountAmount();
+    return subtotal + totalTaxAmount - discountAmount - roundOff;
+  }, [calculateSubtotal, calculateTotalTaxAmount, calculateDiscountAmount, roundOff]);
 
   // FIXED: Quantity change handler with proper ID matching
   const handleQuantityChange = (itemId, newQty) => {
@@ -890,6 +933,9 @@ const POSTableContent = () => {
             calculateTotal={calculateTotal}
             tax={tax}
             discount={discount}
+            setDiscount={setDiscount} 
+            appliedDiscounts={appliedDiscounts}
+            setAppliedDiscounts={setAppliedDiscounts}
             roundOff={roundOff}
             setShowTaxModal={setShowTaxModal}
             setShowDiscountModal={setShowDiscountModal}

@@ -25,7 +25,7 @@ export const fetchCustomers = createAsyncThunk(
 // Add customer
 export const addCustomer = createAsyncThunk(
   'customers/addCustomer',
-  async ({ token, name, email, address, phoneNumber }, { rejectWithValue }) => {
+  async ({ token, name, email, address, phoneNumber , birthday , anniversary }, { rejectWithValue }) => {
     try {
       const restaurantId = localStorage.getItem("restaurantId");
       if (!restaurantId) {
@@ -38,12 +38,14 @@ export const addCustomer = createAsyncThunk(
           address,
           phoneNumber,
           restaurantId,
+          anniversary,
+          birthday,
         },
-         configureHeaders(token));
+        configureHeaders(token));
       console.log(response.data)
       return response.data;
     } catch (error) {
-      console.log("This is error" , error)
+      console.log("This is error", error)
       console.error(error)
       return rejectWithValue(error.response?.data || error.message);
     }

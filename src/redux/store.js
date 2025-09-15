@@ -21,6 +21,7 @@ import deliveryTimingReducer from './slices/deliveryTimingSlice'
 import subCategoryReducer from './slices/subCategorySlice'
 import sendBulkEmailReducer from './slices/SendBulkEmailSlice'
 import bannerReducer from './slices/bannerSlice'
+import couponReducer from "./slices/coupenSlice";
 // Configure the Redux store
 const store = configureStore({
   reducer: {
@@ -45,6 +46,7 @@ const store = configureStore({
     subCategory: subCategoryReducer,
     bulkEmail: sendBulkEmailReducer,
     banner: bannerReducer,
+    coupons: couponReducer, 
   },
 })
 // console.log " Store -> ", store)

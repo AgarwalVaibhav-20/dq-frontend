@@ -1,4 +1,7 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from "react";
+import { useDispatch, useSelector } from "react-redux";
+import { fetchCustomers } from "../../src/redux/slices/customerSlice";
+
 import {
   CModal,
   CModalHeader,
@@ -10,31 +13,39 @@ import {
   CFormTextarea,
   CForm,
   CAlert,
-} from '@coreui/react';
-import CIcon from '@coreui/icons-react';
-import { cilSearch, cilPlus } from '@coreui/icons';
+} from "@coreui/react";
+import CIcon from "@coreui/icons-react";
+import { cilSearch, cilPlus } from "@coreui/icons";
 
 const CustomerModal = ({
   showCustomerModal,
   setShowCustomerModal,
-  searchTerm,
-  setSearchTerm,
-  filteredCustomers,
   handleCustomerSelect,
   customerLoading,
   handleAddCustomer,
+  restaurantId,
 }) => {
-  const [formValues, setFormValues] = useState({
-    name: '',
-    email: '',
-    phoneNumber: '',
-    address: '',
-    birthday: '',
-    anniversary: '',
-  });
+  const dispatch = useDispatch();
+  const { customers, loading, error } = useSelector((state) => state.customers);
 
+  const [searchTerm, setSearchTerm] = useState("");
+  const [formValues, setFormValues] = useState({
+    name: "",
+    email: "",
+    phoneNumber: "",
+    address: "",
+    birthday: "",
+    anniversary: "",
+  });
   const [formErrors, setFormErrors] = useState({});
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+
+  // Fetch customers when modal opens
+  useEffect(() => {
+    if (showCustomerModal && restaurantId) {
+      dispatch(fetchCustomers({ restaurantId }));
+    }
+  }, [showCustomerModal, restaurantId, dispatch]);
 
   // Handle input changes
   const handleInputChange = (e) => {
@@ -47,7 +58,7 @@ const CustomerModal = ({
     if (formErrors[name]) {
       setFormErrors((prevErrors) => ({
         ...prevErrors,
-        [name]: '',
+        [name]: "",
       }));
     }
   };
@@ -57,18 +68,18 @@ const CustomerModal = ({
     const errors = {};
 
     if (!formValues.name?.trim()) {
-      errors.name = 'Customer name is required';
+      errors.name = "Customer name is required";
     }
 
     if (formValues.email && !/\S+@\S+\.\S+/.test(formValues.email)) {
-      errors.email = 'Please enter a valid email address';
+      errors.email = "Please enter a valid email address";
     }
 
     if (
       formValues.phoneNumber &&
-      !/^\d{10}$/.test(formValues.phoneNumber.replace(/\D/g, ''))
+      !/^\d{10}$/.test(formValues.phoneNumber.replace(/\D/g, ""))
     ) {
-      errors.phoneNumber = 'Please enter a valid 10-digit phone number';
+      errors.phoneNumber = "Please enter a valid 10-digit phone number";
     }
 
     setFormErrors(errors);
@@ -80,12 +91,12 @@ const CustomerModal = ({
     if (validateForm()) {
       handleAddCustomer(formValues);
       setFormValues({
-        name: '',
-        email: '',
-        phoneNumber: '',
-        address: '',
-        birthday: '',
-        anniversary: '',
+        name: "",
+        email: "",
+        phoneNumber: "",
+        address: "",
+        birthday: "",
+        anniversary: "",
       });
       setFormErrors({});
     }
@@ -95,22 +106,30 @@ const CustomerModal = ({
   const handleClose = () => {
     setShowCustomerModal(false);
     setFormValues({
-      name: '',
-      email: '',
-      phoneNumber: '',
-      address: '',
-      birthday: '',
-      anniversary: '',
+      name: "",
+      email: "",
+      phoneNumber: "",
+      address: "",
+      birthday: "",
+      anniversary: "",
     });
     setFormErrors({});
     setSelectedCustomer(null);
+    setSearchTerm("");
   };
 
   // Handle selecting an existing customer
   const handleSelectCustomer = (customer) => {
     setSelectedCustomer(customer);
-    handleCustomerSelect(customer); // keep parent logic
+    handleCustomerSelect(customer);
   };
+
+  // Filter customers locally
+  const filteredCustomers = customers.filter(
+    (c) =>
+      c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      c.phoneNumber?.includes(searchTerm)
+  );
 
   return (
     <CModal visible={showCustomerModal} onClose={handleClose} size="lg">
@@ -135,8 +154,8 @@ const CustomerModal = ({
                 <CIcon icon={cilSearch} />
               </span>
             </div>
-            <div style={{ maxHeight: '300px', overflowY: 'auto' }}>
-              {customerLoading ? (
+            <div style={{ maxHeight: "300px", overflowY: "auto" }}>
+              {loading ? (
                 <div className="text-center p-3">
                   <div
                     className="spinner-border spinner-border-sm"
@@ -146,15 +165,19 @@ const CustomerModal = ({
                   </div>
                   <p className="mt-2">Loading customers...</p>
                 </div>
-              ) : filteredCustomers?.length > 0 ? (
+              ) : error ? (
+                <div className="text-danger text-center p-3">
+                  Failed to load customers
+                </div>
+              ) : filteredCustomers.length > 0 ? (
                 filteredCustomers.map((customer) => (
                   <div
                     key={customer.id || customer._id}
                     className={`d-flex justify-content-between align-items-center border rounded p-2 mb-2 ${
-                      selectedCustomer?._id === customer._id ? 'bg-light' : ''
+                      selectedCustomer?._id === customer._id ? "bg-light" : ""
                     }`}
                     onClick={() => handleSelectCustomer(customer)}
-                    style={{ cursor: 'pointer' }}
+                    style={{ cursor: "pointer" }}
                   >
                     <div>
                       <div className="fw-bold">{customer.name}</div>
@@ -171,7 +194,7 @@ const CustomerModal = ({
                 ))
               ) : (
                 <div className="text-center text-muted p-3">
-                  {searchTerm ? 'No customers found' : 'No customers available'}
+                  {searchTerm ? "No customers found" : "No customers available"}
                 </div>
               )}
             </div>
@@ -184,22 +207,22 @@ const CustomerModal = ({
                   <strong>Name:</strong> {selectedCustomer.name}
                 </p>
                 <p className="mb-1">
-                  <strong>Email:</strong> {selectedCustomer.email || 'N/A'}
+                  <strong>Email:</strong> {selectedCustomer.email || "N/A"}
                 </p>
                 <p className="mb-1">
-                  <strong>Phone:</strong>{' '}
-                  {selectedCustomer.phoneNumber || 'N/A'}
+                  <strong>Phone:</strong>{" "}
+                  {selectedCustomer.phoneNumber || "N/A"}
                 </p>
                 <p className="mb-1">
-                  <strong>Address:</strong> {selectedCustomer.address || 'N/A'}
+                  <strong>Address:</strong> {selectedCustomer.address || "N/A"}
                 </p>
                 <p className="mb-1">
-                  <strong>Birthday:</strong>{' '}
-                  {selectedCustomer.birthday || 'N/A'}
+                  <strong>Birthday:</strong>{" "}
+                  {selectedCustomer.birthday || "N/A"}
                 </p>
                 <p className="mb-0">
-                  <strong>Anniversary:</strong>{' '}
-                  {selectedCustomer.anniversary || 'N/A'}
+                  <strong>Anniversary:</strong>{" "}
+                  {selectedCustomer.anniversary || "N/A"}
                 </p>
               </div>
             )}
@@ -302,7 +325,10 @@ const CustomerModal = ({
 
               {/* Anniversary */}
               <div className="mb-3">
-                <label htmlFor="anniversary" className="form-label fw-semibold">
+                <label
+                  htmlFor="anniversary"
+                  className="form-label fw-semibold"
+                >
                   Anniversary
                 </label>
                 <CFormInput
@@ -332,7 +358,7 @@ const CustomerModal = ({
                     Adding Customer...
                   </>
                 ) : (
-                  'Add Customer'
+                  "Add Customer"
                 )}
               </CButton>
             </CForm>
@@ -364,7 +390,7 @@ const CustomerModal = ({
                 Saving...
               </>
             ) : (
-              'Add New Customer'
+              "Add New Customer"
             )}
           </CButton>
         </div>
