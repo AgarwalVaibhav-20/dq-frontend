@@ -96,8 +96,12 @@ export const fetchTransactionDetails = createAsyncThunk(
       const response = await axios.get(`${BASE_URL}/transactionById/${transactionId}`, { headers })
       console.log("Transaction details response:", response.data)
       
-      // Return data in array format for consistency with component expectations
-      return Array.isArray(response.data) ? response.data : [response.data];
+      // Handle the response format - backend returns { success: true, data: transaction }
+      if (response.data.success && response.data.data) {
+        return response.data.data;
+      } else {
+        throw new Error('Invalid response format from server');
+      }
     } catch (error) {
       console.error('Error fetching transaction details:', error);
       return rejectWithValue(error.response?.data || { message: 'Failed to fetch transaction details' });

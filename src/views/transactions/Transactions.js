@@ -61,6 +61,9 @@ const Transactions = () => {
   }
 
   const generateInvoicePDF = (transactionDetails, restaurantProfile = {}) => {
+    console.log('🔍 Generating PDF for transaction:', transactionDetails);
+    console.log('🏪 Restaurant profile:', restaurantProfile);
+    
     const doc = new jsPDF({
       unit: 'mm',
       format: [80, 160], // 80mm thermal receipt size
@@ -88,13 +91,13 @@ const Transactions = () => {
       Number(amount || 0).toLocaleString('en-IN')
 
     // ---------- HEADER ----------
-    centerText(restaurantProfile?.restName || 'DQ TEST RESTAURANT', y, 15)
+    centerText(restaurantProfile?.name || restaurantProfile?.restName || 'DQ TEST RESTAURANT', y, 15)
     y += 5
-    centerText(transactionDetails.restaurantAddress || 'Address Line', y, 8)
+    centerText(restaurantProfile?.address || 'Address Line', y, 8)
     y += 4
-    centerText(`PinCode: ${restaurantProfile.pinCode || 'XXXXXX'} `, y, 8)
+    centerText(`PinCode: ${restaurantProfile?.pinCode || 'XXXXXX'}`, y, 8)
     y += 4
-    centerText(`Ph: ${transactionDetails.phoneNumber || 'N/A'}`, y, 8)
+    centerText(`Ph: ${restaurantProfile?.phone || restaurantProfile?.phoneNumber || 'N/A'}`, y, 8)
     y += 5
     line()
 
@@ -103,15 +106,23 @@ const Transactions = () => {
     y += 6
 
     // ---------- TRANSACTION INFO ----------
-    centerText(
-      `Date: ${new Date(transactionDetails.createdAt).toLocaleString()}`,
-      y,
-      8
-    )
+    const transactionDate = transactionDetails.createdAt ? 
+      new Date(transactionDetails.createdAt).toLocaleString() : 
+      'Invalid Date';
+    centerText(`Date: ${transactionDate}`, y, 8)
     y += 4
+    
     centerText(`Table: ${transactionDetails.tableNumber || 'N/A'}`, y, 8)
     y += 4
-    centerText(`Customer: ${transactionDetails?.username || 'Walk-in'}`, y, 8)
+    
+    // Try different customer name fields
+    const customerName = transactionDetails?.customerId?.name || 
+                        transactionDetails?.userId?.name ||
+                        transactionDetails?.userId?.username ||
+                        transactionDetails?.username || 
+                        transactionDetails?.customerName || 
+                        'Walk-in';
+    centerText(`Customer: ${customerName}`, y, 8)
     y += 5
     line()
 
@@ -119,36 +130,37 @@ const Transactions = () => {
     centerText('Items', y, 9, 'bold')
     y += 5
 
-    transactionDetails.items?.forEach((item) => {
-      const lineItem1 = `${item.itemName} x${item.quantity}`
-      centerText(lineItem1, y, 8)
-      y += 4
+    if (transactionDetails.items && transactionDetails.items.length > 0) {
+      transactionDetails.items.forEach((item) => {
+        const lineItem1 = `${item.itemName} x${item.quantity}`
+        centerText(lineItem1, y, 8)
+        y += 4
 
-      const lineItem2 = `Rs. ${formatAmount(item.price * item.quantity)}`
-      centerText(lineItem2, y, 8)
+        const lineItem2 = `Rs. ${formatAmount(item.price * item.quantity)}`
+        centerText(lineItem2, y, 8)
+        y += 4
+      })
+    } else {
+      centerText('No items found', y, 8)
       y += 4
-    })
+    }
 
     y += 1
     line()
 
     // ---------- TOTALS ----------
-    centerText(`Subtotal: Rs ${formatAmount(transactionDetails.sub_total)}`, y, 8)
+    centerText(`Subtotal: Rs ${formatAmount(transactionDetails.sub_total || 0)}`, y, 8)
     y += 4
     centerText(`Tax: Rs ${formatAmount(transactionDetails.taxAmount || 0)}`, y, 8)
     y += 4
-    centerText(
-      `Discount: Rs ${formatAmount(transactionDetails.discountAmount || 0)}`,
-      y,
-      8
-    )
+    centerText(`Discount: Rs ${formatAmount(transactionDetails.discountAmount || 0)}`, y, 8)
     y += 4
     centerText(`RoundOff: Rs ${formatAmount(transactionDetails.roundOff || 0)}`, y, 8)
     y += 4
     line()
     y += 4
 
-    centerText(`Total: Rs ${formatAmount(transactionDetails.total)}`, y, 10, 'bold')
+    centerText(`Total: Rs ${formatAmount(transactionDetails.total || 0)}`, y, 10, 'bold')
     y += 6
 
     line()
@@ -161,31 +173,38 @@ const Transactions = () => {
 
   const handleGenerateInvoice = (transactionId) => {
     console.log('🔍 Generating invoice for transaction ID:', transactionId)
+    console.log('🔍 Transaction ID type:', typeof transactionId)
+    console.log('🔍 Available transaction data:', transactions.find(t => t.transactionId === transactionId || t._id === transactionId))
+
+    if (!transactionId) {
+      console.error('❌ No transaction ID provided')
+      return
+    }
 
     dispatch(fetchTransactionDetails({ transactionId })).then((action) => {
       console.log('📥 Transaction details response:', action.payload)
+      console.log('📥 Action type:', action.type)
 
-      if (action.payload && Array.isArray(action.payload)) {
-        const transactionDetails = action.payload[0]
+      if (action.type === 'transactions/fetchTransactionDetails/fulfilled') {
+        const transactionDetails = action.payload
         console.log('📄 Transaction details object:', transactionDetails)
 
         if (!transactionDetails) {
-          // alert('Transaction details not found')
+          console.error('❌ Transaction details not found')
           return
         }
 
-        // Generate the PDF
-        const doc = generateInvoicePDF(transactionDetails)
+        // Generate the PDF with restaurant profile
+        const doc = generateInvoicePDF(transactionDetails, restaurantProfile)
         setPdfDoc(doc)
         setInvoiceContent(transactionDetails)
         setModalVisible(true)
       } else {
-        console.error('❌ Invalid response format:', action.payload)
-        // alert('Failed to generate invoice. Please try again.')
+        console.error('❌ Failed to fetch transaction details:', action.payload)
+        console.error('❌ Action type:', action.type)
       }
     }).catch((error) => {
       console.error('❌ Error generating invoice:', error)
-      // alert('Error generating invoice: ' + error.message)
     })
   }
 
