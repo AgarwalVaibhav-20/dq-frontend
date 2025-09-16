@@ -125,37 +125,40 @@ const ProductList = ({
           >
             <i className="bi bi-grid me-2" /> All
           </CButton>
-          {categories.map((cat) => (
-            <CButton
-              key={cat.id}
-              color={selectedCategoryId === cat.id ? 'primary' : isDarkMode ? 'secondary' : 'light'}
-              className={`rounded-pill px-4 shadow-sm border-0 ${selectedCategoryId === cat.id ? '' : 'opacity-75'}`}
-              onClick={() => setSelectedCategoryId(cat.id)}
-              style={{
-                fontWeight: selectedCategoryId === cat.id ? 600 : 400,
-                boxShadow: selectedCategoryId === cat.id ? '0 0 0 0.2rem rgba(0,123,255,.15)' : undefined,
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {cat.icon && (
-                <img
-                  src={cat.icon}
-                  alt=""
-                  style={{
-                    width: 22,
-                    height: 22,
-                    objectFit: 'contain',
-                    marginRight: 8,
-                    filter: isDarkMode ? 'invert(1)' : undefined,
-                  }}
-                />
-              )}
-              {cat.categoryName}
-            </CButton>
-          ))}
+          {categories.map((cat) => {
+            const categoryId = cat._id || cat.id; // Handle both _id and id fields
+            return (
+              <CButton
+                key={categoryId}
+                color={selectedCategoryId === categoryId ? 'primary' : isDarkMode ? 'secondary' : 'light'}
+                className={`rounded-pill px-4 shadow-sm border-0 ${selectedCategoryId === categoryId ? '' : 'opacity-75'}`}
+                onClick={() => setSelectedCategoryId(categoryId)}
+                style={{
+                  fontWeight: selectedCategoryId === categoryId ? 600 : 400,
+                  boxShadow: selectedCategoryId === categoryId ? '0 0 0 0.2rem rgba(0,123,255,.15)' : undefined,
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  whiteSpace: 'nowrap',
+                }}
+              >
+                {cat.icon && (
+                  <img
+                    src={cat.icon}
+                    alt=""
+                    style={{
+                      width: 22,
+                      height: 22,
+                      objectFit: 'contain',
+                      marginRight: 8,
+                      filter: isDarkMode ? 'invert(1)' : undefined,
+                    }}
+                  />
+                )}
+                {cat.categoryName}
+              </CButton>
+            );
+          })}
         </div>
 
         <h5 className="fw-semibold mb-3">Available Items</h5>

@@ -23,6 +23,19 @@ export const fetchDues = createAsyncThunk(
   },
 )
 
+// Fetch dues by customer
+export const fetchDuesByCustomer = createAsyncThunk(
+  'dues/fetchDuesByCustomer',
+  async ({ customerId, token }, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/dues/customer/${customerId}`, configureHeaders(token))
+      return response.data.data
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch customer dues')
+    }
+  },
+)
+
 // Add a new due
 export const addDue = createAsyncThunk(
   'dues/addDue',
@@ -110,6 +123,7 @@ const dueSlice = createSlice({
   name: 'dues',
   initialState: {
     dues: [],
+    customerDues: [],
     loading: false,
     error: null,
   },
@@ -127,6 +141,21 @@ const dueSlice = createSlice({
         state.dues = action.payload
       })
       .addCase(fetchDues.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload
+        toast.error(action.payload)
+      })
+
+      // Fetch dues by customer
+      .addCase(fetchDuesByCustomer.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(fetchDuesByCustomer.fulfilled, (state, action) => {
+        state.loading = false
+        state.customerDues = action.payload
+      })
+      .addCase(fetchDuesByCustomer.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload
         toast.error(action.payload)

@@ -7,10 +7,11 @@ import {
   deleteTransaction,
   fetchPOSTransactions,
 } from '../../redux/slices/transactionSlice'
-import { CSpinner, CModal, CModalBody, CModalHeader, CButton } from '@coreui/react'
+import { fetchDuesByCustomer } from '../../redux/slices/duesSlice'
+import { CSpinner, CModal, CModalBody, CModalHeader, CModalTitle, CModalFooter, CButton } from '@coreui/react'
 
 import CIcon from '@coreui/icons-react'
-import { cilFile, cilTrash } from '@coreui/icons'
+import { cilFile, cilTrash, cilUser } from '@coreui/icons'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 import CustomToolbar from '../../utils/CustomToolbar'
@@ -20,6 +21,7 @@ import { getRestaurantProfile } from '../../redux/slices/restaurantProfileSlice'
 const Transactions = () => {
   const dispatch = useDispatch()
   const { transactions, loading } = useSelector((state) => state.transactions)
+  const { customerDues, loading: duesLoading } = useSelector((state) => state.dues)
 
   const restaurantId = useSelector((state) => state.auth.restaurantId)
   const auth = useSelector((state) => state.auth.auth)
@@ -28,6 +30,8 @@ const Transactions = () => {
   const [modalVisible, setModalVisible] = useState(false)
   const [invoiceContent, setInvoiceContent] = useState(null)
   const [pdfDoc, setPdfDoc] = useState(null)
+  const [showCustomerDuesModal, setShowCustomerDuesModal] = useState(false)
+  const [selectedCustomer, setSelectedCustomer] = useState(null)
 
   const isMobile = useMediaQuery('(max-width:600px)')
   const token = localStorage.getItem('authToken')
@@ -230,6 +234,32 @@ const Transactions = () => {
     }
   }
 
+  // Handle customer dues
+  const handleCustomerDues = async (transaction) => {
+    console.log('Customer Dues for transaction:', transaction)
+    
+    // Set the selected customer
+    setSelectedCustomer({
+      id: transaction.userId,
+      name: transaction.username || 'Unknown Customer'
+    })
+    
+    // Fetch customer dues
+    try {
+      await dispatch(fetchDuesByCustomer({ 
+        customerId: transaction.userId, 
+        token 
+      })).unwrap()
+      
+      // Show the modal
+      setShowCustomerDuesModal(true)
+    } catch (error) {
+      console.error('Error fetching customer dues:', error)
+      // Still show modal with empty dues
+      setShowCustomerDuesModal(true)
+    }
+  }
+
   const columns = [
     {
       field: 'id',
@@ -303,6 +333,21 @@ const Transactions = () => {
           icon={cilFile}
           style={{ fontSize: '1.5rem', cursor: 'pointer', color: 'blue' }}
           onClick={() => handleGenerateInvoice(params.row.transactionId || params.row._id)}
+        />
+      ),
+    },
+    {
+      field: 'customerDues',
+      headerName: 'Customer Dues',
+      flex: isMobile ? undefined : 1,
+      minWidth: isMobile ? 150 : undefined,
+      headerClassName: 'header-style',
+      sortable: false,
+      renderCell: (params) => (
+        <CIcon
+          icon={cilUser}
+          style={{ fontSize: '1.5rem', cursor: 'pointer', color: 'green' }}
+          onClick={() => handleCustomerDues(params.row)}
         />
       ),
     },
@@ -394,6 +439,97 @@ const Transactions = () => {
           </CModalBody>
         </CModal>
       )}
+
+      {/* Modal for Customer Dues */}
+      <CModal visible={showCustomerDuesModal} onClose={() => setShowCustomerDuesModal(false)} size="lg">
+        <CModalHeader>
+          <CModalTitle>{selectedCustomer?.name || 'Customer'}'s Due Details</CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          {duesLoading ? (
+            <div className="text-center py-4">
+              <CSpinner color="primary" />
+              <p className="mt-2">Loading dues...</p>
+            </div>
+          ) : customerDues && customerDues.length > 0 ? (
+            <div>
+              {/* Customer Information */}
+              <div className="mb-4 p-3 bg-light rounded">
+                <h6 className="mb-2 text-primary">Customer Information:</h6>
+                <p className="mb-1"><strong>Customer:</strong> {selectedCustomer?.name || 'N/A'}</p>
+                <p className="mb-1"><strong>Customer ID:</strong> {selectedCustomer?.id || 'N/A'}</p>
+                <p className="mb-0"><strong>Total Dues Found:</strong> {customerDues.length}</p>
+              </div>
+
+              {/* Summary */}
+              <div className="mb-4 p-3 bg-light rounded">
+                <h6 className="mb-3 text-primary">Summary:</h6>
+                <div className="row">
+                  <div className="col-md-6">
+                    <p className="mb-1"><strong>Total Amount Due:</strong> 
+                      <span className="text-danger ms-2">
+                        Rs. {customerDues.reduce((sum, due) => sum + (parseFloat(due.total) || 0), 0).toFixed(2)}
+                      </span>
+                    </p>
+                  </div>
+                  <div className="col-md-6">
+                    <p className="mb-1"><strong>Paid Dues:</strong> 
+                      <span className="text-success ms-2">
+                        {customerDues.filter(due => due.status === 'paid').length}
+                      </span>
+                    </p>
+                    <p className="mb-0"><strong>Unpaid Dues:</strong> 
+                      <span className="text-warning ms-2">
+                        {customerDues.filter(due => due.status === 'unpaid').length}
+                      </span>
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Individual Dues List */}
+              <div className="mb-3">
+                <h6 className="mb-3 text-primary">List of Individual Dues:</h6>
+                <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                  {customerDues.map((due, index) => (
+                    <div key={due._id || index} className="mb-3 p-3 border rounded">
+                      <div className="row">
+                        <div className="col-md-6">
+                          <p className="mb-1"><strong>Due ID:</strong> {due._id?.slice(-6) || 'N/A'}</p>
+                          <p className="mb-1"><strong>Created:</strong> {new Date(due.createdAt).toLocaleString()}</p>
+                          <p className="mb-0"><strong>Amount:</strong> Rs. {parseFloat(due.total || 0).toFixed(3)}</p>
+                        </div>
+                        <div className="col-md-6">
+                          <p className="mb-1">
+                            <strong>Status:</strong> 
+                            <span className={`badge ms-2 ${due.status === 'paid' ? 'bg-success' : 'bg-warning'}`}>
+                              {due.status?.toUpperCase() || 'UNPAID'}
+                            </span>
+                          </p>
+                          <p className="mb-0"><strong>Transaction ID:</strong> {due.transaction_id || 'N/A'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-4">
+              <div className="mb-3">
+                <CIcon icon={cilUser} size="3xl" className="text-muted" />
+              </div>
+              <h5 className="text-muted">No dues found for {selectedCustomer?.name || 'this customer'}</h5>
+              <p className="text-muted">This customer has no outstanding dues.</p>
+            </div>
+          )}
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" onClick={() => setShowCustomerDuesModal(false)}>
+            Close
+          </CButton>
+        </CModalFooter>
+      </CModal>
     </div>
   )
 }

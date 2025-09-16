@@ -132,8 +132,15 @@ const POSTableContent = () => {
 
   const filteredMenuItems = React.useMemo(() => {
     let items = menuItems;
+    
     if (selectedCategoryId) {
-      items = items?.filter(item => item.categoryId === selectedCategoryId);
+      items = items?.filter(item => {
+        // Handle both populated category object and direct categoryId
+        const itemCategoryId = typeof item.categoryId === 'object' 
+          ? item.categoryId._id 
+          : item.categoryId;
+        return itemCategoryId === selectedCategoryId;
+      });
     }
     return items?.filter((product) =>
       product.itemName?.toLowerCase().includes(searchProduct.toLowerCase()),
@@ -370,8 +377,8 @@ const POSTableContent = () => {
   };
 
 
-  const handleRoundOffSubmit = () => {
-    setRoundOff(Number(inputValue))
+  const handleRoundOffSubmit = (roundOffValue) => {
+    setRoundOff(roundOffValue)
     setShowRoundOffModal(false)
     setInputValue('')
   }
@@ -410,6 +417,14 @@ const POSTableContent = () => {
     const discountAmount = calculateDiscountAmount();
     return subtotal + totalTaxAmount - discountAmount - roundOff;
   }, [calculateSubtotal, calculateTotalTaxAmount, calculateDiscountAmount, roundOff]);
+
+  // Initialize inputValue when round off modal opens
+  useEffect(() => {
+    if (showRoundOffModal) {
+      const currentTotal = calculateSubtotal() + calculateTotalTaxAmount() - calculateDiscountAmount();
+      setInputValue(currentTotal.toString());
+    }
+  }, [showRoundOffModal, calculateSubtotal, calculateTotalTaxAmount, calculateDiscountAmount]);
 
   // FIXED: Quantity change handler with proper ID matching
   const handleQuantityChange = (itemId, newQty) => {
@@ -1055,6 +1070,10 @@ const POSTableContent = () => {
         inputValue={inputValue}
         setInputValue={setInputValue}
         handleRoundOffSubmit={handleRoundOffSubmit}
+        subtotal={calculateSubtotal()}
+        tax={calculateTotalTaxAmount()}
+        discount={calculateDiscountAmount()}
+        cart={cart}
       />
 
       <PaymentModal
