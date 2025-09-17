@@ -9,6 +9,7 @@ import {
   CFormInput,
   CFormCheck,
 } from '@coreui/react';
+import axiosInstance from '../utils/axiosConfig';
 
 const DiscountModal = ({
   showDiscountModal,
@@ -32,6 +33,19 @@ const DiscountModal = ({
     }
   }, [showDiscountModal, cart]);
 
+  // Validate coupon when coupon code changes
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      if (couponCode.trim()) {
+        validateCoupon(couponCode);
+      } else {
+        setCouponDiscount(0);
+      }
+    }, 500); // Debounce for 500ms
+
+    return () => clearTimeout(timeoutId);
+  }, [couponCode]);
+
   const toggleSelection = (itemId) => {
     setSelectedItemIds((prev) =>
       prev.includes(itemId)
@@ -48,14 +62,49 @@ const DiscountModal = ({
     }
   };
 
-  const validateCoupon = (code) => {
-    let discount = 0;
-    if (code.toUpperCase() === 'DISCOUNT10') {
-      discount = { type: 'percentage', value: 10 };
-    } else if (code.toUpperCase() === 'SAVE100') {
-      discount = { type: 'fixed', value: 100 };
+  const validateCoupon = async (code) => {
+    if (!code || code.trim() === '') {
+      setCouponDiscount(0);
+      return;
     }
-    setCouponDiscount(discount);
+
+    try {
+      // Calculate order total for validation
+      const orderTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+      
+      const response = await axiosInstance.post('/api/coupon/validate', {
+        couponCode: code.trim(),
+        orderTotal: orderTotal
+      });
+
+      if (response.data.success) {
+        const coupon = response.data.coupon;
+        setCouponDiscount({
+          type: coupon.discountType,
+          value: coupon.discountValue,
+          amount: coupon.discountAmount,
+          id: coupon.id,
+          code: coupon.code,
+          expiryDate: coupon.expiryDate,
+          minOrderValue: coupon.minOrderValue,
+          maxDiscountAmount: coupon.maxDiscountAmount,
+          usageCount: coupon.usageCount,
+          maxUsage: coupon.maxUsage,
+          description: coupon.description
+        });
+      } else {
+        setCouponDiscount(0);
+      }
+    } catch (error) {
+      console.error('Error validating coupon:', error);
+      setCouponDiscount(0);
+    }
+  };
+
+  const handleApplyCoupon = () => {
+    if (couponCode.trim()) {
+      validateCoupon(couponCode);
+    }
   };
 
   const onSubmit = () => {
@@ -169,24 +218,77 @@ const DiscountModal = ({
           <div className="d-flex">
             <CFormInput
               type="text"
-              placeholder="Enter coupon (e.g., DISCOUNT10)"
+              placeholder="Enter coupon code (e.g., BQHWM70)"
               value={couponCode}
               onChange={(e) => setCouponCode(e.target.value)}
             />
             <CButton
               color="success"
               className="ms-2"
-              onClick={() => validateCoupon(couponCode)}
+              onClick={handleApplyCoupon}
+              disabled={!couponCode.trim()}
             >
               Apply
             </CButton>
           </div>
           {couponDiscount.value ? (
-            <small className="text-success fw-semibold d-block mt-2">
-              ✅ Coupon applied: {couponDiscount.type === 'percentage'
-                ? `${couponDiscount.value}%`
-                : `₹${couponDiscount.value}`} off
-            </small>
+            <div className="mt-3 p-3 border rounded bg-light">
+              <div className="d-flex align-items-center mb-2">
+                <span className="text-success me-2">✅</span>
+                <span className="fw-bold text-success">Coupon Applied Successfully!</span>
+              </div>
+              
+              <div className="row">
+                <div className="col-md-6">
+                  <div className="mb-2">
+                    <strong>Code:</strong> <span className="text-primary">{couponDiscount.code}</span>
+                  </div>
+                  <div className="mb-2">
+                    <strong>Discount:</strong> 
+                    <span className="text-success ms-1">
+                      {couponDiscount.type === 'percentage' 
+                        ? `${couponDiscount.value}% OFF` 
+                        : `₹${couponDiscount.value} OFF`}
+                    </span>
+                  </div>
+                  <div className="mb-2">
+                    <strong>Discount Amount:</strong> 
+                    <span className="text-success ms-1">₹{couponDiscount.amount?.toFixed(2) || '0.00'}</span>
+                  </div>
+                </div>
+                
+                <div className="col-md-6">
+                  <div className="mb-2">
+                    <strong>Min Order:</strong> 
+                    <span className="text-info ms-1">₹{couponDiscount.minOrderValue || '0'}</span>
+                  </div>
+                  <div className="mb-2">
+                    <strong>Max Discount:</strong> 
+                    <span className="text-warning ms-1">₹{couponDiscount.maxDiscountAmount || 'No limit'}</span>
+                  </div>
+                  <div className="mb-2">
+                    <strong>Expires:</strong> 
+                    <span className="text-secondary ms-1">
+                      {couponDiscount.expiryDate ? new Date(couponDiscount.expiryDate).toLocaleDateString() : 'N/A'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              {couponDiscount.description && (
+                <div className="mt-2">
+                  <strong>Description:</strong> 
+                  <span className="text-muted ms-1">{couponDiscount.description}</span>
+                </div>
+              )}
+              
+              <div className="mt-2">
+                <strong>Usage:</strong> 
+                <span className="text-info ms-1">
+                  {couponDiscount.usageCount || 0}/{couponDiscount.maxUsage || 'Unlimited'}
+                </span>
+              </div>
+            </div>
           ) : couponCode ? (
             <small className="text-danger d-block mt-2">
               ❌ Invalid Coupon

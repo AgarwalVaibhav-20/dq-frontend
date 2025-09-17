@@ -6,7 +6,7 @@ export const createCoupon = createAsyncThunk(
   async (couponData, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem("authToken");
-      const response = await axios.post(`${BASE_URL}/create/coupen`, couponData, {
+      const response = await axios.post(`${BASE_URL}/api/coupon/create/coupen`, couponData, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return response.data.coupon;
@@ -22,7 +22,7 @@ export const fetchCoupons = createAsyncThunk(
   async (params = {}, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem("authToken");
-      const response = await axios.get(`${BASE_URL}/all/coupons`, {
+      const response = await axios.get(`${BASE_URL}/api/coupon/all/coupons`, {
         params,
         headers: { Authorization: `Bearer ${token}` },
       });
@@ -39,7 +39,7 @@ export const fetchCouponById = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem("authToken");
-      const response = await axios.get(`${BASE_URL}/${id}`, {
+      const response = await axios.get(`${BASE_URL}/api/coupon/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return response.data.coupon;
@@ -56,7 +56,7 @@ export const applyCoupon = createAsyncThunk(
     try {
       const token = localStorage.getItem("authToken");
       const response = await axios.post(
-        `${BASE_URL}/apply`,
+        `${BASE_URL}/api/coupon/apply`,
         { couponId, orderTotal },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -73,7 +73,7 @@ export const updateCoupon = createAsyncThunk(
   async ({ id, updates }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem("authToken");
-      const response = await axios.put(`${BASE_URL}/coupon/update/${id}`, updates, {
+      const response = await axios.put(`${BASE_URL}/api/coupon/coupon/update/${id}`, updates, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return response.data.coupon;
@@ -89,7 +89,7 @@ export const deleteCoupon = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem("authToken");
-      await axios.delete(`${BASE_URL}/coupon/delete/${id}`, {
+      await axios.delete(`${BASE_URL}/api/coupon/coupon/delete/${id}`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       return id;

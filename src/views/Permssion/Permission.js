@@ -97,6 +97,42 @@ export default function PermissionManagement() {
 
   const [updating, setUpdating] = useState({});
   const [bulkUpdating, setBulkUpdating] = useState(false);
+  
+  // State for managing checkbox states in role change modal
+  const [checkboxStates, setCheckboxStates] = useState({
+    currentRole: true,
+    newRole: true,
+    currentPermissions: {},
+    newPermissions: {}
+  });
+
+  // Function to toggle checkbox states
+  const toggleCheckbox = (type, permission = null) => {
+    setCheckboxStates(prev => {
+      if (type === 'currentRole') {
+        return { ...prev, currentRole: !prev.currentRole };
+      } else if (type === 'newRole') {
+        return { ...prev, newRole: !prev.newRole };
+      } else if (type === 'currentPermission' && permission) {
+        return {
+          ...prev,
+          currentPermissions: {
+            ...prev.currentPermissions,
+            [permission]: !prev.currentPermissions[permission]
+          }
+        };
+      } else if (type === 'newPermission' && permission) {
+        return {
+          ...prev,
+          newPermissions: {
+            ...prev.newPermissions,
+            [permission]: !prev.newPermissions[permission]
+          }
+        };
+      }
+      return prev;
+    });
+  };
 
   const isAdmin = currentUserRole === 'admin';
   const userId = currentUserId || localStorage.getItem('userId');
@@ -821,7 +857,14 @@ export default function PermissionManagement() {
                       <small className="text-muted">Current Role</small>
                     </CCardHeader>
                     <CCardBody className="py-3">
-                      <h6 className="text-danger mb-2">
+                      <h6 className="text-danger mb-2 d-flex align-items-center">
+                        <input 
+                          type="checkbox" 
+                          className="form-check-input me-2" 
+                          checked={checkboxStates.currentRole}
+                          onChange={() => toggleCheckbox('currentRole')}
+                          style={{ transform: 'scale(1.2)' }}
+                        />
                         <CBadge color={getRoleBadgeColor(normalizeRole(confirmModal.user.role))}>
                           {ROLE_CONFIG[normalizeRole(confirmModal.user.role)]?.label || normalizeRole(confirmModal.user.role)}
                         </CBadge>
@@ -832,7 +875,16 @@ export default function PermissionManagement() {
                       <div>
                         <small className="text-muted d-block mb-1">Permissions:</small>
                         {ROLE_CONFIG[normalizeRole(confirmModal.user.role)]?.permissions.map((permission, idx) => (
-                          <small key={idx} className="d-block">• {permission}</small>
+                          <div key={idx} className="d-flex align-items-center mb-1">
+                            <input 
+                              type="checkbox" 
+                              className="form-check-input me-2" 
+                              checked={checkboxStates.currentPermissions[permission] !== false}
+                              onChange={() => toggleCheckbox('currentPermission', permission)}
+                              style={{ transform: 'scale(0.9)' }}
+                            />
+                            <small>{permission}</small>
+                          </div>
                         ))}
                       </div>
                     </CCardBody>
@@ -844,7 +896,14 @@ export default function PermissionManagement() {
                       <small>New Role</small>
                     </CCardHeader>
                     <CCardBody className="py-3">
-                      <h6 className="text-primary mb-2">
+                      <h6 className="text-primary mb-2 d-flex align-items-center">
+                        <input 
+                          type="checkbox" 
+                          className="form-check-input me-2" 
+                          checked={checkboxStates.newRole}
+                          onChange={() => toggleCheckbox('newRole')}
+                          style={{ transform: 'scale(1.2)' }}
+                        />
                         <CBadge color={getRoleBadgeColor(confirmModal.newRole)}>
                           {ROLE_CONFIG[confirmModal.newRole]?.label || confirmModal.newRole}
                         </CBadge>
@@ -855,7 +914,16 @@ export default function PermissionManagement() {
                       <div>
                         <small className="text-muted d-block mb-1">Permissions:</small>
                         {ROLE_CONFIG[confirmModal.newRole]?.permissions.map((permission, idx) => (
-                          <small key={idx} className="d-block text-primary">• {permission}</small>
+                          <div key={idx} className="d-flex align-items-center mb-1">
+                            <input 
+                              type="checkbox" 
+                              className="form-check-input me-2" 
+                              checked={checkboxStates.newPermissions[permission] !== false}
+                              onChange={() => toggleCheckbox('newPermission', permission)}
+                              style={{ transform: 'scale(0.9)' }}
+                            />
+                            <small className="text-primary">{permission}</small>
+                          </div>
                         ))}
                       </div>
                     </CCardBody>
@@ -894,7 +962,14 @@ export default function PermissionManagement() {
                   <h6 className="mb-0">New Role Details</h6>
                 </CCardHeader>
                 <CCardBody>
-                  <div className="mb-2">
+                  <div className="mb-2 d-flex align-items-center">
+                    <input 
+                      type="checkbox" 
+                      className="form-check-input me-2" 
+                      checked={checkboxStates.newRole}
+                      onChange={() => toggleCheckbox('newRole')}
+                      style={{ transform: 'scale(1.2)' }}
+                    />
                     <CBadge color={getRoleBadgeColor(confirmModal.newRole)} className="me-2">
                       {ROLE_CONFIG[confirmModal.newRole]?.label || confirmModal.newRole}
                     </CBadge>
@@ -905,7 +980,16 @@ export default function PermissionManagement() {
                   <div>
                     <small className="text-muted d-block mb-1">Permissions:</small>
                     {ROLE_CONFIG[confirmModal.newRole]?.permissions.map((permission, idx) => (
-                      <small key={idx} className="d-block">• {permission}</small>
+                      <div key={idx} className="d-flex align-items-center mb-1">
+                        <input 
+                          type="checkbox" 
+                          className="form-check-input me-2" 
+                          checked={checkboxStates.newPermissions[permission] !== false}
+                          onChange={() => toggleCheckbox('newPermission', permission)}
+                          style={{ transform: 'scale(0.9)' }}
+                        />
+                        <small>{permission}</small>
+                      </div>
                     ))}
                   </div>
                 </CCardBody>

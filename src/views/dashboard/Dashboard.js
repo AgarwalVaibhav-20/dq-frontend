@@ -86,7 +86,9 @@ const Dashboard = () => {
 
   const getReportData = (key) => {
     const state = dropdownStates[key];
-    return {
+    console.log('getReportData - key:', key, 'state:', state, 'overallReport:', overallReport);
+    
+    const data = {
       collection: overallReport?.[`${state}Collection`],
       invoices:
         overallReport?.[`totalInvoice${state.charAt(0).toUpperCase() + state.slice(1)}`],
@@ -95,6 +97,9 @@ const Dashboard = () => {
       rejectedOrders:
         overallReport?.[`totalRejectOrder${state.charAt(0).toUpperCase() + state.slice(1)}`],
     }[key];
+    
+    console.log('getReportData - result:', data);
+    return data;
   };
 
   const renderReportCard = (title, key) => (

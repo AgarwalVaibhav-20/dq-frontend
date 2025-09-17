@@ -110,6 +110,7 @@ const dashboardSlice = createSlice({
       })
       .addCase(fetchOverallReport.fulfilled, (state, action) => {
         state.loading = false;
+        console.log('fetchOverallReport.fulfilled - payload:', action.payload);
         state.overallReport = action.payload;
       })
       .addCase(fetchOverallReport.rejected, (state, action) => {
