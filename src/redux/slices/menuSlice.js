@@ -125,7 +125,8 @@ export const updateMenuItem = createAsyncThunk(
         'Content-Type': 'multipart/form-data',
       };
 
-      const response = await axios.put(`${BASE_URL}/menu/${id}`, formData, { headers });
+      // const response = await axios.put(`${BASE_URL}/menu/${id}`, formData, { headers });
+      const response = await axios.put(`${BASE_URL}/menu/update/${id}`, formData, { headers });
       return response.data;
     } catch (error) {
       return rejectWithValue(
@@ -175,6 +176,7 @@ export const updateMenuItemStatus = createAsyncThunk(
 
       const response = await axios.put(
         `${BASE_URL}/menu/status`, // Fixed endpoint path
+        `${BASE_URL}/menus/status`,
         { id, status: numericStatus },
         { headers }
       );

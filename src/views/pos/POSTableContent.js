@@ -132,12 +132,12 @@ const POSTableContent = () => {
 
   const filteredMenuItems = React.useMemo(() => {
     let items = menuItems;
-    
+
     if (selectedCategoryId) {
       items = items?.filter(item => {
         // Handle both populated category object and direct categoryId
-        const itemCategoryId = typeof item.categoryId === 'object' 
-          ? item.categoryId._id 
+        const itemCategoryId = typeof item.categoryId === 'object'
+          ? item.categoryId._id
           : item.categoryId;
         return itemCategoryId === selectedCategoryId;
       });
@@ -948,7 +948,7 @@ const POSTableContent = () => {
             calculateTotal={calculateTotal}
             tax={tax}
             discount={discount}
-            setDiscount={setDiscount} 
+            setDiscount={setDiscount}
             appliedDiscounts={appliedDiscounts}
             setAppliedDiscounts={setAppliedDiscounts}
             roundOff={roundOff}

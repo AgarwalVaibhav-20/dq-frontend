@@ -46,7 +46,7 @@ const Menu = () => {
     itemImage: "",
     sub_category: "",
     stock: 0,
-    sizes: [{ name: "", price: "", enabled: true }], // Using 'name' to match frontend
+    sizes: [{ name: "", price: "", enabled: true }],
     stockItems: [{ stockId: "", quantity: "" }],
     description: "",
     preparationTime: ""
@@ -186,14 +186,14 @@ const Menu = () => {
       formDataToSend.append("sub_category", formData.sub_category);
       formDataToSend.append("price", formData.price);
 
-      // ✅ Add sizes data
+      // ✅ Add sizes data (convert to array)
       if (formData.sizes) {
-        ['small', 'medium', 'full'].forEach((size) => {
-          formDataToSend.append(`sizes[${size}][enabled]`, formData.sizes[size]?.enabled || false);
-          if (formData.sizes[size]?.price) {
-            formDataToSend.append(`sizes[${size}][price]`, formData.sizes[size].price);
-          }
-        });
+        const sizesArray = Object.entries(formData.sizes).map(([label, data]) => ({
+          label,
+          enabled: data.enabled || false,
+          price: data.price ? Number(data.price) : 0, // default to 0 if missing
+        }));
+        formDataToSend.append("sizes", JSON.stringify(sizesArray));
       }
 
       // ✅ Add stockItems if present
@@ -202,7 +202,7 @@ const Menu = () => {
           (item) => item.stockId && item.quantity !== undefined
         );
         if (validStockItems.length > 0) {
-          formDataToSend.append('stockItems', JSON.stringify(validStockItems));
+          formDataToSend.append("stockItems", JSON.stringify(validStockItems));
         }
       }
 
@@ -218,6 +218,7 @@ const Menu = () => {
           token,
         })
       ).unwrap();
+
       await dispatch(fetchMenuItems({ restaurantId, token }));
       handleCancel();
       toast.success("Menu item updated successfully!");
@@ -227,6 +228,7 @@ const Menu = () => {
       setIsSubmitting(false);
     }
   };
+
 
   const handleDeleteMenuItem = async () => {
     setIsSubmitting(true);
@@ -400,7 +402,6 @@ const Menu = () => {
               />
             </div>
 
-            {/* ✅ FIXED: Sizes section with validation */}
             <div className="mb-3">
               <label className="form-label">Food Sizes & Prices</label>
 

@@ -127,12 +127,19 @@ export const fetchRestaurantDetails = createAsyncThunk(
 
 // ------------------ UPDATE USER ROLE ------------------
 export const updateUserRole = createAsyncThunk(
-  'auth/updateUserRole',
-  async ({ userId, role, token }, { rejectWithValue }) => {
+  'user/updateUserRole',
+  async ({ role, permissions, token }, { rejectWithValue }) => {
     try {
+      // Get userId from localStorage
+      const id = localStorage.getItem("userId");
+
+      if (!id) {
+        return rejectWithValue("User ID not found in localStorage");
+      }
+
       const response = await axiosInstance.put(
-        `${BASE_URL}/users/${userId}/role`,
-        { role },
+        `${BASE_URL}/users/role/${id}`,
+        { role, permissions },
         configureHeaders(token)
       );
       return response.data;
@@ -141,6 +148,9 @@ export const updateUserRole = createAsyncThunk(
     }
   }
 );
+
+
+
 
 // ------------------ FETCH ALL USERS (Admin only) ------------------
 export const fetchAllUsers = createAsyncThunk(

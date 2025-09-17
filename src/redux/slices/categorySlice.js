@@ -68,15 +68,9 @@ export const fetchCategoryById = createAsyncThunk(
 
 // Async thunk to update a category
 export const updateCategory = createAsyncThunk(
-  'category/updateCategory',
-  async ({ id, categoryName, categoryImage, restaurantId, token }, { rejectWithValue }) => {
+  "category/updateCategory",
+  async ({ id, formData, token }, { rejectWithValue }) => {
     try {
-      const formData = new FormData();
-      if (categoryName) formData.append('categoryName', categoryName);
-      if (categoryImage) formData.append('categoryImage', categoryImage);
-      if (restaurantId) formData.append('restaurantId', restaurantId);
-
-
       const response = await axios.post(
         `${BASE_URL}category/update/${id}`,
         formData,
@@ -84,7 +78,10 @@ export const updateCategory = createAsyncThunk(
       );
       return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Category update failed');
+      console.log("error of update category", error);
+      return rejectWithValue(
+        error.response?.data?.message || "Category update failed"
+      );
     }
   }
 );

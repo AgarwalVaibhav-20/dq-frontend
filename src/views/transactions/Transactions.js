@@ -67,7 +67,7 @@ const Transactions = () => {
   const generateInvoicePDF = (transactionDetails, restaurantProfile = {}) => {
     console.log('🔍 Generating PDF for transaction:', transactionDetails);
     console.log('🏪 Restaurant profile:', restaurantProfile);
-    
+
     const doc = new jsPDF({
       unit: 'mm',
       format: [80, 160], // 80mm thermal receipt size
@@ -110,21 +110,21 @@ const Transactions = () => {
     y += 6
 
     // ---------- TRANSACTION INFO ----------
-    const transactionDate = transactionDetails.createdAt ? 
-      new Date(transactionDetails.createdAt).toLocaleString() : 
+    const transactionDate = transactionDetails.createdAt ?
+      new Date(transactionDetails.createdAt).toLocaleString() :
       'Invalid Date';
     centerText(`Date: ${transactionDate}`, y, 8)
     y += 4
-    
+
     centerText(`Table: ${transactionDetails.tableNumber || 'N/A'}`, y, 8)
     y += 4
-    
+
     // Try different customer name fields
-    const customerName = transactionDetails?.customerId?.name || 
+    const customerName = transactionDetails?.customerId?.name ||
                         transactionDetails?.userId?.name ||
                         transactionDetails?.userId?.username ||
-                        transactionDetails?.username || 
-                        transactionDetails?.customerName || 
+                        transactionDetails?.username ||
+                        transactionDetails?.customerName ||
                         'Walk-in';
     centerText(`Customer: ${customerName}`, y, 8)
     y += 5
@@ -237,20 +237,20 @@ const Transactions = () => {
   // Handle customer dues
   const handleCustomerDues = async (transaction) => {
     console.log('Customer Dues for transaction:', transaction)
-    
+
     // Set the selected customer
     setSelectedCustomer({
       id: transaction.userId,
       name: transaction.username || 'Unknown Customer'
     })
-    
+
     // Fetch customer dues
     try {
-      await dispatch(fetchDuesByCustomer({ 
-        customerId: transaction.userId, 
-        token 
+      await dispatch(fetchDuesByCustomer({
+        customerId: transaction.userId,
+        token
       })).unwrap()
-      
+
       // Show the modal
       setShowCustomerDuesModal(true)
     } catch (error) {
@@ -259,6 +259,7 @@ const Transactions = () => {
       setShowCustomerDuesModal(true)
     }
   }
+
 
   const columns = [
     {
@@ -440,6 +441,7 @@ const Transactions = () => {
         </CModal>
       )}
 
+
       {/* Modal for Customer Dues */}
       <CModal visible={showCustomerDuesModal} onClose={() => setShowCustomerDuesModal(false)} size="lg">
         <CModalHeader>
@@ -466,19 +468,19 @@ const Transactions = () => {
                 <h6 className="mb-3 text-primary">Summary:</h6>
                 <div className="row">
                   <div className="col-md-6">
-                    <p className="mb-1"><strong>Total Amount Due:</strong> 
+                    <p className="mb-1"><strong>Total Amount Due:</strong>
                       <span className="text-danger ms-2">
                         Rs. {customerDues.reduce((sum, due) => sum + (parseFloat(due.total) || 0), 0).toFixed(2)}
                       </span>
                     </p>
                   </div>
                   <div className="col-md-6">
-                    <p className="mb-1"><strong>Paid Dues:</strong> 
+                    <p className="mb-1"><strong>Paid Dues:</strong>
                       <span className="text-success ms-2">
                         {customerDues.filter(due => due.status === 'paid').length}
                       </span>
                     </p>
-                    <p className="mb-0"><strong>Unpaid Dues:</strong> 
+                    <p className="mb-0"><strong>Unpaid Dues:</strong>
                       <span className="text-warning ms-2">
                         {customerDues.filter(due => due.status === 'unpaid').length}
                       </span>
@@ -501,7 +503,7 @@ const Transactions = () => {
                         </div>
                         <div className="col-md-6">
                           <p className="mb-1">
-                            <strong>Status:</strong> 
+                            <strong>Status:</strong>
                             <span className={`badge ms-2 ${due.status === 'paid' ? 'bg-success' : 'bg-warning'}`}>
                               {due.status?.toUpperCase() || 'UNPAID'}
                             </span>

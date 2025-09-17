@@ -27,6 +27,7 @@ export default defineConfig(() => {
       include: /src\/.*\.jsx?$/,
       exclude: [],
     },
+
     optimizeDeps: {
       include: ['ag-grid-react', 'ag-grid-community'],
       force: true,
@@ -36,7 +37,7 @@ export default defineConfig(() => {
         },
       },
     },
-    plugins: [react() , tailwindcss()],
+    plugins: [react(), tailwindcss()],
     resolve: {
       alias: [
         {

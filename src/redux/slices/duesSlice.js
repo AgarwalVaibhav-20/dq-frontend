@@ -36,6 +36,7 @@ export const fetchDuesByCustomer = createAsyncThunk(
   },
 )
 
+
 // Add a new due
 export const addDue = createAsyncThunk(
   'dues/addDue',
@@ -160,6 +161,7 @@ const dueSlice = createSlice({
         state.error = action.payload
         toast.error(action.payload)
       })
+
 
       .addCase(addDue.pending, (state, action) => {
         state.loading = true

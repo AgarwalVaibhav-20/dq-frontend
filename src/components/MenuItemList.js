@@ -51,31 +51,50 @@ const MenuItemList = ({
       field: 'itemImage',
       headerName: 'Image',
       flex: 1,
-      minWidth: 120,
+      minWidth: 140,
       renderCell: (params) =>
         params.value ? (
-          <img
-            src={params.value}
-            alt={params.row.itemName}
+          <div
             style={{
               width: 100,
-              height: 60,
-              objectFit: 'cover',
-              borderRadius: 6,
+              height: 70,
+              borderRadius: 10,
+              overflow: 'hidden',
+              boxShadow: '0 2px 6px rgba(0,0,0,0.12)',
+              border: '1px solid #eee',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              backgroundColor: '#fafafa',
             }}
-          />
+          >
+            <img
+              src={params.value}
+              alt={params.row.itemName}
+              style={{
+                width: '100%',
+                height: '100%',
+                objectFit: 'cover',
+                transition: 'transform 0.3s ease',
+              }}
+              onMouseOver={(e) => (e.currentTarget.style.transform = 'scale(1.08)')}
+              onMouseOut={(e) => (e.currentTarget.style.transform = 'scale(1)')}
+            />
+          </div>
         ) : (
           <div
             style={{
               width: 100,
-              height: 60,
+              height: 70,
+              borderRadius: 10,
+              border: '1px dashed #ccc',
               backgroundColor: '#f5f5f5',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              borderRadius: 6,
               fontSize: 12,
-              color: '#777',
+              color: '#888',
+              fontStyle: 'italic',
             }}
           >
             No Image

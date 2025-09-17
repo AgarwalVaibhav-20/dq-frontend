@@ -77,26 +77,34 @@ export default function Category() {
   };
 
   const handleUpdateCategory = () => {
-    if (!editedCategory.categoryName) return toast.error('Category name required.');
+    if (!editedCategory.categoryName)
+      return toast.error("Category name required.");
+
     setUpdating(true);
 
     const formData = new FormData();
-    formData.append('categoryName', editedCategory.categoryName);
+    formData.append("categoryName", editedCategory.categoryName);
+
     if (editedCategory.categoryImage instanceof File) {
-      formData.append('categoryImage', editedCategory.categoryImage);
+      formData.append("categoryImage", editedCategory.categoryImage);
     }
-    formData.append('sizes', JSON.stringify(sizes));
+
+    if (editedCategory.restaurantId) {
+      formData.append("restaurantId", editedCategory.restaurantId);
+    }
+
     dispatch(updateCategory({ id: editedCategory._id, formData, token }))
       .unwrap()
       .then(() => {
-        toast.success('Category updated!');
+        toast.success("Category updated!");
         setEditModalVisible(false);
         setEditedCategory({});
-        setSizes([{ sizeName: '', basePrice: '', description: '' }]);
+        setSizes([{ sizeName: "", basePrice: "", description: "" }]);
         dispatch(fetchCategories({ token }));
       })
       .finally(() => setUpdating(false));
   };
+
 
   const handleDeleteCategory = (id) => {
     if (!window.confirm('Are you sure you want to delete this category?')) return;
