@@ -98,29 +98,17 @@ export default function PermissionManagement() {
   const [updating, setUpdating] = useState({});
   const [bulkUpdating, setBulkUpdating] = useState(false);
   
-  // State for managing checkbox states in role change modal
+  // State for managing checkbox states in role change modal (only for new role)
   const [checkboxStates, setCheckboxStates] = useState({
-    currentRole: true,
-    newRole: true,
-    currentPermissions: {},
-    newPermissions: {}
+    newRole: false, // Start with no role selected
+    newPermissions: {} // Start with no permissions selected
   });
 
-  // Function to toggle checkbox states
+  // Function to toggle checkbox states (only for new role)
   const toggleCheckbox = (type, permission = null) => {
     setCheckboxStates(prev => {
-      if (type === 'currentRole') {
-        return { ...prev, currentRole: !prev.currentRole };
-      } else if (type === 'newRole') {
+      if (type === 'newRole') {
         return { ...prev, newRole: !prev.newRole };
-      } else if (type === 'currentPermission' && permission) {
-        return {
-          ...prev,
-          currentPermissions: {
-            ...prev.currentPermissions,
-            [permission]: !prev.currentPermissions[permission]
-          }
-        };
       } else if (type === 'newPermission' && permission) {
         return {
           ...prev,
@@ -132,6 +120,17 @@ export default function PermissionManagement() {
       }
       return prev;
     });
+  };
+
+  // Function to check if at least one permission is selected
+  const hasSelectedPermissions = () => {
+    const permissions = ROLE_CONFIG[confirmModal.newRole]?.permissions || [];
+    return permissions.some(permission => checkboxStates.newPermissions[permission] === true);
+  };
+
+  // Function to check if role change is allowed
+  const canChangeRole = () => {
+    return checkboxStates.newRole && hasSelectedPermissions();
   };
 
   const isAdmin = currentUserRole === 'admin';
@@ -249,6 +248,12 @@ export default function PermissionManagement() {
   // Handle single user role change
   const handleRoleChange = (user, newRole) => {
     if (user.role === newRole) return;
+
+    // Reset checkbox states when opening modal
+    setCheckboxStates({
+      newRole: false,
+      newPermissions: {}
+    });
 
     setConfirmModal({
       visible: true,
@@ -857,14 +862,7 @@ export default function PermissionManagement() {
                       <small className="text-muted">Current Role</small>
                     </CCardHeader>
                     <CCardBody className="py-3">
-                      <h6 className="text-danger mb-2 d-flex align-items-center">
-                        <input 
-                          type="checkbox" 
-                          className="form-check-input me-2" 
-                          checked={checkboxStates.currentRole}
-                          onChange={() => toggleCheckbox('currentRole')}
-                          style={{ transform: 'scale(1.2)' }}
-                        />
+                      <h6 className="text-danger mb-2">
                         <CBadge color={getRoleBadgeColor(normalizeRole(confirmModal.user.role))}>
                           {ROLE_CONFIG[normalizeRole(confirmModal.user.role)]?.label || normalizeRole(confirmModal.user.role)}
                         </CBadge>
@@ -875,14 +873,7 @@ export default function PermissionManagement() {
                       <div>
                         <small className="text-muted d-block mb-1">Permissions:</small>
                         {ROLE_CONFIG[normalizeRole(confirmModal.user.role)]?.permissions.map((permission, idx) => (
-                          <div key={idx} className="d-flex align-items-center mb-1">
-                            <input 
-                              type="checkbox" 
-                              className="form-check-input me-2" 
-                              checked={checkboxStates.currentPermissions[permission] !== false}
-                              onChange={() => toggleCheckbox('currentPermission', permission)}
-                              style={{ transform: 'scale(0.9)' }}
-                            />
+                          <div key={idx} className="mb-1">
                             <small>{permission}</small>
                           </div>
                         ))}
@@ -918,7 +909,7 @@ export default function PermissionManagement() {
                             <input 
                               type="checkbox" 
                               className="form-check-input me-2" 
-                              checked={checkboxStates.newPermissions[permission] !== false}
+                              checked={checkboxStates.newPermissions[permission] === true}
                               onChange={() => toggleCheckbox('newPermission', permission)}
                               style={{ transform: 'scale(0.9)' }}
                             />
@@ -931,6 +922,17 @@ export default function PermissionManagement() {
                 </CCol>
               </CRow>
 
+              {!canChangeRole() && (
+                <CAlert color="info">
+                  <div className="d-flex align-items-start">
+                    <div className="me-2 mt-1" style={{ fontSize: '1.2rem' }}>ℹ️</div>
+                    <div>
+                      <strong>Select Permissions:</strong> Please select at least one permission from the "New Role" section to enable role change.
+                    </div>
+                  </div>
+                </CAlert>
+              )}
+              
               <CAlert color="warning">
                 <div className="d-flex align-items-start">
                   <div className="me-2 mt-1" style={{ fontSize: '1.2rem' }}>⚠️</div>
@@ -984,7 +986,7 @@ export default function PermissionManagement() {
                         <input 
                           type="checkbox" 
                           className="form-check-input me-2" 
-                          checked={checkboxStates.newPermissions[permission] !== false}
+                          checked={checkboxStates.newPermissions[permission] === true}
                           onChange={() => toggleCheckbox('newPermission', permission)}
                           style={{ transform: 'scale(0.9)' }}
                         />
@@ -1017,7 +1019,7 @@ export default function PermissionManagement() {
           <CButton
             color="primary"
             onClick={confirmRoleChange}
-            disabled={updating[confirmModal.user?._id] || bulkUpdating || updateLoading}
+            disabled={updating[confirmModal.user?._id] || bulkUpdating || updateLoading || !canChangeRole()}
           >
             {(updating[confirmModal.user?._id] || bulkUpdating || updateLoading) && (
               <CSpinner size="sm" className="me-2" />

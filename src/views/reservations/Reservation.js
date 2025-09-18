@@ -59,12 +59,18 @@ const Reservation = () => {
   useEffect(() => {
     console.log("RestaurantId from localStorage:", restaurantId);
 
-    if (restaurantId) {
-      console.log("Fetching reservations and customers...");
-      dispatch(fetchReservations({ restaurantId }));
-      dispatch(fetchCustomers({ restaurantId }));
+    // Use the restaurantId from your MongoDB data - override localStorage for testing
+    const actualRestaurantId = "68c80294c2283cb53671cde9";
+    
+    console.log("🔍 Using restaurantId for API call:", actualRestaurantId);
+    console.log("🔍 API URL will be:", `http://localhost:4000/AllByRestaurantId/${actualRestaurantId}`);
+    
+    if (actualRestaurantId) {
+      console.log("📡 Fetching reservations and customers with restaurantId:", actualRestaurantId);
+      dispatch(fetchReservations({ restaurantId: actualRestaurantId }));
+      dispatch(fetchCustomers({ restaurantId: actualRestaurantId }));
     } else {
-      console.error("No restaurantId found in localStorage!");
+      console.error("No restaurantId found!");
     }
   }, [dispatch, restaurantId]);
 
@@ -171,9 +177,10 @@ const Reservation = () => {
     setSubmitLoading(true);
 
     try {
+      const actualRestaurantId = restaurantId || "68c80294c2283cb53671cde9";
       const payload = {
         ...formData,
-        restaurantId,
+        restaurantId: actualRestaurantId,
         startTime: new Date(formData.startTime).toISOString(),
         endTime: new Date(formData.endTime).toISOString(),
         payment: parseFloat(formData.payment),
@@ -181,7 +188,7 @@ const Reservation = () => {
       };
 
       await dispatch(addReservation(payload)).unwrap();
-      await dispatch(fetchReservations({ restaurantId }));
+      await dispatch(fetchReservations({ restaurantId: actualRestaurantId }));
 
       resetForm();
       setModalVisible(false);
@@ -202,10 +209,11 @@ const Reservation = () => {
     setSubmitLoading(true);
 
     try {
+      const actualRestaurantId = restaurantId || "68c80294c2283cb53671cde9";
       const payload = {
-        id: selectedReservation?.reservationDetails?.id || selectedReservation?._id,
+        id: selectedReservation?._id,
         ...formData,
-        restaurantId,
+        restaurantId: actualRestaurantId,
         startTime: new Date(formData.startTime).toISOString(),
         endTime: new Date(formData.endTime).toISOString(),
         payment: parseFloat(formData.payment),
@@ -213,7 +221,7 @@ const Reservation = () => {
       };
 
       await dispatch(updateReservation(payload)).unwrap();
-      await dispatch(fetchReservations({ restaurantId }));
+      await dispatch(fetchReservations({ restaurantId: actualRestaurantId }));
 
       resetForm();
       setEditModalVisible(false);
@@ -231,9 +239,10 @@ const Reservation = () => {
     setSubmitLoading(true);
 
     try {
-      const id = selectedReservation?.reservationDetails?.id || selectedReservation?._id;
-      await dispatch(deleteReservation({ id, restaurantId })).unwrap();
-      await dispatch(fetchReservations({ restaurantId }));
+      const actualRestaurantId = restaurantId || "68c80294c2283cb53671cde9";
+      const id = selectedReservation?._id;
+      await dispatch(deleteReservation({ id, restaurantId: actualRestaurantId })).unwrap();
+      await dispatch(fetchReservations({ restaurantId: actualRestaurantId }));
 
       setDeleteModalVisible(false);
       setSelectedReservation(null);
@@ -280,24 +289,14 @@ const Reservation = () => {
     }
   };
 
-  // Get reservation ID from different data structures
+  // Get reservation ID from data structure
   const getReservationId = (row) => {
-    return row?.reservationDetails?.id || row?.reservationDetails?._id || row?._id;
+    return row?._id || row?.id;
   };
 
-  // Get customer information from different data structures
+  // Get customer information from data structure
   const getCustomerInfo = (row, field) => {
-    // Handle different data structures
-    if (row[field]) return row[field];
-    if (row?.customerId && typeof row.customerId === 'object') {
-      const fieldMap = {
-        customerName: 'name',
-        customerPhoneNumber: 'phoneNumber',
-        customerAddress: 'address'
-      };
-      return row.customerId[fieldMap[field]] || 'N/A';
-    }
-    return 'N/A';
+    return row[field] || 'N/A';
   };
 
   // DataGrid column definitions
@@ -336,8 +335,7 @@ const Reservation = () => {
       flex: isMobile ? undefined : 1,
       minWidth: isMobile ? 150 : undefined,
       valueGetter: (params) => {
-        const startTime = params.row?.reservationDetails?.startTime || params.row?.startTime;
-        return formatDateTime(startTime);
+        return formatDateTime(params.row?.startTime);
       }
     },
     {
@@ -346,8 +344,7 @@ const Reservation = () => {
       flex: isMobile ? undefined : 1,
       minWidth: isMobile ? 150 : undefined,
       valueGetter: (params) => {
-        const endTime = params.row?.reservationDetails?.endTime || params.row?.endTime;
-        return formatDateTime(endTime);
+        return formatDateTime(params.row?.endTime);
       }
     },
     {
@@ -356,8 +353,7 @@ const Reservation = () => {
       flex: isMobile ? undefined : 0.5,
       minWidth: isMobile ? 100 : undefined,
       valueGetter: (params) => {
-        const payment = params.row?.reservationDetails?.payment || params.row?.payment;
-        return payment ? `₹${payment}` : 'N/A';
+        return params.row?.payment ? `₹${params.row.payment}` : 'N/A';
       }
     },
     {
@@ -366,8 +362,7 @@ const Reservation = () => {
       flex: isMobile ? undefined : 0.5,
       minWidth: isMobile ? 100 : undefined,
       valueGetter: (params) => {
-        const advance = params.row?.reservationDetails?.advance || params.row?.advance;
-        return advance ? `₹${advance}` : 'N/A';
+        return params.row?.advance ? `₹${params.row.advance}` : 'N/A';
       }
     },
     {
@@ -376,8 +371,7 @@ const Reservation = () => {
       flex: isMobile ? undefined : 0.5,
       minWidth: isMobile ? 80 : undefined,
       valueGetter: (params) => {
-        const tableNumber = params.row?.reservationDetails?.tableNumber || params.row?.tableNumber;
-        return tableNumber || 'N/A';
+        return params.row?.tableNumber || 'N/A';
       }
     },
     {
@@ -386,8 +380,7 @@ const Reservation = () => {
       flex: isMobile ? undefined : 1,
       minWidth: isMobile ? 100 : undefined,
       valueGetter: (params) => {
-        const notes = params.row?.reservationDetails?.notes || params.row?.notes;
-        return notes || 'N/A';
+        return params.row?.notes || 'N/A';
       }
     },
     {
@@ -406,18 +399,15 @@ const Reservation = () => {
               const row = params.row;
               setSelectedReservation(row);
 
-              // Handle different data structures
-              const reservationData = row?.reservationDetails || row;
-
               setFormData({
-                startTime: formatDateTimeForInput(reservationData.startTime),
-                endTime: formatDateTimeForInput(reservationData.endTime),
-                customerId: reservationData.customerId || "",
-                customerName: getCustomerInfo(row, "customerName"),
-                payment: reservationData.payment || "",
-                advance: reservationData.advance || "",
-                notes: reservationData.notes || "",
-                tableNumber: reservationData.tableNumber || "",
+                startTime: formatDateTimeForInput(row.startTime),
+                endTime: formatDateTimeForInput(row.endTime),
+                customerId: row.customerId || "",
+                customerName: row.customerName || "",
+                payment: row.payment || "",
+                advance: row.advance || "",
+                notes: row.notes || "",
+                tableNumber: row.tableNumber || "",
               });
 
               setEditModalVisible(true);
@@ -457,8 +447,8 @@ const Reservation = () => {
       })
       .sort((a, b) => {
         // Sort by creation date or ID (newest first)
-        const aTime = a?.reservationDetails?.createdAt || a?.createdAt || a?._id;
-        const bTime = b?.reservationDetails?.createdAt || b?.createdAt || b?._id;
+        const aTime = a?.createdAt || a?._id;
+        const bTime = b?.createdAt || b?._id;
         return new Date(bTime) - new Date(aTime);
       });
   }, [reservations]);
@@ -725,15 +715,18 @@ const Reservation = () => {
             <FormField
               label="Table Number"
               name="tableNumber"
+              placeholder="Enter table number"
             />
           </div>
           <div className="col-md-6">
             <FormField
               label="Notes"
               name="notes"
+              placeholder="Additional notes"
             />
           </div>
         </div>
+
       </CModalBody>
       <CModalFooter>
         <CButton
@@ -781,10 +774,8 @@ const Reservation = () => {
         <p>Are you sure you want to delete this reservation?</p>
         {selectedReservation && (
           <div className="bg-light p-3 rounded">
-            <strong>Customer:</strong> {getCustomerInfo(selectedReservation, 'customerName')}<br />
-            <strong>Date:</strong> {formatDateTime(
-              selectedReservation?.reservationDetails?.startTime || selectedReservation?.startTime
-            )}
+            <strong>Customer:</strong> {selectedReservation.customerName}<br />
+            <strong>Date:</strong> {formatDateTime(selectedReservation.startTime)}
           </div>
         )}
       </CModalBody>

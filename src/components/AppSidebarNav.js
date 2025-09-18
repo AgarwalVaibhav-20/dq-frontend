@@ -8,11 +8,36 @@ import { useSelector } from 'react-redux';
 import { shallowEqual } from 'react-redux';
 
 export const AppSidebarNav = ({ items }) => {
-  const { restaurantPermission } = useSelector(
-    (state) => ({ restaurantPermission: state.restaurantProfile.restaurantPermission }),
+  const { restaurantPermission, userRole } = useSelector(
+    (state) => ({ 
+      restaurantPermission: state.restaurantProfile.restaurantPermission,
+      userRole: state.auth.role || localStorage.getItem('userRole') || 'admin'
+    }),
     shallowEqual
   );
   const navigate = useNavigate();
+
+  // Filter navigation items based on user role
+  const filterItemsByRole = (items) => {
+    return items.filter(item => {
+      // If no roles specified, show to everyone (backward compatibility)
+      if (!item.roles) return true;
+      
+      // Check if user role is in the allowed roles
+      return item.roles.includes(userRole);
+    }).map(item => {
+      // Recursively filter nested items
+      if (item.items) {
+        return {
+          ...item,
+          items: filterItemsByRole(item.items)
+        };
+      }
+      return item;
+    });
+  };
+
+  const filteredItems = filterItemsByRole(items);
 
   const navLink = (name, icon, badge, indent = false, disabled = false) => {
     return (
@@ -100,8 +125,8 @@ export const AppSidebarNav = ({ items }) => {
 
   return (
     <CSidebarNav as={SimpleBar}>
-      {items &&
-        items.map((item, index) =>
+      {filteredItems &&
+        filteredItems.map((item, index) =>
           item.items ? navGroup(item, index) : navItem(item, index)
         )}
     </CSidebarNav>

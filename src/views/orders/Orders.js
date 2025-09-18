@@ -10,6 +10,11 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { getRestaurantProfile } from '../../redux/slices/restaurantProfileSlice'
 import { CModal, CModalHeader, CModalBody } from '@coreui/react'
+import KOT from '../../components/KOT'
+import Invoice from '../../components/Invoice'
+import KOTModal from '../../components/KOTModal'
+import InvoiceModal from '../../components/InvoiceModal'
+import { toast } from 'react-toastify'
 const Order = () => {
   const [invoiceContent, setInvoiceContent] = useState(null)
   const [pdfDoc, setPdfDoc] = useState(null)
@@ -18,12 +23,20 @@ const Order = () => {
   const restaurantId = useSelector((state) => state.auth.restaurantId)
   const [showKOT, setShowKOT] = useState(false)
   const [showBill, setShowBill] = useState(false)
+  const [showKOTModal, setShowKOTModal] = useState(false)
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false)
+  const [kotImage, setKOTImage] = useState(null)
+  const [invoiceImage, setInvoiceImage] = useState(null)
 
   const [selectedOrder, setSelectedOrder] = useState(null)
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const isMobile = useMediaQuery('(max-width:600px)')
   const { restaurantProfile } = useSelector((state) => state.restaurantProfile)
   const token = localStorage.getItem("authToken")
+  
+  // Refs for KOT and Invoice components
+  const kotRef = useRef(null)
+  const invoiceRef = useRef(null)
 
   useEffect(() => {
     if (token) {
@@ -67,7 +80,36 @@ const Order = () => {
 
   const generateKOT = (order) => {
     setSelectedOrder(order)
-    setShowKOT(true)
+    
+    // Convert order data to cart format for KOT component
+    const cartItems = order.order_details?.map(item => ({
+      id: item._id || item.id,
+      itemName: item.item_name,
+      price: item.price,
+      quantity: item.quantity,
+      notes: item.notes || ''
+    })) || []
+
+    const kotElement = kotRef.current
+    if (!kotElement) {
+      toast.error('KOT component not found', { autoClose: 3000 })
+      return
+    }
+
+    kotElement.style.display = 'block'
+
+    html2canvas(kotElement, { scale: 2 })
+      .then((canvas) => {
+        const imgData = canvas.toDataURL('image/png')
+        setKOTImage(imgData)
+        setShowKOTModal(true)
+      })
+      .catch((error) => {
+        toast.error(`Error generating KOT preview: ${error}`, { autoClose: 3000 })
+      })
+      .finally(() => {
+        kotElement.style.display = 'none'
+      })
   }
 
   const generateInvoicePDF = (transactionDetails) => {
@@ -154,27 +196,101 @@ const Order = () => {
 
   const generateBill = (order) => {
     setSelectedOrder(order)
-    // console.log('selectedOrder', selectedOrder)
-    const doc = generateInvoicePDF(selectedOrder)
-    setPdfDoc(doc)
-    setInvoiceContent(selectedOrder)
-    setShowBill(true)
+    
+    const invoiceElement = invoiceRef.current
+    if (!invoiceElement) {
+      toast.error('Invoice component not found', { autoClose: 3000 })
+      return
+    }
+
+    invoiceElement.style.display = 'block'
+
+    html2canvas(invoiceElement, { scale: 2, useCORS: true })
+      .then((canvas) => {
+        const imgData = canvas.toDataURL('image/png')
+        setInvoiceImage(imgData)
+        setShowInvoiceModal(true)
+      })
+      .catch((error) => {
+        toast.error(`Error generating invoice: ${error}`, { autoClose: 3000 })
+      })
+      .finally(() => {
+        invoiceElement.style.display = 'none'
+      })
   }
 
-  const handleKOTPrint = async () => {
-    const input = document.getElementById('kot-section')
-    if (!input) return
+  const handleKOTPrint = () => {
+    const printWindow = window.open()
+    if (printWindow) {
+      printWindow.document.write(`
+     <html>
+      <head>
+        <title>KOT Print</title>
+        <style>
+          @page {
+            size: 2in auto;
+            margin: 0;
+          }
+          body {
+            margin: 0;
+            padding: 0;
+            text-align: center;
+          }
+          img {
+            width: 2in;
+          }
+        </style>
+      </head>
+      <body>
+        <img src="${kotImage}" style="width: 2in;" />
+        <script>
+          window.onload = function() {
+            window.print();
+            setTimeout(() => window.close(), 100);
+          };
+        </script>
+      </body>
+    </html>
+    `)
+      printWindow.document.close()
+    }
+  }
 
-    const canvas = await html2canvas(input)
-    const imgData = canvas.toDataURL('image/png')
-    const pdf = new jsPDF('p', 'mm', 'a4')
-    const imgProps = pdf.getImageProperties(imgData)
-    const pdfWidth = pdf.internal.pageSize.getWidth()
-    const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width
-
-    pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight)
-    pdf.autoPrint()
-    window.open(pdf.output('bloburl'), '_blank')
+  const handleInvoicePrint = () => {
+    const printWindow = window.open()
+    if (printWindow) {
+      printWindow.document.write(`
+     <html>
+      <head>
+        <title>Invoice Print</title>
+        <style>
+          @page {
+            size: 2in auto;
+            margin: 0;
+          }
+          body {
+            margin: 0;
+            padding: 0;
+            text-align: center;
+          }
+          img {
+            width: 2in;
+          }
+        </style>
+      </head>
+      <body>
+        <img src="${invoiceImage}" style="width: 2in;" />
+        <script>
+          window.onload = function() {
+            window.print();
+            setTimeout(() => window.close(), 100);
+          };
+        </script>
+      </body>
+    </html>
+    `)
+      printWindow.document.close()
+    }
   }
   // const handleInvoicePrint = async () => {
   //   const input = document.getElementById('invoice-section')
@@ -329,74 +445,61 @@ const Order = () => {
         </div>
       )}
 
-      {showKOT && selectedOrder && (
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            width: '100%',
-            height: '100%',
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            zIndex: 2000,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-          }}
-          onClick={() => setShowKOT(false)}
-        >
-          <div
-            onClick={(e) => e.stopPropagation()}
+      {/* KOT Modal */}
+      <KOTModal isVisible={showKOTModal} onClose={() => setShowKOTModal(false)}>
+        <div style={{ textAlign: 'center' }}>
+          <h3>KOT Preview</h3>
+          {kotImage && (
+            <img
+              src={kotImage}
+              alt="KOT Preview"
+              style={{ width: '100%', marginBottom: '10px' }}
+            />
+          )}
+          <button
+            onClick={handleKOTPrint}
             style={{
-              width: '300px',
-              background: 'white',
-              padding: '20px',
-              borderRadius: '10px',
+              margin: '0 10px',
+              padding: '10px 20px',
+              backgroundColor: '#28a745',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer',
             }}
           >
-            <div id="kot-section">
-              <h5 style={{ textAlign: 'center' }}>Kitchen Order Ticket</h5>
-              <p>
-                <strong>Order ID:</strong> {selectedOrder.order_id}
-              </p>
-              <p>
-                <strong>Table:</strong> {selectedOrder.table_number}
-              </p>
-              <p>
-                <strong>Date:</strong>{' '}
-                {format(new Date(selectedOrder.created_at), 'dd/MM/yyyy HH:mm')}
-              </p>
-              <p>
-                <strong>Customer:</strong> {selectedOrder.user?.name || 'N/A'}
-              </p>
-              <hr />
-              <ul>
-                {selectedOrder.order_details?.map((item, index) => (
-                  <li key={index}>
-                    {item.item_name} x {item.quantity}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div
-              style={{
-                display: 'flex',
-                gap: '10px',
-                textAlign: 'center',
-                marginTop: '20px',
-                marginLeft: '20px',
-              }}
-            >
-              <CButton color="primary" onClick={handleKOTPrint}>
-                Print KOT
-              </CButton>
-              <CButton color="secondary" className="ml-2" onClick={() => setShowKOT(false)}>
-                Close
-              </CButton>
-            </div>
-          </div>
+            Print
+          </button>
         </div>
-      )}
+      </KOTModal>
+
+      {/* Invoice Modal */}
+      <InvoiceModal isVisible={showInvoiceModal} onClose={() => setShowInvoiceModal(false)}>
+        <div style={{ textAlign: 'center' }}>
+          <h3>Invoice Preview</h3>
+          {invoiceImage && (
+            <img
+              src={invoiceImage}
+              alt="Invoice Preview"
+              style={{ width: '100%', marginBottom: '10px' }}
+            />
+          )}
+          <button
+            onClick={handleInvoicePrint}
+            style={{
+              margin: '0 10px',
+              padding: '10px 20px',
+              backgroundColor: '#28a745',
+              color: '#fff',
+              border: 'none',
+              borderRadius: '5px',
+              cursor: 'pointer',
+            }}
+          >
+            Print
+          </button>
+        </div>
+      </InvoiceModal>
 
       {invoiceContent && (
         <CModal visible={showBill} onClose={() => setShowBill(false)}>
@@ -540,6 +643,46 @@ const Order = () => {
             </CButton>
           </div>
         </div>
+      )}
+
+      {/* Hidden KOT and Invoice components for generation */}
+      {selectedOrder && (
+        <>
+          <div style={{ display: 'none' }}>
+            <KOT
+              ref={kotRef}
+              tableNumber={selectedOrder.tableNumber || selectedOrder.table_number}
+              cart={selectedOrder.order_details?.map(item => ({
+                id: item._id || item.id,
+                itemName: item.item_name,
+                price: item.price,
+                quantity: item.quantity,
+                notes: item.notes || ''
+              })) || []}
+            />
+          </div>
+          
+          <div style={{ display: 'none' }}>
+            <Invoice
+              ref={invoiceRef}
+              tableNumber={selectedOrder.tableNumber || selectedOrder.table_number}
+              selectedCustomerName={selectedOrder.customerName || selectedOrder.user?.name || 'Walk-in Customer'}
+              cart={selectedOrder.order_details?.map(item => ({
+                id: item._id || item.id,
+                itemName: item.item_name,
+                price: item.price,
+                quantity: item.quantity,
+                notes: item.notes || ''
+              })) || []}
+              calculateSubtotal={() => selectedOrder.subtotal || 0}
+              tax={selectedOrder.taxPercentage || 0}
+              calculateTaxAmount={() => selectedOrder.taxAmount || 0}
+              discount={selectedOrder.discountPercentage || 0}
+              calculateDiscountAmount={() => selectedOrder.discountAmount || 0}
+              calculateTotal={() => selectedOrder.totalAmount || selectedOrder.subtotal || 0}
+            />
+          </div>
+        </>
       )}
     </div>
   )

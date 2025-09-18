@@ -128,14 +128,16 @@ export const fetchRestaurantDetails = createAsyncThunk(
 // ------------------ UPDATE USER ROLE ------------------
 export const updateUserRole = createAsyncThunk(
   'user/updateUserRole',
-  async ({ role, permissions, token }, { rejectWithValue }) => {
+  async ({ userId, role, permissions, token }, { rejectWithValue }) => {
     try {
-      // Get userId from localStorage
-      const id = localStorage.getItem("userId");
+      // Use the userId parameter passed from the component
+      const id = userId || localStorage.getItem("userId");
 
       if (!id) {
-        return rejectWithValue("User ID not found in localStorage");
+        return rejectWithValue("User ID not found");
       }
+
+      console.log("🔄 Updating role for user:", id, "to role:", role);
 
       const response = await axiosInstance.put(
         `${BASE_URL}/users/role/${id}`,
@@ -144,6 +146,7 @@ export const updateUserRole = createAsyncThunk(
       );
       return response.data;
     } catch (error) {
+      console.error("❌ Role update error:", error);
       return rejectWithValue(error.response?.data?.message || 'Failed to update user role');
     }
   }
@@ -449,10 +452,11 @@ const authSlice = createSlice({
         );
 
         // If it's the current user's role being updated
-        if (userId === state.userId) {
+        if (userId === state.userId || userId === localStorage.getItem('userId')) {
           state.role = role;
           state.user.role = role;
           localStorage.setItem('userRole', role);
+          console.log('🔄 Updated current user role in Redux state:', role);
         }
 
         toast.success('User role updated successfully!', { autoClose: 3000 });

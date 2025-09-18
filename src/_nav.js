@@ -31,24 +31,28 @@ const _nav = [
     name: 'Overview',
     to: '/dashboard',
     icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
   },
   {
     component: CNavItem,
     name: 'POS',
     to: '/pos',
     icon: <CIcon icon={cilMoney} customClassName="nav-icon" />,
+    roles: ['admin', 'waiter'], // Both admin and waiter can see
   },
   {
     component: CNavItem,
     name: 'Purchase Analytics',
     to: '/purchaseanalytics',
     icon: <CIcon icon={cilCreditCard } customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
   },
   {
     component: CNavItem,
     name: 'Category',
     to: '/category',
     icon: <CIcon icon={cilMenu} customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
   },
   //  adding subcategory
   {
@@ -56,95 +60,111 @@ const _nav = [
     name: 'SubCategory',
     to: '/subCategory',
     icon: <CIcon icon={cilMenu} customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
   },
   {
     component: CNavItem,
     name: 'Customer Loyality',
     to: '/customerloyality',
     icon: <CIcon icon={cilPeople} customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
   },
   {
     component: CNavItem,
     name: 'Sales Analytics',
     to: '/salesanalytics',
     icon: <CIcon icon={cilBasket} customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
   },
   {
     component: CNavItem,
     name: 'Menu',
     to: '/menu',
     icon: <CIcon icon={cilPizza} customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
   },
   {
     component: CNavItem,
     name: 'Orders',
     to: '/orders',
     icon: <CIcon icon={cilRestaurant} customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
   },
   {
     component: CNavItem,
     name: 'Delivery',
     to: '/delivery',
     icon: <CIcon icon={cilRestaurant} customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
   },
   {
     component: CNavItem,
     name: 'Delivery Timing',
     to: '/delivery-timing',
     icon: <CIcon icon={cilRestaurant} customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
   },
   {
     component: CNavItem,
     name: 'Transactions',
     to: '/transactions',
     icon: <CIcon icon={cilWallet} customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
   },
   {
     component: CNavItem,
     name: 'Permission',
     to: '/permission',
     icon: <CIcon icon={cilLockLocked} customClassName={'nav-icon'} />,
+    roles: ['admin'], // Only admin can see
   },
   {
     component: CNavItem,
     name: 'Customers',
     to: '/customers',
     icon: <CIcon icon={cilPeople} customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
   },
   {
     component: CNavItem,
     name: 'QR Code',
     to: '/qr-code',
     icon: <CIcon icon={cilQrCode} customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
   },
   {
     component: CNavItem,
     name: 'Reservations',
     to: '/reservations',
     icon: <CIcon icon={cilQrCode} customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
   },
   {
     component: CNavItem,
     name: 'Dues',
     to: '/dues',
     icon: <CIcon icon={cilMoney} customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
   },
   {
     component: CNavItem,
     name: 'Feedbacks',
     to: '/feedback',
     icon: <CIcon icon={cibMessenger} customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
   },
   {
     component: CNavItem,
     name: 'Banners',
     to: '/banners',
     icon: <CIcon icon={cilImage} customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
   },
   {
     component: CNavGroup,
     name: 'Inventory',
     icon: <CIcon icon={cilLibrary} customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
     items: [
       {
         component: CNavItem,
@@ -177,6 +197,7 @@ const _nav = [
     component: CNavGroup,
     name: 'Reports',
     icon: <CIcon icon={cilCommentSquare} customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
     items: [
       {
         component: CNavItem,
@@ -265,24 +286,28 @@ const _nav = [
     name: 'Help',
     to: '/help',
     icon: <CIcon icon={cibIndeed} customClassName="nav-icon" />,
+    roles: ['admin', 'waiter'], // Both admin and waiter can see
   },
   {
     component: CNavItem,
     name: 'Settings',
     to: '/account',
     icon: <CIcon icon={cilSettings} customClassName="nav-icon" />,
+    roles: ['admin', 'waiter'], // Both admin and waiter can see
   },
   {
     component: CNavItem,
     name: 'Downloads',
     to: '/downloads',
     icon: <CIcon icon={cibDocusign} customClassName="nav-icon" />,
+    roles: ['admin', 'waiter'], // Both admin and waiter can see
   },
   {
     component: CNavItem,
     name: 'License',
     to: '/license',
     icon: <CIcon icon={cilNewspaper} customClassName="nav-icon" />,
+    roles: ['admin', 'waiter'], // Both admin and waiter can see
   },
 ]
 

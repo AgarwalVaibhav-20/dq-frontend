@@ -8,17 +8,37 @@ const configureHeaders = (token) => ({
     Authorization: `Bearer ${token}`,
   },
 })
+
+const getAuthHeaders = () => ({
+  headers: {
+    Authorization: `Bearer ${localStorage.getItem("authToken")}`,
+  },
+})
 // Fetch reservations by restaurant ID
 export const fetchReservations = createAsyncThunk(
   "reservations/fetchReservations",
   async ({ restaurantId }, { rejectWithValue }) => {
     try {
+      // For testing: fetch ALL reservations instead of filtering by restaurantId
+      const url = `${BASE_URL}/debug/all`;
+      console.log("🚀 Making API call to:", url);
+      console.log("🚀 Fetching ALL reservations for testing");
+      
       const response = await axios.get(
-        `${BASE_URL}/AllByRestaurantId/${restaurantId}`,
+        url,
         configureHeaders(localStorage.getItem("authToken"))
       );
-      return response.data;
+      
+      console.log("✅ API Response Status:", response.status);
+      console.log("✅ API Response Data:", response.data);
+      console.log("✅ Total Count:", response.data?.totalCount);
+      console.log("✅ Reservations Length:", response.data?.reservations?.length);
+      
+      // Return just the reservations array
+      return response.data.reservations;
     } catch (error) {
+      console.error("❌ API Error:", error);
+      console.error("❌ Error Response:", error.response?.data);
       return rejectWithValue(
         error.response?.data?.error || "Failed to fetch reservations"
       );
@@ -29,10 +49,9 @@ export const fetchReservations = createAsyncThunk(
 // Add a new reservation
 export const addReservation = createAsyncThunk(
   "reservations/addReservation",
-  async ({ startTime, endTime, customerId, customerName, payment, advance, notes, tableNumber , token }, { rejectWithValue }) => {
+  async ({ startTime, endTime, customerId, customerName, payment, advance, notes, tableNumber, restaurantId }, { rejectWithValue }) => {
     try {
-      const restaurantId = localStorage.getItem('restaurantId')
-      console.log("the data is : ",{ startTime, endTime, customerId, customerName, payment, advance, notes, tableNumber , token })
+      console.log("the data is : ",{ startTime, endTime, customerId, customerName, payment, advance, notes, tableNumber, restaurantId })
       const response = await axios.post(
         `${BASE_URL}/reservations/add`,
         { restaurantId, startTime, endTime, customerId, customerName, payment, advance, notes, tableNumber },
@@ -95,6 +114,8 @@ const reservationSlice = createSlice({
       })
       .addCase(fetchReservations.fulfilled, (state, action) => {
         state.loading = false;
+        console.log("🎯 Redux: Setting reservations data:", action.payload);
+        console.log("🎯 Redux: Reservations count:", action.payload?.length);
         state.reservations = action.payload;
       })
       .addCase(fetchReservations.rejected, (state, action) => {
@@ -111,7 +132,7 @@ const reservationSlice = createSlice({
       })
       .addCase(addReservation.fulfilled, (state, action) => {
         state.loading = false;
-        state.reservations.push(action.payload.data);
+        state.reservations.push(action.payload.reservation);
         toast.success("Reservation added successfully!");
       })
       .addCase(addReservation.rejected, (state, action) => {
@@ -128,17 +149,13 @@ const reservationSlice = createSlice({
       .addCase(updateReservation.fulfilled, (state, action) => {
         state.loading = false;
 
-        const updatedReservation = action.payload;
+        const updatedReservation = action.payload.reservation;
         const index = state.reservations.findIndex(
-          (reservation) => reservation.reservationDetails.id === updatedReservation.id
+          (reservation) => reservation._id === updatedReservation._id
         );
 
         if (index !== -1) {
-          // Update the specific reservation details in the Redux state
-          state.reservations[index].reservationDetails = {
-            ...state.reservations[index].reservationDetails,
-            ...updatedReservation,
-          };
+          state.reservations[index] = updatedReservation;
         }
 
         toast.success("Reservation updated successfully!");
@@ -159,7 +176,7 @@ const reservationSlice = createSlice({
       .addCase(deleteReservation.fulfilled, (state, action) => {
         state.loading = false;
         state.reservations = state.reservations.filter(
-          (reservation) => reservation.reservationDetails.id !== action.payload.id
+          (reservation) => reservation._id !== action.payload.id
         );
         toast.success("Reservation deleted successfully!");
       })
