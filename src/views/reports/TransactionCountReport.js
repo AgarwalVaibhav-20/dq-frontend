@@ -1,5 +1,3 @@
-// TransactionCountReport.js
-// ---------------------------------------------------------------
 import React, { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { DataGrid } from '@mui/x-data-grid';
