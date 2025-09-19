@@ -1,6 +1,6 @@
 // Import necessary modules
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
-import axios from 'axios'
+import axiosInstance from '../../utils/axiosConfig'
 import { toast } from 'react-toastify'
 import { BASE_URL } from '../../utils/constants'
 
@@ -14,9 +14,25 @@ export const fetchAllDaysReports = createAsyncThunk(
   'reports/fetchAllDaysReports',
   async ({ restaurantId }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${BASE_URL}/reports/${restaurantId}/all-days`)
+      const response = await axiosInstance.get(`/reports/${restaurantId}/all-days`)
       return response.data
     } catch (error) {
+      return rejectWithValue(error.response?.data || error.message)
+    }
+  },
+)
+
+// Fetch all transactions for a restaurant
+export const fetchAllTransactions = createAsyncThunk(
+  'reports/fetchAllTransactions',
+  async ({ restaurantId }, { rejectWithValue }) => {
+    try {
+      console.log('Fetching transactions for restaurantId:', restaurantId)
+      const response = await axiosInstance.get(`/transactions/${restaurantId}`)
+      console.log('Transactions response:', response.data)
+      return response.data
+    } catch (error) {
+      console.error('Transactions fetch error:', error)
       return rejectWithValue(error.response?.data || error.message)
     }
   },
@@ -27,7 +43,7 @@ export const fetchReportByType = createAsyncThunk(
   'reports/fetchReportByType',
   async ({ restaurantId, reportType }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${BASE_URL}/getReportByType/${restaurantId}`, {
+      const response = await axiosInstance.get(`/getReportByType/${restaurantId}`, {
         params: { type: reportType },
       })
       return response.data
@@ -41,7 +57,7 @@ export const fetchCustomerReport = createAsyncThunk(
   'reports/fetchCustomerReport',
   async ({ restaurantId }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${BASE_URL}/customer-report/${restaurantId}`, {})
+      const response = await axiosInstance.get(`/customer-report/${restaurantId}`, {})
       return response.data
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message)
@@ -52,7 +68,7 @@ export const fetchTableReport = createAsyncThunk(
   'reports/fetchTableReport',
   async ({ restaurantId, startDate, endDate }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${BASE_URL}/report-by-table`, {
+      const response = await axiosInstance.get(`/report-by-table`, {
         params: {
           restaurantId,
           startDate,
@@ -69,7 +85,7 @@ export const fetchTransactionCountByDate = createAsyncThunk(
   'reports/fetchTransactionCountByDate',
   async ({ startDate, endDate, token }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${BASE_URL}/transactionCountByDate`, {
+      const response = await axiosInstance.get(`/transactionCountByDate`, {
         params: {
           startDate,
           endDate,
@@ -86,7 +102,7 @@ export const fetchTaxCollectedByDate = createAsyncThunk(
   'reports/fetchTaxCollectedByDate',
   async ({ startDate, endDate, token }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${BASE_URL}/taxCollectedByDate`, {
+      const response = await axiosInstance.get(`/taxCollectedByDate`, {
         params: {
           startDate,
           endDate,
@@ -104,7 +120,7 @@ export const fetchTableUsageByDate = createAsyncThunk(
   'reports/fetchTableUsageByDate',
   async ({ startDate, endDate, token }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${BASE_URL}/tableUsageByDate`, {
+      const response = await axiosInstance.get(`/tableUsageByDate`, {
         params: {
           startDate,
           endDate,
@@ -122,7 +138,7 @@ export const fetchPaymentTypeReport = createAsyncThunk(
   'reports/fetchPaymentTypeReport',
   async ({ restaurantId, startDate, endDate }, { rejectWithValue }) => {
     try {
-      const { data } = await axios.post(`${BASE_URL}/getReportPaymentType`, {
+      const { data } = await axiosInstance.post(`/getReportPaymentType`, {
         restaurantId,
         startDate,
         endDate,
@@ -139,7 +155,7 @@ export const fetchDashboardStatisticsReport = createAsyncThunk(
   'reports/fetchDashboardStatisticsReport',
   async ({ restaurantId }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${BASE_URL}/reports/${restaurantId}`, {})
+      const response = await axiosInstance.get(`/reports/${restaurantId}`, {})
       return response.data
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message)
@@ -150,7 +166,7 @@ export const fetchDiscountUsageByDate = createAsyncThunk(
   'reports/fetchDiscountUsageByDate',
   async ({ startDate, endDate, token }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${BASE_URL}/discountUsageByDate`, {
+      const response = await axiosInstance.get(`/discountUsageByDate`, {
         params: {
           startDate,
           endDate,
@@ -169,7 +185,7 @@ export const fetchAverageOrderValueByDate = createAsyncThunk(
   'reports/fetchAverageOrderValueByDate',
   async ({ token, startDate, endDate }, { rejectWithValue }) => {
     try {
-      const res = await axios.get(`${BASE_URL}/averageOrderValueByDate`, {
+      const res = await axiosInstance.get(`/averageOrderValueByDate`, {
         params: {
           startDate,
           endDate,
@@ -190,7 +206,7 @@ export const fetchTransactionsByPaymentType = createAsyncThunk(
   'reports/fetchTransactionsByPaymentType',
   async ({ token, startDate, endDate }, { rejectWithValue }) => {
     try {
-      const res = await axios.get(`${BASE_URL}/transactionsByPaymentType`, {
+      const res = await axiosInstance.get(`/transactionsByPaymentType`, {
         params: { startDate, endDate },
         ...configureHeaders(token),
       })
@@ -208,7 +224,7 @@ export const fetchTotalRevenueByDate = createAsyncThunk(
   'reports/fetchTotalRevenueByDate',
   async ({ token, startDate, endDate }, { rejectWithValue }) => {
     try {
-      const res = await axios.get(`${BASE_URL}/totalRevenueByDate`, {
+      const res = await axiosInstance.get(`/totalRevenueByDate`, {
         params: { startDate, endDate },
         ...configureHeaders(token),
       })
@@ -225,7 +241,7 @@ export const fetchMostOrderedDishes = createAsyncThunk(
   'reports/fetchMostOrderedDishes',
   async ({ token, startDate, endDate }, { rejectWithValue }) => {
     try {
-      const res = await axios.get(`${BASE_URL}/mostOrderDishes`, {
+      const res = await axiosInstance.get(`/mostOrderDishes`, {
         params: { startDate, endDate },
         ...configureHeaders(token),
       })
@@ -245,8 +261,8 @@ export const fetchDashboardChartData = createAsyncThunk(
   async ({ year, restaurantId }, { rejectWithValue }) => {
     try {
 
-      const res = await axios.get(
-        `https://rest.dicui.org/api/dashboard/chart-data?year=${year}&restaurantId=${restaurantId}`,
+      const res = await axiosInstance.get(
+        `/dashboard/chart-data?year=${year}&restaurantId=${restaurantId}`,
       )
 
       return res.data
@@ -260,8 +276,8 @@ export const fetchWeeklyChartData = createAsyncThunk(
   'report/fetchWeeklyChartData',
   async ({ year, restaurantId }, { rejectWithValue }) => {
     try {
-      const { data } = await axios.get(
-        `${BASE_URL}/dashboard/weekly-chart-data`,
+      const { data } = await axiosInstance.get(
+        `/dashboard/weekly-chart-data`,
         {
           params: { year, restaurantId },
           ...configureHeaders(token),
@@ -282,6 +298,7 @@ const reportSlice = createSlice({
   name: 'reports',
   initialState: {
     allDaysReports: [],
+    allTransactions: [],
     reportByType: [],
     customerReport: [],
     tableReport: [],
@@ -317,6 +334,20 @@ const reportSlice = createSlice({
         state.loading = false
         state.error = action.payload
         toast.error('Failed to fetch all days reports.')
+      })
+      // Fetch all transactions
+      .addCase(fetchAllTransactions.pending, (state) => {
+        state.loading = true
+        state.error = null
+      })
+      .addCase(fetchAllTransactions.fulfilled, (state, action) => {
+        state.loading = false
+        state.allTransactions = action.payload?.data || action.payload
+      })
+      .addCase(fetchAllTransactions.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload
+        toast.error('Failed to fetch transactions.')
       })
       // Fetch report by type
       .addCase(fetchReportByType.pending, (state) => {

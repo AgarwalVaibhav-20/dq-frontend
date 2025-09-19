@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { DataGrid } from '@mui/x-data-grid'
-import { fetchPaymentTypeReport } from '../../redux/slices/reportSlice'
+import { fetchAllTransactions } from '../../redux/slices/reportSlice'
 import { CSpinner, CButton, CFormInput, CRow, CCol } from '@coreui/react'
 import CustomToolbar from '../../utils/CustomToolbar'
 
@@ -9,7 +9,7 @@ const formatDate = (date) => date.toISOString().split('T')[0]
 
 const PaymentTypeReport = () => {
   const dispatch = useDispatch()
-  const { paymentTypeReport, loading } = useSelector((state) => state.reports)
+  const { allTransactions, loading } = useSelector((state) => state.reports)
   const restaurantId = useSelector((state) => state.auth.restaurantId)
   const today = new Date()
   const oneYearAgo = new Date()
@@ -20,7 +20,7 @@ const PaymentTypeReport = () => {
 
   useEffect(() => {
     if (restaurantId) {
-      dispatch(fetchPaymentTypeReport({ restaurantId, startDate, endDate }))
+      dispatch(fetchAllTransactions({ restaurantId }))
     }
   }, [dispatch, restaurantId])
 
@@ -35,9 +35,42 @@ const PaymentTypeReport = () => {
       return
     }
 
-    dispatch(fetchPaymentTypeReport({ restaurantId, startDate, endDate }))
+    // Re-fetch transactions for the date range
+    dispatch(fetchAllTransactions({ restaurantId }))
   }
-  console.log('paymentTypeReport', paymentTypeReport)
+
+  // Process transactions to group by payment type
+  const transactions = Array.isArray(allTransactions) ? allTransactions : []
+  const filteredTransactions = transactions.filter(transaction => {
+    const transactionDate = new Date(transaction.createdAt)
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    return transactionDate >= start && transactionDate <= end
+  })
+
+  const paymentTypeData = filteredTransactions.reduce((acc, transaction) => {
+    const paymentType = transaction.type || 'Unknown'
+    const total = transaction.sub_total || 0
+    
+    if (!acc[paymentType]) {
+      acc[paymentType] = {
+        payment_type: paymentType,
+        total_count: 0,
+        total_amount: 0
+      }
+    }
+    acc[paymentType].total_count += 1
+    acc[paymentType].total_amount += total
+    
+    return acc
+  }, {})
+
+  const rows = Object.values(paymentTypeData).map((item, index) => ({
+    id: index + 1,
+    payment_type: item.payment_type,
+    total_count: item.total_count,
+    total_amount: item.total_amount.toFixed(2)
+  }))
 
   const columns = [
     { field: 'id', headerName: 'Id', flex: 1, headerClassName: 'header-style' },
@@ -106,12 +139,7 @@ const PaymentTypeReport = () => {
         <div style={{ overflowX: 'auto' }}>
           <DataGrid
             style={{ height: 'auto', width: '100%', backgroundColor: 'white' }}
-            rows={
-              paymentTypeReport?.map((report, index) => ({
-                id: index + 1,
-                ...report,
-              })) || []
-            }
+            rows={rows}
             columns={columns}
             pageSize={10}
             rowsPerPageOptions={[10]}

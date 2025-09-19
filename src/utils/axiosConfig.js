@@ -1,6 +1,4 @@
 import axios from 'axios';
-import { localLogout } from '../redux/slices/authSlice';
-import store from '../redux/store';
 import { BASE_URL } from './constants';
 
 const axiosInstance = axios.create({
@@ -10,8 +8,8 @@ const axiosInstance = axios.create({
 // Request Interceptor: Adds the auth token to every request
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = store.getState().auth.token;
-    console.log(token)
+    const token = localStorage.getItem('authToken');
+    console.log('Token from localStorage:', token)
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -27,8 +25,18 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Dispatching localLogout will clear the user's session and trigger a redirect to the login page.
-      store.dispatch(localLogout());
+      // Clear localStorage and redirect to login
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('restaurantId');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('categoryId');
+      localStorage.removeItem('userRole');
+      localStorage.removeItem('userName');
+      localStorage.removeItem('userEmail');
+      localStorage.removeItem('username');
+      
+      // Redirect to login page
+      window.location.href = '/login';
     }
     return Promise.reject(error);
   }

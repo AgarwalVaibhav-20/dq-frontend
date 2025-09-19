@@ -171,6 +171,37 @@ export const fetchAllUsers = createAsyncThunk(
   }
 );
 
+// ------------------ REFRESH USER ROLE ------------------
+export const refreshUserRole = createAsyncThunk(
+  'auth/refreshUserRole',
+  async (_, { rejectWithValue, getState }) => {
+    try {
+      const state = getState();
+      const token = state.auth.token || localStorage.getItem('authToken');
+      const userId = state.auth.userId || localStorage.getItem('userId');
+      
+      if (!token || !userId) {
+        return rejectWithValue('No token or user ID available');
+      }
+
+      const response = await axiosInstance.get(`${BASE_URL}/user-profile/${userId}`, 
+        configureHeaders(token)
+      );
+      
+      const user = response.data.user || response.data;
+      const role = user.role || 'admin';
+      
+      // Update localStorage
+      localStorage.setItem('userRole', role);
+      
+      return { role, user };
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.message || 
+        'Failed to refresh user role');
+    }
+  }
+);
+
 // ------------------ INITIAL STATE ------------------
 const initialState = {
   userId: localStorage.getItem('userId') || null,
@@ -465,6 +496,39 @@ const authSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
         toast.error(`Failed to update role: ${action.payload}`, { autoClose: 3000 });
+      })
+
+      // --- REFRESH USER ROLE ---
+      .addCase(refreshUserRole.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(refreshUserRole.fulfilled, (state, action) => {
+        state.loading = false;
+        state.error = null;
+
+        const { role, user } = action.payload;
+        state.role = role;
+        state.user.role = role;
+        
+        // Update user object if provided
+        if (user) {
+          state.user = {
+            ...state.user,
+            id: user.userId || user.id || user._id || state.user.id,
+            name: user.name || state.user.name,
+            email: user.email || state.user.email,
+            username: user.username || state.user.username,
+            role: role,
+          };
+        }
+
+        console.log('🔄 Refreshed user role:', role);
+      })
+      .addCase(refreshUserRole.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        console.error('Failed to refresh user role:', action.payload);
       });
   }
 });

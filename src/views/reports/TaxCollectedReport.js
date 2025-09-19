@@ -14,14 +14,14 @@ import {
   CModalBody,
   CModalTitle,
 } from '@coreui/react';
-import { fetchTaxCollectedByDate } from '../../redux/slices/reportSlice'; // you need to create this thunk
+import { fetchAllTransactions } from '../../redux/slices/reportSlice';
 import CustomToolbar from '../../utils/CustomToolbar';
 
 const formatDate = (d) => d.toISOString().split('T')[0];
 
 const TaxCollectedReport = () => {
   const dispatch = useDispatch();
-  const { taxCollectedByDate, loading } = useSelector((s) => s.reports);
+  const { allTransactions, loading } = useSelector((s) => s.reports);
   const { restaurantId, token } = useSelector((s) => s.auth);
 
   /* ---------------------- date pickers & local state ---------------------- */
@@ -40,16 +40,55 @@ const TaxCollectedReport = () => {
   /* ------------------------------ fetch data ------------------------------ */
   useEffect(() => {
     if (restaurantId)
-      dispatch(fetchTaxCollectedByDate({ token, startDate, endDate }));
-  }, [dispatch, restaurantId, token, startDate, endDate]);
+      dispatch(fetchAllTransactions({ restaurantId }));
+  }, [dispatch, restaurantId]);
 
   const handleGenerateReport = () => {
     if (!startDate || !endDate) return alert('Please select both dates.');
     if (new Date(endDate) < new Date(startDate))
       return alert('End date cannot be before start date.');
 
-    dispatch(fetchTaxCollectedByDate({ token, startDate, endDate }));
+    dispatch(fetchAllTransactions({ restaurantId }));
   };
+
+  // Process transactions to calculate tax collection by date
+  const transactions = Array.isArray(allTransactions) ? allTransactions : []
+  const filteredTransactions = transactions.filter(transaction => {
+    const transactionDate = new Date(transaction.createdAt)
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    return transactionDate >= start && transactionDate <= end
+  })
+
+  const taxData = filteredTransactions.reduce((acc, transaction) => {
+    const date = new Date(transaction.createdAt).toLocaleDateString()
+    const taxAmount = transaction.tax_amount || 0
+    
+    if (!acc[date]) {
+      acc[date] = {
+        date,
+        totalTax: 0,
+        transactions: []
+      }
+    }
+    acc[date].totalTax += taxAmount
+    acc[date].transactions.push({
+      id: transaction._id,
+      customerName: transaction.customerId?.name || transaction.username || 'N/A',
+      amount: transaction.sub_total || 0,
+      taxAmount: taxAmount,
+      paymentType: transaction.type || 'N/A'
+    })
+    
+    return acc
+  }, {})
+
+  const rows = Object.values(taxData).map((item, index) => ({
+    id: index + 1,
+    date: item.date,
+    totalTax: item.totalTax,
+    transactions: item.transactions
+  }))
 
   /* ---------------------------- column helpers ---------------------------- */
   const currency = (n) =>
@@ -142,15 +181,6 @@ const TaxCollectedReport = () => {
     },
   ];
 
-  /* ----------------------------- row mapping ------------------------------ */
-  const rows = useMemo(
-    () =>
-      (taxCollectedByDate || []).map((r, i) => ({
-        id: i + 1,
-        ...r,
-      })),
-    [taxCollectedByDate]
-  );
 
   /* -------------------------------- render -------------------------------- */
   return (

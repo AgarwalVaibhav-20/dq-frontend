@@ -1,11 +1,12 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import SimpleBar from 'simplebar-react';
 import 'simplebar-react/dist/simplebar.min.css';
 import { CBadge, CNavLink, CSidebarNav, CTooltip } from '@coreui/react';
-import { useSelector } from 'react-redux';
+import { useSelector, useDispatch } from 'react-redux';
 import { shallowEqual } from 'react-redux';
+import { refreshUserRole } from '../redux/slices/authSlice';
 
 export const AppSidebarNav = ({ items }) => {
   const { restaurantPermission, userRole } = useSelector(
@@ -15,7 +16,34 @@ export const AppSidebarNav = ({ items }) => {
     }),
     shallowEqual
   );
+  const dispatch = useDispatch();
   const navigate = useNavigate();
+
+
+  // Auto-refresh role on component mount
+  useEffect(() => {
+    const autoRefreshRole = async () => {
+      try {
+        const userId = localStorage.getItem('userId');
+        if (userId) {
+          console.log('🔄 Auto-refreshing user role on mount...');
+          await dispatch(refreshUserRole({ userId }));
+        }
+      } catch (error) {
+        console.log('Auto-refresh role failed:', error);
+      }
+    };
+    
+    autoRefreshRole();
+  }, [dispatch]);
+
+  // Debug logging
+  console.log('=== SIDEBAR NAVIGATION DEBUG ===');
+  console.log('Current user role:', userRole);
+  console.log('Role from Redux state.auth.role:', useSelector(state => state.auth.role));
+  console.log('Role from localStorage:', localStorage.getItem('userRole'));
+  console.log('Full Redux auth state:', useSelector(state => state.auth));
+  console.log('================================');
 
   // Filter navigation items based on user role
   const filterItemsByRole = (items) => {
@@ -24,7 +52,9 @@ export const AppSidebarNav = ({ items }) => {
       if (!item.roles) return true;
       
       // Check if user role is in the allowed roles
-      return item.roles.includes(userRole);
+      const hasAccess = item.roles.includes(userRole);
+      console.log(`Item "${item.name}" - Required roles: ${item.roles}, User role: ${userRole}, Has access: ${hasAccess}`);
+      return hasAccess;
     }).map(item => {
       // Recursively filter nested items
       if (item.items) {
@@ -38,6 +68,7 @@ export const AppSidebarNav = ({ items }) => {
   };
 
   const filteredItems = filterItemsByRole(items);
+  console.log('Filtered navigation items:', filteredItems.map(item => item.name));
 
   const navLink = (name, icon, badge, indent = false, disabled = false) => {
     return (

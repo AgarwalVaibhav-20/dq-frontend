@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { DataGrid } from '@mui/x-data-grid'
-import { fetchTableReport } from '../../redux/slices/reportSlice'
+import { fetchAllTransactions } from '../../redux/slices/reportSlice'
 import { CSpinner, CButton, CFormInput, CRow, CCol } from '@coreui/react'
 import CustomToolbar from '../../utils/CustomToolbar'
 
@@ -9,7 +9,7 @@ const formatDate = (date) => date.toISOString().split('T')[0]
 
 const TableReport = () => {
   const dispatch = useDispatch()
-  const { tableReport, loading } = useSelector((state) => state.reports)
+  const { allTransactions, loading } = useSelector((state) => state.reports)
   const restaurantId = useSelector((state) => state.auth.restaurantId)
   const today = new Date()
   const oneYearAgo = new Date()
@@ -20,7 +20,7 @@ const TableReport = () => {
 
   useEffect(() => {
     if (restaurantId) {
-      dispatch(fetchTableReport({ restaurantId, startDate, endDate }))
+      dispatch(fetchAllTransactions({ restaurantId }))
     }
   }, [dispatch, restaurantId])
 
@@ -35,8 +35,44 @@ const TableReport = () => {
       return
     }
 
-    dispatch(fetchTableReport({ restaurantId, startDate, endDate }))
+    // Data is already fetched, just filter it
+    dispatch(fetchAllTransactions({ restaurantId }))
   }
+
+  // Process transactions to group by table number
+  const transactions = Array.isArray(allTransactions) ? allTransactions : []
+  const filteredTransactions = transactions.filter(transaction => {
+    const transactionDate = new Date(transaction.createdAt)
+    const start = new Date(startDate)
+    const end = new Date(endDate)
+    end.setHours(23, 59, 59, 999) // Include the entire end date
+    
+    return transactionDate >= start && transactionDate <= end
+  })
+
+  const tableData = filteredTransactions.reduce((acc, transaction) => {
+    const tableNumber = transaction.tableNumber || 'Unknown'
+    const totalAmount = transaction.sub_total || 0
+    
+    if (!acc[tableNumber]) {
+      acc[tableNumber] = {
+        tableNumber,
+        transaction_count: 0,
+        total_amount: 0
+      }
+    }
+    acc[tableNumber].transaction_count += 1
+    acc[tableNumber].total_amount += totalAmount
+    
+    return acc
+  }, {})
+
+  const rows = Object.values(tableData).map((item, index) => ({
+    id: index + 1,
+    tableNumber: item.tableNumber,
+    transaction_count: item.transaction_count,
+    total_amount: item.total_amount.toFixed(2)
+  }))
 
   const columns = [
     { field: 'id', headerName: 'Id', flex: 1, headerClassName: 'header-style' },
@@ -105,12 +141,7 @@ const TableReport = () => {
         <div style={{ overflowX: 'auto' }}>
           <DataGrid
             style={{ height: 'auto', width: '100%', backgroundColor: 'white' }}
-            rows={
-              tableReport?.map((report, index) => ({
-                id: index + 1,
-                ...report,
-              })) || []
-            }
+            rows={rows}
             columns={columns}
             pageSize={10}
             rowsPerPageOptions={[10]}

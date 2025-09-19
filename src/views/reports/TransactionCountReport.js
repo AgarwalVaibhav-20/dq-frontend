@@ -14,14 +14,14 @@ import {
   CModalBody,
   CModalTitle,
 } from '@coreui/react';
-import { fetchTransactionCountByDate } from '../../redux/slices/reportSlice';
+import { fetchAllTransactions } from '../../redux/slices/reportSlice';
 import CustomToolbar from '../../utils/CustomToolbar';
 
 const formatDate = (d) => d.toISOString().split('T')[0];
 
 const TransactionCountReport = () => {
   const dispatch = useDispatch();
-  const { transactionCountByDate, loading } = useSelector((s) => s.reports);
+  const { allTransactions, loading } = useSelector((s) => s.reports);
   const { restaurantId, token } = useSelector((s) => s.auth);
 
   /* ---------------------- date pickers & local state ---------------------- */
