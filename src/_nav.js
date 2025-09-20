@@ -22,6 +22,7 @@ import {
   cibIndeed,
   cibMessenger,
   cilImage,
+  // cilRestaurant,
 } from '@coreui/icons'
 import { CNavGroup, CNavItem } from '@coreui/react'
 
@@ -52,6 +53,13 @@ const _nav = [
     name: 'Category',
     to: '/category',
     icon: <CIcon icon={cilMenu} customClassName="nav-icon" />,
+    roles: ['admin'], // Only admin can see
+  },
+  {
+    component: CNavItem,
+    name:"Restauarnts",
+    to:"/restaurants",
+    icon:<CIcon icon={cilRestaurant} customClassName="nav-icon" />,
     roles: ['admin'], // Only admin can see
   },
   //  adding subcategory

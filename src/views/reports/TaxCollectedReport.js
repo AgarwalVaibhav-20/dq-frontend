@@ -22,8 +22,9 @@ const formatDate = (d) => d.toISOString().split('T')[0];
 const TaxCollectedReport = () => {
   const dispatch = useDispatch();
   const { allTransactions, loading } = useSelector((s) => s.reports);
-  const { restaurantId, token } = useSelector((s) => s.auth);
-
+  // const { restaurantId, token } = useSelector((s) => s.auth);
+  const restaurantId = localStorage.getItem('restaurantId');
+  const token = localStorage.getItem('authToken')
   /* ---------------------- date pickers & local state ---------------------- */
   const today = new Date();
   const oneYearAgo = new Date();
@@ -39,16 +40,16 @@ const TaxCollectedReport = () => {
 
   /* ------------------------------ fetch data ------------------------------ */
   useEffect(() => {
-    if (restaurantId)
-      dispatch(fetchAllTransactions({ restaurantId }));
-  }, [dispatch, restaurantId]);
+    if (restaurantId && token)
+      dispatch(fetchAllTransactions({ restaurantId, token }));
+  }, [dispatch, restaurantId, token]);
 
   const handleGenerateReport = () => {
     if (!startDate || !endDate) return alert('Please select both dates.');
     if (new Date(endDate) < new Date(startDate))
       return alert('End date cannot be before start date.');
 
-    dispatch(fetchAllTransactions({ restaurantId }));
+    dispatch(fetchAllTransactions({ restaurantId, token }));
   };
 
   // Process transactions to calculate tax collection by date
@@ -63,7 +64,7 @@ const TaxCollectedReport = () => {
   const taxData = filteredTransactions.reduce((acc, transaction) => {
     const date = new Date(transaction.createdAt).toLocaleDateString()
     const taxAmount = transaction.tax_amount || 0
-    
+
     if (!acc[date]) {
       acc[date] = {
         date,
@@ -72,14 +73,21 @@ const TaxCollectedReport = () => {
       }
     }
     acc[date].totalTax += taxAmount
+    
+    // FIXED: Match the field names with modalColumns
     acc[date].transactions.push({
       id: transaction._id,
-      customerName: transaction.customerId?.name || transaction.username || 'N/A',
-      amount: transaction.sub_total || 0,
-      taxAmount: taxAmount,
-      paymentType: transaction.type || 'N/A'
+      tableNumber: transaction.tableNumber || 'N/A',
+      userId: transaction.customerId?.name || transaction.username || 'N/A',
+      type: transaction.type || 'N/A',
+      sub_total: transaction.sub_total || 0,
+      discount: transaction.discount || 0,
+      tax: transaction.tax_amount || taxAmount,
+      total: transaction.total || 0,
+      note: transaction.note || '',
+      created_at: transaction.createdAt
     })
-    
+
     return acc
   }, {})
 
@@ -136,11 +144,11 @@ const TaxCollectedReport = () => {
 
   /* ------------------------- MODAL grid: columns -------------------------- */
   const modalColumns = [
-    { field: 'id', headerName: 'Id', width: 60 },
+    { field: 'id', headerName: 'S.No.', width: 190 },
     { field: 'tableNumber', headerName: 'Table', flex: 0.7 },
-    { field: 'user_id', headerName: 'User', flex: 0.7 },
+    { field: 'userId', headerName: 'Customer', flex: 1 },
     {
-      field: 'payment_type',
+      field: 'type',
       headerName: 'Payment Type',
       flex: 1,
     },
@@ -148,25 +156,25 @@ const TaxCollectedReport = () => {
       field: 'sub_total',
       headerName: 'Sub Total',
       flex: 1,
-      valueGetter: (p) => currency(p.row.sub_total),
+      valueGetter: (p) => currency(p.row.sub_total || 0),
     },
     {
       field: 'discount',
       headerName: 'Discount',
       flex: 1,
-      valueGetter: (p) => currency(p.row.discount),
+      valueGetter: (p) => currency(p.row.discount || 0),
     },
     {
       field: 'tax',
       headerName: 'Tax',
       flex: 1,
-      valueGetter: (p) => currency(p.row.tax),
+      valueGetter: (p) => currency(p.row.tax || 0),
     },
     {
       field: 'total',
       headerName: 'Total',
       flex: 1,
-      valueGetter: (p) => currency(p.row.total),
+      valueGetter: (p) => currency(p.row.total || 0),
     },
     {
       field: 'note',
@@ -177,10 +185,9 @@ const TaxCollectedReport = () => {
       field: 'created_at',
       headerName: 'Created At',
       flex: 1.4,
-      valueGetter: (p) => new Date(p.row.created_at).toLocaleString(),
+      valueGetter: (p) => p.row.created_at ? new Date(p.row.created_at).toLocaleString() : 'N/A',
     },
   ];
-
 
   /* -------------------------------- render -------------------------------- */
   return (
@@ -254,8 +261,8 @@ const TaxCollectedReport = () => {
             <DataGrid
               rows={modalRows}
               columns={modalColumns}
-              pageSize={5}
-              rowsPerPageOptions={[5]}
+              pageSize={10}
+              rowsPerPageOptions={[5, 10, 20]}
             />
           </div>
         </CModalBody>

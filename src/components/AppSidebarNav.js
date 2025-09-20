@@ -26,7 +26,6 @@ export const AppSidebarNav = ({ items }) => {
       try {
         const userId = localStorage.getItem('userId');
         if (userId) {
-          console.log('🔄 Auto-refreshing user role on mount...');
           await dispatch(refreshUserRole({ userId }));
         }
       } catch (error) {
@@ -37,14 +36,6 @@ export const AppSidebarNav = ({ items }) => {
     autoRefreshRole();
   }, [dispatch]);
 
-  // Debug logging
-  console.log('=== SIDEBAR NAVIGATION DEBUG ===');
-  console.log('Current user role:', userRole);
-  console.log('Role from Redux state.auth.role:', useSelector(state => state.auth.role));
-  console.log('Role from localStorage:', localStorage.getItem('userRole'));
-  console.log('Full Redux auth state:', useSelector(state => state.auth));
-  console.log('================================');
-
   // Filter navigation items based on user role
   const filterItemsByRole = (items) => {
     return items.filter(item => {
@@ -53,7 +44,6 @@ export const AppSidebarNav = ({ items }) => {
       
       // Check if user role is in the allowed roles
       const hasAccess = item.roles.includes(userRole);
-      console.log(`Item "${item.name}" - Required roles: ${item.roles}, User role: ${userRole}, Has access: ${hasAccess}`);
       return hasAccess;
     }).map(item => {
       // Recursively filter nested items
@@ -68,7 +58,6 @@ export const AppSidebarNav = ({ items }) => {
   };
 
   const filteredItems = filterItemsByRole(items);
-  console.log('Filtered navigation items:', filteredItems.map(item => item.name));
 
   const navLink = (name, icon, badge, indent = false, disabled = false) => {
     return (

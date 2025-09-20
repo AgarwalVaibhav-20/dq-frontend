@@ -56,6 +56,7 @@ const SalesAnalytics = React.lazy(()=>import('./views/salesanalytics/SalesAnalyt
 const Waiter = React.lazy(() => import('./views/Permssion/Permission.js'))
 const PurchaseAnalytics = React.lazy(() => import('./views/purchaseanalytics/PurchaseAnalytics.js'))
 const CustomerLoyality = React.lazy(() => import('./views/customer loyality/CustomerLoylity.js'))
+const Restaurants = React.lazy(() => import('./views/restaurant/Restaurant.js'))
 const Supplier = React.lazy(() => import('./views/inventory/supplier/Supplier'))
 const QRCode = React.lazy(() => import('./views/qrCode/QRCode'))
 const Category = React.lazy(() => import('./views/category/Category'))
@@ -280,6 +281,11 @@ const App = () => {
                         </PermissionRestrictedRoute>
                       }
                     />
+                    <Route path="restaurants" element={
+                      <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                        <Restaurants />
+                      </PermissionRestrictedRoute>
+                    } />
                     <Route
                       path="purchaseanalytics"
                       element={

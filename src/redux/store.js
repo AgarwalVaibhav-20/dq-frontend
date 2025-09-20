@@ -22,10 +22,16 @@ import subCategoryReducer from './slices/subCategorySlice'
 import sendBulkEmailReducer from './slices/SendBulkEmailSlice'
 import bannerReducer from './slices/bannerSlice'
 import couponReducer from "./slices/coupenSlice";
+import restaurantReducer from './slices/restaurantSlice'
+import floorRedux from './slices/FloorRedux'
+import tableReducer from './slices/tableSlice'
 // Configure the Redux store
 const store = configureStore({
   reducer: {
+    tables: tableReducer,
+    restaurants: restaurantReducer,
     auth: authReducer,
+    floor: floorRedux,
     theme: themeReducer,
     qr: qrReducer,
     category: categoryReducer,

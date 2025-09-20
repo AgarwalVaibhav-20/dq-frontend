@@ -25,10 +25,12 @@ export const fetchAllDaysReports = createAsyncThunk(
 // Fetch all transactions for a restaurant
 export const fetchAllTransactions = createAsyncThunk(
   'reports/fetchAllTransactions',
-  async ({ restaurantId }, { rejectWithValue }) => {
+  async ({ restaurantId , token }, { rejectWithValue }) => {
     try {
       console.log('Fetching transactions for restaurantId:', restaurantId)
-      const response = await axiosInstance.get(`/transactions/${restaurantId}`)
+
+      const response = await axiosInstance.get(`/transactions/${restaurantId}`, configureHeaders(token))
+      // alert('Fetched transactions successfully', response.data)
       console.log('Transactions response:', response.data)
       return response.data
     } catch (error) {
@@ -37,7 +39,6 @@ export const fetchAllTransactions = createAsyncThunk(
     }
   },
 )
-
 // Fetch report by type (daily or payment report)
 export const fetchReportByType = createAsyncThunk(
   'reports/fetchReportByType',
@@ -283,7 +284,7 @@ export const fetchWeeklyChartData = createAsyncThunk(
           ...configureHeaders(token),
         },
       );
-      return data;             
+      return data;
     } catch (err) {
       const message =
         err.response?.data?.error || err.message || 'Unable to fetch weekly data';
@@ -312,7 +313,7 @@ const reportSlice = createSlice({
     transactionsByPaymentType: [],
     totalRevenueByDate: [],
     mostOrderedDishes: [],
-    yearlyChartData : [],
+    yearlyChartData: [],
     weeklyChartData: null,
     avgOrderValueLoading: false,
     loading: false,
@@ -532,13 +533,13 @@ const reportSlice = createSlice({
       })
 
 
-       .addCase(fetchDashboardChartData.pending, (state) => {
+      .addCase(fetchDashboardChartData.pending, (state) => {
         state.loading = true;
         state.error = null;
       })
       .addCase(fetchDashboardChartData.fulfilled, (state, action) => {
         state.loading = false;
-        state.yearlyChartData= action.payload;
+        state.yearlyChartData = action.payload;
       })
       .addCase(fetchDashboardChartData.rejected, (state, action) => {
         state.loading = false;
@@ -547,7 +548,7 @@ const reportSlice = createSlice({
 
 
 
-       .addCase(fetchWeeklyChartData.pending, (state) => {
+      .addCase(fetchWeeklyChartData.pending, (state) => {
         state.loading = true;
         state.error = null;
       })

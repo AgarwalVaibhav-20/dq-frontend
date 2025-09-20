@@ -78,39 +78,39 @@ const Order = () => {
     }
   }
 
-  const generateKOT = (order) => {
-    setSelectedOrder(order)
+  // const generateKOT = (order) => {
+  //   setSelectedOrder(order)
     
-    // Convert order data to cart format for KOT component
-    const cartItems = order.order_details?.map(item => ({
-      id: item._id || item.id,
-      itemName: item.item_name,
-      price: item.price,
-      quantity: item.quantity,
-      notes: item.notes || ''
-    })) || []
+  //   const cartItems = order.order_details?.map(item => ({
+  //     id: item._id || item.id,
+  //     itemName: item.item_name,
+  //     price: item.price,
+  //     quantity: item.quantity,
+  //     notes: item.notes || ''
+  //   })) || []
 
-    const kotElement = kotRef.current
-    if (!kotElement) {
-      toast.error('KOT component not found', { autoClose: 3000 })
-      return
-    }
+  //   const kotElement = kotRef.current
+  //   if (!kotElement) {
+  //     toast.error('KOT component not found', { autoClose: 3000 })
+  //     return
+  //   }
 
-    kotElement.style.display = 'block'
+  //   kotElement.style.display = 'block'
 
-    html2canvas(kotElement, { scale: 2 })
-      .then((canvas) => {
-        const imgData = canvas.toDataURL('image/png')
-        setKOTImage(imgData)
-        setShowKOTModal(true)
-      })
-      .catch((error) => {
-        toast.error(`Error generating KOT preview: ${error}`, { autoClose: 3000 })
-      })
-      .finally(() => {
-        kotElement.style.display = 'none'
-      })
-  }
+  //   html2canvas(kotElement, { scale: 2 })
+  //     .then((canvas) => {
+  //       const imgData = canvas.toDataURL('image/png')
+  //       setKOTImage(imgData)
+  //       setShowKOTModal(true)
+  //     })
+  //     .catch((error) => {
+  //       toast.error(`Error generating KOT preview: ${error}`, { autoClose: 3000 })
+  //     })
+  //     .finally(() => {
+  //       kotElement.style.display = 'none'
+  //     })
+  // }
+  
 
   const generateInvoicePDF = (transactionDetails) => {
     const doc = new jsPDF({
