@@ -1,5 +1,3 @@
-// TaxCollectedReport.js
-// ---------------------------------------------------------------
 import React, { useEffect, useState, useMemo } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { DataGrid } from '@mui/x-data-grid';
@@ -17,14 +15,18 @@ import {
 import { fetchAllTransactions } from '../../redux/slices/reportSlice';
 import CustomToolbar from '../../utils/CustomToolbar';
 
+/* ----------------------------- Helpers ----------------------------- */
 const formatDate = (d) => d.toISOString().split('T')[0];
+const currency = (n) =>
+  `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
 
 const TaxCollectedReport = () => {
   const dispatch = useDispatch();
   const { allTransactions, loading } = useSelector((s) => s.reports);
-  // const { restaurantId, token } = useSelector((s) => s.auth);
+
   const restaurantId = localStorage.getItem('restaurantId');
-  const token = localStorage.getItem('authToken')
+  const token = localStorage.getItem('authToken');
+
   /* ---------------------- date pickers & local state ---------------------- */
   const today = new Date();
   const oneYearAgo = new Date();
@@ -40,8 +42,9 @@ const TaxCollectedReport = () => {
 
   /* ------------------------------ fetch data ------------------------------ */
   useEffect(() => {
-    if (restaurantId && token)
+    if (restaurantId && token) {
       dispatch(fetchAllTransactions({ restaurantId, token }));
+    }
   }, [dispatch, restaurantId, token]);
 
   const handleGenerateReport = () => {
@@ -52,55 +55,52 @@ const TaxCollectedReport = () => {
     dispatch(fetchAllTransactions({ restaurantId, token }));
   };
 
-  // Process transactions to calculate tax collection by date
-  const transactions = Array.isArray(allTransactions) ? allTransactions : []
-  const filteredTransactions = transactions.filter(transaction => {
-    const transactionDate = new Date(transaction.createdAt)
-    const start = new Date(startDate)
-    const end = new Date(endDate)
-    return transactionDate >= start && transactionDate <= end
-  })
+  /* ---------------- Process transactions into daily tax stats -------------- */
+  const transactions = Array.isArray(allTransactions) ? allTransactions : [];
 
-  const taxData = filteredTransactions.reduce((acc, transaction) => {
-    const date = new Date(transaction.createdAt).toLocaleDateString()
-    const taxAmount = transaction.tax_amount || 0
+  const filteredTransactions = transactions.filter((txn) => {
+    const txnDate = new Date(txn.createdAt);
+    return txnDate >= new Date(startDate) && txnDate <= new Date(endDate);
+  });
+
+  const taxData = filteredTransactions.reduce((acc, txn) => {
+    const date = new Date(txn.createdAt).toISOString().split('T')[0];
+    const taxAmount = txn.tax_amount || txn.taxAmount || 0;
 
     if (!acc[date]) {
       acc[date] = {
         date,
         totalTax: 0,
-        transactions: []
-      }
+        transactionCount: 0,
+        transactions: [],
+      };
     }
-    acc[date].totalTax += taxAmount
-    
-    // FIXED: Match the field names with modalColumns
-    acc[date].transactions.push({
-      id: transaction._id,
-      tableNumber: transaction.tableNumber || 'N/A',
-      userId: transaction.customerId?.name || transaction.username || 'N/A',
-      type: transaction.type || 'N/A',
-      sub_total: transaction.sub_total || 0,
-      discount: transaction.discount || 0,
-      tax: transaction.tax_amount || taxAmount,
-      total: transaction.total || 0,
-      note: transaction.note || '',
-      created_at: transaction.createdAt
-    })
 
-    return acc
-  }, {})
+    acc[date].totalTax += taxAmount;
+    acc[date].transactionCount++;
+    acc[date].transactions.push({
+      id: txn._id,
+      tableNumber: txn.tableNumber || 'N/A',
+      userId: txn.customerId?.name || txn.username || 'N/A',
+      type: txn.type || 'N/A',
+      sub_total: txn.sub_total || 0,
+      discount: txn.discount || 0,
+      tax: taxAmount,
+      total: txn.total || 0,
+      note: txn.note || '',
+      created_at: txn.createdAt,
+    });
+
+    return acc;
+  }, {});
 
   const rows = Object.values(taxData).map((item, index) => ({
     id: index + 1,
     date: item.date,
     totalTax: item.totalTax,
-    transactions: item.transactions
-  }))
-
-  /* ---------------------------- column helpers ---------------------------- */
-  const currency = (n) =>
-    `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`;
+    transactionCount: item.transactionCount,
+    transactions: item.transactions,
+  }));
 
   /* ------------------------- MAIN grid: columns --------------------------- */
   const mainColumns = useMemo(
@@ -113,6 +113,12 @@ const TaxCollectedReport = () => {
         flex: 1.1,
         headerClassName: 'hdr',
         valueGetter: (p) => currency(p.row.totalTax),
+      },
+      {
+        field: 'transactionCount',
+        headerName: 'Transactions',
+        flex: 1,
+        headerClassName: 'hdr',
       },
       {
         field: 'details',
@@ -144,14 +150,10 @@ const TaxCollectedReport = () => {
 
   /* ------------------------- MODAL grid: columns -------------------------- */
   const modalColumns = [
-    { field: 'id', headerName: 'S.No.', width: 190 },
+    { field: 'id', headerName: 'S.No.', width: 80 },
     { field: 'tableNumber', headerName: 'Table', flex: 0.7 },
     { field: 'userId', headerName: 'Customer', flex: 1 },
-    {
-      field: 'type',
-      headerName: 'Payment Type',
-      flex: 1,
-    },
+    { field: 'type', headerName: 'Payment Type', flex: 1 },
     {
       field: 'sub_total',
       headerName: 'Sub Total',
@@ -176,16 +178,13 @@ const TaxCollectedReport = () => {
       flex: 1,
       valueGetter: (p) => currency(p.row.total || 0),
     },
-    {
-      field: 'note',
-      headerName: 'Note',
-      flex: 1.2,
-    },
+    { field: 'note', headerName: 'Note', flex: 1.2 },
     {
       field: 'created_at',
       headerName: 'Created At',
       flex: 1.4,
-      valueGetter: (p) => p.row.created_at ? new Date(p.row.created_at).toLocaleString() : 'N/A',
+      valueGetter: (p) =>
+        p.row.created_at ? new Date(p.row.created_at).toLocaleString() : 'N/A',
     },
   ];
 
