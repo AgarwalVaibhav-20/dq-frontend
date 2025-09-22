@@ -272,7 +272,7 @@ export default function Account() {
                       fontSize: '14px',
                       margin: '0 0 16px 0'
                     }}>
-                      ID: {profileData?.restaurantId || 'Not assigned'}
+                      ID: {profileData?.restaurantId?.toUpperCase() || 'Not assigned'}
                     </p>
                     <CButton
                       variant="outline"

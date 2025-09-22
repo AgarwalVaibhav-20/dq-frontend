@@ -14,10 +14,10 @@ import { Link } from 'react-router-dom'
 import { useDispatch, useSelector, shallowEqual } from 'react-redux'
 import { localLogout, fetchRestaurantDetails } from '../../redux/slices/authSlice'
 import { fetchNotificationOrders } from '../../redux/slices/orderSlice'
-import notificationSound from '../../assets/notification.mp3'
 import { toast } from 'react-toastify'
 import useSound from 'use-sound'
-
+import notificationSound from '../../assets/notification.mp3'
+import { getRestaurantProfile } from '../../redux/slices/restaurantProfileSlice'
 import avatar8 from './../../assets/images/avatars/8.jpg'
 
 const AppHeaderDropdown = () => {
@@ -31,14 +31,7 @@ const AppHeaderDropdown = () => {
     }),
     shallowEqual,
   )
-
-  const { notificationOrders = [] } = useSelector((state) => state.orders)
-
-  const [play] = useSound(notificationSound)
-  const previousOrdersRef = useRef([]) // useRef to avoid unnecessary re-renders
-  const [hasInitialized, setHasInitialized] = useState(false)
-
-  // 🔄 Poll for new orders
+    // 🔄 Poll for new orders
   // useEffect(() => {
   //   if (!restaurantId) return
 
@@ -53,6 +46,12 @@ const AppHeaderDropdown = () => {
 
   //   return () => clearInterval(interval)
   // }, [dispatch, restaurantId])
+  const { restaurantProfile } = useSelector((state) => state.restaurantProfile)
+  const { notificationOrders = [] } = useSelector((state) => state.orders)
+
+  const [play] = useSound(notificationSound)
+  const previousOrdersRef = useRef([]) // to track previous orders
+  const [hasInitialized, setHasInitialized] = useState(false)
 
   // 🔔 Detect new orders
   useEffect(() => {
@@ -65,7 +64,6 @@ const AppHeaderDropdown = () => {
     }
 
     const prevOrders = previousOrdersRef.current
-
     if (notificationOrders.length > prevOrders.length) {
       toast.success('New Order Received! 🎉')
       play()
@@ -78,10 +76,10 @@ const AppHeaderDropdown = () => {
   useEffect(() => {
     if (restaurantId && token) {
       dispatch(fetchRestaurantDetails({ restaurantId, token }))
+      dispatch(getRestaurantProfile({  token })) // fetch profile
     }
   }, [dispatch, restaurantId, token])
 
-  // 🚪 Logout handler
   const handleLogout = () => {
     dispatch(localLogout())
   }
@@ -89,12 +87,14 @@ const AppHeaderDropdown = () => {
   return (
     <CDropdown variant="nav-item">
       <CDropdownToggle placement="bottom-end" className="py-0 pe-0" caret={false}>
-        <CAvatar src={auth?.image ? String(auth.image) : avatar8} size="sm" />
+        <CAvatar
+          src={restaurantProfile?.profileImage || auth?.image || avatar8}
+          size="sm"
+        />
       </CDropdownToggle>
       <CDropdownMenu className="pt-0" placement="bottom-end">
         <CDropdownHeader className="bg-body-secondary fw-semibold my-2">Settings</CDropdownHeader>
 
-        {/* ✅ Profile with dynamic userId */}
         <CDropdownItem style={{ cursor: 'pointer' }}>
           <Link to={`/account/${userId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
             <CIcon icon={cilUser} className="me-2" />

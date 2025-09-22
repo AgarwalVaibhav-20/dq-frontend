@@ -37,7 +37,7 @@ export const addInventory = createAsyncThunk(
     try {
       const restaurantId = localStorage.getItem('restaurantId');
       const response = await axios.post(
-        `${BASE_URL}/create/inventories`,
+        `${BASE_URL}/create/adding/inventories`,
         { itemName, quantity, unit, supplierId, restaurantId, supplierName },
         configureHeaders(localStorage.getItem('authToken'))
       );
@@ -81,51 +81,94 @@ export const deleteInventory = createAsyncThunk(
 );
 
 // NEW: Reduce stock when item is sold
-export const reduceStock = createAsyncThunk(
-  'inventories/reduceStock',
-  async ({ itemId, quantitySold }, { rejectWithValue, getState }) => {
+// export const reduceStock = createAsyncThunk(
+//   'inventories/reduceStock',
+//   async ({ itemId, quantitySold }, { rejectWithValue, getState }) => {
+//     try {
+//       const token = localStorage.getItem('authToken');
+//       const restaurantId = localStorage.getItem('restaurantId');
+
+//       // Check if item exists in current state
+//       const currentState = getState();
+//       const currentItem = currentState.inventories.inventories.find(item => item._id === itemId);
+
+//       if (!currentItem) {
+//         return rejectWithValue('Item not found in inventory');
+//       }
+
+//       if (currentItem.quantity < quantitySold) {
+//         return rejectWithValue(`Insufficient stock. Available: ${currentItem.quantity}, Requested: ${quantitySold}`);
+//       }
+
+//       const newQuantity = currentItem.quantity - quantitySold;
+
+//       const response = await axios.put(
+//         `${BASE_URL}/update/${itemId}`,
+//         { 
+//           restaurantId,
+//           itemName: currentItem.itemName,
+//           quantity: newQuantity,
+//           unit: currentItem.unit,
+//           price: currentItem.price,
+//           supplierId: currentItem.supplierId
+//         },
+//         configureHeaders(token)
+//       );
+
+//       return { 
+//         itemId, 
+//         quantitySold, 
+//         newQuantity,
+//         updatedItem: response.data.data 
+//       };
+//     } catch (error) {
+//       return rejectWithValue(error.response?.data?.message || 'Failed to reduce stock');
+//     }
+//   }
+// );
+export const addQuantityStock = createAsyncThunk(
+  'inventories/addStock',
+  async ({ itemId, quantityToAdd }, { rejectWithValue, getState }) => {
     try {
       const token = localStorage.getItem('authToken');
       const restaurantId = localStorage.getItem('restaurantId');
-      
-      // Check if item exists in current state
+
+      // Get current state and item
       const currentState = getState();
       const currentItem = currentState.inventories.inventories.find(item => item._id === itemId);
-      
+
       if (!currentItem) {
         return rejectWithValue('Item not found in inventory');
       }
-      
-      if (currentItem.quantity < quantitySold) {
-        return rejectWithValue(`Insufficient stock. Available: ${currentItem.quantity}, Requested: ${quantitySold}`);
-      }
 
-      const newQuantity = currentItem.quantity - quantitySold;
-      
+      const newQuantity = currentItem.quantity + quantityToAdd;
+
+      // Update backend
       const response = await axios.put(
         `${BASE_URL}/update/${itemId}`,
-        { 
+        {
           restaurantId,
           itemName: currentItem.itemName,
           quantity: newQuantity,
           unit: currentItem.unit,
           price: currentItem.price,
-          supplierId: currentItem.supplierId
+          supplierId: currentItem.supplierId,
         },
         configureHeaders(token)
       );
-      
-      return { 
-        itemId, 
-        quantitySold, 
+
+      return {
+        itemId,
+        quantityAdded: quantityToAdd,
         newQuantity,
-        updatedItem: response.data.data 
+        updatedItem: response.data.data,
       };
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to reduce stock');
+      return rejectWithValue(error.response?.data?.message || 'Failed to add stock');
     }
   }
 );
+
 
 // NEW: Process multiple item sale (for orders with multiple items)
 export const processItemsSale = createAsyncThunk(
@@ -135,14 +178,14 @@ export const processItemsSale = createAsyncThunk(
       // saleItems format: [{ itemId, quantitySold, itemName }, ...]
       const results = [];
       const errors = [];
-      
+
       for (const saleItem of saleItems) {
         try {
           const result = await dispatch(reduceStock({
             itemId: saleItem.itemId,
             quantitySold: saleItem.quantitySold
           })).unwrap();
-          
+
           results.push({
             ...result,
             itemName: saleItem.itemName
@@ -154,7 +197,7 @@ export const processItemsSale = createAsyncThunk(
           });
         }
       }
-      
+
       if (errors.length > 0) {
         return rejectWithValue({
           message: 'Some items could not be processed',
@@ -162,7 +205,7 @@ export const processItemsSale = createAsyncThunk(
           successfulItems: results
         });
       }
-      
+
       return {
         message: 'All items processed successfully',
         processedItems: results
@@ -271,30 +314,31 @@ const stockSlice = createSlice({
 
     // NEW: Reduce stock cases
     builder
-      .addCase(reduceStock.pending, (state) => {
+      .addCase(addQuantityStock.pending, (state) => {
         state.saleProcessing = true;
         state.error = null;
       })
-      .addCase(reduceStock.fulfilled, (state, action) => {
+      .addCase(addQuantityStock.fulfilled, (state, action) => {
         state.saleProcessing = false;
-        const { itemId, updatedItem } = action.payload;
-        
-        // Update the inventory item with new quantity
+        const { itemId, updatedItem, newQuantity } = action.payload;
+
+        // Update the inventory item in state
         const index = state.inventories.findIndex((item) => item._id === itemId);
         if (index !== -1) {
           state.inventories[index] = updatedItem || {
             ...state.inventories[index],
-            quantity: action.payload.newQuantity
+            quantity: newQuantity,
           };
         }
-        
-        toast.success(`Stock reduced successfully! New quantity: ${action.payload.newQuantity}`);
+
+        toast.success(`Stock added successfully! New quantity: ${newQuantity}`);
       })
-      .addCase(reduceStock.rejected, (state, action) => {
+      .addCase(addQuantityStock.rejected, (state, action) => {
         state.saleProcessing = false;
         state.error = action.payload;
-        toast.error(action.payload || 'Failed to reduce stock.');
+        toast.error(action.payload || 'Failed to add stock.');
       });
+
 
     // NEW: Process multiple items sale cases
     builder
@@ -309,7 +353,7 @@ const stockSlice = createSlice({
       .addCase(processItemsSale.rejected, (state, action) => {
         state.saleProcessing = false;
         state.error = action.payload;
-        
+
         if (action.payload.errors) {
           action.payload.errors.forEach(error => {
             toast.error(`${error.itemName}: ${error.error}`);
