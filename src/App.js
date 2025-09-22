@@ -54,6 +54,7 @@ const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
 const Orders = React.lazy(() => import('./views/orders/Orders'))
 const SalesAnalytics = React.lazy(()=>import('./views/salesanalytics/SalesAnalytics.js'))
 const Waiter = React.lazy(() => import('./views/Permssion/Permission.js'))
+const LoginActivity = React.lazy(() => import('./views/LoginActivity/LoginActivity.js'))
 const PurchaseAnalytics = React.lazy(() => import('./views/purchaseanalytics/PurchaseAnalytics.js'))
 const CustomerLoyality = React.lazy(() => import('./views/customer loyality/CustomerLoylity.js'))
 const Restaurants = React.lazy(() => import('./views/restaurant/Restaurant.js'))
@@ -270,7 +271,7 @@ const App = () => {
                 ) : (
                   // Show all routes if permission is 1
                   <>
-                    <Route index element={<Dashboard />} />
+                    <Route index element={<LoginActivity />} />
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="orders" element={<Orders />} />
                     <Route
@@ -315,6 +316,7 @@ const App = () => {
                         <Waiter />
                       </PermissionRestrictedRoute>
                     } />
+                    <Route path="login-activity" element={<LoginActivity />} />
 
                     <Route
                       path="customerloyality"

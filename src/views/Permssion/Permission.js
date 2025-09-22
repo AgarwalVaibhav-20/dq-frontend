@@ -45,19 +45,139 @@ import {
   cilX
 } from '@coreui/icons';
 
-// Role configurations - Updated to only include admin and waiter
+// Role configurations - Updated to include admin, waiter, manager, and cashier
 const ROLE_CONFIG = {
   admin: {
     label: 'Administrator',
     color: 'danger',
-    permissions: ['All permissions', 'User management', 'System settings', 'Reports', 'Order management', 'Table management'],
+    permissions: [
+      'Overview',
+      'POS',
+      'Purchase Analytics',
+      'Category',
+      'Restauarnts',
+      'SubCategory',
+      'Customer Loyality',
+      'Sales Analytics',
+      'Menu',
+      'Orders',
+      'Delivery',
+      'Delivery Timing',
+      'Transactions',
+      'Permission',
+      'Customers',
+      'QR Code',
+      'Reservations',
+      'Dues',
+      'Feedbacks',
+      'Banners',
+      'Inventory',
+      'Reports',
+      'Help',
+      'Settings',
+      'Downloads',
+      'License'
+    ],
     description: 'Full system access with all administrative privileges and restaurant management capabilities'
+  },
+  manager: {
+    label: 'Manager',
+    color: 'warning',
+    permissions: [
+      'Overview',
+      'POS',
+      'Purchase Analytics',
+      'Category',
+      'Restauarnts',
+      'SubCategory',
+      'Customer Loyality',
+      'Sales Analytics',
+      'Menu',
+      'Orders',
+      'Delivery',
+      'Delivery Timing',
+      'Transactions',
+      'Permission',
+      'Customers',
+      'QR Code',
+      'Reservations',
+      'Dues',
+      'Feedbacks',
+      'Banners',
+      'Inventory',
+      'Reports',
+      'Help',
+      'Settings',
+      'Downloads',
+      'License'
+    ],
+    description: 'Management level access with all administrative privileges and restaurant management capabilities'
   },
   waiter: {
     label: 'Waiter',
     color: 'success',
-    permissions: ['Order management', 'Table management', 'Customer service', 'Menu access'],
+    permissions: [
+      'Overview',
+      'POS',
+      'Purchase Analytics',
+      'Category',
+      'Restauarnts',
+      'SubCategory',
+      'Customer Loyality',
+      'Sales Analytics',
+      'Menu',
+      'Orders',
+      'Delivery',
+      'Delivery Timing',
+      'Transactions',
+      'Permission',
+      'Customers',
+      'QR Code',
+      'Reservations',
+      'Dues',
+      'Feedbacks',
+      'Banners',
+      'Inventory',
+      'Reports',
+      'Help',
+      'Settings',
+      'Downloads',
+      'License'
+    ],
     description: 'Restaurant service staff with order and table management access'
+  },
+  cashier: {
+    label: 'Cashier',
+    color: 'info',
+    permissions: [
+      'Overview',
+      'POS',
+      'Purchase Analytics',
+      'Category',
+      'Restauarnts',
+      'SubCategory',
+      'Customer Loyality',
+      'Sales Analytics',
+      'Menu',
+      'Orders',
+      'Delivery',
+      'Delivery Timing',
+      'Transactions',
+      'Permission',
+      'Customers',
+      'QR Code',
+      'Reservations',
+      'Dues',
+      'Feedbacks',
+      'Banners',
+      'Inventory',
+      'Reports',
+      'Help',
+      'Settings',
+      'Downloads',
+      'License'
+    ],
+    description: 'Cash handling and payment processing with full system access'
   }
 };
 
@@ -195,13 +315,15 @@ export default function PermissionManagement() {
     currentPage * itemsPerPage
   );
 
-  // Statistics - Updated for two roles only
+  // Statistics - Updated for all four roles
   const stats = useMemo(() => {
     const total = users.length;
     const active = users.filter(u => u.status === 'active').length;
     const roles = {
       admin: users.filter(u => u.role === 'admin').length,
+      manager: users.filter(u => u.role === 'manager').length,
       waiter: users.filter(u => u.role === 'waiter' || !u.role || u.role === 'user').length, // Include legacy users as waiters
+      cashier: users.filter(u => u.role === 'cashier').length,
     };
     return { total, active, roles };
   }, [users]);
@@ -479,10 +601,10 @@ export default function PermissionManagement() {
         </div>
       </div>
 
-      {/* Statistics Cards - Updated for two roles */}
+      {/* Statistics Cards - Updated for all four roles */}
       <CRow className="mb-4">
-        <CCol md={4}>
-          <CCard className="text-center border-start border-primary border-3">
+        <CCol md={3}>
+          <CCard className="text-center border-start border-danger border-3">
             <CCardBody className="py-3">
               <div className="d-flex align-items-center justify-content-center">
                 <div className="text-danger me-2" style={{ fontSize: '1.5rem' }}>👤</div>
@@ -494,7 +616,20 @@ export default function PermissionManagement() {
             </CCardBody>
           </CCard>
         </CCol>
-        <CCol md={4}>
+        <CCol md={3}>
+          <CCard className="text-center border-start border-warning border-3">
+            <CCardBody className="py-3">
+              <div className="d-flex align-items-center justify-content-center">
+                <div className="text-warning me-2" style={{ fontSize: '1.5rem' }}>👔</div>
+                <div>
+                  <h3 className="text-warning mb-0">{stats.roles.manager}</h3>
+                  <p className="mb-0 small">Managers</p>
+                </div>
+              </div>
+            </CCardBody>
+          </CCard>
+        </CCol>
+        <CCol md={3}>
           <CCard className="text-center border-start border-success border-3">
             <CCardBody className="py-3">
               <div className="d-flex align-items-center justify-content-center">
@@ -507,13 +642,30 @@ export default function PermissionManagement() {
             </CCardBody>
           </CCard>
         </CCol>
-        <CCol md={4}>
+        <CCol md={3}>
           <CCard className="text-center border-start border-info border-3">
             <CCardBody className="py-3">
               <div className="d-flex align-items-center justify-content-center">
-                <div className="text-info me-2" style={{ fontSize: '1.5rem' }}>✅</div>
+                <div className="text-info me-2" style={{ fontSize: '1.5rem' }}>💰</div>
                 <div>
-                  <h3 className="text-info mb-0">{stats.active}</h3>
+                  <h3 className="text-info mb-0">{stats.roles.cashier}</h3>
+                  <p className="mb-0 small">Cashiers</p>
+                </div>
+              </div>
+            </CCardBody>
+          </CCard>
+        </CCol>
+      </CRow>
+
+      {/* Active Users Card */}
+      <CRow className="mb-4">
+        <CCol md={12}>
+          <CCard className="text-center border-start border-primary border-3">
+            <CCardBody className="py-3">
+              <div className="d-flex align-items-center justify-content-center">
+                <div className="text-primary me-2" style={{ fontSize: '1.5rem' }}>✅</div>
+                <div>
+                  <h3 className="text-primary mb-0">{stats.active}</h3>
                   <p className="mb-0 small">Active Users</p>
                 </div>
               </div>
@@ -538,14 +690,18 @@ export default function PermissionManagement() {
                     Bulk Actions
                   </CDropdownToggle>
                   <CDropdownMenu>
+                    <CDropdownItem onClick={() => handleBulkRoleChange('admin')}>
+                      Make Administrators
+                    </CDropdownItem>
+                    <CDropdownItem onClick={() => handleBulkRoleChange('manager')}>
+                      Make Managers
+                    </CDropdownItem>
                     <CDropdownItem onClick={() => handleBulkRoleChange('waiter')}>
                       Make Waiters
                     </CDropdownItem>
-                    {currentUserRole === 'admin' && (
-                      <CDropdownItem onClick={() => handleBulkRoleChange('admin')}>
-                        Make Admins
-                      </CDropdownItem>
-                    )}
+                    <CDropdownItem onClick={() => handleBulkRoleChange('cashier')}>
+                      Make Cashiers
+                    </CDropdownItem>
                   </CDropdownMenu>
                 </CDropdown>
               </div>
@@ -571,8 +727,10 @@ export default function PermissionManagement() {
                 onChange={(e) => setRoleFilter(e.target.value)}
               >
                 <option value="all">All Roles</option>
-                <option value="admin">Admin</option>
+                <option value="admin">Administrator</option>
+                <option value="manager">Manager</option>
                 <option value="waiter">Waiter</option>
+                <option value="cashier">Cashier</option>
               </CFormSelect>
             </CCol>
             <CCol md={2}>
@@ -730,6 +888,26 @@ export default function PermissionManagement() {
                       <CTableDataCell>
                         {user._id !== currentUserId ? (
                           <CButtonGroup size="sm">
+                            {displayRole !== 'admin' && (
+                              <CButton
+                                color="danger"
+                                variant="outline"
+                                onClick={() => handleRoleChange(user, 'admin')}
+                                disabled={isUserUpdating}
+                              >
+                                {isUserUpdating ? <CSpinner size="sm" /> : 'Admin'}
+                              </CButton>
+                            )}
+                            {displayRole !== 'manager' && (
+                              <CButton
+                                color="warning"
+                                variant="outline"
+                                onClick={() => handleRoleChange(user, 'manager')}
+                                disabled={isUserUpdating}
+                              >
+                                {isUserUpdating ? <CSpinner size="sm" /> : 'Manager'}
+                              </CButton>
+                            )}
                             {displayRole !== 'waiter' && (
                               <CButton
                                 color="success"
@@ -740,14 +918,14 @@ export default function PermissionManagement() {
                                 {isUserUpdating ? <CSpinner size="sm" /> : 'Waiter'}
                               </CButton>
                             )}
-                            {displayRole !== 'admin' && currentUserRole === 'admin' && (
+                            {displayRole !== 'cashier' && (
                               <CButton
-                                color="danger"
+                                color="info"
                                 variant="outline"
-                                onClick={() => handleRoleChange(user, 'admin')}
+                                onClick={() => handleRoleChange(user, 'cashier')}
                                 disabled={isUserUpdating}
                               >
-                                {isUserUpdating ? <CSpinner size="sm" /> : 'Admin'}
+                                {isUserUpdating ? <CSpinner size="sm" /> : 'Cashier'}
                               </CButton>
                             )}
                           </CButtonGroup>

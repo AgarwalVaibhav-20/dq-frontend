@@ -57,7 +57,13 @@ export const AppSidebarNav = ({ items }) => {
     });
   };
 
-  const filteredItems = filterItemsByRole(items);
+  // Temporarily disable role filtering to test
+  const filteredItems = items; // filterItemsByRole(items);
+
+  // Debug logging
+  console.log('User role:', userRole);
+  console.log('Filtered items count:', filteredItems.length);
+  console.log('All items count:', items.length);
 
   const navLink = (name, icon, badge, indent = false, disabled = false) => {
     return (

@@ -80,8 +80,31 @@ const AppHeaderDropdown = () => {
     }
   }, [dispatch, restaurantId, token])
 
-  const handleLogout = () => {
-    dispatch(localLogout())
+  const handleLogout = async () => {
+    try {
+      // Get token from Redux or localStorage as fallback
+      const authToken = token || localStorage.getItem('authToken');
+      
+      // Record logout time in login activity
+      const response = await fetch('/api/login-activity/logout', {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (response.ok) {
+        console.log('Logout time recorded successfully');
+      } else {
+        console.log('Failed to record logout time, but continuing with logout');
+      }
+    } catch (error) {
+      console.error('Error recording logout time:', error);
+    } finally {
+      // Always proceed with the main logout
+      dispatch(localLogout());
+    }
   }
 
   return (

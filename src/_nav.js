@@ -22,6 +22,7 @@ import {
   cibIndeed,
   cibMessenger,
   cilImage,
+  cilUser,
   // cilRestaurant,
 } from '@coreui/icons'
 import { CNavGroup, CNavItem } from '@coreui/react'
@@ -125,6 +126,13 @@ const _nav = [
     to: '/permission',
     icon: <CIcon icon={cilLockLocked} customClassName={'nav-icon'} />,
     roles: ['admin'], // Only admin can see
+  },
+  {
+    component: CNavItem,
+    name: 'Login Activity',
+    to: '/login-activity',
+    icon: <CIcon icon={cilUser} customClassName="nav-icon" />,
+    roles: ['admin', 'manager', 'waiter', 'cashier'], // All roles can see
   },
   {
     component: CNavItem,

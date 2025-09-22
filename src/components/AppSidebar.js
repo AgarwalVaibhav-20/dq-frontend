@@ -18,6 +18,10 @@ const AppSidebar = () => {
   const unfoldable = useSelector((state) => state.sidebar.sidebarUnfoldable);
   const sidebarShow = useSelector((state) => state.sidebar.sidebarShow);
 
+  // Debug logging
+  console.log('Sidebar state:', { sidebarShow, unfoldable });
+  console.log('Navigation items:', navigation.length);
+
   const handleSidebarToggle = () => {
     dispatch(setSidebarShow(!sidebarShow)); // Toggle sidebar state
   };
@@ -27,7 +31,7 @@ const AppSidebar = () => {
       className="border-end"
       colorScheme="dark"
       position="fixed"
-      unfoldable={unfoldable}
+      unfoldable={false}
       visible={sidebarShow} // Controlled by Redux state
       onVisibleChange={(visible) => dispatch(setSidebarShow(visible))} // Sync visibility with Redux
     >
@@ -50,11 +54,10 @@ const AppSidebar = () => {
         />
       </CSidebarHeader>
       <AppSidebarNav items={navigation} />
-      <CSidebarFooter className="border-top d-none d-lg-flex">
-        <CSidebarToggler
-          onClick={() => dispatch(toggleUnfoldable())} // Toggle unfoldable state
-        />
-      </CSidebarFooter>
+      {/* Debug info */}
+      <div style={{ color: 'white', padding: '10px', fontSize: '12px' }}>
+        Debug: {navigation.length} nav items loaded
+      </div>
     </CSidebar>
   );
 };

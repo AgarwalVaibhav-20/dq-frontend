@@ -38,7 +38,7 @@ const Otp = () => {
     }
     dispatch(verifyOtp({ otp, email })).then((res) => {
       if (res.meta.requestStatus === 'fulfilled') {
-        navigate('/dashboard');
+        navigate('/login-activity');
       }
     });
   };

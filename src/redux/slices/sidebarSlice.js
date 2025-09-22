@@ -3,7 +3,7 @@ import { createSlice } from '@reduxjs/toolkit'
 
 const initialState = {
   sidebarShow: true, // Sidebar is visible by default
-  sidebarUnfoldable: false, // Sidebar is foldable by default
+  sidebarUnfoldable: false, // Sidebar is not in unfoldable mode by default
 }
 
 const sidebarSlice = createSlice({
