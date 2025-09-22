@@ -15,19 +15,20 @@ export const getRestaurantProfile = createAsyncThunk(
   'restaurantProfile/getRestaurantProfile',
   async ({ _, token }, { rejectWithValue }) => {
     try {
+      const token = localStorage.getItem("authToken");
       const userId = localStorage.getItem("userId");
       if (!userId) {
         throw new Error('User ID is required');
       }
-      const response = await axios.get(`${BASE_URL}/account/${userId}`,
-        configureHeaders(token))
+
+      const response = await axios.get(`${BASE_URL}/account/${userId}`, configureHeaders(token));
       console.log("Restaurant profile fetched:", response.data);
-      return response.data;
-    }
-    catch (error) {
+
+      // Return the actual restaurant object
+      return response.data.data;
+    } catch (error) {
       console.error("Error fetching restaurant profile:", error);
 
-      // Provide meaningful error message
       let message =
         error.response?.data?.message ||
         error.message ||
@@ -37,6 +38,7 @@ export const getRestaurantProfile = createAsyncThunk(
     }
   }
 )
+
 
 // ------------------ GET: Check restaurant permission ------------------
 export const checkRestaurantPermission = createAsyncThunk(
@@ -86,14 +88,15 @@ export const updateRestaurantProfile = createAsyncThunk(
       if (!userId) throw new Error('No userId found');
 
       const response = await axios.put(
-        `${BASE_URL}/account/user/update/${userId}`,
+        `${BASE_URL}/user/update/${userId}`,
         profileData,
-        { headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' } }
+        configureHeaders(token)
       );
 
       console.log("Profile updated:", response.data);
       return response.data;
     } catch (error) {
+      console.log(error , "error for updating profile")
       return rejectWithValue(error.response?.data || error.message || 'Something went wrong');
     }
   }
@@ -163,9 +166,10 @@ const restaurantProfileSlice = createSlice({
       })
       .addCase(getRestaurantProfile.fulfilled, (state, action) => {
         state.loading = false;
-        console.log("this is action payload", action.payload.data)
-        state.restaurantProfile = action.payload;
+        console.log("this is action payload", action.payload); // ✅ payload is the restaurant object
+        state.restaurantProfile = action.payload || {};        // store it directly
       })
+
       .addCase(getRestaurantProfile.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;

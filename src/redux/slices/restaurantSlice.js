@@ -14,6 +14,7 @@ const configureHeaders = (token, isFormData = false) => ({
 // -------------------- Async Thunks -------------------- //
 
 // Fetch all restaurants
+//they are working
 export const fetchRestaurants = createAsyncThunk(
   'restaurants/fetchAll',
   async ({ token }, { rejectWithValue }) => {
@@ -45,7 +46,7 @@ export const updateRestaurant = createAsyncThunk(
   'restaurants/update',
   async ({ id, formData, token }, { rejectWithValue }) => {
     try {
-      const response = await axios.put(`${BASE_URL}/restaurants/${id}`, formData, configureHeaders(token, true));
+      const response = await axios.put(`${BASE_URL}/restaurants/update/${id}`, formData, configureHeaders(token, true));
       return response.data.restaurant;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to update restaurant');
@@ -58,7 +59,7 @@ export const deleteRestaurant = createAsyncThunk(
   'restaurants/delete',
   async ({ id, token }, { rejectWithValue }) => {
     try {
-      await axios.delete(`${BASE_URL}/restaurants/${id}`, configureHeaders(token));
+      await axios.delete(`${BASE_URL}/restaurants/delete/${id}`, configureHeaders(token));
       return id;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to delete restaurant');

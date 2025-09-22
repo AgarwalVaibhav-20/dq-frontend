@@ -1,8 +1,9 @@
 import React, { useEffect, useState } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
-import { fetchQrCodes } from '../../redux/slices/qrSlice'
-import {fetchCombinedOrders} from '../../redux/slices/orderSlice'
+import { getQrs } from '../../redux/slices/qrSlice'
+import { getFloors } from '../../redux/slices/floorSlices'
+import { fetchCombinedOrders } from '../../redux/slices/orderSlice'
 import {
   CContainer,
   CCol,
@@ -23,20 +24,31 @@ import {
   CFormCheck,
   CBadge,
   CAlert,
+  CDropdown,
+  CDropdownToggle,
+  CDropdownMenu,
+  CDropdownItem,
 } from '@coreui/react'
+import CIcon from '@coreui/icons-react'
+import { cilBuilding } from '@coreui/icons'
 
 const POS = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
 
   const { qrList, loading, error } = useSelector((state) => state.qr)
+  const { floors: manjil } = useSelector((state) => state.floors)
   const restaurantId = useSelector((state) => state.auth.restaurantId)
   const theme = useSelector((state) => state.theme.theme)
 
+  console.log("floor manjil =>", manjil)
   const [cart, setCart] = useState({})
   const [showCombinedModal, setShowCombinedModal] = useState(false)
   const [activeOrders, setActiveOrders] = useState([])
   const [selectedTables, setSelectedTables] = useState([])
+
+  // Floor management states
+  const [selectedFloor, setSelectedFloor] = useState('all')
 
   // Table merging states
   const [showMergeModal, setShowMergeModal] = useState(false)
@@ -48,15 +60,86 @@ const POS = () => {
   const [selectedMergeTables, setSelectedMergeTables] = useState([])
   const [tablesWithOrders, setTablesWithOrders] = useState([])
 
+  // Helper function to get floor ID consistently from QR object
+  const getFloorIdFromQr = (qr) => {
+    return qr.floorId?._id || qr.floor
+  }
+
+  // Helper function to get floor name from QR object
+  const getFloorNameFromQr = (qr) => {
+    return qr.floorId?.name || 'N/A'
+  }
+
+  // Helper function to derive floor from table number if floor property doesn't exist
+  const getFloorFromTable = (tableNumber) => {
+    if (tableNumber <= 10) return 1
+    if (tableNumber <= 20) return 2
+    if (tableNumber <= 30) return 3
+    return Math.ceil(tableNumber / 10)
+  }
+
+  // Create unique table identifier
+  const createTableId = (tableNumber, floorId) => {
+    return `${tableNumber}_${floorId}`
+  }
+
+  // Parse table identifier to get table number and floor
+  const parseTableId = (tableId) => {
+    const [tableNumber, floorId] = tableId.split('_')
+    return { tableNumber: parseInt(tableNumber), floorId }
+  }
+
   // Debug state changes
   useEffect(() => {
+    dispatch(getFloors(restaurantId))
     console.log('showMergeModal changed to:', showMergeModal)
-  }, [showMergeModal])
+  }, [showMergeModal, restaurantId, dispatch])
+
+  useEffect(() => {
+    dispatch(getFloors(restaurantId))
+    console.log('showMergeModal changed to:', showMergeModal)
+  }, [restaurantId, dispatch])
+
+  // Filter tables based on selected floor ID
+  const getTablesForFloor = (floorId) => {
+    if (floorId === 'all') return qrList
+    return qrList.filter(qr => {
+      const tableFloorId = getFloorIdFromQr(qr)
+      return tableFloorId === floorId
+    })
+  }
+
+  // Get merged tables for selected floor ID
+  const getMergedTablesForFloor = (floorId) => {
+    if (floorId === 'all') return mergedTables
+    return mergedTables.filter(merged => {
+      return merged.tables.some(tableNum => {
+        const tableQr = qrList.find(qr => qr.tableNumber === tableNum)
+        if (!tableQr) return false
+        const tableFloorId = getFloorIdFromQr(tableQr)
+        return tableFloorId === floorId
+      })
+    })
+  }
+
+  // Get table count for each floor by ID
+  const getFloorTableCount = (floorId) => {
+    const floorTables = getTablesForFloor(floorId)
+    console.log('Floor ID:', floorId, 'has', floorTables.length, 'tables')
+    const availableTables = floorTables.filter(qr => !isTableMerged(qr.tableNumber))
+    const mergedTablesCount = getMergedTablesForFloor(floorId).length
+    return {
+      total: floorTables.length,
+      available: availableTables.length,
+      merged: mergedTablesCount,
+      occupied: floorTables.filter(qr => isItemInCart(qr) && !isTableMerged(qr.tableNumber)).length
+    }
+  }
 
   // Fetch QR codes & restore carts
   useEffect(() => {
     if (qrList.length === 0) {
-      dispatch(fetchQrCodes(restaurantId))
+      dispatch(getQrs(restaurantId))
     }
 
     const storedCarts = {}
@@ -69,7 +152,7 @@ const POS = () => {
     setCart(storedCarts)
   }, [dispatch, restaurantId, qrList.length])
 
-  // Update tables with orders when modal opens
+  // Update tables with orders when modal opens - include floor information
   useEffect(() => {
     if (showMergeModal) {
       console.log('Modal opened, loading tables with orders...')
@@ -89,6 +172,9 @@ const POS = () => {
 
             activeTablesData.push({
               tableNumber: qr.tableNumber,
+              floor: getFloorIdFromQr(qr),
+              floorName: getFloorNameFromQr(qr),
+              tableId: createTableId(qr.tableNumber, getFloorIdFromQr(qr)),
               orders: cart,
               totalAmount,
               totalItems,
@@ -112,11 +198,31 @@ const POS = () => {
     navigate(`/pos/tableNumber/${qr.tableNumber}`)
   }
 
+  // FIXED: Updated merged table click handler to properly pass data
   const handleMergedTableClick = (mergedTable) => {
-    navigate(`/pos/merged/${mergedTable.id}`, {
+    console.log('Navigating to merged table:', mergedTable)
+    
+    // Create a special identifier for merged tables
+    const mergedTableId = `merged_${mergedTable.id}`
+    
+    // Ensure the cart data is properly stored for the merged table
+    const cartData = mergedTable.combinedOrders || []
+    localStorage.setItem(`cart_${mergedTableId}`, JSON.stringify(cartData))
+    
+    // Store the start time if available
+    if (mergedTable.startTime) {
+      localStorage.setItem(`start_time_${mergedTableId}`, mergedTable.startTime)
+    }
+    
+    // Navigate with proper state and identifier
+    navigate(`/pos/tableNumber/${mergedTableId}`, {
       state: {
-        mergedTable,
-        originalTables: mergedTable.tables
+        isMerged: true,
+        mergedTable: mergedTable,
+        originalTables: mergedTable.tables,
+        mergedTableName: mergedTable.name,
+        combinedOrders: mergedTable.combinedOrders || [],
+        totalAmount: mergedTable.totalAmount || 0
       }
     })
   }
@@ -137,15 +243,17 @@ const POS = () => {
     setShowMergeModal(true)
   }
 
-  const handleTableSelect = (tableNumber) => {
-    console.log('Table selected:', tableNumber)
+  // Use unique table identifier for selection
+  const handleTableSelect = (tableId) => {
+    console.log('Table selected:', tableId)
     setSelectedMergeTables(prev =>
-      prev.includes(tableNumber)
-        ? prev.filter(t => t !== tableNumber)
-        : [...prev, tableNumber]
+      prev.includes(tableId)
+        ? prev.filter(t => t !== tableId)
+        : [...prev, tableId]
     )
   }
 
+  // FIXED: Enhanced merge confirmation with proper cart management
   const handleMergeConfirm = async () => {
     console.log('Confirming merge for tables:', selectedMergeTables)
 
@@ -157,12 +265,18 @@ const POS = () => {
     setMergingLoading(true)
 
     try {
+      // Extract table numbers from unique identifiers
+      const tableNumbers = selectedMergeTables.map(tableId => {
+        const { tableNumber } = parseTableId(tableId)
+        return tableNumber
+      })
+
       // Combine all orders from selected tables
       const combinedOrders = []
       let totalAmount = 0
       let earliestStartTime = null
 
-      selectedMergeTables.forEach(tableNumber => {
+      tableNumbers.forEach(tableNumber => {
         const tableCart = cart[tableNumber] || []
         const startTime = localStorage.getItem(`start_time_${tableNumber}`)
 
@@ -187,8 +301,8 @@ const POS = () => {
 
       const mergedTable = {
         id: `merged_${Date.now()}`,
-        name: `Merged (${selectedMergeTables.map(t => `T${t}`).join(', ')})`,
-        tables: selectedMergeTables,
+        name: `Merged (${tableNumbers.map(t => `T${t}`).join(', ')})`,
+        tables: tableNumbers,
         combinedOrders,
         totalAmount,
         startTime: earliestStartTime,
@@ -197,18 +311,24 @@ const POS = () => {
 
       setMergedTables(prev => [...prev, mergedTable])
 
+      // FIXED: Store merged table cart with proper key format
+      const mergedTableId = `merged_${mergedTable.id}`
+      localStorage.setItem(`cart_${mergedTableId}`, JSON.stringify(combinedOrders))
       localStorage.setItem(`cart_merged_${mergedTable.id}`, JSON.stringify(combinedOrders))
+      
       if (earliestStartTime) {
+        localStorage.setItem(`start_time_${mergedTableId}`, earliestStartTime.toISOString())
         localStorage.setItem(`start_time_merged_${mergedTable.id}`, earliestStartTime.toISOString())
       }
 
-      selectedMergeTables.forEach(tableNumber => {
+      // Clean up individual table carts
+      tableNumbers.forEach(tableNumber => {
         localStorage.removeItem(`cart_${tableNumber}`)
         localStorage.removeItem(`start_time_${tableNumber}`)
       })
 
       const newCart = { ...cart }
-      selectedMergeTables.forEach(tableNumber => {
+      tableNumbers.forEach(tableNumber => {
         delete newCart[tableNumber]
       })
       setCart(newCart)
@@ -216,7 +336,7 @@ const POS = () => {
       setShowMergeModal(false)
       setSelectedMergeTables([])
 
-      alert(`Successfully merged ${selectedMergeTables.length} tables!`)
+      alert(`Successfully merged ${tableNumbers.length} tables!`)
     } catch (error) {
       console.error('Error merging tables:', error)
       alert('Failed to merge tables. Please try again.')
@@ -225,10 +345,12 @@ const POS = () => {
     }
   }
 
+  // FIXED: Enhanced unmerge with proper cart restoration
   const handleUnmergeTable = (mergedTable) => {
     if (window.confirm('Are you sure you want to unmerge this table? This will split the orders back to individual tables.')) {
       const ordersPerTable = {}
 
+      // Distribute orders back to original tables
       mergedTable.combinedOrders.forEach((order) => {
         const targetTable = order.originalTable || mergedTable.tables[0]
         if (!ordersPerTable[targetTable]) {
@@ -238,6 +360,7 @@ const POS = () => {
         ordersPerTable[targetTable].push(cleanOrder)
       })
 
+      // Restore individual table carts
       Object.entries(ordersPerTable).forEach(([tableNumber, orders]) => {
         localStorage.setItem(`cart_${tableNumber}`, JSON.stringify(orders))
         if (mergedTable.startTime) {
@@ -250,7 +373,11 @@ const POS = () => {
 
       setMergedTables(prev => prev.filter(m => m.id !== mergedTable.id))
 
+      // Clean up merged table storage
+      const mergedTableId = `merged_${mergedTable.id}`
+      localStorage.removeItem(`cart_${mergedTableId}`)
       localStorage.removeItem(`cart_merged_${mergedTable.id}`)
+      localStorage.removeItem(`start_time_${mergedTableId}`)
       localStorage.removeItem(`start_time_merged_${mergedTable.id}`)
 
       alert('Table unmerged successfully!')
@@ -314,7 +441,8 @@ const POS = () => {
   }
 
   const getAvailableTables = () => {
-    return qrList.filter(qr => !isTableMerged(qr.tableNumber))
+    const floorTables = getTablesForFloor(selectedFloor)
+    return floorTables.filter(qr => !isTableMerged(qr.tableNumber))
   }
 
   const formatTime = (startTimeStr) => {
@@ -344,14 +472,16 @@ const POS = () => {
       <div style={{ fontSize: '12px', color: '#666', marginBottom: '10px' }}>
         Debug: showMergeModal = {showMergeModal.toString()},
         tablesWithOrders = {tablesWithOrders.length},
-        selectedMergeTables = {selectedMergeTables.length}
+        selectedMergeTables = {selectedMergeTables.length},
+        selectedFloor = {selectedFloor},
+        totalQRs = {qrList.length}
       </div>
 
       {/* Header with Title + Buttons */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h3 className="mb-0">Select Table To Generate Bill</h3>
-        <div>
-          <CButton color="primary" className="me-2" onClick={fetchActiveOrders}>
+        <div className="d-flex gap-2">
+          <CButton color="primary" onClick={fetchActiveOrders}>
             All Orders
           </CButton>
           <CButton
@@ -360,6 +490,81 @@ const POS = () => {
           >
             Merge Tables
           </CButton>
+        </div>
+      </div>
+
+      {/* Floor Selection Dropdown */}
+      <div className="mb-4">
+        {console.log(qrList.length, 'total tables loaded')}
+        <div className="d-flex align-items-center gap-3">
+          <CDropdown>
+            <CDropdownToggle variant="outline" size="lg">
+              <CIcon icon={cilBuilding} className="me-2" />
+              {selectedFloor === 'all'
+                ? 'All Floors'
+                : manjil.find((f) => f._id === selectedFloor)?.name || 'Select Floor'}
+            </CDropdownToggle>
+            <CDropdownMenu>
+              <CDropdownItem
+                onClick={() => setSelectedFloor('all')}
+                active={selectedFloor === 'all'}
+              >
+                All Floors
+                <CBadge color="secondary" className="ms-2">
+                  {qrList.length} tables
+                  {console.log('All Floors----->', qrList.length)}
+                </CBadge>
+              </CDropdownItem>
+              <hr className="dropdown-divider" />
+
+              {manjil.map((floor) => {
+                const floorStats = getFloorTableCount(floor._id)
+                console.log(`Floor ${floor.name} stats:`, floorStats)
+                return (
+                  <CDropdownItem
+                    key={floor._id}
+                    onClick={() => setSelectedFloor(floor._id)}
+                    active={selectedFloor === floor._id}
+                  >
+                    <div className="d-flex justify-content-between align-items-center w-100">
+                      <span>{floor.name}</span>
+                      <div className="d-flex gap-1">
+                        <CBadge color="secondary">{floorStats.total}</CBadge>
+                        {floorStats.occupied > 0 && (
+                          <CBadge color="danger">{floorStats.occupied}</CBadge>
+                        )}
+                        {floorStats.merged > 0 && (
+                          <CBadge color="info">{floorStats.merged}M</CBadge>
+                        )}
+                      </div>
+                    </div>
+                  </CDropdownItem>
+                )
+              })}
+            </CDropdownMenu>
+          </CDropdown>
+
+          {/* Floor Stats */}
+          {selectedFloor !== 'all' && (
+            <div className="d-flex gap-2 align-items-center">
+              <CBadge color="secondary">
+                Total: {getFloorTableCount(selectedFloor).total}
+              </CBadge>
+              <CBadge color="success">
+                Available: {getFloorTableCount(selectedFloor).available}
+              </CBadge>
+              {getFloorTableCount(selectedFloor).occupied > 0 && (
+                <CBadge color="danger">
+                  Occupied: {getFloorTableCount(selectedFloor).occupied}
+                </CBadge>
+              )}
+              {getFloorTableCount(selectedFloor).merged > 0 && (
+                <CBadge color="info">
+                  Merged: {getFloorTableCount(selectedFloor).merged}
+                </CBadge>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
@@ -372,11 +577,13 @@ const POS = () => {
       ) : (
         <>
           {/* Merged Tables Section */}
-          {mergedTables.length > 0 && (
+          {getMergedTablesForFloor(selectedFloor).length > 0 && (
             <div className="mb-4">
-              <h5 className="mb-3">Merged Tables</h5>
+              <h5 className="mb-3">
+                Merged Tables {selectedFloor !== 'all' && `- ${manjil.find(f => f._id === selectedFloor)?.name || 'Floor'}`}
+              </h5>
               <CRow className="justify-content-start">
-                {mergedTables.map((mergedTable) => (
+                {getMergedTablesForFloor(selectedFloor).map((mergedTable) => (
                   <CCol
                     key={mergedTable.id}
                     xs="6"
@@ -435,11 +642,62 @@ const POS = () => {
 
           {/* Individual Tables Section */}
           <div className="mb-4">
-            <h5 className="mb-3">Individual Tables</h5>
+            <h5 className="mb-3">
+              Individual Tables {selectedFloor !== 'all' && `- ${manjil.find(f => f._id === selectedFloor)?.name || 'Floor'}`}
+            </h5>
             <CRow className="justify-content-start">
-              {getAvailableTables().map((qr) => (
+              {getAvailableTables().map((qr) => {
+                const floorName = getFloorNameFromQr(qr)
+                console.log('Rendering table:', qr.tableNumber, 'on floor:', floorName);
+
+                return (
+                  <CCol
+                    key={qr.id}
+                    xs="6"
+                    sm="4"
+                    md="3"
+                    lg="2"
+                    xl="2"
+                    className="mx-2 mb-4 d-flex justify-content-center"
+                  >
+                    <CContainer
+                      className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${isItemInCart(qr)
+                        ? 'bg-danger text-white'
+                        : theme === 'dark'
+                          ? 'bg-secondary text-white'
+                          : 'bg-white text-dark'
+                        }`}
+                      onClick={() => handleQrClick(qr)}
+                      style={{
+                        height: '10rem',
+                        cursor: 'pointer',
+                        width: '100%',
+                        position: 'relative'
+                      }}
+                    >
+                      {/* Floor badge */}
+                      <CBadge
+                        color="secondary"
+                        className="position-absolute top-0 start-0 m-1"
+                        style={{ fontSize: '0.6rem' }}
+                      >
+                        {floorName}
+                      </CBadge>
+
+                      <div className="fw-bold">Table {qr.tableNumber}</div>
+                      {isItemInCart(qr) && (
+                        <small className="text-center mt-1">
+                          {cart[qr.tableNumber]?.length || 0} items
+                        </small>
+                      )}
+                    </CContainer>
+                  </CCol>
+                )
+              })}
+
+              {/* Takeaway - only show on "All Floors" or first floor */}
+              {(selectedFloor === 'all' || (manjil.length > 0 && selectedFloor === manjil[0]._id)) && (
                 <CCol
-                  key={qr.id}
                   xs="6"
                   sm="4"
                   md="3"
@@ -448,57 +706,32 @@ const POS = () => {
                   className="mx-2 mb-4 d-flex justify-content-center"
                 >
                   <CContainer
-                    className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${
-                      isItemInCart(qr)
-                        ? 'bg-danger text-white'
-                        : theme === 'dark'
-                        ? 'bg-secondary text-white'
-                        : 'bg-white text-dark'
-                    }`}
-                    onClick={() => handleQrClick(qr)}
+                    className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${theme === 'dark'
+                      ? 'bg-secondary text-white'
+                      : 'bg-white text-dark'
+                      }`}
+                    onClick={() => navigate('/pos/tableNumber/0')}
                     style={{
                       height: '10rem',
                       cursor: 'pointer',
                       width: '100%',
                     }}
                   >
-                    <div className="fw-bold">Table {qr.tableNumber}</div>
-                    {/* {isItemInCart(qr) && (
-                      <small className="text-center mt-1">
-                        {cart[qr.tableNumber]?.length || 0} items
-                      </small>
-                    )} */}
+                    <div className="fw-bold">Takeaway</div>
                   </CContainer>
                 </CCol>
-              ))}
-
-              {/* Takeaway */}
-              <CCol
-                xs="6"
-                sm="4"
-                md="3"
-                lg="2"
-                xl="2"
-                className="mx-2 mb-4 d-flex justify-content-center"
-              >
-                <CContainer
-                  className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${
-                    theme === 'dark'
-                      ? 'bg-secondary text-white'
-                      : 'bg-white text-dark'
-                  }`}
-                  onClick={() => navigate('/pos/tableNumber/0')}
-                  style={{
-                    height: '10rem',
-                    cursor: 'pointer',
-                    width: '100%',
-                  }}
-                >
-                  <div className="fw-bold">Takeaway</div>
-                </CContainer>
-              </CCol>
+              )}
             </CRow>
           </div>
+
+          {/* No tables message */}
+          {getAvailableTables().length === 0 && getMergedTablesForFloor(selectedFloor).length === 0 && (
+            <div className="text-center text-muted py-4">
+              <CAlert color="info">
+                No tables found for {selectedFloor === 'all' ? 'any floor' : manjil.find(f => f._id === selectedFloor)?.name || 'this floor'}.
+              </CAlert>
+            </div>
+          )}
         </>
       )}
 
@@ -596,26 +829,32 @@ const POS = () => {
                   <CTableRow>
                     <CTableHeaderCell width="10%">Select</CTableHeaderCell>
                     <CTableHeaderCell width="15%">Table</CTableHeaderCell>
+                    <CTableHeaderCell width="10%">Floor</CTableHeaderCell>
                     <CTableHeaderCell width="15%">Items</CTableHeaderCell>
-                    <CTableHeaderCell width="20%">Total Amount</CTableHeaderCell>
-                    <CTableHeaderCell width="20%">Duration</CTableHeaderCell>
-                    <CTableHeaderCell width="20%">Status</CTableHeaderCell>
+                    <CTableHeaderCell width="15%">Total Amount</CTableHeaderCell>
+                    <CTableHeaderCell width="15%">Duration</CTableHeaderCell>
+                    <CTableHeaderCell width="15%">Status</CTableHeaderCell>
                   </CTableRow>
                 </CTableHead>
                 <CTableBody>
                   {tablesWithOrders.map((table) => (
                     <CTableRow
-                      key={table.tableNumber}
-                      className={selectedMergeTables.includes(table.tableNumber) ? 'table-active' : ''}
+                      key={table.tableId}
+                      className={selectedMergeTables.includes(table.tableId) ? 'table-active' : ''}
                     >
                       <CTableDataCell>
                         <CFormCheck
-                          checked={selectedMergeTables.includes(table.tableNumber)}
-                          onChange={() => handleTableSelect(table.tableNumber)}
+                          checked={selectedMergeTables.includes(table.tableId)}
+                          onChange={() => handleTableSelect(table.tableId)}
                         />
                       </CTableDataCell>
                       <CTableDataCell>
                         <strong>Table {table.tableNumber}</strong>
+                      </CTableDataCell>
+                      <CTableDataCell>
+                        <CBadge color="info">
+                          {table.floorName || manjil.find(f => f._id === table.floor)?.name || 'Floor ' + table.floor}
+                        </CBadge>
                       </CTableDataCell>
                       <CTableDataCell>
                         <CBadge color="info">{table.totalItems} items</CBadge>
@@ -636,7 +875,10 @@ const POS = () => {
 
               {selectedMergeTables.length > 0 && (
                 <CAlert color="success">
-                  Selected {selectedMergeTables.length} tables: {selectedMergeTables.map(t => `Table ${t}`).join(', ')}
+                  Selected {selectedMergeTables.length} tables: {selectedMergeTables.map(tableId => {
+                    const { tableNumber } = parseTableId(tableId)
+                    return `Table ${tableNumber}`
+                  }).join(', ')}
                 </CAlert>
               )}
             </>

@@ -54,10 +54,14 @@ const defaultFormData = {
 const buildFormData = (data) => {
   const formDataObj = new FormData()
   Object.keys(data).forEach((key) => {
-    if (key === 'restaurantImage' && data[key]) formDataObj.append(key, data[key])
-    else if (key === 'features' || key === 'operatingHours')
+    if (key === 'createdBy') return
+    if (key === 'restaurantImage' && data[key]) {
+      formDataObj.append(key, data[key])
+    } else if (key === 'features' || key === 'operatingHours') {
       formDataObj.append(key, JSON.stringify(data[key]))
-    else if (data[key] !== null && data[key] !== '') formDataObj.append(key, data[key])
+    } else if (data[key] !== null && data[key] !== '') {
+      formDataObj.append(key, data[key])
+    }
   })
   return formDataObj
 }
@@ -162,7 +166,7 @@ const Restaurants = () => {
   const handleUpdateStatus = async (id, currentStatus) => {
     const newStatus = currentStatus === 'active' ? 'inactive' : 'active'
     try {
-      await dispatch(updateRestaurantStatus({ id, status: newStatus })).unwrap()
+      await dispatch(updateRestaurantStatus({ token, id, status: newStatus })).unwrap()
       await dispatch(fetchRestaurants({ token }))
       toast.success(`Restaurant marked as ${newStatus}`)
     } catch {
@@ -217,15 +221,14 @@ const Restaurants = () => {
             ? 'Update'
             : modalState.type === 'delete'
             ? 'Delete'
-            : ''
+            : ''  //binduu confirm button text to empty for detail view
         }
-        confirmButtonColor={
-          modalState.type === 'delete' ? 'danger' : 'primary'
-        }
+        confirmButtonColor={modalState.type === 'delete' ? 'danger' : 'primary'}
         isLoading={isSubmitting}
-        showFooter={modalState.type !== 'detail'}
+        showFooter={true}
         size="lg"
       >
+        {/* Delete confirmation */}
         {modalState.type === 'delete' && (
           <p className="text-muted">
             Are you sure you want to delete "{selectedRestaurant?.restaurantName}"? This action
@@ -233,6 +236,7 @@ const Restaurants = () => {
           </p>
         )}
 
+        {/* Add/Edit form */}
         {(modalState.type === 'add' || modalState.type === 'edit') && (
           <>
             {/* Tabs */}
@@ -254,11 +258,14 @@ const Restaurants = () => {
             </ul>
 
             {/* Tabs Content */}
+            {/* Basic Tab */}
             {activeTab === 'basic' && (
               <div className="row">
                 {['restaurantId', 'restaurantName', 'ownerName', 'cuisine'].map((field) => (
                   <div className="col-md-6 mb-3" key={field}>
-                    <label className="form-label text-capitalize">{field.replace(/([A-Z])/g, ' $1')}</label>
+                    <label className="form-label text-capitalize">
+                      {field.replace(/([A-Z])/g, ' $1')}
+                    </label>
                     <input
                       type="text"
                       className="form-control"
@@ -300,6 +307,7 @@ const Restaurants = () => {
               </div>
             )}
 
+            {/* Contact Tab */}
             {activeTab === 'contact' && (
               <div className="row">
                 {['email', 'phone', 'address', 'city', 'state', 'zipCode', 'country', 'website'].map(
@@ -308,7 +316,9 @@ const Restaurants = () => {
                       className={`col-md-${field === 'address' || field === 'website' ? '12' : '6'} mb-3`}
                       key={field}
                     >
-                      <label className="form-label text-capitalize">{field.replace(/([A-Z])/g, ' $1')}</label>
+                      <label className="form-label text-capitalize">
+                        {field.replace(/([A-Z])/g, ' $1')}
+                      </label>
                       <input
                         type={field === 'email' ? 'email' : field === 'website' ? 'url' : 'text'}
                         className="form-control"
@@ -322,6 +332,7 @@ const Restaurants = () => {
               </div>
             )}
 
+            {/* Features Tab */}
             {activeTab === 'features' && (
               <div>
                 {/* Features */}
@@ -338,7 +349,10 @@ const Restaurants = () => {
                             onChange={() => handleFeatureToggle(feature)}
                             id={feature.replace(/\s+/g, '')}
                           />
-                          <label className="form-check-label" htmlFor={feature.replace(/\s+/g, '')}>
+                          <label
+                            className="form-check-label"
+                            htmlFor={feature.replace(/\s+/g, '')}
+                          >
                             {feature}
                           </label>
                         </div>
@@ -358,7 +372,9 @@ const Restaurants = () => {
                           type="checkbox"
                           className="form-check-input"
                           checked={formData.operatingHours[day].isOpen}
-                          onChange={(e) => handleOperatingHoursChange(day, 'isOpen', e.target.checked)}
+                          onChange={(e) =>
+                            handleOperatingHoursChange(day, 'isOpen', e.target.checked)
+                          }
                         />
                         <label className="form-check-label ms-2">Open</label>
                       </div>
@@ -367,7 +383,9 @@ const Restaurants = () => {
                           type="time"
                           className="form-control"
                           value={formData.operatingHours[day].open}
-                          onChange={(e) => handleOperatingHoursChange(day, 'open', e.target.value)}
+                          onChange={(e) =>
+                            handleOperatingHoursChange(day, 'open', e.target.value)
+                          }
                           disabled={!formData.operatingHours[day].isOpen}
                         />
                       </div>
@@ -376,7 +394,9 @@ const Restaurants = () => {
                           type="time"
                           className="form-control"
                           value={formData.operatingHours[day].close}
-                          onChange={(e) => handleOperatingHoursChange(day, 'close', e.target.value)}
+                          onChange={(e) =>
+                            handleOperatingHoursChange(day, 'close', e.target.value)
+                          }
                           disabled={!formData.operatingHours[day].isOpen}
                         />
                       </div>
@@ -401,22 +421,47 @@ const Restaurants = () => {
             </div>
             <div className="col-md-7">
               <h4 className="fw-bold text-primary mb-3">{selectedRestaurant.restaurantName}</h4>
-              <div className="mb-2"><strong>Owner:</strong> {selectedRestaurant.ownerName}</div>
-              <div className="mb-2"><strong>Email:</strong> {selectedRestaurant.email}</div>
-              <div className="mb-2"><strong>Phone:</strong> {selectedRestaurant.phone}</div>
-              <div className="mb-2"><strong>Cuisine:</strong> {selectedRestaurant.cuisine}</div>
-              <div className="mb-3"><strong>Address:</strong> {selectedRestaurant.address}, {selectedRestaurant.city}, {selectedRestaurant.state} {selectedRestaurant.zipCode}</div>
+              <div className="mb-2">
+                <strong>Owner:</strong> {selectedRestaurant.ownerName}
+              </div>
+              <div className="mb-2">
+                <strong>Email:</strong> {selectedRestaurant.email}
+              </div>
+              <div className="mb-2">
+                <strong>Phone:</strong> {selectedRestaurant.phone}
+              </div>
+              <div className="mb-2">
+                <strong>Cuisine:</strong> {selectedRestaurant.cuisine}
+              </div>
+              <div className="mb-3">
+                <strong>Address:</strong> {selectedRestaurant.address}, {selectedRestaurant.city},{' '}
+                {selectedRestaurant.state} {selectedRestaurant.zipCode}
+              </div>
               <div className="mb-3">
                 <strong>Features:</strong>
                 <div className="mt-2">
                   {selectedRestaurant.features?.map((feature, i) => (
-                    <CBadge key={i} color="info" className="me-2 mb-1">{feature}</CBadge>
+                    <CBadge key={i} color="info" className="me-2 mb-1">
+                      {feature}
+                    </CBadge>
                   ))}
                 </div>
               </div>
               <div className="d-flex gap-2 mt-4">
-                <CButton color="primary" size="sm" onClick={() => setModalState({ type: 'edit', visible: true })}>Edit</CButton>
-                <CButton color="danger" size="sm" onClick={() => setModalState({ type: 'delete', visible: true })}>Delete</CButton>
+                <CButton
+                  color="primary"
+                  size="sm"
+                  onClick={() => setModalState({ type: 'edit', visible: true })}
+                >
+                  Edit
+                </CButton>
+                <CButton
+                  color="danger"
+                  size="sm"
+                  onClick={() => setModalState({ type: 'delete', visible: true })}
+                >
+                  Delete
+                </CButton>
               </div>
             </div>
             <div className="col-12 mt-3">

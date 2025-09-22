@@ -14,6 +14,7 @@ export const fetchOverallReport = createAsyncThunk(
   'dashboard/fetchOverallReport',
   async ({ restaurantId, token }, { rejectWithValue }) => {
     try {
+      const token=localStorage.getItem('authToken');
       const response = await axios.get(
         `${BASE_URL}/reports/${restaurantId}`, 
         configureHeaders(token)
@@ -30,6 +31,7 @@ export const fetchChartData = createAsyncThunk(
   'dashboard/fetchChartData',
   async ({ year, restaurantId, token }, { rejectWithValue }) => {
     try {
+      const token=localStorage.getItem('authToken');
       const response = await axios.get(
         `${BASE_URL}/dashboard/chart-data?year=${year}&restaurantId=${restaurantId}`, 
         configureHeaders(token)
@@ -46,6 +48,7 @@ export const fetchWeeklyChartData = createAsyncThunk(
   'dashboard/fetchWeeklyChartData',
   async ({ year, restaurantId, token }, { rejectWithValue }) => {
     try {
+      const token=localStorage.getItem('authToken');
       const response = await axios.get(
         `${BASE_URL}/dashboard/weekly-chart-data?year=${year}&restaurantId=${restaurantId}`, 
         configureHeaders(token)

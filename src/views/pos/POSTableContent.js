@@ -26,6 +26,7 @@ import RoundOffAmountModal from '../../components/RoundOffAmountModal'
 import SubCategorySelectionModal from '../../components/SubCategorySelectionModal'
 
 const POSTableContent = () => {
+  const { tableNumber: tableId } = useParams();
   const dispatch = useDispatch()
   const invoiceRef = useRef(null)
   const kotRef = useRef(null)
@@ -69,12 +70,12 @@ const POSTableContent = () => {
 
   const userId = localStorage.getItem('userId')
   const [cart, setCart] = useState(() => {
-    const savedCart = localStorage.getItem(`cart_${tableNumber}`)
+    const savedCart = localStorage.getItem(`cart_${tableId}`)
     return savedCart ? JSON.parse(savedCart) : []
   })
 
   const [startTime, setStartTime] = useState(() => {
-    const savedStartTime = localStorage.getItem(`start_time_${tableNumber}`)
+    const savedStartTime = localStorage.getItem(`start_time_${tableId}`)
     return savedStartTime ? new Date(savedStartTime) : null
   })
   const [mobilePrintOptions, setMobilePrintOptions] = useState({
@@ -105,8 +106,8 @@ const POSTableContent = () => {
   }, [dispatch, restaurantId])
 
   useEffect(() => {
-    localStorage.setItem(`cart_${tableNumber}`, JSON.stringify(cart))
-  }, [cart, tableNumber])
+    localStorage.setItem(`cart_${tableId}`, JSON.stringify(cart))
+  }, [cart, tableId])
 
   const handleDeleteClick = (item) => {
     setItemToDelete(item)
@@ -273,7 +274,7 @@ const POSTableContent = () => {
     if (updatedCart.length === 0) {
       setStartTime(null)
       setElapsedTime(0)
-      localStorage.removeItem(`start_time_${tableNumber}`)
+      localStorage.removeItem(`start_time_${tableId}`)
     }
   }
 
@@ -282,8 +283,8 @@ const POSTableContent = () => {
     setRoundOff(0)
     setStartTime(null)
     setElapsedTime(0)
-    localStorage.removeItem(`cart_${tableNumber}`)
-    localStorage.removeItem(`start_time_${tableNumber}`)
+    localStorage.removeItem(`cart_${tableId}`)
+    localStorage.removeItem(`start_time_${tableId}`)
   }
 
   const handleTaxSubmit = (selectedItemIds, taxValue, taxType) => {
