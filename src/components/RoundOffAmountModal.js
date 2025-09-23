@@ -81,8 +81,8 @@ const RoundOffAmountModal = ({
           <div className="mb-4">
             <h6 className="mb-3 text-primary">Cart Items:</h6>
             <div style={{ maxHeight: '200px', overflowY: 'auto' }} className="border rounded p-2">
-              {cart.map((item, index) => {
-                const itemId = item._id || item.id || index;
+                {cart.map((item) => { // No longer need 'index'
+                // const itemId = item._id || item.id || index; // This line is removed
                 const itemPrice = parseFloat(item.adjustedPrice || item.price || 0);
                 const itemSubtotal = itemPrice * (item.quantity || 1);
                 const itemTaxAmount = parseFloat(item.taxAmount || 0);
@@ -90,7 +90,7 @@ const RoundOffAmountModal = ({
                 const itemTotal = itemSubtotal + itemTaxAmount - itemDiscountAmount;
 
                 return (
-                  <div key={itemId} className="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded">
+                  <div key={item.id} className="d-flex justify-content-between align-items-center mb-2 p-2 bg-light rounded"> {/* <-- Use item.id for the key */}
                     <div className="flex-grow-1">
                       <div className="fw-bold text-dark">{item.itemName || 'Item'}</div>
                       <div className="text-muted small">

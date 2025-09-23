@@ -150,10 +150,16 @@ const POSTableContent = () => {
 
   const handleAddToCartWithSubcategory = useCallback((item) => {
     const itemId = item._id || item.id;
+    const sizeId = item.sizeId || null; // Get the sizeId from the item
+
     const existingItemIndex = cart.findIndex(
       (cartItem) => {
         const cartItemId = cartItem._id || cartItem.id;
-        return cartItemId === itemId && cartItem.selectedSubcategoryId === item.selectedSubcategoryId;
+        const cartItemSizeId = cartItem.sizeId || null;
+        // We now check for product ID, subcategory ID, AND size ID to define a unique item
+        return cartItemId === itemId &&
+              cartItem.selectedSubcategoryId === item.selectedSubcategoryId &&
+              cartItemSizeId === sizeId;
       }
     );
 
@@ -167,19 +173,21 @@ const POSTableContent = () => {
               quantity: newQuantity,
               // Recalculate tax amount if item has tax
               taxAmount: cartItem.taxPercentage ?
-                (cartItem.price * newQuantity * cartItem.taxPercentage) / 100 : 0
+                (cartitem.adjustedPrice * newQuantity * cartItem.taxPercentage) / 100 : 0
             };
           }
           return cartItem;
         }),
       );
     } else {
+      // Create a unique cart item ID by combining item ID and size ID
+      const cartItemId = `${itemId}${item.sizeId ? `_${item.sizeId}` : ''}`;
       const newCartItem = {
         ...item,
-        id: itemId,
+        id: cartItemId, // Use our new unique ID
         _id: item._id,
         quantity: 1,
-        price: Number(item.price) || 0,
+        price: Number(item.adjustedPrice) || 0,
         taxType: null,
         taxPercentage: 0,
         fixedTaxAmount: 0,
@@ -204,12 +212,16 @@ const POSTableContent = () => {
       setSelectedMenuItemForSubcategory(product);
       setShowSubCategoryModal(true);
     } else {
-      const productId = product._id || product.id;
-      const existingItemIndex = cart.findIndex((item) => {
-        const cartItemId = item._id || item.id;
-        return cartItemId === productId;
-      });
+        // A product is considered unique based on its ID AND its size ID.
+        const productId = product._id || product.id;
+        const sizeId = product.sizeId || null; // sizeId comes from ProductList.js
 
+        const existingItemIndex = cart.findIndex((item) => {
+          const cartItemId = item._id || item.id;
+          const cartItemSizeId = item.sizeId || null;
+          // Match both product ID and size ID
+          return cartItemId === productId && cartItemSizeId === sizeId;
+        });
       if (existingItemIndex > -1) {
         setCart(prevCart =>
           prevCart.map((item, index) => {
@@ -220,19 +232,21 @@ const POSTableContent = () => {
                 quantity: newQuantity,
                 // Recalculate tax amount if item has tax
                 taxAmount: item.taxPercentage ?
-                  (item.price * newQuantity * item.taxPercentage) / 100 : 0
+                  (item.adjustedPrice * newQuantity * item.taxPercentage) / 100 : 0
               };
             }
             return item;
           })
         );
       } else {
+        // Create a unique cart item ID by combining product ID and size ID
+        const cartItemId = `${productId}${product.sizeId ? `_${product.sizeId}` : ''}`;
         const newCartItem = {
           ...product,
-          id: productId,
+          id: cartItemId, // Use our new unique ID here
           _id: product._id,
           quantity: 1,
-          price: Number(product.price) || 0,
+          price: Number(product.adjustedPrice) || 0, // Use adjustedPrice
           taxType: null,
           taxPercentage: 0,
           fixedTaxAmount: 0,
@@ -290,23 +304,24 @@ const POSTableContent = () => {
   const handleTaxSubmit = (selectedItemIds, taxValue, taxType) => {
     setCart(prevCart =>
       prevCart.map(item => {
-        const itemId = item._id || item.id;
-        if (selectedItemIds.includes(itemId)) {
+        // The selectedItemIds are now the unique composite IDs (e.g., 'prod1_size1')
+        if (selectedItemIds.includes(item.id)) { // <-- Correctly use item.id
           let taxAmount = 0;
           let taxPercentage = 0;
           let fixedTaxAmount = 0;
 
           if (taxType === 'percentage') {
             taxPercentage = taxValue;
-            taxAmount = (item.price * item.quantity * taxValue) / 100;
+            taxAmount = (item.adjustedPrice * item.quantity * taxValue) / 100;
           } else if (taxType === 'fixed') {
+            // Fixed amount is per item, not affected by quantity in this logic
             fixedTaxAmount = taxValue;
-            taxAmount = taxValue; // Fixed amount per item (not multiplied by quantity)
+            taxAmount = taxValue; 
           }
 
           return {
             ...item,
-            taxType: taxType, // Store the tax type
+            taxType: taxType,
             taxPercentage: taxPercentage,
             fixedTaxAmount: fixedTaxAmount,
             taxAmount: taxAmount
@@ -328,16 +343,17 @@ const POSTableContent = () => {
 
       setCart(prevCart =>
         prevCart.map(item => {
-          const itemId = item._id || item.id;
-          if (ids.includes(itemId)) {
+          // The 'ids' array now contains the unique composite IDs
+          if (ids.includes(item.id)) { // <-- Correctly use item.id
             let discountAmount = 0;
             let discountPercentage = 0;
             let fixedDiscountAmount = 0;
 
             if (type === 'percentage') {
               discountPercentage = value;
-              discountAmount = (item.price * item.quantity * value) / 100;
+              discountAmount = (item.adjustedPrice * item.quantity * value) / 100;
             } else if (type === 'fixed') {
+              // Fixed amount is per item, not affected by quantity
               fixedDiscountAmount = value;
               discountAmount = value;
             }
@@ -385,7 +401,7 @@ const POSTableContent = () => {
   }
 
   const calculateSubtotal = useCallback(() => {
-    return cart.reduce((total, item) => total + item.quantity * item.price, 0)
+    return cart.reduce((total, item) => total + item.quantity * item.adjustedPrice, 0)
   }, [cart])
 
   const calculateTotalTaxAmount = useCallback(() => {
@@ -438,7 +454,7 @@ const POSTableContent = () => {
 
         // Recalculate tax amount based on tax type
         if (item.taxType === 'percentage' && item.taxPercentage > 0) {
-          updatedItem.taxAmount = (item.price * newQty * item.taxPercentage) / 100;
+          updatedItem.taxAmount = (item.adjustedPrice * newQty * item.taxPercentage) / 100;
         } else if (item.taxType === 'fixed' && item.fixedTaxAmount > 0) {
           updatedItem.taxAmount = item.fixedTaxAmount; // Fixed amount doesn't change with quantity
         }
@@ -495,10 +511,10 @@ const POSTableContent = () => {
       items: cart?.map((item) => ({
         itemId: item._id || item.id,
         itemName: item.itemName,
-        price: item.price,
+        price: item.adjustedPrice,
         quantity: item.quantity,
         selectedSubcategoryId: item.selectedSubcategoryId || null,
-        subtotal: item.price * item.quantity,
+        subtotal: item.adjustedPrice * item.quantity,
         taxType: item.taxType || null,
         taxPercentage: item.taxPercentage || 0,
         fixedTaxAmount: item.fixedTaxAmount || 0,
@@ -717,7 +733,7 @@ const POSTableContent = () => {
 
     try {
       // Calculate subtotal and tax for new items
-      const kotSubtotal = newItems.reduce((total, item) => total + (item.price * item.quantity), 0);
+      const kotSubtotal = newItems.reduce((total, item) => total + (item.adjustedPrice * item.quantity), 0);
       const kotTaxAmount = newItems.reduce((total, item) => total + (Number(item.taxAmount) || 0), 0);
       const kotDiscountAmount = (kotSubtotal * discount) / 100;
       const kotTotal = kotSubtotal + kotTaxAmount - kotDiscountAmount;
@@ -731,10 +747,10 @@ const POSTableContent = () => {
         items: newItems.map((item) => ({
           itemId: item._id || item.id,
           itemName: item.itemName,
-          price: item.price,
+          price: item.adjustedPrice,
           quantity: item.quantity,
           selectedSubcategoryId: item.selectedSubcategoryId || null,
-          subtotal: item.price * item.quantity,
+          subtotal: item.adjustedPrice * item.quantity,
           taxPercentage: item.taxPercentage || 0,
           taxAmount: item.taxAmount || 0
         })),
@@ -1102,6 +1118,7 @@ const POSTableContent = () => {
         handleCustomerSelect={handleCustomerSelect}
         customerLoading={customerLoading}
         handleAddCustomer={handleAddCustomer}
+        restaurantId={localStorage.getItem('restaurantId')}
       />
 
       <MobilePrintOptionsModal

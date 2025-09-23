@@ -6,6 +6,7 @@ import {
 } from "@coreui/react";
 import axios from "axios";
 import { useNavigate } from "react-router-dom";
+import { BASE_URL } from '../../../utils/constants';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState("");
@@ -21,7 +22,7 @@ const ForgotPassword = () => {
     setLoading(true);
 
     try {
-      const res = await axios.post("http://localhost:4000/forgot-password", { email });
+      const res = await axios.post(`${BASE_URL}/forgot-password`, { email });
       setSuccess(res.data.message);
 
       // Navigate to ResetPassword and pass email

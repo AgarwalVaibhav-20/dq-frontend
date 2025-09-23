@@ -143,7 +143,7 @@ const DiscountModal = ({
           (cartItem) => (cartItem.id || cartItem._id) === itemId
         );
         if (!item) return total;
-        const itemSubtotal = item.price * item.quantity;
+        const itemSubtotal = item.adjustedPrice * item.quantity;
         let itemDiscount = 0;
         if (discountType === 'percentage') {
           itemDiscount = (itemSubtotal * Number(discountValue)) / 100;
@@ -310,19 +310,19 @@ const DiscountModal = ({
                 {selectedItemIds.length === validCart.length ? 'Deselect All' : 'Select All'}
               </CButton>
               {validCart.map((item) => {
-                const itemId = item.id || item._id;
+                // const itemId = item.id || item._id; // This line is removed
                 return (
-                  <div key={itemId} className="d-flex align-items-center border p-2 mb-2 rounded">
+                  <div key={item.id} className="d-flex align-items-center border p-2 mb-2 rounded"> 
                     <CFormCheck
                       type="checkbox"
-                      checked={selectedItemIds.includes(itemId)}
-                      onChange={() => toggleSelection(itemId)}
+                      checked={selectedItemIds.includes(item.id)} // Use item.id directly
+                      onChange={() => toggleSelection(item.id)} // Pass item.id
                       className="me-2"
                     />
                     <div className="flex-grow-1">
                       <div>{item.itemName}</div>
                       <small className="text-muted">
-                        Qty: {item.quantity}, Price: ₹{item.price}
+                        Qty: {item.quantity}, Price: ₹{item.adjustedPrice}
                       </small>
                     </div>
                   </div>

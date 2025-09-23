@@ -6,6 +6,7 @@ import {
 } from "@coreui/react";
 import axios from "axios";
 import { useLocation, useNavigate } from "react-router-dom";
+import { BASE_URL } from '../../../utils/constants';
 
 const ResetPassword = () => {
   const location = useLocation();
@@ -25,7 +26,7 @@ const ResetPassword = () => {
     setLoading(true);
 
     try {
-      const res = await axios.post("http://localhost:4000/reset-password", {
+      const res = await axios.post(`${BASE_URL}/reset-password`, {
         email,
         otp,
         newPassword,

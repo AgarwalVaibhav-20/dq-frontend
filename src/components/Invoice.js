@@ -93,11 +93,13 @@ const Invoice = React.forwardRef(
         {/* Order Details */}
         <h4 style={{ fontSize: '12px', margin: '5px 0' }}>Order Details:</h4>
         <ul style={{ listStyle: 'none', padding: '0', margin: '0' }}>
-          {cart.map((item) => (
+          {cart.map((item) => {
+            console.log("item from bill,=>", item)
+            return (
             <li key={item.id} style={{ margin: '2px 0' }}>
-              {item.itemName} x {item.quantity} - ₹{item.price * item.quantity}
+              {item.itemName} ({item.selectedSize}) x {item.quantity} - ₹{item.adjustedPrice * item.quantity}
             </li>
-          ))}
+          )})}
         </ul>
 
         <hr style={{ borderTop: '1px solid #000', margin: '5px 0' }} />
@@ -107,10 +109,10 @@ const Invoice = React.forwardRef(
           <strong>Subtotal:</strong> ₹{calculateSubtotal()}
         </p>
         <p style={{ margin: '2px 0' }}>
-          <strong>Tax ({tax}%):</strong> ₹{calculateTaxAmount().toFixed(2)}
+          <strong>Tax :</strong> ₹{calculateTaxAmount().toFixed(2)}
         </p>
         <p style={{ margin: '2px 0' }}>
-          <strong>Discount ({discount}%):</strong> ₹{calculateDiscountAmount().toFixed(2)}
+          <strong>Discount :</strong> ₹{calculateDiscountAmount().toFixed(2)}
         </p>
 
         <hr style={{ borderTop: '1px solid #000', margin: '5px 0' }} />

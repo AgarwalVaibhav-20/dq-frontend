@@ -26,7 +26,9 @@ const CustomerModal = ({
   restaurantId,
 }) => {
   const dispatch = useDispatch();
-  const { customers, loading, error } = useSelector((state) => state.customers);
+  // const { customers, loading, error } = useSelector((state) => state.customers);
+  const { customers, loading, error } = useSelector((state) => state.customers)
+  console.log("all customers from its modal : ", customers);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [formValues, setFormValues] = useState({
@@ -89,6 +91,7 @@ const CustomerModal = ({
   // Handle form submission
   const handleSubmit = () => {
     if (validateForm()) {
+      console.log("the datat of customer from customer modal",formValues)
       handleAddCustomer(formValues);
       setFormValues({
         name: "",

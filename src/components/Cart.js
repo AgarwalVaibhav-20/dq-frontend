@@ -52,7 +52,7 @@ const Cart = ({
   // Helper function to get the correct price for an item
   const getItemPrice = (item) => {
     // Use adjustedPrice if available (from size selection), otherwise use original price
-    return Number(item.adjustedPrice || item.price);
+    return Number(item.adjustedPrice);
   };
   const getCartDiscountPercentage = () => {
     if (!cart.length) return 0;
@@ -96,8 +96,8 @@ const Cart = ({
   const handleQuantityChange = (itemId, newQty) => {
     if (newQty < 1) return;
     const updatedCart = cart.map((item) => {
-      const currentItemId = item._id || item.id;
-      if (currentItemId === itemId) {
+      // const currentItemId = item._id || item.id;
+      if (item.id === itemId) {
         const updatedItem = { ...item, quantity: newQty };
         const itemPrice = getItemPrice(item);
 
@@ -118,10 +118,7 @@ const Cart = ({
   };
 
   const handleDeleteClick = (itemId) => {
-    const updatedCart = cart.filter((item) => {
-      const currentItemId = item._id || item.id;
-      return currentItemId !== itemId;
-    });
+    const updatedCart = cart.filter((item) => item.id !== itemId); // Simply compare against item.id
     setCart(updatedCart);
   };
 
@@ -200,7 +197,7 @@ const Cart = ({
               </div>
             ) : (
               cart.map((item) => {
-                const itemId = item._id || item.id;
+                // item.id is now our unique identifier (e.g., 'productId_sizeId')
                 const itemPrice = getItemPrice(item);
                 const itemSubtotal = itemPrice * item.quantity;
                 const itemTaxAmount = Number(item.taxAmount) || 0;
@@ -209,7 +206,7 @@ const Cart = ({
 
                 return (
                   <div
-                    key={itemId}
+                    key={item.id}
                     className="d-flex justify-content-between align-items-center mb-2 p-2 border-bottom"
                   >
                     <div style={{ flex: '1 1 0%' }}>
@@ -227,11 +224,11 @@ const Cart = ({
                         ₹{itemPrice.toFixed(2)} x {item.quantity}
 
                         {/* Show original price if different from adjusted price */}
-                        {item.adjustedPrice && item.adjustedPrice !== item.price && (
+                        {/* {item.adjustedPrice && item.adjustedPrice !== item.price && (
                           <span className="text-muted ms-1">
                             (was ₹{Number(item.originalPrice || item.price).toFixed(2)})
                           </span>
-                        )}
+                        )} */}
 
                         {/* Tax Info */}
                         {((item.taxPercentage > 0) || (item.fixedTaxAmount > 0) || (item.taxAmount > 0)) && (
@@ -290,7 +287,7 @@ const Cart = ({
                         color="dark"
                         size="sm"
                         shape="circle"
-                        onClick={() => handleQuantityChange(itemId, item.quantity - 1)}
+                        onClick={() => handleQuantityChange(item.id, item.quantity - 1)} // Pass item.id
                       >
                         <CIcon icon={cilMinus} />
                       </CButton>
@@ -300,7 +297,7 @@ const Cart = ({
                         color="dark"
                         size="sm"
                         shape="circle"
-                        onClick={() => handleQuantityChange(itemId, item.quantity + 1)}
+                        onClick={() => handleQuantityChange(item.id, item.quantity + 1)} // Pass item.id
                       >
                         <CIcon icon={cilPlus} />
                       </CButton>
@@ -310,7 +307,7 @@ const Cart = ({
                       color="danger"
                       variant="ghost"
                       size="sm"
-                      onClick={() => handleDeleteClick(itemId)}
+                      onClick={() => handleDeleteClick(item.id)}
                     >
                       <CIcon icon={cilTrash} />
                     </CButton>

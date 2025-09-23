@@ -34,6 +34,8 @@ const ProductList = ({
   const theme = useSelector((state) => state.theme.theme);
   const isDarkMode = theme === 'dark';
 
+  // console.log(filteredMenuItems)
+
   // Modal state
   const [showSizeModal, setShowSizeModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
@@ -49,7 +51,7 @@ const ProductList = ({
   // Handle product click - open modal
   const handleProductClick = (product) => {
     setSelectedProduct(product);
-    setSelectedSize('medium'); // Default to medium
+    // setSelectedSize('medium'); // Default to medium
     setShowSizeModal(true);
   };
 
@@ -57,6 +59,7 @@ const ProductList = ({
   const handleAddToCart = () => {
     if (selectedProduct && selectedSize) {
       const sizeData = selectedProduct.sizes.find(s => s._id === selectedSize);
+      console.log("size data :", sizeData);
       const productWithSize = {
         ...selectedProduct,
         selectedSize: sizeData.label,
@@ -159,7 +162,7 @@ const ProductList = ({
               </CButton>
             );
           })}
-          {categories.map((cat) => (
+          {/* {categories.map((cat) => (
             <CButton
               key={cat.id}
               color={selectedCategoryId === cat.id ? 'primary' : isDarkMode ? 'secondary' : 'light'}
@@ -189,7 +192,7 @@ const ProductList = ({
               )}
               {cat.categoryName}
             </CButton>
-          ))}
+          ))} */}
         </div>
 
         <h5 className="fw-semibold mb-3">Available Items</h5>
@@ -228,10 +231,10 @@ const ProductList = ({
                         e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.06)';
                       }}
                     >
-                      {product.image && (
+                    
                         <div className="mb-2" style={{ width: '60px', height: '60px' }}>
                           <img
-                            src={product.image}
+                            src={product.itemImage}
                             alt={product.itemName}
                             style={{
                               width: '100%',
@@ -241,7 +244,6 @@ const ProductList = ({
                             }}
                           />
                         </div>
-                      )}
                       <h6
                         className="mb-1 fw-semibold"
                         style={{
@@ -254,9 +256,9 @@ const ProductList = ({
                       >
                         {product.itemName}
                       </h6>
-                      <span className="text-primary fw-bold" style={{ fontSize: '15px' }}>
+                      {/* <span className="text-primary fw-bold" style={{ fontSize: '15px' }}>
                         ₹{product.price}
-                      </span>
+                      </span> */}
                     </div>
                   </CTooltip>
                 </CCol>
@@ -280,19 +282,18 @@ const ProductList = ({
         <CModalBody className={isDarkMode ? 'bg-dark text-light' : ''}>
           {selectedProduct && (
             <div className="text-center mb-4">
-              {selectedProduct.image && (
+              
                 <img
-                  src={selectedProduct.image}
+                  src={selectedProduct.itemImage}
                   alt={selectedProduct.itemName}
                   style={{
                     width: '120px',
                     height: '120px',
                     objectFit: 'cover',
                     borderRadius: '12px',
-                    marginBottom: '16px',
+                    margin: '0 auto 16px'
                   }}
                 />
-              )}
               <h4 className="mb-2">{selectedProduct.itemName}</h4>
               <p className={`mb-3 ${isDarkMode ? 'text-light opacity-75' : 'text-muted'}`}>
                 {selectedProduct.description || 'Choose your preferred size'}

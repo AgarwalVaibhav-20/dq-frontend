@@ -64,7 +64,7 @@ const TaxModal = ({
       const item = cart.find(cartItem => (cartItem.id || cartItem._id) === itemId);
       if (!item) return total;
 
-      const itemSubtotal = item.price * item.quantity;
+      const itemSubtotal = item.adjustedPrice * item.quantity;
       let itemTax = 0;
       
       if (taxType === 'percentage') {
@@ -157,28 +157,28 @@ const TaxModal = ({
           ) : (
             <div className="item-list">
               {cart.map((item) => {
-                const itemId = item.id || item._id;
-                const itemSubtotal = item.price * item.quantity;
+                // const itemId = item.id || item._id; // This line is no longer needed if used correctly below
+                const itemSubtotal = item.adjustedPrice * item.quantity;
                 const hasCurrentTax = (item.taxPercentage > 0) || (item.fixedTaxAmount > 0) || (item.taxAmount > 0);
-                const isSelected = selectedItemIds.includes(itemId);
+                const isSelected = selectedItemIds.includes(item.id); // Use item.id directly
 
                 return (
                   <div 
-                    key={itemId} 
+                    key={item.id} // Use item.id for the key
                     className={`p-2 mb-2 rounded ${isSelected ? 'bg-light border-primary' : 'bg-white'} border`}
                   >
                     <div className="d-flex align-items-start">
                       <CFormCheck
                         type="checkbox"
                         checked={isSelected}
-                        onChange={() => toggleSelection(itemId)}
+                        onChange={() => toggleSelection(item.id)} // Pass item.id
                         className="me-3 mt-1"
                       />
                       <div className="flex-grow-1">
                         <div className="fw-semibold text-dark">{item.itemName}</div>
                         <div className="text-muted small">
                           <span className="me-3">Qty: {item.quantity}</span>
-                          <span className="me-3">Price: ₹{Number(item.price).toFixed(2)}</span>
+                          <span className="me-3">Price: ₹{Number(item.adjustedPrice).toFixed(2)}</span>
                           <span className="fw-medium">Subtotal: ₹{itemSubtotal.toFixed(2)}</span>
                         </div>
                         {hasCurrentTax && (

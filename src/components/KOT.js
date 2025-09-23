@@ -2,7 +2,7 @@ import React from "react";
 
 const KOT = React.forwardRef(({ tableNumber, cart }, ref) => {
   // Calculate total for the entire order
-  const totalAmount = cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
+  const totalAmount = cart.reduce((acc, item) => acc + item.adjustedPrice * item.quantity, 0);
 
   return (
     <div
@@ -33,13 +33,13 @@ const KOT = React.forwardRef(({ tableNumber, cart }, ref) => {
         {cart.map((item) => (
           <li key={item.id} style={{ margin: "2px 0" }}>
             <div>
-              <strong>{item.itemName}</strong> x {item.quantity}
+              <strong>{item.itemName} ({item.selectedSize})</strong> x {item.quantity} 
             </div>
             <div style={{ fontSize: "12px", color: "#555" }}>
-              Price: ₹{item.price.toFixed(2)}
+              Price: ₹{item.adjustedPrice.toFixed(2)}
             </div>
             <div style={{ fontSize: "12px", color: "#555" }}>
-               Total: ₹{(item.price * item.quantity).toFixed(2)}
+               Total: ₹{(item.adjustedPrice * item.quantity).toFixed(2)}
             </div>
             {item.notes && (
               <div style={{ fontSize: "11px", fontStyle: "italic", color: "#777" }}>
