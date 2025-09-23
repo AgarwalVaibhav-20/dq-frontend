@@ -23,6 +23,7 @@ import { useSelector, useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import CIcon from '@coreui/icons-react';
 import { cilUser, cilClock, cilCheckCircle, cilXCircle, cilSave } from '@coreui/icons';
+import {BASE_URL} from '../../utils/constants';
 
 const LoginActivity = () => {
   const dispatch = useDispatch();
@@ -57,7 +58,7 @@ const LoginActivity = () => {
   const loadCurrentSession = async () => {
     try {
       console.log('Loading current session with token:', authToken ? 'present' : 'missing');
-      const response = await fetch('/api/login-activity/current', {
+      const response = await fetch(`${BASE_URL}/api/login-activity/current`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
@@ -81,7 +82,7 @@ const LoginActivity = () => {
   const loadActivities = async () => {
     setLoading(true);
     try {
-      const response = await fetch('/api/login-activity', {
+      const response = await fetch(`${BASE_URL}/api/login-activity`, {
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
