@@ -54,7 +54,7 @@ export default function QRCode() {
   // Fetch QR codes + floors on mount
   useEffect(() => {
     if (restaurantId) {
-      dispatch(getQrs(token))
+      dispatch(getQrs({restaurantId}))
       dispatch(getFloors(restaurantId))
     }
   }, [dispatch, token, restaurantId])
@@ -98,7 +98,7 @@ export default function QRCode() {
     }
 
     setSaving(true)
-    const result = await dispatch(addTable({ floorId, tableNumber }))
+    const result = await dispatch(addTable({ restaurantId, floorId, tableNumber }))
 
     setSaving(false)
 
@@ -108,7 +108,7 @@ export default function QRCode() {
       setFloorId('')
       setPreviewQr(result.payload)
       // Refresh QR list to show the new table
-      dispatch(getQrs(token))
+      dispatch(getQrs({restaurantId}))
     } else {
       alert(result.payload || 'Failed to create QR code')
     }
@@ -120,7 +120,7 @@ export default function QRCode() {
       await dispatch(deleteQr(selectedQr._id))
       setConfirmDeleteModalVisible(false)
       setActionModalVisible(false)
-      dispatch(getQrs(token))
+      dispatch(getQrs({restaurantId}))
       setPreviewQr(null)
     }
   }

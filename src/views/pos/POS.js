@@ -39,6 +39,7 @@ const POS = () => {
   const { qrList, loading, error } = useSelector((state) => state.qr)
   const { floors: manjil } = useSelector((state) => state.floors)
   const restaurantId = useSelector((state) => state.auth.restaurantId)
+  const resturantIdLocalStorage = localStorage.getItem('restaurantId')
   const theme = useSelector((state) => state.theme.theme)
 
   console.log("floor manjil =>", manjil)
@@ -91,14 +92,13 @@ const POS = () => {
 
   // Debug state changes
   useEffect(() => {
-    dispatch(getFloors(restaurantId))
+    dispatch(getFloors(resturantIdLocalStorage))
     console.log('showMergeModal changed to:', showMergeModal)
   }, [showMergeModal, restaurantId, dispatch])
 
   useEffect(() => {
-    dispatch(getFloors(restaurantId))
-    console.log('showMergeModal changed to:', showMergeModal)
-  }, [restaurantId, dispatch])
+    dispatch(getFloors(resturantIdLocalStorage))
+  }, [dispatch, restaurantId])
 
   // Filter tables based on selected floor ID
   const getTablesForFloor = (floorId) => {
@@ -139,7 +139,7 @@ const POS = () => {
   // Fetch QR codes & restore carts
   useEffect(() => {
     if (qrList.length === 0) {
-      dispatch(getQrs(restaurantId))
+      dispatch(getQrs({restaurantId}))
     }
 
     const storedCarts = {}
@@ -646,13 +646,14 @@ const POS = () => {
               Individual Tables {selectedFloor !== 'all' && `- ${manjil.find(f => f._id === selectedFloor)?.name || 'Floor'}`}
             </h5>
             <CRow className="justify-content-start">
-              {getAvailableTables().map((qr) => {
+              {getAvailableTables().map((qr, index) => {
                 const floorName = getFloorNameFromQr(qr)
+                console.log("all tables are this :",qr)
                 console.log('Rendering table:', qr.tableNumber, 'on floor:', floorName);
 
                 return (
                   <CCol
-                    key={qr.id}
+                    key={index}
                     xs="6"
                     sm="4"
                     md="3"
@@ -837,9 +838,9 @@ const POS = () => {
                   </CTableRow>
                 </CTableHead>
                 <CTableBody>
-                  {tablesWithOrders.map((table) => (
+                  {tablesWithOrders.map((table, index) => (
                     <CTableRow
-                      key={table.tableId}
+                      key={index}
                       className={selectedMergeTables.includes(table.tableId) ? 'table-active' : ''}
                     >
                       <CTableDataCell>
