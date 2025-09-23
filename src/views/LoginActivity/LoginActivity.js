@@ -114,7 +114,7 @@ const LoginActivity = () => {
 
     setSaving(true);
     try {
-      const response = await fetch('/api/login-activity', {
+      const response = await fetch(`${BASE_URL}/api/login-activity`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,

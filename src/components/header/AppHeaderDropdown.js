@@ -19,6 +19,7 @@ import useSound from 'use-sound'
 import notificationSound from '../../assets/notification.mp3'
 import { getRestaurantProfile } from '../../redux/slices/restaurantProfileSlice'
 import avatar8 from './../../assets/images/avatars/8.jpg'
+import {BASE_URL} from '../../utils/constants'
 
 const AppHeaderDropdown = () => {
   const dispatch = useDispatch()
@@ -86,7 +87,7 @@ const AppHeaderDropdown = () => {
       const authToken = token || localStorage.getItem('authToken');
       
       // Record logout time in login activity
-      const response = await fetch('/api/login-activity/logout', {
+      const response = await fetch(`${BASE_URL}/api/login-activity/logout`, {
         method: 'PUT',
         headers: {
           'Authorization': `Bearer ${authToken}`,
