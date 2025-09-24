@@ -5,6 +5,13 @@ import { getQrs } from '../../redux/slices/qrSlice'
 import { getFloors } from '../../redux/slices/floorSlices'
 import { fetchCombinedOrders } from '../../redux/slices/orderSlice'
 import {
+  createTransaction,
+  fetchTransactionDetails,
+  createCashInTransaction,
+  createCashOutTransaction,
+  getDailyCashBalance
+} from '../../redux/slices/transactionSlice'
+import {
   CContainer,
   CCol,
   CRow,
@@ -28,21 +35,30 @@ import {
   CDropdownToggle,
   CDropdownMenu,
   CDropdownItem,
+  CForm,
+  CFormInput,
+  CFormLabel,
+  CFormTextarea,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilBuilding } from '@coreui/icons'
+import { cilBuilding, cilMoney, cilPlus, cilMinus, cilCash , cilNotes } from '@coreui/icons'
 
 const POS = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
-
+  const { dailyCashBalance, dailyTransactionCount, cashLoading } = useSelector((state) => state.transactions);
   const { qrList, loading, error } = useSelector((state) => state.qr)
   const { floors: manjil } = useSelector((state) => state.floors)
   const restaurantId = useSelector((state) => state.auth.restaurantId)
   const resturantIdLocalStorage = localStorage.getItem('restaurantId')
+  const userId = useSelector((state) => state.auth.userId)
+  const username = useSelector((state) => state.auth.username)
+  // const authToken = useSelector((state) => state.auth.authToken)
   const theme = useSelector((state) => state.theme.theme)
+  const token = localStorage.getItem('authToken')
+  // Get cash management state from Redux
+  // const { dailyCashBalance, cashLoading } = useSelector((state) => state.transactions)
 
-  console.log("floor manjil =>", manjil)
   const [cart, setCart] = useState({})
   const [showCombinedModal, setShowCombinedModal] = useState(false)
   const [activeOrders, setActiveOrders] = useState([])
@@ -60,6 +76,12 @@ const POS = () => {
   const [mergingLoading, setMergingLoading] = useState(false)
   const [selectedMergeTables, setSelectedMergeTables] = useState([])
   const [tablesWithOrders, setTablesWithOrders] = useState([])
+
+  // Cash Management States
+  const [showCashInModal, setShowCashInModal] = useState(false)
+  const [showCashOutModal, setShowCashOutModal] = useState(false)
+  const [cashAmount, setCashAmount] = useState('')
+  const [cashReason, setCashReason] = useState('')
 
   // Helper function to get floor ID consistently from QR object
   const getFloorIdFromQr = (qr) => {
@@ -89,16 +111,195 @@ const POS = () => {
     const [tableNumber, floorId] = tableId.split('_')
     return { tableNumber: parseInt(tableNumber), floorId }
   }
+const handleCashIn = async () => {
+  if (!cashAmount || parseFloat(cashAmount) <= 0) {
+    alert('Please enter a valid amount')
+    return
+  }
+
+  try {
+    // Create the cash in transaction
+    await dispatch(createCashInTransaction({
+      total: parseFloat(cashAmount),
+      token,
+      userId,
+      restaurantId,
+      username
+    })).unwrap()
+
+    // Reset form
+    setCashAmount('')
+    setCashReason('')
+    setShowCashInModal(false)
+    
+    // IMPORTANT: Refresh the daily cash balance from server
+    await dispatch(getDailyCashBalance({
+      token,
+      restaurantId
+    }))
+    
+  } catch (error) {
+    console.log("error is here...", error)
+    console.error('Cash in error:', error)
+  }
+}
+
+const handleCashOut = async () => {
+  if (!cashAmount || parseFloat(cashAmount) <= 0) {
+    alert('Please enter a valid amount')
+    return
+  }
+
+  const amount = parseFloat(cashAmount)
+
+  // Use the current balance from Redux state
+  if (amount > (dailyCashBalance || 0)) {
+    alert('Cannot cash out more than available daily transaction amount')
+    return
+  }
+
+  try {
+    // Create the cash out transaction
+    await dispatch(createCashOutTransaction({
+      amount: amount,
+      reason: cashReason || 'Cash Out',
+      token,
+      userId,
+      restaurantId,
+      username
+    })).unwrap()
+
+    // Reset form
+    setCashAmount('')
+    setCashReason('')
+    setShowCashOutModal(false)
+    
+    // IMPORTANT: Refresh the daily cash balance from server
+    await dispatch(getDailyCashBalance({
+      token,
+      restaurantId
+    }))
+    
+  } catch (error) {
+    console.error('Cash out error:', error)
+  }
+}
+
+  // Cash Management Functions - Updated to use database
+  // const handleCashIn = async () => {
+  //   if (!cashAmount || parseFloat(cashAmount) <= 0) {
+  //     alert('Please enter a valid amount')
+  //     return
+  //   }
+
+  //   try {
+  //     await dispatch(createCashInTransaction({
+  //       total: parseFloat(cashAmount),
+  //       token,
+  //       userId,
+  //       restaurantId,
+  //       username
+  //     })).unwrap()
+
+  //     // Reset form
+  //     setCashAmount('')
+  //     setCashReason('')
+  //     setShowCashInModal(false)
+  //   } catch (error) {
+  //     console.log("error is here...", error)
+  //     console.error('Cash in error:', error)
+  //   }
+  // }
+
+  // const handleCashOut = async () => {
+  //   if (!cashAmount || parseFloat(cashAmount) <= 0) {
+  //     alert('Please enter a valid amount')
+  //     return
+  //   }
+
+  //   const amount = parseFloat(cashAmount)
+
+  //   if (amount > dailyCashBalance) {
+  //     alert('Cannot cash out more than available daily transaction amount')
+  //     return
+  //   }
+
+  //   try {
+  //     await dispatch(createCashOutTransaction({
+  //       amount: amount,
+  //       reason: cashReason || 'Cash Out',
+  //       token,
+  //       userId,
+  //       restaurantId,
+  //       username
+  //     })).unwrap()
+
+  //     // Reset form
+  //     setCashAmount('')
+  //     setCashReason('')
+  //     setShowCashOutModal(false)
+  //   } catch (error) {
+  //     console.error('Cash out error:', error)
+  //   }
+  // }
+  console.log("Daily Balance: "+ dailyCashBalance)
+
+  const formatBalance = (balance) => {
+  if (balance === null || balance === undefined || isNaN(balance)) {
+    return '0.00'
+  }
+  return Number(balance).toFixed(2)
+}
+
+// Also update your initial balance fetch useEffect
+useEffect(() => {
+  if (restaurantId && token) {
+    // Initial load of daily cash balance
+    dispatch(getDailyCashBalance({
+      token,
+      restaurantId
+    }))
+  }
+}, [dispatch, restaurantId, token])
+
+// Add a separate effect to refresh balance periodically (optional)
+// useEffect(() => {
+//   let intervalId
+
+//   if (restaurantId && token) {
+//     // Refresh balance every 5 minutes
+//     intervalId = setInterval(() => {
+//       dispatch(getDailyCashBalance({
+//         token,
+//         restaurantId
+//       }))
+//     }, 300000) // 5 minutes
+//   }
+
+//   return () => {
+//     if (intervalId) {
+//       clearInterval(intervalId)
+//     }
+//   }
+// }, [dispatch, restaurantId, token])
+  // Load daily cash balance on component mount and when restaurant/date changes
+  // useEffect(() => {
+  //   if (restaurantId && token) {
+  //     dispatch(getDailyCashBalance({
+  //       token,
+  //       restaurantId
+  //     }))
+  //   }
+  // }, [dispatch, restaurantId, token])
 
   // Debug state changes
   useEffect(() => {
-    dispatch(getFloors(resturantIdLocalStorage))
-    console.log('showMergeModal changed to:', showMergeModal)
+    dispatch(getFloors(restaurantId))
   }, [showMergeModal, restaurantId, dispatch])
 
   useEffect(() => {
-    dispatch(getFloors(resturantIdLocalStorage))
-  }, [dispatch, restaurantId])
+    dispatch(getFloors(restaurantId))
+  }, [restaurantId, dispatch])
 
   // Filter tables based on selected floor ID
   const getTablesForFloor = (floorId) => {
@@ -125,7 +326,6 @@ const POS = () => {
   // Get table count for each floor by ID
   const getFloorTableCount = (floorId) => {
     const floorTables = getTablesForFloor(floorId)
-    console.log('Floor ID:', floorId, 'has', floorTables.length, 'tables')
     const availableTables = floorTables.filter(qr => !isTableMerged(qr.tableNumber))
     const mergedTablesCount = getMergedTablesForFloor(floorId).length
     return {
@@ -155,7 +355,6 @@ const POS = () => {
   // Update tables with orders when modal opens - include floor information
   useEffect(() => {
     if (showMergeModal) {
-      console.log('Modal opened, loading tables with orders...')
       const activeTablesData = []
 
       qrList.forEach((qr) => {
@@ -184,7 +383,6 @@ const POS = () => {
         }
       })
 
-      console.log('Tables with orders:', activeTablesData)
       setTablesWithOrders(activeTablesData)
     }
   }, [showMergeModal, qrList])
@@ -200,20 +398,19 @@ const POS = () => {
 
   // FIXED: Updated merged table click handler to properly pass data
   const handleMergedTableClick = (mergedTable) => {
-    console.log('Navigating to merged table:', mergedTable)
-    
+
     // Create a special identifier for merged tables
     const mergedTableId = `merged_${mergedTable.id}`
-    
+
     // Ensure the cart data is properly stored for the merged table
     const cartData = mergedTable.combinedOrders || []
     localStorage.setItem(`cart_${mergedTableId}`, JSON.stringify(cartData))
-    
+
     // Store the start time if available
     if (mergedTable.startTime) {
       localStorage.setItem(`start_time_${mergedTableId}`, mergedTable.startTime)
     }
-    
+
     // Navigate with proper state and identifier
     navigate(`/pos/tableNumber/${mergedTableId}`, {
       state: {
@@ -238,14 +435,12 @@ const POS = () => {
   }
 
   const handleMergeTablesClick = () => {
-    console.log('Merge Tables button clicked - opening modal')
     setSelectedMergeTables([])
     setShowMergeModal(true)
   }
 
   // Use unique table identifier for selection
   const handleTableSelect = (tableId) => {
-    console.log('Table selected:', tableId)
     setSelectedMergeTables(prev =>
       prev.includes(tableId)
         ? prev.filter(t => t !== tableId)
@@ -255,7 +450,6 @@ const POS = () => {
 
   // FIXED: Enhanced merge confirmation with proper cart management
   const handleMergeConfirm = async () => {
-    console.log('Confirming merge for tables:', selectedMergeTables)
 
     if (selectedMergeTables.length < 2) {
       alert('Please select at least 2 tables to merge.')
@@ -315,7 +509,7 @@ const POS = () => {
       const mergedTableId = `merged_${mergedTable.id}`
       localStorage.setItem(`cart_${mergedTableId}`, JSON.stringify(combinedOrders))
       localStorage.setItem(`cart_merged_${mergedTable.id}`, JSON.stringify(combinedOrders))
-      
+
       if (earliestStartTime) {
         localStorage.setItem(`start_time_${mergedTableId}`, earliestStartTime.toISOString())
         localStorage.setItem(`start_time_merged_${mergedTable.id}`, earliestStartTime.toISOString())
@@ -338,7 +532,6 @@ const POS = () => {
 
       alert(`Successfully merged ${tableNumbers.length} tables!`)
     } catch (error) {
-      console.error('Error merging tables:', error)
       alert('Failed to merge tables. Please try again.')
     } finally {
       setMergingLoading(false)
@@ -468,18 +661,23 @@ const POS = () => {
 
   return (
     <CContainer className="py-2">
-      {/* Debug info */}
-      <div style={{ fontSize: '12px', color: '#666', marginBottom: '10px' }}>
-        Debug: showMergeModal = {showMergeModal.toString()},
-        tablesWithOrders = {tablesWithOrders.length},
-        selectedMergeTables = {selectedMergeTables.length},
-        selectedFloor = {selectedFloor},
-        totalQRs = {qrList.length}
-      </div>
-
-      {/* Header with Title + Buttons */}
+      {/* Header with Title, Daily Transaction, and Buttons */}
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h3 className="mb-0">Select Table To Generate Bill</h3>
+        <div className="d-flex align-items-center gap-3">
+          <h3 className="mb-0">Select Table To Generate Bill</h3>
+          {/* Daily Transaction Display - Now from database */}
+          <CBadge color="info" size="lg" className="d-flex align-items-center gap-1">
+            <CIcon icon={cilCash} />
+             Daily Balance: ₹{formatBalance(dailyCashBalance)}
+            {cashLoading && <CSpinner size="sm" className="ms-1" />}
+          </CBadge>
+
+          {/* NEW: Display for Daily Transaction Count */}
+          <CBadge color="primary" size="lg" className="d-flex align-items-center gap-1">
+            <CIcon icon={cilNotes} /> 
+            Today's Orders: {dailyTransactionCount}
+          </CBadge>
+        </div>
         <div className="d-flex gap-2">
           <CButton color="primary" onClick={fetchActiveOrders}>
             All Orders
@@ -490,12 +688,32 @@ const POS = () => {
           >
             Merge Tables
           </CButton>
+          {/* Cash Management Buttons */}
+          <CButton
+            color="success"
+            variant="outline"
+            onClick={() => setShowCashInModal(true)}
+            className="d-flex align-items-center gap-1"
+            disabled={cashLoading}
+          >
+            <CIcon icon={cilPlus} size="sm" />
+            Cash In
+          </CButton>
+          <CButton
+            color="danger"
+            variant="outline"
+            onClick={() => setShowCashOutModal(true)}
+            className="d-flex align-items-center gap-1"
+            disabled={cashLoading}
+          >
+            <CIcon icon={cilMinus} size="sm" />
+            Cash Out
+          </CButton>
         </div>
       </div>
 
       {/* Floor Selection Dropdown */}
       <div className="mb-4">
-        {console.log(qrList.length, 'total tables loaded')}
         <div className="d-flex align-items-center gap-3">
           <CDropdown>
             <CDropdownToggle variant="outline" size="lg">
@@ -512,14 +730,12 @@ const POS = () => {
                 All Floors
                 <CBadge color="secondary" className="ms-2">
                   {qrList.length} tables
-                  {console.log('All Floors----->', qrList.length)}
                 </CBadge>
               </CDropdownItem>
               <hr className="dropdown-divider" />
 
               {manjil.map((floor) => {
                 const floorStats = getFloorTableCount(floor._id)
-                console.log(`Floor ${floor.name} stats:`, floorStats)
                 return (
                   <CDropdownItem
                     key={floor._id}
@@ -648,8 +864,6 @@ const POS = () => {
             <CRow className="justify-content-start">
               {getAvailableTables().map((qr, index) => {
                 const floorName = getFloorNameFromQr(qr)
-                console.log("all tables are this :",qr)
-                console.log('Rendering table:', qr.tableNumber, 'on floor:', floorName);
 
                 return (
                   <CCol
@@ -736,6 +950,142 @@ const POS = () => {
         </>
       )}
 
+      {/* Cash In Modal */}
+      <CModal
+        visible={showCashInModal}
+        onClose={() => {
+          setShowCashInModal(false)
+          setCashAmount('')
+          setCashReason('')
+        }}
+        size="md"
+        backdrop="static"
+      >
+        <CModalHeader>
+          <CModalTitle className="d-flex align-items-center gap-2">
+            <CIcon icon={cilPlus} />
+            Cash In
+          </CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <CForm>
+            <div className="mb-3">
+              <CFormLabel htmlFor="cashInAmount">Amount *</CFormLabel>
+              <CFormInput
+                type="number"
+                id="cashInAmount"
+                placeholder="Enter amount"
+                value={cashAmount}
+                onChange={(e) => setCashAmount(e.target.value)}
+                min="0"
+                step="0.01"
+                disabled={cashLoading}
+              />
+            </div>
+            <CAlert color="info">
+              Current Daily Transaction: ₹{dailyCashBalance.toFixed(2)}
+            </CAlert>
+          </CForm>
+        </CModalBody>
+        <CModalFooter>
+          <CButton
+            color="secondary"
+            onClick={() => {
+              setShowCashInModal(false)
+              setCashAmount('')
+              setCashReason('')
+            }}
+            disabled={cashLoading}
+          >
+            Cancel
+          </CButton>
+          <CButton
+            color="success"
+            onClick={handleCashIn}
+            disabled={!cashAmount || parseFloat(cashAmount) <= 0 || cashLoading}
+          >
+            {cashLoading ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                Processing...
+              </>
+            ) : (
+              'Add Cash In'
+            )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* Cash Out Modal */}
+      <CModal
+        visible={showCashOutModal}
+        onClose={() => {
+          setShowCashOutModal(false)
+          setCashAmount('')
+          setCashReason('')
+        }}
+        size="md"
+        backdrop="static"
+      >
+        <CModalHeader>
+          <CModalTitle className="d-flex align-items-center gap-2">
+            <CIcon icon={cilMinus} />
+            Cash Out
+          </CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <CForm>
+            <div className="mb-3">
+              <CFormLabel htmlFor="cashOutAmount">Amount *</CFormLabel>
+              <CFormInput
+                type="number"
+                id="cashOutAmount"
+                placeholder="Enter amount"
+                value={cashAmount}
+                onChange={(e) => setCashAmount(e.target.value)}
+                min="0"
+                max={dailyCashBalance}
+                step="0.01"
+                disabled={cashLoading}
+              />
+              <small className="text-muted">
+                Maximum available: ₹{dailyCashBalance.toFixed(2)}
+              </small>
+            </div>
+            <CAlert color="warning">
+              Current Daily Transaction: ₹{dailyCashBalance.toFixed(2)}
+            </CAlert>
+          </CForm>
+        </CModalBody>
+        <CModalFooter>
+          <CButton
+            color="secondary"
+            onClick={() => {
+              setShowCashOutModal(false)
+              setCashAmount('')
+              setCashReason('')
+            }}
+            disabled={cashLoading}
+          >
+            Cancel
+          </CButton>
+          <CButton
+            color="danger"
+            onClick={handleCashOut}
+            disabled={!cashAmount || parseFloat(cashAmount) <= 0 || parseFloat(cashAmount) > dailyCashBalance || cashLoading}
+          >
+            {cashLoading ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                Processing...
+              </>
+            ) : (
+              'Cash Out'
+            )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
       {/* Combined Order Modal */}
       <CModal
         visible={showCombinedModal}
@@ -803,7 +1153,6 @@ const POS = () => {
       <CModal
         visible={showMergeModal}
         onClose={() => {
-          console.log('Closing merge modal')
           setShowMergeModal(false)
           setSelectedMergeTables([])
         }}

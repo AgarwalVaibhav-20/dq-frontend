@@ -27,6 +27,7 @@ export const createTransaction = createAsyncThunk(
         restaurantId,
         customerId,
         transactionId,
+        notes,
       } = payload;
 
       const headers = {
@@ -50,7 +51,10 @@ export const createTransaction = createAsyncThunk(
         total,
         type,
         customerId,
-        transactionId
+        transactionId,
+        notes,
+        createdAt: new Date(),
+        updatedAt: new Date(),
       };
 
       console.log('Transaction payload:', requestData); // Debug log
@@ -64,6 +68,125 @@ export const createTransaction = createAsyncThunk(
   },
 )
 
+// NEW: Cash In transaction
+export const createCashInTransaction = createAsyncThunk(
+  'transactions/createCashInTransaction',
+  async ({ total, token, userId, restaurantId, username }, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const finalRestaurantId = restaurantId || localStorage.getItem('restaurantId');
+      const finalUserId = userId || localStorage.getItem('userId');
+      const finalUsername = username || localStorage.getItem('username');
+
+      const requestData = {
+        username: finalUsername,
+        restaurantId: finalRestaurantId,
+        userId: finalUserId,
+        total,
+        type: 'CashIn',
+
+      };
+
+      console.log('Cash In payload:', requestData);
+
+      const response = await axios.post(`${BASE_URL}/cashin`, requestData, configureHeaders(token));
+
+      // Fix: Return the correct data structure
+      return {
+        ...response.data,
+        amount: total, // Use total instead of undefined amount
+        transaction: response.data.transaction
+      };
+    } catch (error) {
+      console.log("Error of cashin", error)
+      console.error('Cash In transaction error:', error.response?.data || error.message);
+      return rejectWithValue(error.response?.data || { message: 'Failed to create cash in transaction' });
+    }
+  }
+)
+// NEW: Cash Out transaction
+export const createCashOutTransaction = createAsyncThunk(
+  'transactions/createCashOutTransaction',
+  async ({ amount, reason, token, userId, restaurantId, username }, { rejectWithValue }) => {
+    try {
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      const finalRestaurantId = restaurantId || localStorage.getItem('restaurantId');
+      const finalUserId = userId || localStorage.getItem('userId');
+      const finalUsername = username || localStorage.getItem('username');
+
+      const requestData = {
+        username: finalUsername,
+        restaurantId: finalRestaurantId,
+        userId: finalUserId,
+        total: amount, // Use 'total' to match backend expectation
+        type: 'CashOut',
+        notes: reason || 'Cash Out Transaction'
+      };
+
+      console.log('Cash Out payload:', requestData);
+
+      const response = await axios.post(`${BASE_URL}/cashout`, requestData, { headers });
+      return {
+        ...response.data,
+        amount,
+        reason,
+        transaction: response.data.transaction
+      };
+    } catch (error) {
+      console.error('Cash Out transaction error:', error.response?.data || error.message);
+      return rejectWithValue(error.response?.data || { message: 'Failed to create cash out transaction' });
+    }
+  }
+)
+
+// NEW: Get daily cash balance
+export const getDailyCashBalance = createAsyncThunk(
+  'transactions/getDailyCashBalance',
+  async ({ token, restaurantId }, { rejectWithValue }) => {
+    try {
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+      const finalRestaurantId = restaurantId || localStorage.getItem('restaurantId');
+      const today = new Date().toISOString().split('T')[0];
+      const response = await axios.get(`${BASE_URL}/get-daily-cash-balance/${finalRestaurantId}/${today}`, { headers });
+      console.log("Daily cash balance response:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching daily cash balance:', error);
+      return rejectWithValue(error.response?.data || { message: 'Failed to fetch daily cash balance' });
+    }
+  }
+)
+// export const getDailyCashBalance = createAsyncThunk(
+//   'transactions/getDailyCashBalance',
+//   async ({ token, restaurantId }, { rejectWithValue }) => {
+//     try {
+//       const headers = {
+//         Authorization: `Bearer ${token}`,
+//         'Content-Type': 'application/json'
+//       };
+
+//       const finalRestaurantId = restaurantId || localStorage.getItem('restaurantId');
+
+//       // Get today's date in YYYY-MM-DD format
+//       const today = new Date().toISOString().split('T')[0];
+
+//       const response = await axios.get(`${BASE_URL}/get-daily-cash-balance/${finalRestaurantId}/${today}`, { headers });
+//       console.log("Daily cash balance response:", response.data);
+//       return response.data.balance || 0;
+//     } catch (error) {
+//       console.error('Error fetching daily cash balance:', error);
+//       return rejectWithValue(error.response?.data || { message: 'Failed to fetch daily cash balance' });
+//     }
+//   }
+// )
+
 // GET API: Fetch transactions by restaurantId
 export const fetchTransactionsByRestaurant = createAsyncThunk(
   'transactions/fetchTransactionsByRestaurant',
@@ -72,7 +195,7 @@ export const fetchTransactionsByRestaurant = createAsyncThunk(
       console.log("Fetching transactions with token:", token);
       const response = await axios.get(`${BASE_URL}/get-all/transaction`, configureHeaders(token))
       console.log("Response data:", response.data)
-      
+
       // Return the actual data array, not the wrapper object
       return response.data.data || response.data;
     } catch (error) {
@@ -95,7 +218,7 @@ export const fetchTransactionDetails = createAsyncThunk(
 
       const response = await axios.get(`${BASE_URL}/transactionById/${transactionId}`, { headers })
       console.log("Transaction details response:", response.data)
-      
+
       // Handle the response format - backend returns { success: true, data: transaction }
       if (response.data.success && response.data.data) {
         return response.data.data;
@@ -125,7 +248,7 @@ export const deleteTransaction = createAsyncThunk(
         headers,
         data: { note }
       });
-      
+
       return id;
     } catch (error) {
       console.error('Error deleting transaction:', error);
@@ -147,7 +270,7 @@ export const fetchPOSTransactions = createAsyncThunk(
 
       const response = await axios.get(`${BASE_URL}/POStransactions`, { headers })
       console.log("POS transactions:", response.data);
-      
+
       // Return the actual data array
       return response.data.data || response.data;
     } catch (error) {
@@ -164,6 +287,8 @@ const transactionSlice = createSlice({
     transactionDetails: null,
     loading: false,
     error: null,
+    dailyCashBalance: 0,
+    cashLoading: false,
   },
   reducers: {
     clearError: (state) => {
@@ -171,27 +296,220 @@ const transactionSlice = createSlice({
     },
     clearTransactions: (state) => {
       state.transactions = [];
+    },
+    // Local cash balance update for UI responsiveness
+    updateLocalCashBalance: (state, action) => {
+      state.dailyCashBalance = action.payload;
     }
   },
   extraReducers: (builder) => {
     builder
       // Create Transaction
       .addCase(createTransaction.pending, (state) => {
-        state.loading = true
-        state.error = null
-      })
-      .addCase(createTransaction.fulfilled, (state, action) => {
-        state.loading = false
-        // Add new transaction to the beginning of the array
+      state.loading = true
+      state.error = null
+    })
+    .addCase(createTransaction.fulfilled, (state, action) => {
+      state.loading = false
+      const newTransaction = action.payload.transaction;
+
+      if (!newTransaction) {
+        toast.error('Received an invalid transaction response from the server.');
+        return;
+      }
+
+      state.transactions = [newTransaction, ...state.transactions];
+      toast.success('Transaction created successfully.')
+
+      // FIXED: Only update balance for regular Cash payments, not CashIn/CashOut
+      if (newTransaction.type === 'Cash' && 
+          newTransaction.transactionType !== 'CashIn' && 
+          newTransaction.transactionType !== 'CashOut') {
+        const currentBalance = Number(state.dailyCashBalance) || 0;
+        const transactionTotal = Number(newTransaction.total) || 0;
+        state.dailyCashBalance = currentBalance + transactionTotal;
+      }
+    })
+    .addCase(createTransaction.rejected, (state, action) => {
+      state.loading = false
+      state.error = action.payload
+      toast.error('Failed to create transaction.')
+    })
+
+    // Cash In Transaction
+    .addCase(createCashInTransaction.pending, (state) => {
+      state.cashLoading = true
+      state.error = null
+    })
+    .addCase(createCashInTransaction.fulfilled, (state, action) => {
+      state.cashLoading = false
+      
+      // Add to transactions list
+      if (action.payload.transaction) {
         state.transactions = [action.payload.transaction, ...state.transactions];
+      }
+      
+      // FIXED: Don't update balance locally - let the server handle it
+      // The balance will be updated when getDailyCashBalance is called
+      state.error = null
+      const amount = action.payload.transaction?.total || 0;
+      toast.success(`Cash In: ₹${amount.toFixed(2)} added successfully!`)
+    })
+    .addCase(createCashInTransaction.rejected, (state, action) => {
+      state.cashLoading = false
+      state.error = action.payload
+      const errorMessage = action.payload?.message || 'Failed to process cash in transaction.';
+      toast.error(errorMessage)
+    })
+
+    // Cash Out Transaction
+    .addCase(createCashOutTransaction.pending, (state) => {
+      state.cashLoading = true
+      state.error = null
+    })
+    .addCase(createCashOutTransaction.fulfilled, (state, action) => {
+      state.cashLoading = false
+      
+      // Add to transactions list
+      if (action.payload.transaction) {
+        state.transactions = [action.payload.transaction, ...state.transactions];
+      }
+      
+      // FIXED: Don't update balance locally - let the server handle it
+      // The balance will be updated when getDailyCashBalance is called
+      state.error = null
+      const amount = action.payload.transaction?.total || 0;
+      toast.success(`Cash Out: ₹${amount.toFixed(2)} removed successfully!`)
+    })
+    .addCase(createCashOutTransaction.rejected, (state, action) => {
+      state.cashLoading = false
+      state.error = action.payload
+      const errorMessage = action.payload?.message || 'Failed to process cash out transaction.';
+      toast.error(errorMessage)
+    })
+
+      // .addCase(createTransaction.pending, (state) => {
+      //   state.loading = true
+      //   state.error = null
+      // })
+      // .addCase(createTransaction.fulfilled, (state, action) => {
+      //   state.loading = false
+      //   // Add new transaction to the beginning of the array
+      //   state.transactions = [action.payload.transaction, ...state.transactions];
+      //   state.error = null
+      //   toast.success('Transaction created successfully.')
+      // })
+      // .addCase(createTransaction.rejected, (state, action) => {
+      //   state.loading = false
+      //   state.error = action.payload
+      //   toast.error('Failed to create transaction.')
+      // })
+
+      // Cash In Transaction
+      // .addCase(createCashInTransaction.pending, (state) => {
+      //   state.cashLoading = true
+      //   state.error = null
+      // })
+      // .addCase(createCashInTransaction.fulfilled, (state, action) => {
+      //   state.cashLoading = false
+      //   // Add to transactions list using the consistent 'transaction' key
+      //   if (action.payload.transaction) {
+      //     state.transactions = [action.payload.transaction, ...state.transactions];
+      //   }
+      //   // Update daily cash balance from the saved transaction's total
+      //   const amount = action.payload.transaction?.total || 0;
+      //   state.dailyCashBalance += amount;
+      //   state.error = null
+      //   toast.success(`Cash In: ₹${amount.toFixed(2)} added successfully!`)
+      // })
+      // .addCase(createCashInTransaction.rejected, (state, action) => {
+      //   state.cashLoading = false
+      //   state.error = action.payload
+      //   const errorMessage = action.payload?.message || 'Failed to process cash in transaction.';
+      //   toast.error(errorMessage)
+      // })
+
+      // Cash Out Transaction
+      // .addCase(createCashOutTransaction.pending, (state) => {
+      //   state.cashLoading = true
+      //   state.error = null
+      // })
+      // .addCase(createCashOutTransaction.fulfilled, (state, action) => {
+      //   state.cashLoading = false
+      //   // Add to transactions list using the consistent 'transaction' key
+      //   if (action.payload.transaction) {
+      //     state.transactions = [action.payload.transaction, ...state.transactions];
+      //   }
+      //   // Update daily cash balance from the saved transaction's total
+      //   const amount = action.payload.transaction?.total || 0;
+      //   state.dailyCashBalance -= amount;
+      //   state.error = null
+      //   toast.success(`Cash Out: ₹${amount.toFixed(2)} removed successfully!`)
+      // })
+      // .addCase(createCashOutTransaction.rejected, (state, action) => {
+      //   state.cashLoading = false
+      //   state.error = action.payload
+      //   const errorMessage = action.payload?.message || 'Failed to process cash out transaction.';
+      //   toast.error(errorMessage)
+      // })
+
+
+      // Get Daily Cash Balance
+      // addCase(getDailyCashBalance.pending, (state) => {
+      //   state.cashLoading = true
+      // })
+      .addCase(getDailyCashBalance.pending, (state) => {
+        state.cashLoading = true
+      })
+      .addCase(getDailyCashBalance.fulfilled, (state, action) => {
+        state.cashLoading = false
+
+        // FIXED: Handle the exact response format from your API
+        console.log('API Response:', action.payload);
+
+        // Your API returns { balance, cashIn, cashOut, transactionCount }
+        state.dailyCashBalance = Number(action.payload.balance) || 0;
+        state.dailyTransactionCount = Number(action.payload.transactionCount) || 0;
+
+        // Optional: Store additional data if needed
+        state.dailyCashIn = Number(action.payload.cashIn) || 0;
+        state.dailyCashOut = Number(action.payload.cashOut) || 0;
+
         state.error = null
-        toast.success('Transaction created successfully.')
+
+        console.log('Updated dailyCashBalance to:', state.dailyCashBalance);
       })
-      .addCase(createTransaction.rejected, (state, action) => {
-        state.loading = false
+      .addCase(getDailyCashBalance.rejected, (state, action) => {
+        state.cashLoading = false
         state.error = action.payload
-        toast.error('Failed to create transaction.')
+        console.error('Failed to fetch daily cash balance:', action.payload)
       })
+      // .addCase(getDailyCashBalance.pending, (state) => {
+      //   state.cashLoading = true
+      // })
+      // .addCase(getDailyCashBalance.fulfilled, (state, action) => {
+      //   state.cashLoading = false
+      //   // Handle different response formats from backend
+      //   if (typeof action.payload === 'number') {
+      //     state.dailyCashBalance = action.payload
+      //   } else if (action.payload?.balance !== undefined) {
+      //     state.dailyCashBalance = action.payload.balance
+      //   } else if (Array.isArray(action.payload)) {
+      //     // Handle array response format [{ type: "CashIn", total: 100 }, { type: "CashOut", total: 50 }]
+      //     const cashIn = action.payload.find(item => item.type === "CashIn")?.total || 0;
+      //     const cashOut = action.payload.find(item => item.type === "CashOut")?.total || 0;
+      //     state.dailyCashBalance = cashIn - cashOut;
+      //   } else {
+      //     state.dailyCashBalance = 0
+      //   }
+      //   state.error = null
+      // })
+      // .addCase(getDailyCashBalance.rejected, (state, action) => {
+      //   state.cashLoading = false
+      //   state.error = action.payload
+      //   // Don't show error toast for balance fetch failures to avoid spam
+      //   console.error('Failed to fetch daily cash balance:', action.payload)
+      // })
 
       // Fetch Transactions by Restaurant
       .addCase(fetchTransactionsByRestaurant.pending, (state) => {
@@ -234,7 +552,7 @@ const transactionSlice = createSlice({
         state.loading = false
         if (action.payload) {
           state.transactions = state.transactions.filter(
-            (transaction) => transaction.id !== action.payload,
+            (transaction) => transaction._id !== action.payload, // Fixed: use _id instead of id
           )
           toast.success('Transaction deleted successfully.')
         }
@@ -262,7 +580,154 @@ const transactionSlice = createSlice({
         toast.error('Failed to fetch POS transactions.')
       })
   },
+  // extraReducers: (builder) => {
+  //   builder
+  //     // Create Transaction
+  //     .addCase(createTransaction.pending, (state) => {
+  //       state.loading = true
+  //       state.error = null
+  //     })
+  //     .addCase(createTransaction.fulfilled, (state, action) => {
+  //       state.loading = false
+  //       // Add new transaction to the beginning of the array
+  //       state.transactions = [action.payload.transaction, ...state.transactions];
+  //       state.error = null
+  //       toast.success('Transaction created successfully.')
+  //     })
+  //     .addCase(createTransaction.rejected, (state, action) => {
+  //       state.loading = false
+  //       state.error = action.payload
+  //       toast.error('Failed to create transaction.')
+  //     })
+
+  //     // Cash In Transaction
+  //     .addCase(createCashInTransaction.pending, (state) => {
+  //       state.cashLoading = true
+  //       state.error = null
+  //     })
+  //     .addCase(createCashInTransaction.fulfilled, (state, action) => {
+  //       state.cashLoading = false
+  //       // Add to transactions list
+  //       if (action.payload.transaction) {
+  //         state.transactions = [action.payload.transaction, ...state.transactions];
+  //       }
+  //       // Update daily cash balance
+  //       state.dailyCashBalance += action.payload.amount
+  //       state.error = null
+  //       toast.success(`Cash In: ₹${action.payload.amount.toFixed(2)} added successfully!`)
+  //     })
+  //     .addCase(createCashInTransaction.rejected, (state, action) => {
+  //       state.cashLoading = false
+  //       state.error = action.payload
+  //       toast.error('Failed to process cash in transaction.')
+  //     })
+
+  //     // Cash Out Transaction
+  //     .addCase(createCashOutTransaction.pending, (state) => {
+  //       state.cashLoading = true
+  //       state.error = null
+  //     })
+  //     .addCase(createCashOutTransaction.fulfilled, (state, action) => {
+  //       state.cashLoading = false
+  //       // Add to transactions list
+  //       if (action.payload.transaction) {
+  //         state.transactions = [action.payload.transaction, ...state.transactions];
+  //       }
+  //       // Update daily cash balance
+  //       state.dailyCashBalance -= action.payload.amount
+  //       state.error = null
+  //       toast.success(`Cash Out: ₹${action.payload.amount.toFixed(2)} removed successfully!`)
+  //     })
+  //     .addCase(createCashOutTransaction.rejected, (state, action) => {
+  //       state.cashLoading = false
+  //       state.error = action.payload
+  //       toast.error('Failed to process cash out transaction.')
+  //     })
+
+  //     // Get Daily Cash Balance
+  //     .addCase(getDailyCashBalance.pending, (state) => {
+  //       state.cashLoading = true
+  //     })
+  //     .addCase(getDailyCashBalance.fulfilled, (state, action) => {
+  //       state.cashLoading = false
+  //       state.dailyCashBalance = action.payload
+  //       state.error = null
+  //     })
+  //     .addCase(getDailyCashBalance.rejected, (state, action) => {
+  //       state.cashLoading = false
+  //       state.error = action.payload
+  //     })
+
+  //     // Fetch Transactions by Restaurant
+  //     .addCase(fetchTransactionsByRestaurant.pending, (state) => {
+  //       state.loading = true
+  //       state.error = null
+  //     })
+  //     .addCase(fetchTransactionsByRestaurant.fulfilled, (state, action) => {
+  //       state.loading = false
+  //       state.transactions = action.payload
+  //       state.error = null
+  //     })
+  //     .addCase(fetchTransactionsByRestaurant.rejected, (state, action) => {
+  //       state.loading = false
+  //       state.error = action.payload
+  //       toast.error('Failed to fetch transactions.')
+  //     })
+
+  //     // Fetch Transaction Details
+  //     .addCase(fetchTransactionDetails.pending, (state) => {
+  //       state.loading = true
+  //       state.error = null
+  //     })
+  //     .addCase(fetchTransactionDetails.fulfilled, (state, action) => {
+  //       state.loading = false
+  //       state.transactionDetails = action.payload
+  //       state.error = null
+  //     })
+  //     .addCase(fetchTransactionDetails.rejected, (state, action) => {
+  //       state.loading = false
+  //       state.error = action.payload
+  //       toast.error('Failed to fetch transaction details.')
+  //     })
+
+  //     // Delete Transaction
+  //     .addCase(deleteTransaction.pending, (state) => {
+  //       state.loading = true
+  //       state.error = null
+  //     })
+  //     .addCase(deleteTransaction.fulfilled, (state, action) => {
+  //       state.loading = false
+  //       if (action.payload) {
+  //         state.transactions = state.transactions.filter(
+  //           (transaction) => transaction.id !== action.payload,
+  //         )
+  //         toast.success('Transaction deleted successfully.')
+  //       }
+  //       state.error = null
+  //     })
+  //     .addCase(deleteTransaction.rejected, (state, action) => {
+  //       state.loading = false
+  //       state.error = action.payload
+  //       toast.error('Failed to delete transaction.')
+  //     })
+
+  //     // Fetch POS Transactions
+  //     .addCase(fetchPOSTransactions.pending, (state) => {
+  //       state.loading = true
+  //       state.error = null
+  //     })
+  //     .addCase(fetchPOSTransactions.fulfilled, (state, action) => {
+  //       state.loading = false
+  //       state.transactions = action.payload
+  //       state.error = null
+  //     })
+  //     .addCase(fetchPOSTransactions.rejected, (state, action) => {
+  //       state.loading = false
+  //       state.error = action.payload
+  //       toast.error('Failed to fetch POS transactions.')
+  //     })
+  // },
 })
 
-export const { clearError, clearTransactions } = transactionSlice.actions;
-export default transactionSlice.reducer
+export const { clearError, clearTransactions, updateLocalCashBalance } = transactionSlice.actions;
+export default transactionSlice.reducer;

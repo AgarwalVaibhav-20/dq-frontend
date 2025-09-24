@@ -12,31 +12,28 @@ export const configureHeaders = (token) => ({
 })
 
 export const addFloor = createAsyncThunk(
-  "floors/addFloor",
-  async ({ id, name }, { rejectWithValue }) => {
-    try {
-      const token = localStorage.getItem("authToken");
+    "floors/addFloor",
+    async ({ id, name }, { rejectWithValue }) => {
+        try {
+            const token = localStorage.getItem("authToken");
+            const res = await axios.post(
+                `${BASE_URL}/add/floors/${id}`,   // ✅ id in URL
+                { name: name.trim() },           // ✅ only name in body
+                configureHeaders(token)
+            );
 
-      console.log("Redux - Sending floor data:", { id, name: name.trim() });
-
-      const res = await axios.post(
-        `${BASE_URL}/add/floors/${id}`,   // ✅ id in URL
-        { name: name.trim() },           // ✅ only name in body
-        configureHeaders(token)
-      );
-
-      toast.success("Floor added successfully");
-      return res.data.data;
-    } catch (err) {
-      const errorMessage =
-        err.response?.data?.message || "Failed to add floor";
-      toast.error(errorMessage);
-      return rejectWithValue({
-        message: errorMessage,
-        status: err.response?.status || 500,
-      });
+            toast.success("Floor added successfully");
+            return res.data.data;
+        } catch (err) {
+            const errorMessage =
+                err.response?.data?.message || "Failed to add floor";
+            toast.error(errorMessage);
+            return rejectWithValue({
+                message: errorMessage,
+                status: err.response?.status || 500,
+            });
+        }
     }
-  }
 );
 
 
@@ -45,15 +42,12 @@ export const getFloors = createAsyncThunk(
     "floors/getFloors",
     async (restaurantId, { rejectWithValue }) => {
         try {
-            console.log('Fetching floors for restaurant:', restaurantId); // Debug
 
             const res = await axios.get(`${BASE_URL}/get/floors/${restaurantId}`);
 
-            console.log('Floors fetch response:', res.data); // Debug
 
             return res.data.data;
         } catch (err) {
-            console.error("Floors fetch error:", err.response?.data || err.message);
             toast.error(err.response?.data?.message || "Failed to fetch floors");
             return rejectWithValue(err.response?.data);
         }
@@ -123,8 +117,7 @@ const floorSlice = createSlice({
             .addCase(getFloors.fulfilled, (state, action) => {
                 state.loading = false;
                 state.error = null;
-                state.floors = action.payload || []; 
-                console.log("floors => array orig ,", action.payload)// Ensure it's always an array
+                state.floors = action.payload || [];
                 state.items = action.payload || []; // Keep both in sync
             })
             .addCase(getFloors.rejected, (state, action) => {

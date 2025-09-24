@@ -382,7 +382,7 @@ const Transactions = () => {
     <div style={{ paddingLeft: '20px', paddingRight: '20px' }}>
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2>Transactions</h2>
-        <CButton color="primary" onClick={() => dispatch(fetchPOSTransactions())}>
+        <CButton color="primary" onClick={() => dispatch(fetchTransactionsByRestaurant({ restaurantId, token })) }>
           Fetch POS Transactions
         </CButton>
       </div>
