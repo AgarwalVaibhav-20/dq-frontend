@@ -68,6 +68,8 @@ const Transactions = React.lazy(() => import('./views/transactions/Transactions'
 const POS = React.lazy(() => import('./views/pos/POS'))
 const POSTableContent = React.lazy(() => import('./views/pos/POSTableContent'))
 const Account = React.lazy(() => import('./views/account/Account'))
+const Settings = React.lazy(() => import('./views/settings/Settings'))
+const SystemSelection = React.lazy(() => import('./views/pos/SystemSelection'))
 const DailyReport = React.lazy(() => import('./views/reports/DailyReport'))
 const PaymentReport = React.lazy(() => import('./views/reports/PaymentReport'))
 const Feedback = React.lazy(() => import('./views/feedbacks/Feedback'))
@@ -407,6 +409,22 @@ const App = () => {
                       }
                     />
                     <Route
+                      path="pos/system/:tableNumber"
+                      element={
+                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                          <SystemSelection />
+                        </PermissionRestrictedRoute>
+                      }
+                    />
+                    <Route
+                      path="pos/system/tableNumber/:tableNumber"
+                      element={
+                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                          <POSTableContent />
+                        </PermissionRestrictedRoute>
+                      }
+                    />
+                    <Route
                       path="pos/tableNumber/:tableNumber"
                       element={
                         <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
@@ -421,6 +439,10 @@ const App = () => {
                           <Account />
                         </PermissionRestrictedRoute>
                       }
+                    />
+                    <Route
+                      path="setting"
+                      element={<Settings />}
                     />
                     <Route
                       path="daily-report"

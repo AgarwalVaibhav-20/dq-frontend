@@ -1,8 +1,10 @@
 import React from "react";
 
-const KOT = React.forwardRef(({ tableNumber, cart }, ref) => {
+const KOT = React.forwardRef(({ tableNumber, cart, selectedSystem }, ref) => {
   // Calculate total for the entire order
   const totalAmount = cart.reduce((acc, item) => acc + item.adjustedPrice * item.quantity, 0);
+  const systemCharge = selectedSystem ? Number(selectedSystem.chargeOfSystem || 0) : 0;
+  const grandTotal = totalAmount + systemCharge;
 
   return (
     <div
@@ -51,8 +53,17 @@ const KOT = React.forwardRef(({ tableNumber, cart }, ref) => {
       </ul>
 
       <hr style={{ borderTop: "1px solid #000", margin: "5px 0" }} />
+      <p style={{ margin: "2px 0" }}>
+        <strong>Subtotal:</strong> ₹{totalAmount.toFixed(2)}
+      </p>
+      {selectedSystem && (
+        <p style={{ margin: "2px 0" }}>
+          <strong>System Charge ({selectedSystem.systemName}):</strong> ₹{systemCharge.toFixed(2)}
+        </p>
+      )}
+      <hr style={{ borderTop: "1px solid #000", margin: "5px 0" }} />
       <p style={{ textAlign: "right", margin: "5px 0", fontWeight: "bold" }}>
-        Total: ₹{totalAmount.toFixed(2)}
+        Total: ₹{grandTotal.toFixed(2)}
       </p>
     </div>
   );

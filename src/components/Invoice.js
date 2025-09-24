@@ -14,6 +14,7 @@ const Invoice = React.forwardRef(
       discount,
       calculateDiscountAmount,
       calculateTotal,
+      selectedSystem,
     },
     ref,
   ) => {
@@ -114,6 +115,11 @@ const Invoice = React.forwardRef(
         <p style={{ margin: '2px 0' }}>
           <strong>Discount :</strong> ₹{calculateDiscountAmount().toFixed(2)}
         </p>
+        {selectedSystem && (
+          <p style={{ margin: '2px 0' }}>
+            <strong>System Charge ({selectedSystem.systemName}) :</strong> ₹{Number(selectedSystem.chargeOfSystem || 0).toFixed(2)}
+          </p>
+        )}
 
         <hr style={{ borderTop: '1px solid #000', margin: '5px 0' }} />
 

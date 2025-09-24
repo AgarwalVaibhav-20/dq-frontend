@@ -307,7 +307,7 @@ const _nav = [
   {
     component: CNavItem,
     name: 'Settings',
-    to: '/account',
+    to: '/setting',
     icon: <CIcon icon={cilSettings} customClassName="nav-icon" />,
     roles: ['admin', 'waiter'], // Both admin and waiter can see
   },

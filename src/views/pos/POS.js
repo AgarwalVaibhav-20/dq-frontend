@@ -393,7 +393,7 @@ useEffect(() => {
   }, [mergedTables])
 
   const handleQrClick = (qr) => {
-    navigate(`/pos/tableNumber/${qr.tableNumber}`)
+    navigate(`/pos/system/${qr.tableNumber}`)
   }
 
   // FIXED: Updated merged table click handler to properly pass data
@@ -412,7 +412,7 @@ useEffect(() => {
     }
 
     // Navigate with proper state and identifier
-    navigate(`/pos/tableNumber/${mergedTableId}`, {
+    navigate(`/pos/system/tableNumber/${mergedTableId}`, {
       state: {
         isMerged: true,
         mergedTable: mergedTable,
@@ -426,6 +426,30 @@ useEffect(() => {
 
   const isItemInCart = (qr) => {
     return cart[qr.tableNumber] && cart[qr.tableNumber].length > 0
+  }
+
+  const shouldTableBeRed = (qr) => {
+    const savedSystem = localStorage.getItem(`selectedSystem_${qr.tableNumber}`)
+    let systemWillOccupy = true // Default to true if no system or parsing error
+
+    if (savedSystem) {
+      try {
+        const system = JSON.parse(savedSystem)
+        systemWillOccupy = system.willOccupy === true
+      } catch (error) {
+        console.error('Error parsing saved system for table', qr.tableNumber, ':', error)
+      }
+    }
+
+    // If the selected system has willOccupy: false, the table should never be red
+    if (systemWillOccupy === false) {
+      return false
+    }
+
+    // If willOccupy is true (or no system selected, defaulting to true),
+    // then the table should be red if it has items in the cart
+    const hasItems = isItemInCart(qr)
+    return hasItems
   }
 
   const isTableMerged = (tableNumber) => {
@@ -876,7 +900,7 @@ useEffect(() => {
                     className="mx-2 mb-4 d-flex justify-content-center"
                   >
                     <CContainer
-                      className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${isItemInCart(qr)
+                      className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${shouldTableBeRed(qr)
                         ? 'bg-danger text-white'
                         : theme === 'dark'
                           ? 'bg-secondary text-white'
@@ -925,7 +949,7 @@ useEffect(() => {
                       ? 'bg-secondary text-white'
                       : 'bg-white text-dark'
                       }`}
-                    onClick={() => navigate('/pos/tableNumber/0')}
+                    onClick={() => navigate('/pos/system/tableNumber/0')}
                     style={{
                       height: '10rem',
                       cursor: 'pointer',

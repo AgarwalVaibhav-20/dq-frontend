@@ -35,6 +35,8 @@ const Cart = ({
   setShowTaxModal,
   setShowDiscountModal,
   setShowRoundOffModal,
+  selectedSystem,
+  onSystemChange,
 }) => {
   const [tempDiscount, setTempDiscount] = useState(0);
   const [tempRoundOff, setTempRoundOff] = useState(roundOff || 0);
@@ -330,6 +332,25 @@ const Cart = ({
               <span>Discount ({getCartDiscountPercentage() || 0}%)</span>
               <span className="text-danger">- ₹{getDiscountAmount().toFixed(2)}</span>
             </div>
+            {selectedSystem && (
+              <div className="d-flex justify-content-between mb-2 align-items-center">
+                <span>System Charge ({selectedSystem.systemName})</span>
+                <div className="d-flex align-items-center">
+                  <span className="text-info me-2">₹{Number(selectedSystem.chargeOfSystem || 0).toFixed(2)}</span>
+                  {onSystemChange && (
+                    <CButton
+                      color="outline-primary"
+                      size="sm"
+                      onClick={onSystemChange}
+                      className="p-1"
+                      style={{ fontSize: '0.7rem' }}
+                    >
+                      Change
+                    </CButton>
+                  )}
+                </div>
+              </div>
+            )}
             <div className="d-flex justify-content-between">
               <span>Round Off</span>
               <span className="text-danger">- ₹{Number(roundOff || 0).toFixed(2)}</span>

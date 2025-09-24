@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
 import { CContainer, CRow, CCol, CButton, CCardFooter } from '@coreui/react'
-import { useParams } from 'react-router-dom'
+import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchMenuItems } from '../../redux/slices/menuSlice'
@@ -27,6 +27,7 @@ import SubCategorySelectionModal from '../../components/SubCategorySelectionModa
 
 const POSTableContent = () => {
   const { tableNumber: tableId } = useParams();
+  const navigate = useNavigate()
   const dispatch = useDispatch()
   const invoiceRef = useRef(null)
   const kotRef = useRef(null)
@@ -37,8 +38,27 @@ const POSTableContent = () => {
   const { categories, loading: categoryLoading } = useSelector((state) => state.category)
   const { subCategories, loading: subCategoryLoading } = useSelector((state) => state.subCategory)
 
-  const restaurantId = useSelector((state) => state.auth.restaurantId)
+  const authState = useSelector((state) => state.auth)
+  const restaurantId = authState.restaurantId || localStorage.getItem('restaurantId') || '68cae19c377caa90e86f84a4' // Fallback for testing
   const theme = useSelector((state) => state.theme.theme)
+  const token = localStorage.getItem('authToken')
+  
+  // Debug: Log restaurantId to console
+  console.log('POSTableContent - restaurantId:', restaurantId)
+  console.log('POSTableContent - localStorage restaurantId:', localStorage.getItem('restaurantId'))
+  console.log('POSTableContent - authState:', authState)
+  
+  // Fallback: If restaurantId is missing, try to get it from user profile or redirect
+  useEffect(() => {
+    if (!localStorage.getItem('restaurantId') && token && authState.restaurantId) {
+      console.warn('RestaurantId is missing, restoring from auth state...')
+      localStorage.setItem('restaurantId', authState.restaurantId)
+      console.log('RestaurantId restored from auth state:', authState.restaurantId)
+    } else if (!localStorage.getItem('restaurantId') && token) {
+      console.warn('No restaurantId found in auth state or localStorage. Using fallback for testing.')
+      localStorage.setItem('restaurantId', '68cae19c377caa90e86f84a4')
+    }
+  }, [token, authState.restaurantId])
 
   const [showKOTModal, setShowKOTModal] = useState(false)
   const [kotImage, setKOTImage] = useState('')
@@ -67,6 +87,10 @@ const POSTableContent = () => {
   const [selectedCategoryId, setSelectedCategoryId] = useState(null)
   const [showSubCategoryModal, setShowSubCategoryModal] = useState(false)
   const [selectedMenuItemForSubcategory, setSelectedMenuItemForSubcategory] = useState(null)
+  const [selectedSystem, setSelectedSystem] = useState(() => {
+    const savedSystem = localStorage.getItem(`selectedSystem_${tableId}`)
+    return savedSystem ? JSON.parse(savedSystem) : null
+  })
 
   const userId = localStorage.getItem('userId')
   const [cart, setCart] = useState(() => {
@@ -83,7 +107,6 @@ const POSTableContent = () => {
     pdfUrl: null,
     message: '',
   })
-  const token = localStorage.getItem('authToken');
 
   useEffect(() => {
     if (startTime) {
@@ -97,13 +120,16 @@ const POSTableContent = () => {
   }, [startTime])
 
   useEffect(() => {
-    if (token) {
+    if (token && restaurantId) {
+      console.log('Fetching data with restaurantId:', restaurantId)
       dispatch(fetchMenuItems({ token }))
       dispatch(fetchCustomers({ token }))
       dispatch(fetchCategories({ token }))
       dispatch(fetchSubCategories({ token }))
+    } else {
+      console.log('Missing token or restaurantId:', { token: !!token, restaurantId })
     }
-  }, [dispatch, restaurantId])
+  }, [dispatch, token, restaurantId])
 
   useEffect(() => {
     localStorage.setItem(`cart_${tableId}`, JSON.stringify(cart))
@@ -266,6 +292,11 @@ const POSTableContent = () => {
   const handleCustomerSelect = (customer) => {
     setSelectedCustomerName(customer.name)
     setShowCustomerModal(false)
+  }
+
+  const handleSystemChange = () => {
+    // Navigate back to system selection
+    navigate(`/pos/system/${tableId}`)
   }
 
   const handleSearchProduct = (e) => {
@@ -432,8 +463,9 @@ const POSTableContent = () => {
     const subtotal = calculateSubtotal();
     const totalTaxAmount = calculateTotalTaxAmount();
     const discountAmount = calculateDiscountAmount();
-    return subtotal + totalTaxAmount - discountAmount - roundOff;
-  }, [calculateSubtotal, calculateTotalTaxAmount, calculateDiscountAmount, roundOff]);
+    const systemCharge = selectedSystem ? Number(selectedSystem.chargeOfSystem || 0) : 0;
+    return subtotal + totalTaxAmount - discountAmount - roundOff + systemCharge;
+  }, [calculateSubtotal, calculateTotalTaxAmount, calculateDiscountAmount, roundOff, selectedSystem]);
 
   // Initialize inputValue when round off modal opens
   useEffect(() => {
@@ -972,6 +1004,8 @@ const POSTableContent = () => {
             setShowTaxModal={setShowTaxModal}
             setShowDiscountModal={setShowDiscountModal}
             setShowRoundOffModal={setShowRoundOffModal}
+            selectedSystem={selectedSystem}
+            onSystemChange={handleSystemChange}
           />
         </CCol>
       </CRow>
@@ -1056,6 +1090,7 @@ const POSTableContent = () => {
           discount={discount}
           calculateDiscountAmount={calculateDiscountAmount}
           calculateTotal={calculateTotal}
+          selectedSystem={selectedSystem}
         />
       </div>
 
@@ -1064,6 +1099,7 @@ const POSTableContent = () => {
           ref={kotRef}
           tableNumber={tableNumber}
           cart={cart.filter((item) => !kotItems.includes(item))}
+          selectedSystem={selectedSystem}
         />
       </div>
 
