@@ -294,12 +294,12 @@ useEffect(() => {
 
   // Debug state changes
   useEffect(() => {
-    dispatch(getFloors(restaurantId))
-  }, [showMergeModal, restaurantId, dispatch])
+    dispatch(getFloors(resturantIdLocalStorage))
+  }, [showMergeModal, resturantIdLocalStorage, dispatch])
 
   useEffect(() => {
-    dispatch(getFloors(restaurantId))
-  }, [restaurantId, dispatch])
+    dispatch(getFloors(resturantIdLocalStorage))
+  }, [resturantIdLocalStorage, dispatch])
 
   // Filter tables based on selected floor ID
   const getTablesForFloor = (floorId) => {
@@ -339,7 +339,7 @@ useEffect(() => {
   // Fetch QR codes & restore carts
   useEffect(() => {
     if (qrList.length === 0) {
-      dispatch(getQrs({restaurantId}))
+      dispatch(getQrs({restaurantId:resturantIdLocalStorage}))
     }
 
     const storedCarts = {}
@@ -350,7 +350,7 @@ useEffect(() => {
       }
     })
     setCart(storedCarts)
-  }, [dispatch, restaurantId, qrList.length])
+  }, [dispatch, resturantIdLocalStorage, qrList.length])
 
   // Update tables with orders when modal opens - include floor information
   useEffect(() => {

@@ -447,12 +447,14 @@ const POSTableContent = () => {
     const subtotal = calculateSubtotal();
     let totalDiscount = 0;
 
+    console.log("discount of the cooupon",discount)
     // Add percentage discount from coupon or manual discount
     totalDiscount += (subtotal * discount) / 100;
-
+    
     // Add item-specific discounts
     cart.forEach(item => {
       if (item.discountAmount) {
+        console.log("discount of the item specific",item)
         totalDiscount += Number(item.discountAmount);
       }
     });
@@ -463,8 +465,13 @@ const POSTableContent = () => {
     const subtotal = calculateSubtotal();
     const totalTaxAmount = calculateTotalTaxAmount();
     const discountAmount = calculateDiscountAmount();
+    console.log("discount amount :", discountAmount)
     const systemCharge = selectedSystem ? Number(selectedSystem.chargeOfSystem || 0) : 0;
-    return subtotal + totalTaxAmount - discountAmount - roundOff + systemCharge;
+    console.log("system amount :", systemCharge)
+    console.log("round off amount :", roundOff)
+    const total = subtotal + totalTaxAmount + systemCharge - discountAmount - roundOff
+    console.log("total from calculate total: ", total)
+    return total ;
   }, [calculateSubtotal, calculateTotalTaxAmount, calculateDiscountAmount, roundOff, selectedSystem]);
 
   // Initialize inputValue when round off modal opens
@@ -519,7 +526,7 @@ const POSTableContent = () => {
     const token = localStorage.getItem('authToken');
     const userId = localStorage.getItem('userId');
     const restaurantId = localStorage.getItem('restaurantId');
-
+    
     if (!token) {
       toast.error('Authentication token missing');
       return;
@@ -553,7 +560,10 @@ const POSTableContent = () => {
         taxAmount: item.taxAmount || 0
       })),
       tax: calculateTotalTaxAmount(),
-      discount,
+      discount:calculateDiscountAmount(),
+      discountAmount:calculateDiscountAmount(),
+      roundOff:roundOff,
+      systemCharge:selectedSystem ? Number(selectedSystem.chargeOfSystem) : 0,
       sub_total: calculateSubtotal(),
       total: calculateTotal(),
       type: paymentType,
@@ -1122,6 +1132,8 @@ const POSTableContent = () => {
         setShowRoundOffModal={setShowRoundOffModal}
         inputValue={inputValue}
         setInputValue={setInputValue}
+        roundOff={roundOff}
+        setRoundOff = {setRoundOff}
         handleRoundOffSubmit={handleRoundOffSubmit}
         subtotal={calculateSubtotal()}
         tax={calculateTotalTaxAmount()}

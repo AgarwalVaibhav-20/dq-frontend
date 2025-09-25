@@ -284,8 +284,8 @@ const Transactions = () => {
       headerClassName: 'header-style',
     },
     {
-      field: 'total',
-      headerName: 'Total',
+      field: 'sub_total',
+      headerName: 'Sub Total',
       flex: isMobile ? undefined : 1,
       minWidth: isMobile ? 150 : undefined,
       headerClassName: 'header-style',
@@ -300,8 +300,32 @@ const Transactions = () => {
       valueFormatter: (params) => `₹${params.value?.toFixed(2) || '0.00'}`
     },
     {
+      field: 'systemCharge',
+      headerName: 'System Charge',
+      flex: isMobile ? undefined : 1,
+      minWidth: isMobile ? 150 : undefined,
+      headerClassName: 'header-style',
+      valueFormatter: (params) => `₹${params.value?.toFixed(2) || '0.00'}`
+    },
+    {
       field: 'discount',
       headerName: 'Discount',
+      flex: isMobile ? undefined : 1,
+      minWidth: isMobile ? 150 : undefined,
+      headerClassName: 'header-style',
+      valueFormatter: (params) => `₹${params.value?.toFixed(2) || '0.00'}`
+    },
+    {
+      field: 'roundOff',
+      headerName: 'Round Off',
+      flex: isMobile ? undefined : 1,
+      minWidth: isMobile ? 150 : undefined,
+      headerClassName: 'header-style',
+      valueFormatter: (params) => `₹${params.value?.toFixed(2) || '0.00'}`
+    },
+    {
+      field: 'total',
+      headerName: 'Total',
       flex: isMobile ? undefined : 1,
       minWidth: isMobile ? 150 : undefined,
       headerClassName: 'header-style',

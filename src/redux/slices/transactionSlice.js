@@ -27,6 +27,8 @@ export const createTransaction = createAsyncThunk(
         restaurantId,
         customerId,
         transactionId,
+        roundOff,
+        systemCharge,
         notes,
       } = payload;
 
@@ -52,6 +54,8 @@ export const createTransaction = createAsyncThunk(
         type,
         customerId,
         transactionId,
+        systemCharge,
+        roundOff,
         notes,
         createdAt: new Date(),
         updatedAt: new Date(),

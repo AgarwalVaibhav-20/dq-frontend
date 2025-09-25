@@ -17,6 +17,8 @@ const RoundOffAmountModal = ({
   setShowRoundOffModal, 
   inputValue, 
   setInputValue, 
+  roundOff,
+  setRoundOff,
   handleRoundOffSubmit,
   subtotal = 0,        
   tax = 0,              
@@ -30,6 +32,7 @@ const RoundOffAmountModal = ({
   const handleIncrement = () => {
     const currentValue = parseFloat(inputValue) || 0;
     setInputValue((currentValue + 1).toString());
+    setRoundOff((currentValue + 1).toString());
   };
 
   // Handle decrement
@@ -37,6 +40,7 @@ const RoundOffAmountModal = ({
     const currentValue = parseFloat(inputValue) || 0;
     if (currentValue > 0) {
       setInputValue((currentValue - 1).toString());
+      setRoundOff((currentValue - 1).toString());
     }
   };
 
@@ -45,6 +49,7 @@ const RoundOffAmountModal = ({
     const value = e.target.value;
     if (value === '' || /^\d*\.?\d*$/.test(value)) {
       setInputValue(value);
+      setRoundOff(value);
     }
   };
 
