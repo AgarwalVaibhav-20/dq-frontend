@@ -690,49 +690,54 @@ useEffect(() => {
         <div className="d-flex align-items-center gap-3">
           <h3 className="mb-0">Select Table To Generate Bill</h3>
           {/* Daily Transaction Display - Now from database */}
-          <CBadge color="info" size="lg" className="d-flex align-items-center gap-1">
-            <CIcon icon={cilCash} />
-             Daily Balance: ₹{formatBalance(dailyCashBalance)}
-            {cashLoading && <CSpinner size="sm" className="ms-1" />}
-          </CBadge>
+          
 
           {/* NEW: Display for Daily Transaction Count */}
-          <CBadge color="primary" size="lg" className="d-flex align-items-center gap-1">
+          {/* <CBadge color="primary" size="lg" className="d-flex align-items-center gap-1">
             <CIcon icon={cilNotes} /> 
             Today's Orders: {dailyTransactionCount}
-          </CBadge>
+          </CBadge> */}
         </div>
-        <div className="d-flex gap-2">
-          <CButton color="primary" onClick={fetchActiveOrders}>
-            All Orders
-          </CButton>
-          <CButton
-            color="success"
-            onClick={handleMergeTablesClick}
-          >
-            Merge Tables
-          </CButton>
+        <div className="flex flex-col gap-2 items-center ">
           {/* Cash Management Buttons */}
-          <CButton
-            color="success"
-            variant="outline"
-            onClick={() => setShowCashInModal(true)}
-            className="d-flex align-items-center gap-1"
-            disabled={cashLoading}
-          >
-            <CIcon icon={cilPlus} size="sm" />
-            Cash In
-          </CButton>
-          <CButton
-            color="danger"
-            variant="outline"
-            onClick={() => setShowCashOutModal(true)}
-            className="d-flex align-items-center gap-1"
-            disabled={cashLoading}
-          >
-            <CIcon icon={cilMinus} size="sm" />
-            Cash Out
-          </CButton>
+          <div className='flex gap-2'>
+            <CButton
+              color="success"
+              variant="outline"
+              onClick={() => setShowCashInModal(true)}
+              className="d-flex align-items-center gap-1"
+              disabled={cashLoading}
+            >
+              <CIcon icon={cilPlus} size="sm" />
+              Cash In
+            </CButton>
+            <CBadge color="info" size="lg" className="d-flex align-items-center gap-1">
+              <CIcon icon={cilCash} />
+              Daily Balance: ₹{formatBalance(dailyCashBalance)}
+              {cashLoading && <CSpinner size="sm" className="ms-1" />}
+            </CBadge>
+            <CButton
+              color="danger"
+              variant="outline"
+              onClick={() => setShowCashOutModal(true)}
+              className="d-flex align-items-center gap-1"
+              disabled={cashLoading}
+            >
+              <CIcon icon={cilMinus} size="sm" />
+              Cash Out
+            </CButton>
+          </div>
+          <div className='flex gap-2'>
+            <CButton color="primary" onClick={fetchActiveOrders}>
+              All Orders
+            </CButton>
+            <CButton
+              color="success"
+              onClick={handleMergeTablesClick}
+            >
+              Merge Tables
+            </CButton>
+          </div>
         </div>
       </div>
 
