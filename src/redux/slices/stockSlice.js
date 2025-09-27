@@ -20,7 +20,7 @@ export const fetchInventories = createAsyncThunk(
     try {
       const response = await axios.get(
         `${BASE_URL}/stock/inventories`,
-        configureHeaders(localStorage.getItem("authToken"))
+        configureHeaders(token)
       )
       console.log(response.data)
       return response.data
@@ -33,39 +33,65 @@ export const fetchInventories = createAsyncThunk(
 // Add inventory
 export const addInventory = createAsyncThunk(
   'inventories/addInventory',
-  async ({ itemName, quantity, unit, supplierId, token, supplierName }, { rejectWithValue }) => {
+  async ({ itemName, quantity, unit, supplierId, token, amount, total }, { rejectWithValue }) => {
     try {
       const restaurantId = localStorage.getItem('restaurantId');
       const response = await axios.post(
         `${BASE_URL}/create/adding/inventories`,
-        { itemName, quantity, unit, supplierId, restaurantId, supplierName },
+        {
+          itemName,
+          unit,
+          supplierId,
+          restaurantId,
+          stock: {
+            amount: Number(amount),
+            quantity: Number(quantity),
+            total: Number(total)
+          }
+        },
         configureHeaders(localStorage.getItem('authToken'))
       );
-      return response.data.data;
+      return response.data.inventory;
     } catch (error) {
-      console.log("error => ", error)
       return rejectWithValue(error.response?.data?.message || 'Failed to add inventory item');
     }
   }
 );
 
-// Update inventory
+
+// Update inventory thunk
 export const updateInventory = createAsyncThunk(
   'inventories/updateInventory',
-  async ({ id, itemName, quantity, unit, price, supplierId, token }, { rejectWithValue }) => {
+  async ({ id, itemName, quantity, unit, amount, supplierId, token }, { rejectWithValue, getState }) => {
     try {
       const restaurantId = localStorage.getItem('restaurantId');
+      const currentState = getState();
+      const currentItem = currentState.inventories.inventories.find(item => item._id === id);
+
+      if (!currentItem) return rejectWithValue('Inventory item not found');
+
       const response = await axios.put(
         `${BASE_URL}/update/${id}`,
-        { restaurantId, itemName, quantity, unit, price, supplierId },
-        configureHeaders(localStorage.getItem("authToken"))
+        {
+          restaurantId,
+          itemName,
+          unit,
+          supplierId,
+          stock: {
+            quantity: Number(quantity),
+            amount: Number(amount)
+          },
+        },
+        configureHeaders(token)
       );
-      return response.data;
+
+      return response.data.inventory;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to update inventory item');
     }
   }
 );
+
 
 // Delete inventory
 export const deleteInventory = createAsyncThunk(
@@ -109,7 +135,7 @@ export const deleteInventory = createAsyncThunk(
 //           itemName: currentItem.itemName,
 //           quantity: newQuantity,
 //           unit: currentItem.unit,
-//           price: currentItem.price,
+//           amount: currentItem.amount,
 //           supplierId: currentItem.supplierId
 //         },
 //         configureHeaders(token)
@@ -126,48 +152,42 @@ export const deleteInventory = createAsyncThunk(
 //     }
 //   }
 // );
+// Add Quantity Stock thunk
 export const addQuantityStock = createAsyncThunk(
   'inventories/addStock',
   async ({ itemId, quantityToAdd }, { rejectWithValue, getState }) => {
     try {
       const token = localStorage.getItem('authToken');
       const restaurantId = localStorage.getItem('restaurantId');
-
-      // Get current state and item
       const currentState = getState();
       const currentItem = currentState.inventories.inventories.find(item => item._id === itemId);
 
-      if (!currentItem) {
-        return rejectWithValue('Item not found in inventory');
-      }
+      if (!currentItem) return rejectWithValue('Item not found in inventory');
 
-      const newQuantity = currentItem.quantity + quantityToAdd;
+      const newQuantity = (currentItem.stock?.quantity || 0) + Number(quantityToAdd);
 
-      // Update backend
       const response = await axios.put(
         `${BASE_URL}/update/${itemId}`,
         {
           restaurantId,
           itemName: currentItem.itemName,
-          quantity: newQuantity,
           unit: currentItem.unit,
-          price: currentItem.price,
           supplierId: currentItem.supplierId,
+          stock: {
+            quantity: newQuantity,
+            amount: currentItem.stock?.amount || 0
+          }
         },
         configureHeaders(token)
       );
 
-      return {
-        itemId,
-        quantityAdded: quantityToAdd,
-        newQuantity,
-        updatedItem: response.data.data,
-      };
+      return { itemId, newQuantity, updatedItem: response.data.inventory };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to add stock');
     }
   }
 );
+
 
 
 // NEW: Process multiple item sale (for orders with multiple items)
@@ -248,6 +268,7 @@ const stockSlice = createSlice({
       })
       .addCase(fetchInventories.fulfilled, (state, action) => {
         state.loading = false;
+        console.log("action payload inventory", action.payload)
         state.inventories = action.payload;
       })
       .addCase(fetchInventories.rejected, (state, action) => {
@@ -264,12 +285,11 @@ const stockSlice = createSlice({
       })
       .addCase(addInventory.fulfilled, (state, action) => {
         state.loading = false;
-        const newItem = action.payload?.data || action.payload;
-        if (newItem) {
-          state.inventories.push(newItem);
-        }
+        const newItem = action.payload;
+        if (newItem) state.inventories.push(newItem);
         toast.success('Inventory item added successfully!');
       })
+
       .addCase(addInventory.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;

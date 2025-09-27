@@ -34,7 +34,6 @@ export const fetchMenuItems = createAsyncThunk(
     }
   }
 );
-
 export const addMenuItem = createAsyncThunk(
   "menu/addMenuItem",
   async (
@@ -43,43 +42,39 @@ export const addMenuItem = createAsyncThunk(
       itemName,
       price,
       categoryId,
+      categoryName,   // ✅ Add this
       sub_category,
       status,
       stockItems,
       itemImage,
       sizes,
       token,
+      unit,
     },
     { rejectWithValue }
   ) => {
     try {
       const restaurantId = localStorage.getItem("restaurantId");
 
-      console.log("=== FRONTEND DEBUG ===");
-      console.log("Received sizes array:", JSON.stringify(sizes, null, 2));
-
-      // Create FormData
       const formData = new FormData();
       formData.append("menuId", menuId);
       formData.append("itemName", itemName.trim());
       if (price) formData.append("price", Number(price));
       formData.append("categoryId", categoryId);
+      formData.append("categoryName", categoryName); // ✅ Send categoryName too
       formData.append("restaurantId", restaurantId);
       formData.append("sub_category", sub_category || "");
       formData.append("status", status || 1);
+      formData.append("unit", unit || "");
 
-      // ✅ Handle sizes dynamically
       if (sizes && Array.isArray(sizes)) {
-        // Send entire sizes array as JSON
         formData.append("sizes", JSON.stringify(sizes));
       }
 
-      // Handle image
       if (itemImage instanceof File) {
         formData.append("itemImage", itemImage);
       }
 
-      // Handle stockItems
       if (stockItems && stockItems.length > 0) {
         const validStockItems = stockItems.filter(
           (item) => item.stockId && item.quantity !== undefined
@@ -87,12 +82,6 @@ export const addMenuItem = createAsyncThunk(
         if (validStockItems.length > 0) {
           formData.append("stockItems", JSON.stringify(validStockItems));
         }
-      }
-
-      // Debug FormData contents
-      console.log("=== FORMDATA CONTENTS ===");
-      for (let pair of formData.entries()) {
-        console.log(`${pair[0]}: ${pair[1]}`);
       }
 
       const response = await axios.post(`${BASE_URL}/menu/add`, formData, {
@@ -114,6 +103,89 @@ export const addMenuItem = createAsyncThunk(
     }
   }
 );
+
+// export const addMenuItem = createAsyncThunk(
+//   "menu/addMenuItem",
+//   async (
+//     {
+//       menuId,
+//       itemName,
+//       price,
+//       categoryId,
+//       sub_category,
+//       status,
+//       stockItems,
+//       itemImage,
+//       sizes,
+//       token,
+//       unit,
+//     },
+//     { rejectWithValue }
+//   ) => {
+//     try {
+//       const restaurantId = localStorage.getItem("restaurantId");
+
+//       console.log("=== FRONTEND DEBUG ===");
+//       console.log("Received sizes array:", JSON.stringify(sizes, null, 2));
+
+//       // Create FormData
+//       const formData = new FormData();
+//       formData.append("menuId", menuId);
+//       formData.append("itemName", itemName.trim());
+//       if (price) formData.append("price", Number(price));
+//       formData.append("categoryId", categoryId);
+//       formData.append("restaurantId", restaurantId);
+//       formData.append("sub_category", sub_category || "");
+//       formData.append("status", status || 1);
+//       formData.append("unit", unit || "");
+
+
+//       // ✅ Handle sizes dynamically
+//       if (sizes && Array.isArray(sizes)) {
+//         // Send entire sizes array as JSON
+//         formData.append("sizes", JSON.stringify(sizes));
+//       }
+
+//       // Handle image
+//       if (itemImage instanceof File) {
+//         formData.append("itemImage", itemImage);
+//       }
+
+//       // Handle stockItems
+//       if (stockItems && stockItems.length > 0) {
+//         const validStockItems = stockItems.filter(
+//           (item) => item.stockId && item.quantity !== undefined
+//         );
+//         if (validStockItems.length > 0) {
+//           formData.append("stockItems", JSON.stringify(validStockItems));
+//         }
+//       }
+
+//       // Debug FormData contents
+//       console.log("=== FORMDATA CONTENTS ===");
+//       for (let pair of formData.entries()) {
+//         console.log(`${pair[0]}: ${pair[1]}`);
+//       }
+
+//       const response = await axios.post(`${BASE_URL}/menu/add`, formData, {
+//         headers: {
+//           Authorization: `Bearer ${token}`,
+//           "Content-Type": "multipart/form-data",
+//         },
+//       });
+
+//       return response.data;
+//     } catch (error) {
+//       console.error("Add menu item error:", error);
+//       const errorMessage =
+//         error.response?.data?.message ||
+//         error.response?.data?.error ||
+//         error.message ||
+//         "Failed to add menu item";
+//       return rejectWithValue(errorMessage);
+//     }
+//   }
+// );
 
 // Update menu item
 export const updateMenuItem = createAsyncThunk(

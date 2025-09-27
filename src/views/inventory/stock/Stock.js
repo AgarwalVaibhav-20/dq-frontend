@@ -38,10 +38,12 @@ const Stock = () => {
   const [editModalVisible, setEditModalVisible] = useState(false)
   const [deleteModalVisible, setDeleteModalVisible] = useState(false)
   const [addQuantityStockModalVisible, setaddQuantityStockModalVisible] = useState(false) // Add stock modal
-  const [formData, setFormData] = useState({ itemName: '', quantity: '', unit: '', supplierId: '' })
+  const [formData, setFormData] = useState({ itemName: '', quantity: '', unit: '', amount: '', supplierId: '', total: '' })
   const [addQuantityStockData, setaddQuantityStockData] = useState({ quantityToAdd: '' })
   const [selectedStock, setSelectedStock] = useState(null)
   const [lowStockItems, setLowStockItems] = useState([])
+  const [availableItems, setAvailableItems] = useState([]) // Items from suppliers (rawItem)
+  const [filteredSuppliers, setFilteredSuppliers] = useState([]) // Filtered suppliers based on selected item
 
   // Fetch inventories and suppliers
   useEffect(() => {
@@ -51,6 +53,58 @@ const Stock = () => {
     }
   }, [restaurantId, token, dispatch])
 
+  // Extract unique items from all suppliers (based on rawItem field)
+  useEffect(() => {
+    console.log('Suppliers data:', suppliers) // Debug log
+
+    if (suppliers && suppliers.length > 0) {
+      const items = []
+      suppliers.forEach(supplier => {
+        console.log('Processing supplier:', supplier) // Debug log
+
+        // Get the raw item from supplier
+        const rawItemName = supplier.rawItem
+
+        if (rawItemName && rawItemName.trim()) {
+          console.log('Processing raw item:', rawItemName) // Debug log
+
+          // Check if item already exists in the array
+          const existingItem = items.find(existingItem =>
+            existingItem.itemName.toLowerCase() === rawItemName.toLowerCase().trim()
+          )
+
+          if (!existingItem) {
+            items.push({
+              itemName: rawItemName.trim(),
+              unit: 'kg', // Default unit, can be changed by user
+              supplierId: supplier._id,
+              supplierName: supplier.supplierName,
+              supplierItems: [{
+                rawItem: rawItemName,
+                supplierId: supplier._id,
+                supplierName: supplier.supplierName
+              }]
+            })
+          } else {
+            // Add supplier info to existing item (multiple suppliers for same item)
+            existingItem.supplierItems.push({
+              rawItem: rawItemName,
+              supplierId: supplier._id,
+              supplierName: supplier.supplierName
+            })
+          }
+        } else {
+          console.log('No rawItem found for supplier:', supplier.supplierName)
+        }
+      })
+
+      console.log('Final available items:', items) // Debug log
+      setAvailableItems(items)
+    } else {
+      console.log('No suppliers found or suppliers array is empty')
+    }
+  }, [suppliers])
+
   // Monitor low stock
   useEffect(() => {
     const lowStock = inventories.filter(item => item.quantity <= 5)
@@ -58,7 +112,47 @@ const Stock = () => {
   }, [inventories])
 
   // Form handlers
-  const handleChange = (e) => setFormData({ ...formData, [e.target.name]: e.target.value })
+  const handleChange = (e) => {
+    const { name, value } = e.target
+
+    if (name === 'itemName') {
+      // Find the selected item
+      const selectedItem = availableItems.find(item => item.itemName === value)
+
+      if (selectedItem) {
+        // Get suppliers for this item
+        const itemSuppliers = selectedItem.supplierItems.map(item => ({
+          _id: item.supplierId,
+          supplierName: item.supplierName
+        }))
+
+        setFilteredSuppliers(itemSuppliers)
+
+        // If only one supplier, auto-select it
+        if (itemSuppliers.length === 1) {
+          setFormData({
+            ...formData,
+            [name]: value,
+            unit: selectedItem.unit || '',
+            supplierId: itemSuppliers[0]._id
+          })
+        } else {
+          setFormData({
+            ...formData,
+            [name]: value,
+            unit: selectedItem.unit || '',
+            supplierId: '' // Reset supplier selection if multiple suppliers
+          })
+        }
+      } else {
+        setFilteredSuppliers([])
+        setFormData({ ...formData, [name]: value, unit: '', supplierId: '' })
+      }
+    } else {
+      setFormData({ ...formData, [name]: value })
+    }
+  }
+
   const handleaddQuantityStockChange = (e) => setaddQuantityStockData({ ...addQuantityStockData, [e.target.name]: e.target.value })
 
   // Add inventory
@@ -69,17 +163,16 @@ const Stock = () => {
       resetForm()
       setModalVisible(false)
     } catch (error) {
+      console.log(error, "error is here")
       console.error("Failed to add inventory:", error)
     }
   }
 
-
   // Update inventory
   const handleUpdateInventory = async () => {
     try {
-      dispatch(updateInventory({ id: selectedStock.id, restaurantId, ...formData }))
-      dispatch(fetchSuppliers({ restaurantId }))
-      dispatch(fetchInventories({ restaurantId }))
+      await dispatch(updateInventory({ id: selectedStock.id, restaurantId, ...formData, token })).unwrap()
+      await dispatch(fetchInventories({ restaurantId, token })).unwrap()
       resetForm()
       setEditModalVisible(false)
     } catch (error) {
@@ -88,10 +181,14 @@ const Stock = () => {
   }
 
   // Delete inventory
-  const handleDeleteInventory = () => {
-    dispatch(deleteInventory({ id: selectedStock.id, restaurantId })).unwrap()
-    dispatch(fetchInventories({ restaurantId }))
-    setDeleteModalVisible(false)
+  const handleDeleteInventory = async () => {
+    try {
+      await dispatch(deleteInventory({ id: selectedStock.id, restaurantId, token })).unwrap()
+      await dispatch(fetchInventories({ restaurantId, token })).unwrap()
+      setDeleteModalVisible(false)
+    } catch (error) {
+      console.error('Error deleting inventory:', error)
+    }
   }
 
   // Add stock handler
@@ -99,9 +196,11 @@ const Stock = () => {
     try {
       await dispatch(addQuantityStock({
         itemId: selectedStock.id,
-        quantityToAdd: parseInt(addQuantityStockData.quantityToAdd)
+        quantityToAdd: parseInt(addQuantityStockData.quantityToAdd),
+        token
       })).unwrap()
 
+      await dispatch(fetchInventories({ restaurantId, token })).unwrap()
       setaddQuantityStockData({ quantityToAdd: '' })
       setaddQuantityStockModalVisible(false)
       setSelectedStock(null)
@@ -110,22 +209,23 @@ const Stock = () => {
     }
   }
 
-  const resetForm = () => setFormData({ itemName: '', quantity: '', unit: '', supplierId: '' })
+  const resetForm = () => {
+    setFormData({ itemName: '', quantity: '', unit: '', amount: '', supplierId: '' })
+    setFilteredSuppliers([])
+  }
 
   // Export CSV
   const exportToCSV = useCallback(() => {
     const csvContent =
       'data:text/csv;charset=utf-8,' +
-      ['Stock ID,Item Name,Quantity,Unit,Supplier Name'].join(',') +
+      ['Stock ID,Item Name,Quantity,Unit,Amount,Supplier Name'].join(',') +
       '\n' +
       inventories
         ?.map((row) =>
-          [row._id, row.itemName, row.quantity, row.unit, row.supplierName || 'N/A'].join(',')
+          [row._id, row.itemName, row.quantity, row.unit, row.amount || 'N/A', row.supplierName || 'N/A'].join(',')
         )
         .join('\n') // Join all rows with newline
 
-
-    // .join('\n')
     const link = document.createElement('a')
     link.href = encodeURI(csvContent)
     link.download = 'inventories.csv'
@@ -136,12 +236,13 @@ const Stock = () => {
   const exportToPDF = useCallback(() => {
     const doc = new jsPDF()
     doc.text('Stock Management', 10, 10)
-    const tableColumn = ['Stock ID', 'Item Name', 'Quantity', 'Unit', 'Supplier Name']
+    const tableColumn = ['Stock ID', 'Item Name', 'Quantity', 'Unit', 'Amount', 'Total', 'Supplier Name']
     const tableRows = inventories?.map((row) => [
       row._id,
       row.itemName,
       row.quantity,
       row.unit,
+      row.amount || 'N/A',
       row.supplierName || 'N/A',
     ])
 
@@ -154,7 +255,7 @@ const Stock = () => {
 
   // DataGrid columns
   const columns = [
-    { field: 'id', headerName: 'Stock ID', flex: 1, valueGetter: (params) => `SUP-${params.row.id.slice(0, 14).toUpperCase()}` },
+    { field: 'id', headerName: 'Stock ID', flex: 1, valueGetter: (params) => `STK-${params.row.id.slice(-8).toUpperCase()}` },
     {
       field: 'itemName', headerName: 'Item Name', flex: 1,
       renderCell: (params) => (
@@ -170,17 +271,32 @@ const Stock = () => {
       )
     },
     {
-      field: 'quantity', headerName: 'Quantity', flex: 1,
-      renderCell: (params) => (
-        <span style={{
-          color: params.value <= 5 ? '#dc3545' : params.value <= 10 ? '#fd7e14' : '#28a745',
-          fontWeight: params.value <= 5 ? 'bold' : 'normal'
-        }}>
-          {params.value}
-        </span>
-      )
+      field: 'quantity',
+      headerName: 'Quantity',
+      flex: 1,
+      valueGetter: (params) => params.row?.stock?.quantity ?? 0,  // <-- safely get stock.quantity
+      renderCell: (params) => {
+        const qty = params.value
+        return (
+          <span
+            style={{
+              color: qty <= 5 ? '#dc3545' : qty <= 10 ? '#fd7e14' : '#28a745',
+              fontWeight: qty <= 5 ? 'bold' : 'normal',
+            }}
+          >
+            {qty}
+          </span>
+        )
+      },
     },
     { field: 'unit', headerName: 'Unit', flex: 1 },
+    { field: 'amount', headerName: 'Amount', flex: 1, valueGetter: (params) => params?.row?.stock.amount || 'N/A' },
+    {
+      field: 'total',
+      headerName: 'Total',
+      flex: 1,
+      valueGetter: (params) => params?.row?.stock?.total ?? 'N/A'
+    },
     { field: 'supplierName', headerName: 'Supplier Name', flex: 1, valueGetter: (params) => params?.row?.supplierName || 'N/A' },
     {
       field: 'actions', headerName: 'Actions', flex: 1.5, sortable: false, filterable: false,
@@ -195,10 +311,27 @@ const Stock = () => {
 
           <CButton color="secondary" size="sm" onClick={() => {
             setSelectedStock(params.row)
+
+            // Find the item in availableItems to get supplier info
+            const availableItem = availableItems.find(item =>
+              item.itemName.toLowerCase() === params.row.itemName.toLowerCase()
+            )
+
+            if (availableItem) {
+              const itemSuppliers = availableItem.supplierItems.map(item => ({
+                _id: item.supplierId,
+                supplierName: item.supplierName
+              }))
+              setFilteredSuppliers(itemSuppliers)
+            } else {
+              setFilteredSuppliers(suppliers || [])
+            }
+
             setFormData({
               itemName: params.row.itemName || '',
               quantity: params.row.quantity || '',
               unit: params.row.unit || '',
+              amount: params.row.amount || '',
               supplierId: params.row.supplierId || '',
             })
             setEditModalVisible(true)
@@ -271,36 +404,91 @@ const Stock = () => {
       </div>
 
       {/* Add Inventory Modal */}
-      <CModal visible={modalVisible} alignment="center" onClose={() => { setModalVisible(false); resetForm() }}>
+      <CModal visible={modalVisible} alignment="center" onClose={() => { setModalVisible(false); resetForm() }} size="lg">
         <CModalHeader className="bg-light border-0"><CModalTitle className="fw-bold">📦 Add Inventory</CModalTitle></CModalHeader>
         <CModalBody>
           <div className="p-3 rounded" style={{ backgroundColor: '#f8f9fa' }}>
             <div className="mb-3">
-              <label className="form-label fw-semibold">Item Name</label>
-              <CFormInput placeholder="Enter item name" name="itemName" value={formData.itemName} onChange={handleChange} />
-            </div>
-            <div className="mb-3">
-              <label className="form-label fw-semibold">Quantity</label>
-              <CFormInput type="number" min="1" placeholder="Enter quantity" name="quantity" value={formData.quantity} onChange={handleChange} />
-            </div>
-            <div className="mb-3">
-              <label className="form-label fw-semibold">Unit</label>
-              <CFormInput placeholder="e.g., kg, pcs, ltr" name="unit" value={formData.unit} onChange={handleChange} />
-            </div>
-            <div>
-              <label className="form-label fw-semibold">Supplier</label>
-              <CFormSelect name="supplierId" value={formData.supplierId} onChange={handleChange}>
-                <option value="">Select Supplier</option>
-                {suppliers?.map((supplier) => (
-                  <option key={supplier._id} value={supplier._id}>{supplier.supplierName}</option>
+              <label className="form-label fw-semibold">Item Name <span className="text-danger">*</span></label>
+              <CFormSelect name="itemName" value={formData.itemName} onChange={handleChange}>
+                <option value="">Select Item</option>
+                {availableItems.map((item, index) => (
+                  <option key={index} value={item.itemName}>
+                    {item.itemName}
+                  </option>
                 ))}
               </CFormSelect>
+              <small className="text-muted">Items are loaded from your suppliers' raw items</small>
+            </div>
+
+            <div className="row">
+              <div className="col-md-6 mb-3">
+                <label className="form-label fw-semibold">Quantity <span className="text-danger">*</span></label>
+                <CFormInput
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  placeholder="Enter quantity"
+                  name="quantity"
+                  value={formData.quantity}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="col-md-6 mb-3">
+                <label className="form-label fw-semibold">Unit <span className="text-danger">*</span></label>
+                <CFormInput
+                  placeholder="e.g., kg, pcs, ltr"
+                  name="unit"
+                  value={formData.unit}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label fw-semibold">Amount (Optional)</label>
+              <CFormInput
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Enter amount/price"
+                name="amount"
+                value={formData.amount}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div>
+              <label className="form-label fw-semibold">Supplier <span className="text-danger">*</span></label>
+              <CFormSelect name="supplierId" value={formData.supplierId} onChange={handleChange}>
+                <option value="">
+                  {formData.itemName
+                    ? (filteredSuppliers.length > 0 ? "Select Supplier" : "No suppliers available for this item")
+                    : "Select an item first"
+                  }
+                </option>
+                {filteredSuppliers.map((supplier) => (
+                  <option key={supplier._id} value={supplier._id}>
+                    {supplier.supplierName}
+                  </option>
+                ))}
+              </CFormSelect>
+              {formData.itemName && filteredSuppliers.length > 1 && (
+                <small className="text-info">This item is available from multiple suppliers</small>
+              )}
             </div>
           </div>
         </CModalBody>
         <CModalFooter className="d-flex justify-content-end gap-2 border-0">
           <CButton color="secondary" variant="outline" onClick={() => { setModalVisible(false); resetForm() }}>Cancel</CButton>
-          <CButton color="success" className="px-4" onClick={handleSaveStock} disabled={inventoryLoading}>{inventoryLoading ? 'Saving...' : 'Save Inventory'}</CButton>
+          <CButton
+            color="success"
+            className="px-4"
+            onClick={handleSaveStock}
+            disabled={inventoryLoading || !formData.itemName || !formData.quantity || !formData.unit || !formData.supplierId}
+          >
+            {inventoryLoading ? 'Saving...' : 'Save Inventory'}
+          </CButton>
         </CModalFooter>
       </CModal>
 
@@ -316,51 +504,159 @@ const Stock = () => {
                 <p className="mb-0 text-muted">Supplier: <strong>{selectedStock.supplierName || 'N/A'}</strong></p>
               </div>
 
-              <CFormInput className="mb-3 shadow-sm" placeholder="Quantity to Add" name="quantityToAdd" type="number" min="1" value={addQuantityStockData.quantityToAdd} onChange={handleaddQuantityStockChange} />
+              <div className="mb-3">
+                <label className="form-label fw-semibold">Quantity to Add <span className="text-danger">*</span></label>
+                <CFormInput
+                  className="shadow-sm"
+                  placeholder="Enter quantity to add"
+                  name="quantityToAdd"
+                  type="number"
+                  min="1"
+                  value={addQuantityStockData.quantityToAdd}
+                  onChange={handleaddQuantityStockChange}
+                />
+              </div>
 
               {addQuantityStockData.quantityToAdd && (
                 <div className="mb-3 p-2 bg-info bg-opacity-10 rounded">
-                  <small className="text-info">New Total Stock: <strong>{selectedStock.quantity + parseInt(addQuantityStockData.quantityToAdd || 0)} {selectedStock.unit}</strong></small>
+                  <small className="text-info">
+                    <strong>New Total Stock:</strong> {selectedStock.quantity + parseInt(addQuantityStockData.quantityToAdd || 0)} {selectedStock.unit}
+                  </small>
                 </div>
               )}
             </>
           )}
         </CModalBody>
         <CModalFooter className="bg-light">
-          <CButton color="secondary" variant="outline" onClick={() => { setaddQuantityStockModalVisible(false); setaddQuantityStockData({ quantityToAdd: '' }); setSelectedStock(null) }}>Cancel</CButton>
-          <CButton color="success" className="px-4" onClick={handleaddQuantityStockItem} disabled={!addQuantityStockData.quantityToAdd || parseInt(addQuantityStockData.quantityToAdd) <= 0 || saleProcessing}>{saleProcessing ? 'Processing...' : 'Add Stock'}</CButton>
+          <CButton
+            color="secondary"
+            variant="outline"
+            onClick={() => { setaddQuantityStockModalVisible(false); setaddQuantityStockData({ quantityToAdd: '' }); setSelectedStock(null) }}
+          >
+            Cancel
+          </CButton>
+          <CButton
+            color="success"
+            className="px-4"
+            onClick={handleaddQuantityStockItem}
+            disabled={!addQuantityStockData.quantityToAdd || parseInt(addQuantityStockData.quantityToAdd) <= 0 || saleProcessing}
+          >
+            {saleProcessing ? 'Processing...' : 'Add Stock'}
+          </CButton>
         </CModalFooter>
       </CModal>
 
       {/* Edit Inventory Modal */}
-      <CModal visible={editModalVisible} alignment="center" onClose={() => setEditModalVisible(false)}>
+      <CModal visible={editModalVisible} alignment="center" onClose={() => { setEditModalVisible(false); resetForm() }} size="lg">
         <CModalHeader className="bg-light"><CModalTitle className="fw-bold">✏️ Edit Inventory</CModalTitle></CModalHeader>
         <CModalBody>
-          <CFormInput className="mb-3 shadow-sm" placeholder="Item Name" name="itemName" value={formData.itemName} onChange={handleChange} />
-          <CFormInput className="mb-3 shadow-sm" placeholder="Quantity" name="quantity" type="number" value={formData.quantity} onChange={handleChange} />
-          <CFormInput className="mb-3 shadow-sm" placeholder="Unit (e.g., kg, ltr)" name="unit" value={formData.unit} onChange={handleChange} />
-          <CFormSelect className="mb-3 shadow-sm" name="supplierId" value={formData.supplierId} onChange={handleChange}>
-            <option value="">Select Supplier</option>
-            {suppliers?.map((supplier) => (
-              <option key={supplier._id} value={supplier._id}>{supplier.supplierName}</option>
-            ))}
-          </CFormSelect>
+          <div className="p-3 rounded" style={{ backgroundColor: '#f8f9fa' }}>
+            <div className="mb-3">
+              <label className="form-label fw-semibold">Item Name</label>
+              <CFormInput
+                className="shadow-sm"
+                placeholder="Item Name"
+                name="itemName"
+                value={formData.itemName}
+                onChange={handleChange}
+                readOnly
+                style={{ backgroundColor: '#e9ecef' }}
+              />
+              <small className="text-muted">Item name cannot be changed</small>
+            </div>
+
+            <div className="row">
+              <div className="col-md-6 mb-3">
+                <label className="form-label fw-semibold">Quantity</label>
+                <CFormInput
+                  className="shadow-sm"
+                  placeholder="Quantity"
+                  name="quantity"
+                  type="number"
+                  min="0"
+                  step="0.01"
+                  value={formData.quantity}
+                  onChange={handleChange}
+                />
+              </div>
+              <div className="col-md-6 mb-3">
+                <label className="form-label fw-semibold">Unit</label>
+                <CFormInput
+                  className="shadow-sm"
+                  placeholder="Unit (e.g., kg, ltr)"
+                  name="unit"
+                  value={formData.unit}
+                  onChange={handleChange}
+                />
+              </div>
+            </div>
+
+            <div className="mb-3">
+              <label className="form-label fw-semibold">Amount</label>
+              <CFormInput
+                className="shadow-sm"
+                placeholder="Amount/Price"
+                name="amount"
+                type="number"
+                min="0"
+                step="0.01"
+                value={formData.amount}
+                onChange={handleChange}
+              />
+            </div>
+
+            <div>
+              <label className="form-label fw-semibold">Supplier</label>
+              <CFormSelect className="shadow-sm" name="supplierId" value={formData.supplierId} onChange={handleChange}>
+                <option value="">Select Supplier</option>
+                {filteredSuppliers.map((supplier) => (
+                  <option key={supplier._id} value={supplier._id}>
+                    {supplier.supplierName}
+                  </option>
+                ))}
+              </CFormSelect>
+            </div>
+          </div>
         </CModalBody>
         <CModalFooter className="bg-light">
-          <CButton color="secondary" variant="outline" onClick={() => setEditModalVisible(false)}>Close</CButton>
-          <CButton color="primary" className="px-4" onClick={handleUpdateInventory}>{inventoryLoading ? 'Updating...' : 'Update'}</CButton>
+          <CButton color="secondary" variant="outline" onClick={() => { setEditModalVisible(false); resetForm() }}>Cancel</CButton>
+          <CButton
+            color="primary"
+            className="px-4"
+            onClick={handleUpdateInventory}
+            disabled={inventoryLoading}
+          >
+            {inventoryLoading ? 'Updating...' : 'Update Inventory'}
+          </CButton>
         </CModalFooter>
       </CModal>
 
       {/* Delete Inventory Modal */}
       <CModal visible={deleteModalVisible} alignment="center" onClose={() => setDeleteModalVisible(false)}>
         <CModalHeader className="bg-light"><CModalTitle className="fw-bold text-danger">⚠️ Delete Inventory</CModalTitle></CModalHeader>
-        <CModalBody className="text-center fs-6">
-          Are you sure you want to <strong className="text-danger">delete</strong> this inventory?
+        <CModalBody className="text-center py-4">
+          {selectedStock && (
+            <div>
+              <p className="fs-6 mb-3">Are you sure you want to delete this inventory item?</p>
+              <div className="p-3 bg-light rounded">
+                <strong>{selectedStock.itemName}</strong><br />
+                <span className="text-muted">Quantity: {selectedStock.quantity} {selectedStock.unit}</span><br />
+                <span className="text-muted">Supplier: {selectedStock.supplierName || 'N/A'}</span>
+              </div>
+              <p className="text-danger mt-3 mb-0"><strong>This action cannot be undone!</strong></p>
+            </div>
+          )}
         </CModalBody>
         <CModalFooter className="bg-light">
           <CButton color="secondary" variant="outline" onClick={() => setDeleteModalVisible(false)}>Cancel</CButton>
-          <CButton color="danger" className="px-4" onClick={handleDeleteInventory}>Delete</CButton>
+          <CButton
+            color="danger"
+            className="px-4"
+            onClick={handleDeleteInventory}
+            disabled={inventoryLoading}
+          >
+            {inventoryLoading ? 'Deleting...' : 'Delete'}
+          </CButton>
         </CModalFooter>
       </CModal>
     </div>

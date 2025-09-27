@@ -314,6 +314,7 @@ const POSTableContent = () => {
   }, [cart, startTime, tableNumber, subCategories]);
 
   const handleCustomerSelect = (customer) => {
+    console.log("hsdjhsjh",customer)
     setSelectedCustomerName(customer.name)
     setShowCustomerModal(false)
   }
@@ -809,13 +810,13 @@ const POSTableContent = () => {
       const kotTaxAmount = newItems.reduce((total, item) => total + (Number(item.taxAmount) || 0), 0);
       const kotDiscountAmount = (kotSubtotal * discount) / 100;
       const kotTotal = kotSubtotal + kotTaxAmount - kotDiscountAmount;
-
+      console.log("opprotypo",selectedCustomerName)
       const orderData = {
         token: localStorage.getItem('authToken'),
         restaurantId: localStorage.getItem('restaurantId'),
         userId: localStorage.getItem('userId'),
         tableNumber: tableNumber,
-        customerName: selectedCustomerName || 'Walk-in Customer',
+        customerName: selectedCustomerName ,
         items: newItems.map((item) => ({
           itemId: item._id || item.id,
           itemName: item.itemName,

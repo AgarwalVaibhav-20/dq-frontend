@@ -41,7 +41,7 @@ import {
   CFormTextarea,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilBuilding, cilMoney, cilPlus, cilMinus, cilCash , cilNotes } from '@coreui/icons'
+import { cilBuilding, cilMoney, cilPlus, cilMinus, cilCash, cilNotes } from '@coreui/icons'
 
 const POS = () => {
   const dispatch = useDispatch()
@@ -111,188 +111,98 @@ const POS = () => {
     const [tableNumber, floorId] = tableId.split('_')
     return { tableNumber: parseInt(tableNumber), floorId }
   }
-const handleCashIn = async () => {
-  if (!cashAmount || parseFloat(cashAmount) <= 0) {
-    alert('Please enter a valid amount')
-    return
+  const handleCashIn = async () => {
+    if (!cashAmount || parseFloat(cashAmount) <= 0) {
+      alert('Please enter a valid amount')
+      return
+    }
+
+    try {
+      // Create the cash in transaction
+      await dispatch(createCashInTransaction({
+        total: parseFloat(cashAmount),
+        token,
+        userId,
+        restaurantId,
+        username
+      })).unwrap()
+
+      // Reset form
+      setCashAmount('')
+      setCashReason('')
+      setShowCashInModal(false)
+
+      // IMPORTANT: Refresh the daily cash balance from server
+      await dispatch(getDailyCashBalance({
+        token,
+        restaurantId
+      }))
+
+    } catch (error) {
+      console.log("error is here...", error)
+      console.error('Cash in error:', error)
+    }
   }
 
-  try {
-    // Create the cash in transaction
-    await dispatch(createCashInTransaction({
-      total: parseFloat(cashAmount),
-      token,
-      userId,
-      restaurantId,
-      username
-    })).unwrap()
+  const handleCashOut = async () => {
+    if (!cashAmount || parseFloat(cashAmount) <= 0) {
+      alert('Please enter a valid amount')
+      return
+    }
 
-    // Reset form
-    setCashAmount('')
-    setCashReason('')
-    setShowCashInModal(false)
-    
-    // IMPORTANT: Refresh the daily cash balance from server
-    await dispatch(getDailyCashBalance({
-      token,
-      restaurantId
-    }))
-    
-  } catch (error) {
-    console.log("error is here...", error)
-    console.error('Cash in error:', error)
+    const amount = parseFloat(cashAmount)
+
+    // Use the current balance from Redux state
+    if (amount > (dailyCashBalance || 0)) {
+      alert('Cannot cash out more than available daily transaction amount')
+      return
+    }
+
+    try {
+      // Create the cash out transaction
+      await dispatch(createCashOutTransaction({
+        amount: amount,
+        reason: cashReason || 'Cash Out',
+        token,
+        userId,
+        restaurantId,
+        username
+      })).unwrap()
+
+      // Reset form
+      setCashAmount('')
+      setCashReason('')
+      setShowCashOutModal(false)
+
+      // IMPORTANT: Refresh the daily cash balance from server
+      await dispatch(getDailyCashBalance({
+        token,
+        restaurantId
+      }))
+
+    } catch (error) {
+      console.error('Cash out error:', error)
+    }
   }
-}
-
-const handleCashOut = async () => {
-  if (!cashAmount || parseFloat(cashAmount) <= 0) {
-    alert('Please enter a valid amount')
-    return
-  }
-
-  const amount = parseFloat(cashAmount)
-
-  // Use the current balance from Redux state
-  if (amount > (dailyCashBalance || 0)) {
-    alert('Cannot cash out more than available daily transaction amount')
-    return
-  }
-
-  try {
-    // Create the cash out transaction
-    await dispatch(createCashOutTransaction({
-      amount: amount,
-      reason: cashReason || 'Cash Out',
-      token,
-      userId,
-      restaurantId,
-      username
-    })).unwrap()
-
-    // Reset form
-    setCashAmount('')
-    setCashReason('')
-    setShowCashOutModal(false)
-    
-    // IMPORTANT: Refresh the daily cash balance from server
-    await dispatch(getDailyCashBalance({
-      token,
-      restaurantId
-    }))
-    
-  } catch (error) {
-    console.error('Cash out error:', error)
-  }
-}
-
-  // Cash Management Functions - Updated to use database
-  // const handleCashIn = async () => {
-  //   if (!cashAmount || parseFloat(cashAmount) <= 0) {
-  //     alert('Please enter a valid amount')
-  //     return
-  //   }
-
-  //   try {
-  //     await dispatch(createCashInTransaction({
-  //       total: parseFloat(cashAmount),
-  //       token,
-  //       userId,
-  //       restaurantId,
-  //       username
-  //     })).unwrap()
-
-  //     // Reset form
-  //     setCashAmount('')
-  //     setCashReason('')
-  //     setShowCashInModal(false)
-  //   } catch (error) {
-  //     console.log("error is here...", error)
-  //     console.error('Cash in error:', error)
-  //   }
-  // }
-
-  // const handleCashOut = async () => {
-  //   if (!cashAmount || parseFloat(cashAmount) <= 0) {
-  //     alert('Please enter a valid amount')
-  //     return
-  //   }
-
-  //   const amount = parseFloat(cashAmount)
-
-  //   if (amount > dailyCashBalance) {
-  //     alert('Cannot cash out more than available daily transaction amount')
-  //     return
-  //   }
-
-  //   try {
-  //     await dispatch(createCashOutTransaction({
-  //       amount: amount,
-  //       reason: cashReason || 'Cash Out',
-  //       token,
-  //       userId,
-  //       restaurantId,
-  //       username
-  //     })).unwrap()
-
-  //     // Reset form
-  //     setCashAmount('')
-  //     setCashReason('')
-  //     setShowCashOutModal(false)
-  //   } catch (error) {
-  //     console.error('Cash out error:', error)
-  //   }
-  // }
-  console.log("Daily Balance: "+ dailyCashBalance)
 
   const formatBalance = (balance) => {
-  if (balance === null || balance === undefined || isNaN(balance)) {
-    return '0.00'
+    if (balance === null || balance === undefined || isNaN(balance)) {
+      return '0.00'
+    }
+    return Number(balance).toFixed(2)
   }
-  return Number(balance).toFixed(2)
-}
 
-// Also update your initial balance fetch useEffect
-useEffect(() => {
-  if (restaurantId && token) {
-    // Initial load of daily cash balance
-    dispatch(getDailyCashBalance({
-      token,
-      restaurantId
-    }))
-  }
-}, [dispatch, restaurantId, token])
+  // Also update your initial balance fetch useEffect
+  useEffect(() => {
+    if (restaurantId && token) {
+      // Initial load of daily cash balance
+      dispatch(getDailyCashBalance({
+        token,
+        restaurantId
+      }))
+    }
+  }, [dispatch, restaurantId, token])
 
-// Add a separate effect to refresh balance periodically (optional)
-// useEffect(() => {
-//   let intervalId
-
-//   if (restaurantId && token) {
-//     // Refresh balance every 5 minutes
-//     intervalId = setInterval(() => {
-//       dispatch(getDailyCashBalance({
-//         token,
-//         restaurantId
-//       }))
-//     }, 300000) // 5 minutes
-//   }
-
-//   return () => {
-//     if (intervalId) {
-//       clearInterval(intervalId)
-//     }
-//   }
-// }, [dispatch, restaurantId, token])
-  // Load daily cash balance on component mount and when restaurant/date changes
-  // useEffect(() => {
-  //   if (restaurantId && token) {
-  //     dispatch(getDailyCashBalance({
-  //       token,
-  //       restaurantId
-  //     }))
-  //   }
-  // }, [dispatch, restaurantId, token])
-
-  // Debug state changes
   useEffect(() => {
     dispatch(getFloors(resturantIdLocalStorage))
   }, [showMergeModal, resturantIdLocalStorage, dispatch])
@@ -340,6 +250,7 @@ useEffect(() => {
   useEffect(() => {
     if (qrList.length === 0) {
       dispatch(getQrs({restaurantId:resturantIdLocalStorage}))
+
     }
 
     const storedCarts = {}
@@ -684,13 +595,17 @@ useEffect(() => {
         <div className="d-flex align-items-center gap-3">
           <h3 className="mb-0">Select Table To Generate Bill</h3>
           {/* Daily Transaction Display - Now from database */}
-          
+          {/* <CBadge color="info" size="lg" className="d-flex align-items-center gap-1">
+            <CIcon icon={cilCash} />
+            Daily Balance: ₹{formatBalance(dailyCashBalance)}
+            {cashLoading && <CSpinner size="sm" className="ms-1" />}
+          </CBadge> */}
 
           {/* NEW: Display for Daily Transaction Count */}
           {/* <CBadge color="primary" size="lg" className="d-flex align-items-center gap-1">
-            <CIcon icon={cilNotes} /> 
+            <CIcon icon={cilNotes} />
             Today's Orders: {dailyTransactionCount}
-          </CBadge> */}
+          </CBadge>  */}
         </div>
         <div className="flex flex-col gap-2 items-center ">
           {/* Cash Management Buttons */}

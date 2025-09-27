@@ -48,6 +48,7 @@ export const createOrder = createAsyncThunk(
         paymentStatus,
         orderId
       }, { headers })
+      console.log("2min ruk yos iska create wala backend  kholo ")
       return response.data
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || 'Failed to create order')

@@ -37,7 +37,7 @@ const Menu = () => {
   const [selectedMenu, setSelectedMenu] = useState(null);
   const [activeTab, setActiveTab] = useState("basic");
 
-  // ✅ FIXED: Initialize sizes with correct field names
+  // ✅ FIXED: Initialize with proper structure
   const [formData, setFormData] = useState({
     menuId: "",
     itemName: "",
@@ -47,7 +47,7 @@ const Menu = () => {
     sub_category: "",
     stock: 0,
     sizes: [{ name: "", price: "", enabled: true }],
-    stockItems: [{ stockId: "", quantity: "" }],
+    stockItems: [{ stockId: "", quantity: "", unit: "" }],
     description: "",
     preparationTime: ""
   });
@@ -97,6 +97,15 @@ const Menu = () => {
         }))
         : [{ name: "", price: "", enabled: true }];
 
+      // ✅ FIXED: Properly handle stockItems with units
+      const transformedStockItems = selectedMenu.stockItems?.length
+        ? selectedMenu.stockItems.map(item => ({
+          stockId: item.stockId || "",
+          quantity: item.quantity || "",
+          unit: item.unit || ""
+        }))
+        : [{ stockId: "", quantity: "", unit: "" }];
+
       setFormData({
         menuId: selectedMenu.menuId || "",
         itemName: selectedMenu.itemName || "",
@@ -105,9 +114,7 @@ const Menu = () => {
         itemImage: null,
         price: selectedMenu.price || "",
         sizes: transformedSizes,
-        stockItems: selectedMenu.stockItems?.length
-          ? selectedMenu.stockItems
-          : [{ stockId: "", quantity: "" }],
+        stockItems: transformedStockItems,
         description: selectedMenu.description || "",
         preparationTime: selectedMenu.preparationTime || "",
       });
@@ -131,6 +138,30 @@ const Menu = () => {
     setPreviewImage(URL.createObjectURL(file));
   };
 
+  // ✅ FIXED: Add function to handle stock items properly
+  const handleStockItemChange = (index, field, value) => {
+    const updatedStockItems = [...formData.stockItems];
+    updatedStockItems[index] = {
+      ...updatedStockItems[index],
+      [field]: value
+    };
+    setFormData(prev => ({ ...prev, stockItems: updatedStockItems }));
+  };
+
+  const addStockItem = () => {
+    setFormData(prev => ({
+      ...prev,
+      stockItems: [...prev.stockItems, { stockId: "", quantity: "", unit: "" }]
+    }));
+  };
+
+  const removeStockItem = (index) => {
+    if (formData.stockItems.length > 1) {
+      const updatedStockItems = formData.stockItems.filter((_, i) => i !== index);
+      setFormData(prev => ({ ...prev, stockItems: updatedStockItems }));
+    }
+  };
+
   const handleCancel = () => {
     setFormData({
       menuId: "",
@@ -139,8 +170,8 @@ const Menu = () => {
       sub_category: "",
       itemImage: null,
       price: "",
-      sizes: [{ name: "", price: "", enabled: true }], // Reset with correct format
-      stockItems: [{ stockId: "", quantity: "" }],
+      sizes: [{ name: "", price: "", enabled: true }],
+      stockItems: [{ stockId: "", quantity: "", unit: "" }],
       description: "",
       preparationTime: "",
     });
@@ -159,18 +190,32 @@ const Menu = () => {
         size.name?.trim() && size.price && Number(size.price) > 0
       );
 
+      // ✅ FIXED: Validate and filter stockItems properly
+      const validStockItems = formData.stockItems.filter(item =>
+        item.stockId?.trim() && 
+        item.quantity && 
+        Number(item.quantity) > 0 && 
+        item.unit?.trim()
+      );
+
       const dataToSend = {
         ...formData,
-        sizes: validSizes // Send only valid sizes
+        restaurantId, // Make sure restaurantId is included
+        sizes: validSizes,
+        stockItems: validStockItems
       };
 
-      console.log("Sending sizes:", validSizes);
+      console.log("📦 Sending data:", {
+        sizes: validSizes,
+        stockItems: validStockItems
+      });
 
       await dispatch(addMenuItem({ ...dataToSend, token })).unwrap();
       await dispatch(fetchMenuItems({ restaurantId, token }));
       handleCancel();
       toast.success("Menu item added successfully!");
     } catch (error) {
+      console.error("❌ Add menu item error:", error);
       toast.error(error.message || "Failed to add menu item.");
     } finally {
       setIsSubmitting(false);
@@ -185,25 +230,41 @@ const Menu = () => {
       formDataToSend.append("categoryId", formData.categoryId);
       formDataToSend.append("sub_category", formData.sub_category);
       formDataToSend.append("price", formData.price);
+      formDataToSend.append("description", formData.description || "");
+      formDataToSend.append("preparationTime", formData.preparationTime || "");
 
-      // ✅ Add sizes data (convert to array)
-      if (formData.sizes) {
-        const sizesArray = Object.entries(formData.sizes).map(([label, data]) => ({
-          label,
-          enabled: data.enabled || false,
-          price: data.price ? Number(data.price) : 0, // default to 0 if missing
+      // ✅ FIXED: Handle sizes properly
+      const validSizes = formData.sizes.filter(size =>
+        size.name?.trim() && size.price && Number(size.price) > 0
+      );
+      
+      if (validSizes.length > 0) {
+        // Convert to the format expected by backend
+        const sizesForBackend = validSizes.map(size => ({
+          name: size.name,
+          label: size.name, // Backward compatibility
+          price: Number(size.price),
+          enabled: size.enabled !== undefined ? size.enabled : true
         }));
-        formDataToSend.append("sizes", JSON.stringify(sizesArray));
+        formDataToSend.append("sizes", JSON.stringify(sizesForBackend));
       }
 
-      // ✅ Add stockItems if present
-      if (formData.stockItems && formData.stockItems.length > 0) {
-        const validStockItems = formData.stockItems.filter(
-          (item) => item.stockId && item.quantity !== undefined
-        );
-        if (validStockItems.length > 0) {
-          formDataToSend.append("stockItems", JSON.stringify(validStockItems));
-        }
+      // ✅ FIXED: Handle stockItems properly with validation
+      const validStockItems = formData.stockItems.filter(item =>
+        item.stockId?.trim() && 
+        item.quantity && 
+        Number(item.quantity) > 0 && 
+        item.unit?.trim()
+      );
+
+      if (validStockItems.length > 0) {
+        const stockItemsForBackend = validStockItems.map(item => ({
+          stockId: item.stockId,
+          quantity: Number(item.quantity),
+          unit: item.unit
+        }));
+        formDataToSend.append("stockItems", JSON.stringify(stockItemsForBackend));
+        console.log("📦 Sending stockItems:", stockItemsForBackend);
       }
 
       if (formData.itemImage instanceof File) {
@@ -223,12 +284,12 @@ const Menu = () => {
       handleCancel();
       toast.success("Menu item updated successfully!");
     } catch (error) {
+      console.error("❌ Update menu item error:", error);
       toast.error(error.message || "Failed to update menu item.");
     } finally {
       setIsSubmitting(false);
     }
   };
-
 
   const handleDeleteMenuItem = async () => {
     setIsSubmitting(true);
@@ -481,46 +542,74 @@ const Menu = () => {
           </div>
         )}
 
+        {/* ✅ FIXED: Inventory Tab with Multiple Stock Items */}
         {activeTab === "inventory" && (
-          <div>
-            <div className="d-flex gap-2 mb-3">
-              <select
-                className="form-select"
-                value={formData.stockItems[0]?.stockId || ""}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    stockItems: [
-                      { ...prev.stockItems[0], stockId: e.target.value },
-                    ],
-                  }))
-                }
-              >
-                <option value="">Select Inventory</option>
-                {inventories?.map((inv) => (
-                  <option key={inv._id} value={inv._id}>
-                    {inv.itemName}
-                  </option>
-                ))}
-              </select>
-              <input
-                type="number"
-                className="form-control"
-                placeholder="Quantity"
-                value={formData.stockItems[0]?.quantity || ""}
-                onChange={(e) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    stockItems: [
-                      { ...prev.stockItems[0], quantity: e.target.value },
-                    ],
-                  }))
-                }
-              />
-              <CButton color="success">Add</CButton>
-            </div>
+          <div className="mb-3">
+            <label className="form-label">Stock Items</label>
+            
+            {formData.stockItems.map((stockItem, index) => (
+              <div key={index} className="d-flex gap-2 align-items-center mb-2">
+                {/* Inventory Select */}
+                <select
+                  className="form-select"
+                  value={stockItem.stockId || ""}
+                  onChange={(e) => handleStockItemChange(index, 'stockId', e.target.value)}
+                >
+                  <option value="">Select Inventory</option>
+                  {inventories?.map((inv) => (
+                    <option key={inv._id} value={inv._id}>
+                      {inv.itemName}
+                    </option>
+                  ))}
+                </select>
+
+                {/* Quantity Input */}
+                <input
+                  type="number"
+                  className="form-control"
+                  placeholder="Quantity"
+                  value={stockItem.quantity || ""}
+                  onChange={(e) => handleStockItemChange(index, 'quantity', e.target.value)}
+                />
+
+                {/* Unit Select */}
+                <select
+                  className="form-select"
+                  value={stockItem.unit || ""}
+                  onChange={(e) => handleStockItemChange(index, 'unit', e.target.value)}
+                >
+                  <option value="">Select Unit</option>
+                  <option value="kg">kg</option>
+                  <option value="gm">gm</option>
+                  <option value="litre">litre</option>
+                  <option value="ml">ml</option>
+                  <option value="pcs">pcs</option>
+                  <option value="mg">mg</option>
+                </select>
+
+                {/* Remove Button */}
+                <button
+                  type="button"
+                  className="btn btn-danger btn-sm"
+                  onClick={() => removeStockItem(index)}
+                  disabled={formData.stockItems.length === 1}
+                >
+                  ✖
+                </button>
+              </div>
+            ))}
+
+            {/* Add New Stock Item */}
+            <button
+              type="button"
+              className="btn btn-success btn-sm mt-2"
+              onClick={addStockItem}
+            >
+              ➕ Add Stock Item
+            </button>
           </div>
         )}
+
       </CommonModal>
 
       {/* Delete Modal */}

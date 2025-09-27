@@ -19,7 +19,7 @@ import {
   fetchOverallReport,
   fetchPaymentTypeStats,
 } from '../../redux/slices/dashboardSlice';
-
+import { fetchTransactionDetails, getDailyCashBalance } from '../../redux/slices/transactionSlice'
 const Dashboard = () => {
   const dispatch = useDispatch();
 
@@ -31,10 +31,9 @@ const Dashboard = () => {
     loading,
     error,
   } = useSelector((state) => state.dashboard);
-
   const restaurantId = localStorage.getItem('restaurantId');
   const token = localStorage.getItem('authToken');
-
+  const { dailyCashBalance, dailyTransactionCount, cashLoading } = useSelector((state) => state.transactions);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedWeekYear, setSelectedWeekYear] = useState(new Date().getFullYear());
   const [dropdownStates, setDropdownStates] = useState({
@@ -59,7 +58,15 @@ const Dashboard = () => {
     console.log('Loading:', loading);
     console.log('Error:', error);
   }, [chartData, weeklyChartData, overallReport, paymentTypeStats, restaurantId, token, loading, error]);
-
+  useEffect(() => {
+    if (restaurantId && token) {
+      // Initial load of daily cash balance
+      dispatch(getDailyCashBalance({
+        token,
+        restaurantId
+      }))
+    }
+  }, [dispatch, restaurantId, token])
   // Load data initially
   useEffect(() => {
     if (restaurantId && token) {
@@ -85,7 +92,7 @@ const Dashboard = () => {
 
     console.log('Fetching payment report with:', { startDate, endDate, restaurantId, token: !!token });
     setPaymentStatsLoading(true);
-    
+
     try {
       await dispatch(fetchPaymentTypeStats({ startDate, endDate, restaurantId, token }));
     } catch (error) {
@@ -174,26 +181,60 @@ const Dashboard = () => {
     );
   });
 
+  const formatBalance = (balance) => {
+    if (balance === null || balance === undefined || isNaN(balance)) {
+      return '0.00';
+    }
+    return (Math.round(parseFloat(balance) * 100) / 100).toFixed(2);
+  };
   const getReportData = (key) => {
     const state = dropdownStates[key];
-    console.log('getReportData - key:', key, 'state:', state, 'overallReport:', overallReport);
 
     if (!overallReport) {
-      console.log('No overall report data');
       return 0;
     }
 
-    const data = {
-      collection: overallReport[`${state}Collection`],
-      invoices: overallReport[`totalInvoice${state.charAt(0).toUpperCase() + state.slice(1)}`],
-      completedOrders: overallReport[`totalCompleteOrder${state.charAt(0).toUpperCase() + state.slice(1)}`],
-      rejectedOrders: overallReport[`totalRejectOrder${state.charAt(0).toUpperCase() + state.slice(1)}`],
-    }[key];
+    let data = 0;
 
-    console.log('getReportData - result:', data);
+    if (key === 'collection') {
+      // If "today" is selected, use dailyCashBalance
+      if (state === 'today' && dailyCashBalance !== undefined && dailyCashBalance !== null) {
+        data = formatBalance(dailyCashBalance);
+      } else {
+        data = overallReport[`${state}Collection`];
+      }
+    } else if (key === 'invoices') {
+      data = overallReport[`totalInvoice${state.charAt(0).toUpperCase() + state.slice(1)}`];
+    } else if (key === 'completedOrders') {
+      data = overallReport[`totalCompleteOrder${state.charAt(0).toUpperCase() + state.slice(1)}`];
+    } else if (key === 'rejectedOrders') {
+      data = overallReport[`totalRejectOrder${state.charAt(0).toUpperCase() + state.slice(1)}`];
+    }
+
     return data || 0;
   };
 
+
+  // const getReportData = (key) => {
+  //   const state = dropdownStates[key];
+  //   console.log('getReportData - key:', key, 'state:', state, 'overallReport:', overallReport);
+
+  //   if (!overallReport) {
+  //     console.log('No overall report data');
+  //     return 0;
+  //   }
+
+  //   const data = {
+  //     collection: overallReport[`${state}Collection`],
+  //     invoices: overallReport[`totalInvoice${state.charAt(0).toUpperCase() + state.slice(1)}`],
+  //     completedOrders: overallReport[`totalCompleteOrder${state.charAt(0).toUpperCase() + state.slice(1)}`],
+  //     rejectedOrders: overallReport[`totalRejectOrder${state.charAt(0).toUpperCase() + state.slice(1)}`],
+  //   }[key];
+
+  //   console.log('getReportData - result:', data);
+  //   return data || 0;
+  // };
+  console.log(dailyCashBalance, "dailyCashBalance")
   // Mock data for yearly chart (for testing purposes)
   const mockYearlyData = {
     labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
@@ -214,7 +255,7 @@ const Dashboard = () => {
       },
       {
         label: 'Customers',
-        data: [4500, 6200, 5800, 7002, 6900, 8500, 8200, 9005, 9001, 10800,7030, 9720],
+        data: [4500, 6200, 5800, 7002, 6900, 8500, 8200, 9005, 9001, 10800, 7030, 9720],
         borderColor: 'rgb(54, 162, 235)',
         backgroundColor: 'rgba(54, 162, 235, 0.2)',
         tension: 0.1,
@@ -284,7 +325,7 @@ const Dashboard = () => {
     // Use mock data if no real data is available (for testing)
     if (!weeklyChartData?.datasets || !Array.isArray(weeklyChartData.datasets)) {
       console.log('No pie chart data available, using mock weekly data');
-      
+
       const labels = mockWeeklyData.datasets.map((ds) => ds.label);
       const data = mockWeeklyData.datasets.map((ds) => {
         return ds.data.reduce((acc, val) => acc + parseFloat(val || 0), 0);
@@ -381,7 +422,7 @@ const Dashboard = () => {
   return (
     <div style={{ paddingLeft: '20px', paddingRight: '20px' }}>
       <h2 className="mb-4">Overview</h2>
-      
+
       {error && (
         <CAlert color="danger" className="mb-4">
           Error: {error}
@@ -537,7 +578,7 @@ const Dashboard = () => {
                           <p className="mt-2">Loading payment report...</p>
                         </div>
                       )}
-                      
+
                       {!paymentStatsLoading && paymentReportData.length > 0 ? (
                         <CChartBar
                           data={{
@@ -562,7 +603,7 @@ const Dashboard = () => {
                           options={{
                             responsive: true,
                             maintainAspectRatio: false,
-                            plugins: { 
+                            plugins: {
                               legend: { position: 'top' },
                               title: {
                                 display: true,
@@ -580,8 +621,8 @@ const Dashboard = () => {
                       ) : !paymentStatsLoading && startDate && endDate ? (
                         <div style={{ height: '400px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                           <p className="text-muted">
-                            {paymentReportData.length === 0 ? 
-                              'No payment data found for the selected date range.' : 
+                            {paymentReportData.length === 0 ?
+                              'No payment data found for the selected date range.' :
                               'Click "Fetch Report" to load payment data.'
                             }
                           </p>
