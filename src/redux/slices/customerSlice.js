@@ -13,9 +13,20 @@ export const fetchCustomers = createAsyncThunk(
   'customers/fetchCustomers',
   async ({ restaurantId }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${BASE_URL}/customer/${restaurantId}`);
+      // If restaurantId is provided, fetch customers for that restaurant
+      // Otherwise, fetch all customers (for reservation dropdown)
+      const url = restaurantId 
+        ? `${BASE_URL}/customer/${restaurantId}`
+        : `${BASE_URL}/customer/all`;
+      
+      console.log("🚀 Fetching customers from:", url);
+      
+      const response = await axios.get(url);
+      console.log("✅ Customers fetched:", response.data?.length || 0);
+      
       return response.data;
     } catch (error) {
+      console.error("❌ Error fetching customers:", error);
       return rejectWithValue(error.response?.data || error.message);
     }
   }

@@ -24,6 +24,7 @@ import PaymentModal from '../../components/PaymentModal'
 import DeleteModal from '../../components/DeleteModal'
 import RoundOffAmountModal from '../../components/RoundOffAmountModal'
 import SubCategorySelectionModal from '../../components/SubCategorySelectionModal'
+import SystemSelectionModal from '../../components/SystemSelectionModal'
 
 const POSTableContent = () => {
   const { tableNumber: tableId } = useParams();
@@ -87,6 +88,7 @@ const POSTableContent = () => {
   const [selectedCategoryId, setSelectedCategoryId] = useState(null)
   const [showSubCategoryModal, setShowSubCategoryModal] = useState(false)
   const [selectedMenuItemForSubcategory, setSelectedMenuItemForSubcategory] = useState(null)
+  const [showSystemModal, setShowSystemModal] = useState(false)
   const [selectedSystem, setSelectedSystem] = useState(() => {
     const savedSystem = localStorage.getItem(`selectedSystem_${tableId}`)
     return savedSystem ? JSON.parse(savedSystem) : null
@@ -134,6 +136,28 @@ const POSTableContent = () => {
   useEffect(() => {
     localStorage.setItem(`cart_${tableId}`, JSON.stringify(cart))
   }, [cart, tableId])
+
+  // Check if system is selected when component mounts
+  useEffect(() => {
+    console.log('POSTableContent - Checking selectedSystem:', selectedSystem)
+    if (!selectedSystem) {
+      console.log('POSTableContent - No system selected, opening modal')
+      // If no system is selected, open the system selection modal
+      setShowSystemModal(true)
+    }
+  }, [selectedSystem])
+
+  // Also check on component mount
+  useEffect(() => {
+    console.log('POSTableContent - Component mounted, checking system for table:', tableId)
+    const savedSystem = localStorage.getItem(`selectedSystem_${tableId}`)
+    console.log('POSTableContent - Saved system from localStorage:', savedSystem)
+    
+    if (!savedSystem) {
+      console.log('POSTableContent - No saved system found, opening modal')
+      setShowSystemModal(true)
+    }
+  }, [tableId])
 
   const handleDeleteClick = (item) => {
     setItemToDelete(item)
@@ -295,8 +319,14 @@ const POSTableContent = () => {
   }
 
   const handleSystemChange = () => {
-    // Navigate back to system selection
-    navigate(`/pos/system/${tableId}`)
+    // Open system selection modal instead of navigating
+    setShowSystemModal(true)
+  }
+
+  const handleSystemSelect = (system) => {
+    setSelectedSystem(system)
+    localStorage.setItem(`selectedSystem_${tableId}`, JSON.stringify(system))
+    setShowSystemModal(false)
   }
 
   const handleSearchProduct = (e) => {
@@ -1042,6 +1072,13 @@ const POSTableContent = () => {
         menuItem={selectedMenuItemForSubcategory}
         subCategories={subCategories}
         onAddToCartWithSubcategory={handleAddToCartWithSubcategory}
+      />
+
+      <SystemSelectionModal
+        showSystemModal={showSystemModal}
+        setShowSystemModal={setShowSystemModal}
+        onSystemSelect={handleSystemSelect}
+        selectedSystem={selectedSystem}
       />
 
       <KOTModal isVisible={showKOTModal} onClose={() => setShowKOTModal(false)}>

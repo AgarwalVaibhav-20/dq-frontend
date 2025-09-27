@@ -10,8 +10,8 @@ import {
   CAlert,
   CSpinner,
 } from '@coreui/react'
-import axiosInstance from '../../utils/axiosConfig'
-import { BASE_URL } from '../../utils/constants'
+import axios from 'axios'
+import { BASE_URL } from '../utils/constants'
 
 const SystemSelectionModal = ({
   showSystemModal,
@@ -35,14 +35,38 @@ const SystemSelectionModal = ({
       setLoading(true)
       setError('')
       const restaurantId = localStorage.getItem('restaurantId')
+      const token = localStorage.getItem('authToken')
       
-      const response = await axiosInstance.get(`/api/settings?restaurantId=${restaurantId}`)
+      if (!restaurantId || !token) {
+        setError('Authentication required')
+        return
+      }
+
+      console.log('Fetching settings for restaurantId:', restaurantId)
+      
+      // Fetch settings from your backend API
+      const response = await axios.get(`${BASE_URL}/api/settings?restaurantId=${restaurantId}`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      })
+
+      console.log('Settings API response:', response.data)
 
       if (response.data.success && response.data.data && response.data.data.length > 0) {
-        setSystems(response.data.data)
+        // Transform the data to match expected format
+        const transformedSystems = response.data.data.map(setting => ({
+          _id: setting._id,
+          systemName: setting.systemName,
+          chargeOfSystem: parseInt(setting.chargeOfSystem) || 0,
+          willOccupy: setting.willOccupy
+        }))
+        
+        setSystems(transformedSystems)
+        
         // If there's only one system, auto-select it
-        if (!selectedSystem && response.data.data.length === 1) {
-          onSystemSelect(response.data.data[0])
+        if (!selectedSystem && transformedSystems.length === 1) {
+          onSystemSelect(transformedSystems[0])
         }
       } else {
         setError('No system settings found. Please configure system settings first.')

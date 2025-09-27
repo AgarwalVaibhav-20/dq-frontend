@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import {
@@ -13,6 +13,7 @@ import {
   CNavLink,
   CNavItem,
   useColorModes,
+  CBadge,
 } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
 import {
@@ -28,10 +29,12 @@ import {
 import { AppBreadcrumb } from './index';
 import { AppHeaderDropdown } from './header/index';
 import { toggleSidebar } from '../redux/slices/sidebarSlice';
+import NotificationModal from './NotificationModal';
 
 const AppHeader = () => {
   const headerRef = useRef();
   const { colorMode, setColorMode } = useColorModes('coreui-free-react-admin-template-theme');
+  const [notificationModalVisible, setNotificationModalVisible] = useState(false);
 
   const dispatch = useDispatch();
   const sidebarShow = useSelector((state) => state.sidebar.sidebarShow);
@@ -46,6 +49,14 @@ const AppHeader = () => {
 
   const handleSidebarToggle = () => {
     dispatch(toggleSidebar());
+  };
+
+  const handleNotificationClick = () => {
+    setNotificationModalVisible(true);
+  };
+
+  const handleNotificationModalClose = () => {
+    setNotificationModalVisible(false);
   };
 
   return (
@@ -72,8 +83,9 @@ const AppHeader = () => {
           </CHeaderNav>
         <CHeaderNav className="ms-auto">
           <CNavItem>
-            <CNavLink href="#">
+            <CNavLink href="#" onClick={handleNotificationClick} style={{ cursor: 'pointer', position: 'relative' }}>
               <CIcon icon={cilBell} size="lg" />
+              {/* You can add a badge here if needed */}
             </CNavLink>
           </CNavItem>
           <CNavItem>
@@ -140,6 +152,12 @@ const AppHeader = () => {
       {/* <CContainer className="px-4" fluid>
         <AppBreadcrumb />
       </CContainer> */}
+      
+      {/* Notification Modal */}
+      <NotificationModal 
+        visible={notificationModalVisible} 
+        onClose={handleNotificationModalClose} 
+      />
     </CHeader>
   );
 };

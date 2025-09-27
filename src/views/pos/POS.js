@@ -393,7 +393,7 @@ useEffect(() => {
   }, [mergedTables])
 
   const handleQrClick = (qr) => {
-    navigate(`/pos/system/${qr.tableNumber}`)
+    navigate(`/pos/system/tableNumber/${qr.tableNumber}`)
   }
 
   // FIXED: Updated merged table click handler to properly pass data
@@ -430,7 +430,7 @@ useEffect(() => {
 
   const shouldTableBeRed = (qr) => {
     const savedSystem = localStorage.getItem(`selectedSystem_${qr.tableNumber}`)
-    let systemWillOccupy = true // Default to true if no system or parsing error
+    let systemWillOccupy = false // Default to false if no system
 
     if (savedSystem) {
       try {
@@ -438,18 +438,12 @@ useEffect(() => {
         systemWillOccupy = system.willOccupy === true
       } catch (error) {
         console.error('Error parsing saved system for table', qr.tableNumber, ':', error)
+        systemWillOccupy = false // Default to false on parsing error
       }
     }
 
-    // If the selected system has willOccupy: false, the table should never be red
-    if (systemWillOccupy === false) {
-      return false
-    }
-
-    // If willOccupy is true (or no system selected, defaulting to true),
-    // then the table should be red if it has items in the cart
-    const hasItems = isItemInCart(qr)
-    return hasItems
+    // Table should be red only if willOccupy is true, regardless of cart items
+    return systemWillOccupy
   }
 
   const isTableMerged = (tableNumber) => {

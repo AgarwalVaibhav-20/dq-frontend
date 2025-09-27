@@ -66,9 +66,10 @@ const Reservation = () => {
     console.log("🔍 API URL will be:", `http://localhost:4000/AllByRestaurantId/${actualRestaurantId}`);
     
     if (actualRestaurantId) {
-      console.log("📡 Fetching reservations and customers with restaurantId:", actualRestaurantId);
+      console.log("📡 Fetching reservations with restaurantId:", actualRestaurantId);
       dispatch(fetchReservations({ restaurantId: actualRestaurantId }));
-      dispatch(fetchCustomers({ restaurantId: actualRestaurantId }));
+      // Fetch ALL customers for reservation dropdown (not filtered by restaurantId)
+      dispatch(fetchCustomers({}));
     } else {
       console.error("No restaurantId found!");
     }
@@ -241,7 +242,7 @@ const Reservation = () => {
     try {
       const actualRestaurantId = restaurantId || "68c80294c2283cb53671cde9";
       const id = selectedReservation?._id;
-      await dispatch(deleteReservation({ id, restaurantId: actualRestaurantId })).unwrap();
+      await dispatch(deleteReservation({ id })).unwrap();
       await dispatch(fetchReservations({ restaurantId: actualRestaurantId }));
 
       setDeleteModalVisible(false);

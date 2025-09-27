@@ -19,8 +19,8 @@ export const fetchReservations = createAsyncThunk(
   "reservations/fetchReservations",
   async ({ restaurantId }, { rejectWithValue }) => {
     try {
-      // For testing: fetch ALL reservations instead of filtering by restaurantId
-      const url = `${BASE_URL}/debug/all`;
+      // Use the correct endpoint with /reservations prefix
+      const url = `${BASE_URL}/reservations/debug/all`;
       console.log("🚀 Making API call to:", url);
       console.log("🚀 Fetching ALL reservations for testing");
       
@@ -69,14 +69,14 @@ export const updateReservation = createAsyncThunk(
   "reservations/updateReservation",
   async ({ id, restaurantId, startTime, endTime, customerId, payment, advance, notes, tableNumber }, { rejectWithValue }) => {
     try {
-
       const response = await axios.put(
         `${BASE_URL}/reservations/${id}`,
         { restaurantId, startTime, endTime, customerId, payment, advance, notes, tableNumber },
-        { headers: getAuthHeaders() }
+        configureHeaders(localStorage.getItem('authToken'))
       );
       return response.data.reservation;
     } catch (error) {
+      console.error('Update reservation error:', error);
       return rejectWithValue(error.response?.data?.message || "Failed to update reservation");
     }
   }
@@ -87,10 +87,13 @@ export const deleteReservation = createAsyncThunk(
   "reservations/deleteReservation",
   async ({ id }, { rejectWithValue }) => {
     try {
-
-      const response = await axios.delete(`${BASE_URL}/reservations/${id}`, { headers: getAuthHeaders() });
+      const response = await axios.delete(
+        `${BASE_URL}/reservations/${id}`, 
+        configureHeaders(localStorage.getItem('authToken'))
+      );
       return { id, message: response.data.message };
     } catch (error) {
+      console.error('Delete reservation error:', error);
       return rejectWithValue(error.response?.data?.message || "Failed to delete reservation");
     }
   }
@@ -149,7 +152,7 @@ const reservationSlice = createSlice({
       .addCase(updateReservation.fulfilled, (state, action) => {
         state.loading = false;
 
-        const updatedReservation = action.payload.reservation;
+        const updatedReservation = action.payload;
         const index = state.reservations.findIndex(
           (reservation) => reservation._id === updatedReservation._id
         );
