@@ -75,7 +75,7 @@ export const createTransaction = createAsyncThunk(
 // NEW: Cash In transaction
 export const createCashInTransaction = createAsyncThunk(
   'transactions/createCashInTransaction',
-  async ({ total, token, userId, restaurantId, username }, { rejectWithValue }) => {
+  async ({ total, token, userId, restaurantId, username, notes }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('authToken');
       const finalRestaurantId = restaurantId || localStorage.getItem('restaurantId');
@@ -88,7 +88,7 @@ export const createCashInTransaction = createAsyncThunk(
         userId: finalUserId,
         total,
         type: 'CashIn',
-
+        notes
       };
 
       console.log('Cash In payload:', requestData);
@@ -111,7 +111,7 @@ export const createCashInTransaction = createAsyncThunk(
 // NEW: Cash Out transaction
 export const createCashOutTransaction = createAsyncThunk(
   'transactions/createCashOutTransaction',
-  async ({ amount, reason, token, userId, restaurantId, username }, { rejectWithValue }) => {
+  async ({ amount, token, userId, restaurantId, username, notes }, { rejectWithValue }) => {
     try {
       const headers = {
         Authorization: `Bearer ${token}`,
@@ -128,7 +128,7 @@ export const createCashOutTransaction = createAsyncThunk(
         userId: finalUserId,
         total: amount, // Use 'total' to match backend expectation
         type: 'CashOut',
-        notes: reason || 'Cash Out Transaction'
+        notes,
       };
 
       console.log('Cash Out payload:', requestData);
@@ -137,7 +137,7 @@ export const createCashOutTransaction = createAsyncThunk(
       return {
         ...response.data,
         amount,
-        reason,
+        notes,
         transaction: response.data.transaction
       };
     } catch (error) {
@@ -194,10 +194,10 @@ export const getDailyCashBalance = createAsyncThunk(
 // GET API: Fetch transactions by restaurantId
 export const fetchTransactionsByRestaurant = createAsyncThunk(
   'transactions/fetchTransactionsByRestaurant',
-  async ({ token }, { rejectWithValue }) => {
+  async ({ restaurantId, token }, { rejectWithValue }) => {
     try {
       console.log("Fetching transactions with token:", token);
-      const response = await axios.get(`${BASE_URL}/get-all/transaction`, configureHeaders(token))
+      const response = await axios.get(`${BASE_URL}/get-by-restaurant/transaction/${restaurantId}`, configureHeaders(token))
       console.log("Response data:", response.data)
 
       // Return the actual data array, not the wrapper object
@@ -239,7 +239,7 @@ export const fetchTransactionDetails = createAsyncThunk(
 // DELETE API: Delete transaction by transactionId
 export const deleteTransaction = createAsyncThunk(
   'transactions/deleteTransaction',
-  async ({ id, note }, { rejectWithValue }) => {
+  async ({ id, deletionRemark }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('authToken');
       const headers = {
@@ -250,7 +250,7 @@ export const deleteTransaction = createAsyncThunk(
       // Fix: Send note in request body, not as separate object
       await axios.delete(`${BASE_URL}/deleteTransaction/${id}`, {
         headers,
-        data: { note }
+        data: { deletionRemark }
       });
 
       return id;

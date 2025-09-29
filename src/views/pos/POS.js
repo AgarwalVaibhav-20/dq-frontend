@@ -65,7 +65,7 @@ const POS = () => {
   const [selectedTables, setSelectedTables] = useState([])
 
   // Floor management states
-  const [selectedFloor, setSelectedFloor] = useState('all')
+  // const [selectedFloor, setSelectedFloor] = useState('all')
 
   // Table merging states
   const [showMergeModal, setShowMergeModal] = useState(false)
@@ -81,7 +81,7 @@ const POS = () => {
   const [showCashInModal, setShowCashInModal] = useState(false)
   const [showCashOutModal, setShowCashOutModal] = useState(false)
   const [cashAmount, setCashAmount] = useState('')
-  const [cashReason, setCashReason] = useState('')
+  const [cashAmountNotes, setCashAmountNotes] = useState('')
 
   // Helper function to get floor ID consistently from QR object
   const getFloorIdFromQr = (qr) => {
@@ -124,12 +124,13 @@ const POS = () => {
         token,
         userId,
         restaurantId,
-        username
+        username,
+        notes: cashAmountNotes
       })).unwrap()
 
       // Reset form
       setCashAmount('')
-      setCashReason('')
+      setCashAmountNotes('')
       setShowCashInModal(false)
 
       // IMPORTANT: Refresh the daily cash balance from server
@@ -162,16 +163,16 @@ const POS = () => {
       // Create the cash out transaction
       await dispatch(createCashOutTransaction({
         amount: amount,
-        reason: cashReason || 'Cash Out',
         token,
         userId,
         restaurantId,
-        username
+        username,
+        notes: cashAmountNotes
       })).unwrap()
 
       // Reset form
       setCashAmount('')
-      setCashReason('')
+      setCashAmountNotes('')
       setShowCashOutModal(false)
 
       // IMPORTANT: Refresh the daily cash balance from server
@@ -346,7 +347,8 @@ const POS = () => {
     if (savedSystem) {
       try {
         const system = JSON.parse(savedSystem)
-        systemWillOccupy = system.willOccupy === true
+        systemWillOccupy = system.willOccupy === true && cart[qr.tableNumber]?.length
+        // console.log("system, =>",cart[qr.tableNumber])
       } catch (error) {
         console.error('Error parsing saved system for table', qr.tableNumber, ':', error)
         systemWillOccupy = false // Default to false on parsing error
@@ -562,10 +564,10 @@ const POS = () => {
     setShowCombinedModal(false)
   }
 
-  const getAvailableTables = () => {
-    const floorTables = getTablesForFloor(selectedFloor)
-    return floorTables.filter(qr => !isTableMerged(qr.tableNumber))
-  }
+ const getAvailableTables = (floorId) => {
+  const floorTables = getTablesForFloor(floorId) // Now uses the passed floorId
+  return floorTables.filter(qr => !isTableMerged(qr.tableNumber))
+}
 
   const formatTime = (startTimeStr) => {
     if (!startTimeStr) return 'N/A'
@@ -651,7 +653,7 @@ const POS = () => {
       </div>
 
       {/* Floor Selection Dropdown */}
-      <div className="mb-4">
+      {/* <div className="mb-4">
         <div className="d-flex align-items-center gap-3">
           <CDropdown>
             <CDropdownToggle variant="outline" size="lg">
@@ -698,7 +700,7 @@ const POS = () => {
             </CDropdownMenu>
           </CDropdown>
 
-          {/* Floor Stats */}
+          
           {selectedFloor !== 'all' && (
             <div className="d-flex gap-2 align-items-center">
               <CBadge color="secondary">
@@ -720,7 +722,7 @@ const POS = () => {
             </div>
           )}
         </div>
-      </div>
+      </div> */}
 
       {loading ? (
         <div className="d-flex justify-content-center">
@@ -729,162 +731,280 @@ const POS = () => {
       ) : error ? (
         <div className="text-danger text-center">{error}</div>
       ) : (
+        // <>
+        //   {/* Merged Tables Section */}
+        //   {getMergedTablesForFloor(selectedFloor).length > 0 && (
+        //     <div className="mb-4">
+        //       <h5 className="mb-3">
+        //         Merged Tables {selectedFloor !== 'all' && `- ${manjil.find(f => f._id === selectedFloor)?.name || 'Floor'}`}
+        //       </h5>
+        //       <CRow className="justify-content-start">
+        //         {getMergedTablesForFloor(selectedFloor).map((mergedTable) => (
+        //           <CCol
+        //             key={mergedTable.id}
+        //             xs="6"
+        //             sm="4"
+        //             md="3"
+        //             lg="2"
+        //             xl="2"
+        //             className="mx-2 mb-4 d-flex justify-content-center"
+        //           >
+        //             <CContainer
+        //               className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 bg-info text-white`}
+        //               onClick={() => handleMergedTableClick(mergedTable)}
+        //               style={{
+        //                 height: '12rem',
+        //                 cursor: 'pointer',
+        //                 width: '100%',
+        //                 position: 'relative'
+        //               }}
+        //             >
+        //               <CBadge
+        //                 color="light"
+        //                 className="position-absolute top-0 end-0 m-1"
+        //                 style={{ fontSize: '0.7rem' }}
+        //               >
+        //                 MERGED
+        //               </CBadge>
+        //               <div className="fw-bold text-center mb-1">
+        //                 {mergedTable.name}
+        //               </div>
+        //               <small className="text-center">
+        //                 {mergedTable.combinedOrders?.length || 0} items
+        //               </small>
+        //               <small className="text-center">
+        //                 ₹{(mergedTable.totalAmount || 0).toFixed(2)}
+        //               </small>
+        //               <small className="text-center">
+        //                 {formatDuration(mergedTable.startTime)}
+        //               </small>
+        //               <CButton
+        //                 size="sm"
+        //                 color="light"
+        //                 className="mt-2"
+        //                 onClick={(e) => {
+        //                   e.stopPropagation()
+        //                   handleUnmergeTable(mergedTable)
+        //                 }}
+        //               >
+        //                 Unmerge
+        //               </CButton>
+        //             </CContainer>
+        //           </CCol>
+        //         ))}
+        //       </CRow>
+        //     </div>
+        //   )}
+
+        //   {/* Individual Tables Section */}
+        //   <div className="mb-4">
+        //     <h5 className="mb-3">
+        //       Individual Tables {selectedFloor !== 'all' && `- ${manjil.find(f => f._id === selectedFloor)?.name || 'Floor'}`}
+        //     </h5>
+        //     <CRow className="justify-content-start">
+        //       {getAvailableTables().map((qr, index) => {
+        //         const floorName = getFloorNameFromQr(qr)
+
+        //         return (
+        //           <CCol
+        //             key={index}
+        //             xs="6"
+        //             sm="4"
+        //             md="3"
+        //             lg="2"
+        //             xl="2"
+        //             className="mx-2 mb-4 d-flex justify-content-center"
+        //           >
+        //             <CContainer
+        //               className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${shouldTableBeRed(qr)
+        //                 ? 'bg-danger text-white'
+        //                 : theme === 'dark'
+        //                   ? 'bg-secondary text-white'
+        //                   : 'bg-white text-dark'
+        //                 }`}
+        //               onClick={() => handleQrClick(qr)}
+        //               style={{
+        //                 height: '10rem',
+        //                 cursor: 'pointer',
+        //                 width: '100%',
+        //                 position: 'relative'
+        //               }}
+        //             >
+        //               {/* Floor badge */}
+        //               <CBadge
+        //                 color="secondary"
+        //                 className="position-absolute top-0 start-0 m-1"
+        //                 style={{ fontSize: '0.6rem' }}
+        //               >
+        //                 {floorName}
+        //               </CBadge>
+
+        //               <div className="fw-bold">Table {qr.tableNumber}</div>
+        //               {isItemInCart(qr) && (
+        //                 <small className="text-center mt-1">
+        //                   {cart[qr.tableNumber]?.length || 0} items
+        //                 </small>
+        //               )}
+        //             </CContainer>
+        //           </CCol>
+        //         )
+        //       })}
+
+        //       {/* Takeaway - only show on "All Floors" or first floor */}
+        //       {(selectedFloor === 'all' || (manjil.length > 0 && selectedFloor === manjil[0]._id)) && (
+        //         <CCol
+        //           xs="6"
+        //           sm="4"
+        //           md="3"
+        //           lg="2"
+        //           xl="2"
+        //           className="mx-2 mb-4 d-flex justify-content-center"
+        //         >
+        //           <CContainer
+        //             className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${theme === 'dark'
+        //               ? 'bg-secondary text-white'
+        //               : 'bg-white text-dark'
+        //               }`}
+        //             onClick={() => navigate('/pos/system/tableNumber/0')}
+        //             style={{
+        //               height: '10rem',
+        //               cursor: 'pointer',
+        //               width: '100%',
+        //             }}
+        //           >
+        //             <div className="fw-bold">Takeaway</div>
+        //           </CContainer>
+        //         </CCol>
+        //       )}
+        //     </CRow>
+        //   </div>
+
+        //   {/* No tables message */}
+        //   {getAvailableTables().length === 0 && getMergedTablesForFloor(selectedFloor).length === 0 && (
+        //     <div className="text-center text-muted py-4">
+        //       <CAlert color="info">
+        //         No tables found for {selectedFloor === 'all' ? 'any floor' : manjil.find(f => f._id === selectedFloor)?.name || 'this floor'}.
+        //       </CAlert>
+        //     </div>
+        //   )}
+        // </>
+        // ADD THIS NEW LOGIC
         <>
-          {/* Merged Tables Section */}
-          {getMergedTablesForFloor(selectedFloor).length > 0 && (
-            <div className="mb-4">
-              <h5 className="mb-3">
-                Merged Tables {selectedFloor !== 'all' && `- ${manjil.find(f => f._id === selectedFloor)?.name || 'Floor'}`}
-              </h5>
-              <CRow className="justify-content-start">
-                {getMergedTablesForFloor(selectedFloor).map((mergedTable) => (
-                  <CCol
-                    key={mergedTable.id}
-                    xs="6"
-                    sm="4"
-                    md="3"
-                    lg="2"
-                    xl="2"
-                    className="mx-2 mb-4 d-flex justify-content-center"
-                  >
+          {/* Loop through each floor and create a section for it */}
+          {manjil.map((floor) => {
+            // Get the tables specifically for this floor in the loop
+            const mergedFloorTables = getMergedTablesForFloor(floor._id);
+            const availableFloorTables = getAvailableTables(floor._id);
+
+            // If there are no tables of any kind for this floor, don't render the section
+            if (mergedFloorTables.length === 0 && availableFloorTables.length === 0) {
+              return null;
+            }
+
+            return (
+              <div key={floor._id} className="mb-5">
+                {/* Floor Header */}
+                <h4 className="fw-bold mb-3 border-bottom pb-2">Floor: {floor.name}</h4>
+
+                {/* Merged Tables for this Floor */}
+                {mergedFloorTables.length > 0 && (
+                  <div className="mb-4">
+                    <h5 className="mb-3 text-muted">Merged Tables</h5>
+                    <CRow className="justify-content-start">
+                      {mergedFloorTables.map((mergedTable) => (
+                        // This is the same JSX you had before for merged tables
+                        <CCol
+                          key={mergedTable.id}
+                          xs="6" sm="4" md="3" lg="2" xl="2"
+                          className="mx-2 mb-4 d-flex justify-content-center"
+                        >
+                          <CContainer
+                            className="d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 bg-info text-white"
+                            onClick={() => handleMergedTableClick(mergedTable)}
+                            style={{ height: '12rem', cursor: 'pointer', position: 'relative' }}
+                          >
+                            <CBadge color="light" className="position-absolute top-0 end-0 m-1" style={{ fontSize: '0.7rem' }}>
+                              MERGED
+                            </CBadge>
+                            <div className="fw-bold text-center mb-1">{mergedTable.name}</div>
+                            <small className="text-center">{mergedTable.combinedOrders?.length || 0} items</small>
+                            <small className="text-center">₹{(mergedTable.totalAmount || 0).toFixed(2)}</small>
+                            <small className="text-center">{formatDuration(mergedTable.startTime)}</small>
+                            <CButton
+                              size="sm"
+                              color="light"
+                              className="mt-2"
+                              onClick={(e) => { e.stopPropagation(); handleUnmergeTable(mergedTable) }}
+                            >
+                              Unmerge
+                            </CButton>
+                          </CContainer>
+                        </CCol>
+                      ))}
+                    </CRow>
+                  </div>
+                )}
+
+                {/* Individual Tables for this Floor */}
+                {availableFloorTables.length > 0 && (
+                  <div>
+                    {/* <h5 className="mb-3 text-muted">Individual Tables</h5> */}
+                    <CRow className="justify-content-start">
+                      {availableFloorTables.map((qr, index) => {
+                        // This is the same JSX you had before for individual tables
+                        const floorName = getFloorNameFromQr(qr);
+                        return (
+                          <CCol
+                            key={index}
+                            xs="6" sm="4" md="3" lg="2" xl="2"
+                            className="mx-2 mb-4 d-flex justify-content-center"
+                          >
+                            <CContainer
+                              className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${
+                                shouldTableBeRed(qr)
+                                  ? 'bg-danger text-white'
+                                  : theme === 'dark'
+                                  ? 'bg-secondary text-white'
+                                  : 'bg-white text-dark'
+                              }`}
+                              onClick={() => handleQrClick(qr)}
+                              style={{ height: '10rem', cursor: 'pointer', width: '100%', position: 'relative' }}
+                            >
+                              <CBadge color="secondary" className="position-absolute top-0 start-0 m-1" style={{ fontSize: '0.6rem' }}>
+                                {floorName}
+                              </CBadge>
+                              <div className="fw-bold">Table {qr.tableNumber}</div>
+                              {isItemInCart(qr) && (
+                                <small className="text-center mt-1">{cart[qr.tableNumber]?.length || 0} items</small>
+                              )}
+                            </CContainer>
+                          </CCol>
+                        );
+                      })}
+                    </CRow>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          {/* Takeaway Section - Placed after the floors loop */}
+          <div className="mb-5">
+              <h4 className="fw-bold mb-3 border-bottom pb-2">Other Options</h4>
+              <CRow>
+                <CCol xs="6" sm="4" md="3" lg="2" xl="2" className="mx-2 mb-4 d-flex justify-content-center">
                     <CContainer
-                      className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 bg-info text-white`}
-                      onClick={() => handleMergedTableClick(mergedTable)}
-                      style={{
-                        height: '12rem',
-                        cursor: 'pointer',
-                        width: '100%',
-                        position: 'relative'
-                      }}
-                    >
-                      <CBadge
-                        color="light"
-                        className="position-absolute top-0 end-0 m-1"
-                        style={{ fontSize: '0.7rem' }}
-                      >
-                        MERGED
-                      </CBadge>
-                      <div className="fw-bold text-center mb-1">
-                        {mergedTable.name}
-                      </div>
-                      <small className="text-center">
-                        {mergedTable.combinedOrders?.length || 0} items
-                      </small>
-                      <small className="text-center">
-                        ₹{(mergedTable.totalAmount || 0).toFixed(2)}
-                      </small>
-                      <small className="text-center">
-                        {formatDuration(mergedTable.startTime)}
-                      </small>
-                      <CButton
-                        size="sm"
-                        color="light"
-                        className="mt-2"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleUnmergeTable(mergedTable)
-                        }}
-                      >
-                        Unmerge
-                      </CButton>
-                    </CContainer>
-                  </CCol>
-                ))}
-              </CRow>
-            </div>
-          )}
-
-          {/* Individual Tables Section */}
-          <div className="mb-4">
-            <h5 className="mb-3">
-              Individual Tables {selectedFloor !== 'all' && `- ${manjil.find(f => f._id === selectedFloor)?.name || 'Floor'}`}
-            </h5>
-            <CRow className="justify-content-start">
-              {getAvailableTables().map((qr, index) => {
-                const floorName = getFloorNameFromQr(qr)
-
-                return (
-                  <CCol
-                    key={index}
-                    xs="6"
-                    sm="4"
-                    md="3"
-                    lg="2"
-                    xl="2"
-                    className="mx-2 mb-4 d-flex justify-content-center"
-                  >
-                    <CContainer
-                      className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${shouldTableBeRed(qr)
-                        ? 'bg-danger text-white'
-                        : theme === 'dark'
-                          ? 'bg-secondary text-white'
-                          : 'bg-white text-dark'
-                        }`}
-                      onClick={() => handleQrClick(qr)}
-                      style={{
-                        height: '10rem',
-                        cursor: 'pointer',
-                        width: '100%',
-                        position: 'relative'
-                      }}
-                    >
-                      {/* Floor badge */}
-                      <CBadge
-                        color="secondary"
-                        className="position-absolute top-0 start-0 m-1"
-                        style={{ fontSize: '0.6rem' }}
-                      >
-                        {floorName}
-                      </CBadge>
-
-                      <div className="fw-bold">Table {qr.tableNumber}</div>
-                      {isItemInCart(qr) && (
-                        <small className="text-center mt-1">
-                          {cart[qr.tableNumber]?.length || 0} items
-                        </small>
-                      )}
-                    </CContainer>
-                  </CCol>
-                )
-              })}
-
-              {/* Takeaway - only show on "All Floors" or first floor */}
-              {(selectedFloor === 'all' || (manjil.length > 0 && selectedFloor === manjil[0]._id)) && (
-                <CCol
-                  xs="6"
-                  sm="4"
-                  md="3"
-                  lg="2"
-                  xl="2"
-                  className="mx-2 mb-4 d-flex justify-content-center"
-                >
-                  <CContainer
-                    className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${theme === 'dark'
-                      ? 'bg-secondary text-white'
-                      : 'bg-white text-dark'
+                      className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${
+                        theme === 'dark' ? 'bg-secondary text-white' : 'bg-white text-dark'
                       }`}
-                    onClick={() => navigate('/pos/system/tableNumber/0')}
-                    style={{
-                      height: '10rem',
-                      cursor: 'pointer',
-                      width: '100%',
-                    }}
-                  >
-                    <div className="fw-bold">Takeaway</div>
-                  </CContainer>
+                      onClick={() => navigate('/pos/system/tableNumber/0')}
+                      style={{ height: '10rem', cursor: 'pointer', width: '100%' }}
+                    >
+                      <div className="fw-bold">Takeaway</div>
+                    </CContainer>
                 </CCol>
-              )}
-            </CRow>
+              </CRow>
           </div>
-
-          {/* No tables message */}
-          {getAvailableTables().length === 0 && getMergedTablesForFloor(selectedFloor).length === 0 && (
-            <div className="text-center text-muted py-4">
-              <CAlert color="info">
-                No tables found for {selectedFloor === 'all' ? 'any floor' : manjil.find(f => f._id === selectedFloor)?.name || 'this floor'}.
-              </CAlert>
-            </div>
-          )}
         </>
       )}
 
@@ -894,7 +1014,7 @@ const POS = () => {
         onClose={() => {
           setShowCashInModal(false)
           setCashAmount('')
-          setCashReason('')
+          setCashAmountNotes('')
         }}
         size="md"
         backdrop="static"
@@ -920,6 +1040,17 @@ const POS = () => {
                 disabled={cashLoading}
               />
             </div>
+            <div className="mb-3">
+              <CFormLabel htmlFor="cashInAmount">Notes </CFormLabel>
+              <CFormInput
+                type="string"
+                id="cashInAmountNotes"
+                placeholder="Enter any note"
+                value={cashAmountNotes}
+                onChange={(e) => setCashAmountNotes(e.target.value)}
+                disabled={cashLoading}
+              />
+            </div>
             <CAlert color="info">
               Current Daily Transaction: ₹{dailyCashBalance.toFixed(2)}
             </CAlert>
@@ -931,7 +1062,7 @@ const POS = () => {
             onClick={() => {
               setShowCashInModal(false)
               setCashAmount('')
-              setCashReason('')
+              setCashAmountNotes('')
             }}
             disabled={cashLoading}
           >
@@ -960,7 +1091,7 @@ const POS = () => {
         onClose={() => {
           setShowCashOutModal(false)
           setCashAmount('')
-          setCashReason('')
+          setCashAmountNotes('')
         }}
         size="md"
         backdrop="static"
@@ -990,6 +1121,17 @@ const POS = () => {
                 Maximum available: ₹{dailyCashBalance.toFixed(2)}
               </small>
             </div>
+            <div className="mb-3">
+              <CFormLabel htmlFor="cashOutAmount">Notes</CFormLabel>
+              <CFormInput
+                type="string"
+                id="cashOutAmountNotes"
+                placeholder="Enter any note"
+                value={cashAmountNotes}
+                onChange={(e) => setCashAmountNotes(e.target.value)}
+                disabled={cashLoading}
+              />
+            </div>
             <CAlert color="warning">
               Current Daily Transaction: ₹{dailyCashBalance.toFixed(2)}
             </CAlert>
@@ -1001,7 +1143,7 @@ const POS = () => {
             onClick={() => {
               setShowCashOutModal(false)
               setCashAmount('')
-              setCashReason('')
+              setCashAmountNotes('')
             }}
             disabled={cashLoading}
           >

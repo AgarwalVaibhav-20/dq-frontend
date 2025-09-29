@@ -8,7 +8,7 @@ import {
   fetchPOSTransactions,
 } from '../../redux/slices/transactionSlice'
 import { fetchDuesByCustomer } from '../../redux/slices/duesSlice'
-import { CSpinner, CModal, CModalBody, CModalHeader, CModalTitle, CModalFooter, CButton } from '@coreui/react'
+import { CSpinner, CModal, CModalBody, CModalHeader, CModalTitle, CModalFooter, CButton, CForm, CFormLabel, CFormInput } from '@coreui/react'
 
 import CIcon from '@coreui/icons-react'
 import { cilFile, cilTrash, cilUser } from '@coreui/icons'
@@ -21,11 +21,16 @@ import { getRestaurantProfile } from '../../redux/slices/restaurantProfileSlice'
 const Transactions = () => {
   const dispatch = useDispatch()
   const { transactions, loading } = useSelector((state) => state.transactions)
+  // console.log("these r =>",transactions)
   const { customerDues, loading: duesLoading } = useSelector((state) => state.dues)
 
   const restaurantId = useSelector((state) => state.auth.restaurantId)
   const auth = useSelector((state) => state.auth.auth)
   const theme = useSelector((state) => state.theme.theme)
+
+  const [showDeletionModal, setShowDeletionModal] = useState(false)
+  const [deleteTransactionId, setDeleteTransactionId] = useState('')
+  const [deletionRemark, setDeletionRemark] = useState('')
 
   const [modalVisible, setModalVisible] = useState(false)
   const [invoiceContent, setInvoiceContent] = useState(null)
@@ -230,7 +235,9 @@ const Transactions = () => {
   // Direct delete without note modal
   const handleDeleteTransaction = (id) => {
     if (window.confirm('Are you sure you want to delete this transaction?')) {
-      dispatch(deleteTransaction({ id }))
+      setShowDeletionModal(true)
+      setDeleteTransactionId(id)
+      // dispatch(deleteTransaction({ id, deletionRemark }))
     }
   }
 
@@ -275,6 +282,7 @@ const Transactions = () => {
       flex: isMobile ? undefined : 1,
       minWidth: isMobile ? 150 : undefined,
       headerClassName: 'header-style',
+      valueGetter: (params) => params.row.userId?._id || 'N/A',
     },
     {
       field: 'username',
@@ -342,6 +350,13 @@ const Transactions = () => {
     {
       field: 'type',
       headerName: 'Payment Type',
+      flex: isMobile ? undefined : 1,
+      minWidth: isMobile ? 150 : undefined,
+      headerClassName: 'header-style',
+    },
+    {
+      field: 'notes',
+      headerName: 'Note',
       flex: isMobile ? undefined : 1,
       minWidth: isMobile ? 150 : undefined,
       headerClassName: 'header-style',
@@ -465,6 +480,65 @@ const Transactions = () => {
         </CModal>
       )}
 
+      {/* Deletion remark modal */}
+      <CModal
+        visible={showDeletionModal}
+        onClose={() => {
+          setShowDeletionModal(false)
+          setDeleteTransactionId('')
+          setDeletionRemark('')
+        }}
+        size="md"
+        backdrop="static"
+      >
+        <CModalHeader>
+          <CModalTitle className="d-flex align-items-center gap-2">
+            <CIcon icon={cilTrash} />
+            Add a deletion remark
+          </CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <CForm>
+            <div className="mb-3">
+              <CFormLabel htmlFor="cashInAmount">Remark </CFormLabel>
+              <CFormInput
+                type="string"
+                id="DeletionRemarkNote"
+                placeholder="Enter any remark"
+                value={deletionRemark}
+                onChange={(e) => setDeletionRemark(e.target.value)}
+                disabled={loading}
+              />
+            </div>
+          </CForm>
+        </CModalBody>
+        <CModalFooter>
+          <CButton
+            color="secondary"
+            onClick={() => {
+              setShowDeletionModal(false)
+              setDeletionRemark('')
+              setDeleteTransactionId('')
+            }}
+            disabled={loading}
+          >
+            Cancel
+          </CButton>
+          <CButton
+            color="success"
+            onClick={() => dispatch(deleteTransaction({ id:deleteTransactionId, deletionRemark }))}
+          >
+            {loading ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                Processing...
+              </>
+            ) : (
+              'Delete transaction'
+            )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
 
       {/* Modal for Customer Dues */}
       <CModal visible={showCustomerDuesModal} onClose={() => setShowCustomerDuesModal(false)} size="lg">

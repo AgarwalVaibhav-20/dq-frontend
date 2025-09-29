@@ -110,7 +110,7 @@ export default function QRCode() {
       // Refresh QR list to show the new table
       dispatch(getQrs({restaurantId}))
     } else {
-      alert(result.payload || 'Failed to create QR code')
+      alert(result.payload.message || 'Failed to create QR code')
     }
   }
 

@@ -34,7 +34,7 @@ const ProductList = ({
   const theme = useSelector((state) => state.theme.theme);
   const isDarkMode = theme === 'dark';
 
-  // console.log(filteredMenuItems)
+  // console.log("filtered itesm menu",filteredMenuItems)
 
   // Modal state
   const [showSizeModal, setShowSizeModal] = useState(false);
@@ -213,7 +213,7 @@ const ProductList = ({
                   <CTooltip content={`Click to select size for ${product.itemName}`} placement="top">
                     <div
                       onClick={() => handleProductClick(product)}
-                      className={`p-3 d-flex flex-column align-items-center justify-content-between text-center border rounded-4 h-100 w-100 shadow-sm transition-all hover-scale ${isDarkMode ? 'bg-secondary text-light' : 'bg-white'
+                      className={`p-2 d-flex flex-column align-items-center justify-content-between text-center border rounded-4 h-100 w-100 shadow-sm transition-all hover-scale ${isDarkMode ? 'bg-secondary text-light' : 'bg-white'
                         }`}
                       style={{
                         cursor: 'pointer',
@@ -232,7 +232,7 @@ const ProductList = ({
                       }}
                     >
                     
-                        <div className="mb-2" style={{ width: '60px', height: '60px' }}>
+                        {/* <div className="mb-2" style={{ width: '60px', height: '60px' }}>
                           <img
                             src={product.itemImage}
                             alt={product.itemName}
@@ -243,7 +243,7 @@ const ProductList = ({
                               borderRadius: '8px',
                             }}
                           />
-                        </div>
+                        </div> */}
                       <h6
                         className="mb-1 fw-semibold"
                         style={{
@@ -256,9 +256,9 @@ const ProductList = ({
                       >
                         {product.itemName}
                       </h6>
-                      {/* <span className="text-primary fw-bold" style={{ fontSize: '15px' }}>
-                        ₹{product.price}
-                      </span> */}
+                      <span className="text-primary fw-bold" style={{ fontSize: '15px' }}>
+                        ₹{!product.sizes[0]?.price ? product.price : product.sizes[0].price}
+                      </span>
                     </div>
                   </CTooltip>
                 </CCol>
