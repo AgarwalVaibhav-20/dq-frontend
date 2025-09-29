@@ -85,6 +85,25 @@ const Cart = ({
     return cart.reduce((acc, item) => acc + (Number(item.taxAmount) || 0), 0);
   };
 
+  const getTaxDisplayName = () => {
+    // Get the first tax name from cart items, or default to "Total Tax"
+    const taxNames = cart
+      .filter(item => item.taxName && item.taxAmount > 0)
+      .map(item => item.taxName);
+    
+    if (taxNames.length > 0) {
+      // If all items have the same tax name, show that name
+      const uniqueTaxNames = [...new Set(taxNames)];
+      if (uniqueTaxNames.length === 1) {
+        return uniqueTaxNames[0];
+      } else {
+        // If different tax names, show "Total Tax"
+        return "Total Tax";
+      }
+    }
+    return "Total Tax";
+  };
+
   const getDiscountAmount = () => {
     if (calculateDiscountAmount) return calculateDiscountAmount();
     return (getSubtotal() * (discount || 0)) / 100;
@@ -325,7 +344,7 @@ const Cart = ({
               <span>₹{getSubtotal().toFixed(2)}</span>
             </div>
             <div className="d-flex justify-content-between mb-2">
-              <span>Total Tax</span>
+              <span>{getTaxDisplayName()}</span>
               <span>₹{getTotalTaxAmount().toFixed(2)}</span>
             </div>
             <div className="d-flex justify-content-between mb-2">
@@ -486,7 +505,7 @@ const Cart = ({
                 <span>₹{getSubtotal().toFixed(2)}</span>
               </div>
               <div className="d-flex justify-content-between mb-1">
-                <span>Total Tax:</span>
+                <span>{getTaxDisplayName()}:</span>
                 <span>₹{getTotalTaxAmount().toFixed(2)}</span>
               </div>
               <div className="d-flex justify-content-between mb-1">

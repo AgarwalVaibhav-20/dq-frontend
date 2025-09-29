@@ -363,7 +363,7 @@ const POSTableContent = () => {
     localStorage.removeItem(`start_time_${tableId}`)
   }
 
-  const handleTaxSubmit = (selectedItemIds, taxValue, taxType) => {
+  const handleTaxSubmit = (selectedItemIds, taxValue, taxType, taxName) => {
     setCart(prevCart =>
       prevCart.map(item => {
         // The selectedItemIds are now the unique composite IDs (e.g., 'prod1_size1')
@@ -386,14 +386,15 @@ const POSTableContent = () => {
             taxType: taxType,
             taxPercentage: taxPercentage,
             fixedTaxAmount: fixedTaxAmount,
-            taxAmount: taxAmount
+            taxAmount: taxAmount,
+            taxName: taxName || 'Tax' // Store the tax name
           };
         }
         return item;
       })
     );
 
-    toast.success(`${taxType === 'percentage' ? 'Percentage' : 'Fixed'} tax applied to ${selectedItemIds.length} item(s)!`);
+    toast.success(`${taxName || 'Tax'} applied to ${selectedItemIds.length} item(s)!`);
   };
 
   const handleDiscountSubmit = (discounts) => {

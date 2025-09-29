@@ -3,8 +3,26 @@ import React from "react";
 const KOT = React.forwardRef(({ tableNumber, cart, selectedSystem }, ref) => {
   // Calculate total for the entire order
   const totalAmount = cart.reduce((acc, item) => acc + item.adjustedPrice * item.quantity, 0);
+  const totalTaxAmount = cart.reduce((acc, item) => acc + (Number(item.taxAmount) || 0), 0);
   const systemCharge = selectedSystem ? Number(selectedSystem.chargeOfSystem || 0) : 0;
-  const grandTotal = totalAmount + systemCharge;
+  const grandTotal = totalAmount + totalTaxAmount + systemCharge;
+
+  // Get tax display name
+  const getTaxDisplayName = () => {
+    const taxNames = cart
+      .filter(item => item.taxName && item.taxAmount > 0)
+      .map(item => item.taxName);
+    
+    if (taxNames.length > 0) {
+      const uniqueTaxNames = [...new Set(taxNames)];
+      if (uniqueTaxNames.length === 1) {
+        return uniqueTaxNames[0];
+      } else {
+        return "Total Tax";
+      }
+    }
+    return "Total Tax";
+  };
 
   return (
     <div
@@ -56,6 +74,11 @@ const KOT = React.forwardRef(({ tableNumber, cart, selectedSystem }, ref) => {
       <p style={{ margin: "2px 0" }}>
         <strong>Subtotal:</strong> ₹{totalAmount.toFixed(2)}
       </p>
+      {totalTaxAmount > 0 && (
+        <p style={{ margin: "2px 0" }}>
+          <strong>{getTaxDisplayName()}:</strong> ₹{totalTaxAmount.toFixed(2)}
+        </p>
+      )}
       {selectedSystem && (
         <p style={{ margin: "2px 0" }}>
           <strong>System Charge ({selectedSystem.systemName}):</strong> ₹{systemCharge.toFixed(2)}

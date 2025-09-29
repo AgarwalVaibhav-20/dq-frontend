@@ -25,6 +25,22 @@ const RoundOffAmountModal = ({
   discount = 0,
   cart = []          
 }) => {
+  // Get tax display name
+  const getTaxDisplayName = () => {
+    const taxNames = cart
+      .filter(item => item.taxName && item.taxAmount > 0)
+      .map(item => item.taxName);
+    
+    if (taxNames.length > 0) {
+      const uniqueTaxNames = [...new Set(taxNames)];
+      if (uniqueTaxNames.length === 1) {
+        return uniqueTaxNames[0];
+      } else {
+        return "Total Tax";
+      }
+    }
+    return "Total Tax";
+  };
   // Calculate base total (before round off)
   const originalTotal = subtotal + tax - discount;
 
@@ -129,7 +145,7 @@ const RoundOffAmountModal = ({
             <span className="fw-semibold">₹{subtotal.toFixed(2)}</span>
           </div>
           <div className="d-flex justify-content-between mb-2">
-            <span>Total Tax:</span>
+            <span>{getTaxDisplayName()}:</span>
             <span className="fw-semibold">₹{tax.toFixed(2)}</span>
           </div>
           <div className="d-flex justify-content-between mb-2">

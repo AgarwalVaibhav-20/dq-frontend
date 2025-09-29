@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   CModal,
   CModalHeader,
@@ -8,7 +8,11 @@ import {
   CButton,
   CFormInput,
   CFormCheck,
+  CFormSelect,
+  CSpinner,
+  CAlert,
 } from '@coreui/react';
+import axiosInstance from '../utils/axiosConfig';
 
 const TaxModal = ({
   showTaxModal,
@@ -17,8 +21,37 @@ const TaxModal = ({
   handleTaxSubmit,
 }) => {
   const [selectedItemIds, setSelectedItemIds] = useState([]);
-  const [taxValue, setTaxValue] = useState('');
-  const [taxType, setTaxType] = useState('percentage'); // 'percentage' or 'fixed'
+  const [selectedTax, setSelectedTax] = useState(null);
+  const [taxes, setTaxes] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  // Fetch taxes from database when modal opens
+  useEffect(() => {
+    if (showTaxModal) {
+      fetchTaxes();
+    }
+  }, [showTaxModal]);
+
+  const fetchTaxes = async () => {
+    try {
+      setLoading(true);
+      setError('');
+      const restaurantId = localStorage.getItem('restaurantId');
+      const response = await axiosInstance.get(`/api/tax?restaurantId=${restaurantId}`);
+      
+      if (response.data.success) {
+        setTaxes(response.data.data || []);
+      } else {
+        setError('Failed to fetch taxes');
+      }
+    } catch (error) {
+      console.error('Error fetching taxes:', error);
+      setError('Failed to fetch taxes');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const toggleSelection = (itemId) => {
     setSelectedItemIds((prev) =>
@@ -37,28 +70,33 @@ const TaxModal = ({
   };
 
   const onSubmit = () => {
-    if (selectedItemIds.length === 0 || !taxValue || Number(taxValue) <= 0) {
+    if (selectedItemIds.length === 0 || !selectedTax) {
       return;
     }
 
-    handleTaxSubmit(selectedItemIds, Number(taxValue), taxType);
+    const taxValue = parseFloat(selectedTax.taxCharge);
+    const taxType = selectedTax.taxType;
+
+    handleTaxSubmit(selectedItemIds, taxValue, taxType, selectedTax.taxName);
 
     // Reset form
     setSelectedItemIds([]);
-    setTaxValue('');
-    setTaxType('percentage');
+    setSelectedTax(null);
     setShowTaxModal(false);
   };
 
   const handleClose = () => {
     setSelectedItemIds([]);
-    setTaxValue('');
-    setTaxType('percentage');
+    setSelectedTax(null);
+    setError('');
     setShowTaxModal(false);
   };
 
   const calculatePreview = () => {
-    if (!taxValue || selectedItemIds.length === 0 || Number(taxValue) <= 0) return 0;
+    if (!selectedTax || selectedItemIds.length === 0) return 0;
+
+    const taxValue = parseFloat(selectedTax.taxCharge);
+    const taxType = selectedTax.taxType;
 
     return selectedItemIds.reduce((total, itemId) => {
       const item = cart.find(cartItem => (cartItem.id || cartItem._id) === itemId);
@@ -68,13 +106,21 @@ const TaxModal = ({
       let itemTax = 0;
       
       if (taxType === 'percentage') {
-        itemTax = (itemSubtotal * Number(taxValue)) / 100;
+        itemTax = (itemSubtotal * taxValue) / 100;
       } else if (taxType === 'fixed') {
-        itemTax = Number(taxValue);
+        itemTax = taxValue;
       }
 
       return total + itemTax;
     }, 0);
+  };
+
+  const formatTaxDisplay = (tax) => {
+    if (tax.taxType === 'percentage') {
+      return `${tax.taxName} (${tax.taxCharge}%)`;
+    } else {
+      return `${tax.taxName} (₹${tax.taxCharge})`;
+    }
   };
 
   return (
@@ -84,54 +130,44 @@ const TaxModal = ({
       </CModalHeader>
       <CModalBody style={{ maxHeight: '70vh', overflowY: 'auto' }}>
         
-        {/* Tax Type Selection */}
+        {/* Tax Selection */}
         <div className="mb-4">
-          <label className="form-label fw-bold mb-2">Select Tax Type:</label>
-          <div className="btn-group w-100" role="group">
-            <button
-              type="button"
-              className={`btn ${taxType === 'percentage' ? 'btn-primary' : 'btn-outline-primary'}`}
-              onClick={() => setTaxType('percentage')}
+          <label className="form-label fw-bold mb-2">Select Tax:</label>
+          {loading ? (
+            <div className="text-center py-3">
+              <CSpinner size="sm" />
+              <span className="ms-2">Loading taxes...</span>
+            </div>
+          ) : error ? (
+            <CAlert color="danger">{error}</CAlert>
+          ) : taxes.length === 0 ? (
+            <CAlert color="warning">
+              No taxes found. Please add taxes in Settings first.
+            </CAlert>
+          ) : (
+            <CFormSelect
+              value={selectedTax ? selectedTax._id : ''}
+              onChange={(e) => {
+                const taxId = e.target.value;
+                const tax = taxes.find(t => t._id === taxId);
+                setSelectedTax(tax || null);
+              }}
+              className="form-control-lg"
             >
-              Percentage Tax (%)
-            </button>
-            <button
-              type="button"
-              className={`btn ${taxType === 'fixed' ? 'btn-primary' : 'btn-outline-primary'}`}
-              onClick={() => setTaxType('fixed')}
-            >
-              Fixed Amount Tax (₹)
-            </button>
-          </div>
-          <small className="text-muted mt-2 d-block">
-            <strong>Selected:</strong> {taxType === 'percentage' ? 'Percentage Tax' : 'Fixed Amount Tax'}
-          </small>
-        </div>
-
-        {/* Tax Value Input */}
-        <div className="mb-4">
-          <label className="form-label fw-bold">
-            {taxType === 'percentage' ? 'Enter Tax Percentage (%)' : 'Enter Fixed Tax Amount (₹)'}
-          </label>
-          <CFormInput
-            type="number"
-            placeholder={
-              taxType === 'percentage'
-                ? 'e.g., 18 (for 18% tax)'
-                : 'e.g., 50 (for ₹50 tax per item)'
-            }
-            value={taxValue}
-            onChange={(e) => setTaxValue(e.target.value)}
-            step={taxType === 'percentage' ? '0.01' : '1'}
-            min="0"
-            className="form-control-lg"
-          />
-          <small className="text-muted mt-1">
-            {taxType === 'percentage'
-              ? 'Tax percentage will be applied to each item\'s subtotal (price × quantity)'
-              : 'Fixed tax amount will be added to each selected item'
-            }
-          </small>
+              <option value="">Select a tax...</option>
+              {taxes.map((tax) => (
+                <option key={tax._id} value={tax._id}>
+                  {formatTaxDisplay(tax)}
+                </option>
+              ))}
+            </CFormSelect>
+          )}
+          
+          {selectedTax && (
+            <small className="text-muted mt-2 d-block">
+              <strong>Selected:</strong> {formatTaxDisplay(selectedTax)}
+            </small>
+          )}
         </div>
 
         {/* Items Selection */}
@@ -157,21 +193,20 @@ const TaxModal = ({
           ) : (
             <div className="item-list">
               {cart.map((item) => {
-                // const itemId = item.id || item._id; // This line is no longer needed if used correctly below
                 const itemSubtotal = item.adjustedPrice * item.quantity;
                 const hasCurrentTax = (item.taxPercentage > 0) || (item.fixedTaxAmount > 0) || (item.taxAmount > 0);
-                const isSelected = selectedItemIds.includes(item.id); // Use item.id directly
+                const isSelected = selectedItemIds.includes(item.id);
 
                 return (
                   <div 
-                    key={item.id} // Use item.id for the key
+                    key={item.id}
                     className={`p-2 mb-2 rounded ${isSelected ? 'bg-light border-primary' : 'bg-white'} border`}
                   >
                     <div className="d-flex align-items-start">
                       <CFormCheck
                         type="checkbox"
                         checked={isSelected}
-                        onChange={() => toggleSelection(item.id)} // Pass item.id
+                        onChange={() => toggleSelection(item.id)}
                         className="me-3 mt-1"
                       />
                       <div className="flex-grow-1">
@@ -203,15 +238,15 @@ const TaxModal = ({
         </div>
 
         {/* Tax Preview */}
-        {selectedItemIds.length > 0 && taxValue && Number(taxValue) > 0 && (
+        {selectedItemIds.length > 0 && selectedTax && (
           <div className="alert alert-info">
             <div className="d-flex justify-content-between align-items-center">
               <div>
                 <strong>Tax Preview:</strong>
                 <div className="small text-muted mt-1">
-                  {taxType === 'percentage' 
-                    ? `${taxValue}% tax on ${selectedItemIds.length} selected item(s)`
-                    : `₹${taxValue} fixed tax on ${selectedItemIds.length} selected item(s)`
+                  {selectedTax.taxType === 'percentage' 
+                    ? `${selectedTax.taxCharge}% ${selectedTax.taxName} on ${selectedItemIds.length} selected item(s)`
+                    : `₹${selectedTax.taxCharge} ${selectedTax.taxName} on ${selectedItemIds.length} selected item(s)`
                   }
                 </div>
               </div>
@@ -233,9 +268,9 @@ const TaxModal = ({
         <CButton
           color="primary"
           onClick={onSubmit}
-          disabled={selectedItemIds.length === 0 || !taxValue || Number(taxValue) <= 0}
+          disabled={selectedItemIds.length === 0 || !selectedTax}
         >
-          Apply {taxType === 'percentage' ? 'Percentage' : 'Fixed'} Tax
+          Apply {selectedTax?.taxName || 'Tax'}
         </CButton>
       </CModalFooter>
     </CModal>

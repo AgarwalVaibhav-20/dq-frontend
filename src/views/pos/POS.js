@@ -424,9 +424,14 @@ const POS = () => {
         }
       })
 
+      // Generate merge name based on table numbers (e.g., Merge12, Merge23)
+      const sortedTableNumbers = tableNumbers.sort((a, b) => a - b)
+      const mergeName = `Merge${sortedTableNumbers.join('')}`
+
       const mergedTable = {
         id: `merged_${Date.now()}`,
-        name: `Merged (${tableNumbers.map(t => `T${t}`).join(', ')})`,
+        name: mergeName,
+        originalTables: tableNumbers.map(t => `T${t}`).join(', '),
         tables: tableNumbers,
         combinedOrders,
         totalAmount,
@@ -461,7 +466,7 @@ const POS = () => {
       setShowMergeModal(false)
       setSelectedMergeTables([])
 
-      alert(`Successfully merged ${tableNumbers.length} tables!`)
+      alert(`Successfully merged tables ${tableNumbers.join(', ')} into ${mergeName}!`)
     } catch (error) {
       alert('Failed to merge tables. Please try again.')
     } finally {
@@ -890,14 +895,49 @@ const POS = () => {
         // </>
         // ADD THIS NEW LOGIC
         <>
+
+          {/* Merged Tables Section - Show all merged tables at the top */}
+          {mergedTables.length > 0 && (
+            <div className="mb-5">
+              <h4 className="fw-bold mb-3 border-bottom pb-2">Merged Tables ({mergedTables.length})</h4>
+              <CRow className="justify-content-start">
+                {mergedTables.map((mergedTable) => (
+                  <CCol
+                    key={mergedTable.id}
+                    xs="6" sm="4" md="3" lg="2" xl="2"
+                    className="mx-2 mb-4 d-flex justify-content-center"
+                  >
+                    <CContainer
+                      className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${
+                        theme === 'dark' ? 'bg-secondary text-white' : 'bg-white text-dark'
+                      }`}
+                      onClick={() => handleMergedTableClick(mergedTable)}
+                      style={{ height: '10rem', cursor: 'pointer', position: 'relative' }}
+                    >
+                      <CBadge color="info" className="position-absolute top-0 start-0 m-1" style={{ fontSize: '0.6rem' }}>
+                        MERGED
+                      </CBadge>
+                      <div className="fw-bold">{mergedTable.name}</div>
+                      <small className="text-center mt-1">
+                        ({mergedTable.originalTables || mergedTable.tables?.map(t => `T${t}`).join(', ')})
+                      </small>
+                      {mergedTable.combinedOrders?.length > 0 && (
+                        <small className="text-center mt-1">{mergedTable.combinedOrders.length} items</small>
+                      )}
+                    </CContainer>
+                  </CCol>
+                ))}
+              </CRow>
+            </div>
+          )}
+
           {/* Loop through each floor and create a section for it */}
           {manjil.map((floor) => {
             // Get the tables specifically for this floor in the loop
-            const mergedFloorTables = getMergedTablesForFloor(floor._id);
             const availableFloorTables = getAvailableTables(floor._id);
 
-            // If there are no tables of any kind for this floor, don't render the section
-            if (mergedFloorTables.length === 0 && availableFloorTables.length === 0) {
+            // If there are no tables for this floor, don't render the section
+            if (availableFloorTables.length === 0) {
               return null;
             }
 
@@ -906,84 +946,42 @@ const POS = () => {
                 {/* Floor Header */}
                 <h4 className="fw-bold mb-3 border-bottom pb-2">Floor: {floor.name}</h4>
 
-                {/* Merged Tables for this Floor */}
-                {mergedFloorTables.length > 0 && (
-                  <div className="mb-4">
-                    <h5 className="mb-3 text-muted">Merged Tables</h5>
-                    <CRow className="justify-content-start">
-                      {mergedFloorTables.map((mergedTable) => (
-                        // This is the same JSX you had before for merged tables
+                {/* Individual Tables for this Floor */}
+                <div>
+                  <CRow className="justify-content-start">
+                    {availableFloorTables.map((qr, index) => {
+                      // This is the same JSX you had before for individual tables
+                      const floorName = getFloorNameFromQr(qr);
+                      return (
                         <CCol
-                          key={mergedTable.id}
+                          key={index}
                           xs="6" sm="4" md="3" lg="2" xl="2"
                           className="mx-2 mb-4 d-flex justify-content-center"
                         >
                           <CContainer
-                            className="d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 bg-info text-white"
-                            onClick={() => handleMergedTableClick(mergedTable)}
-                            style={{ height: '12rem', cursor: 'pointer', position: 'relative' }}
+                            className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${
+                              shouldTableBeRed(qr)
+                                ? 'bg-danger text-white'
+                                : theme === 'dark'
+                                ? 'bg-secondary text-white'
+                                : 'bg-white text-dark'
+                            }`}
+                            onClick={() => handleQrClick(qr)}
+                            style={{ height: '10rem', cursor: 'pointer', width: '100%', position: 'relative' }}
                           >
-                            <CBadge color="light" className="position-absolute top-0 end-0 m-1" style={{ fontSize: '0.7rem' }}>
-                              MERGED
+                            <CBadge color="secondary" className="position-absolute top-0 start-0 m-1" style={{ fontSize: '0.6rem' }}>
+                              {floorName}
                             </CBadge>
-                            <div className="fw-bold text-center mb-1">{mergedTable.name}</div>
-                            <small className="text-center">{mergedTable.combinedOrders?.length || 0} items</small>
-                            <small className="text-center">₹{(mergedTable.totalAmount || 0).toFixed(2)}</small>
-                            <small className="text-center">{formatDuration(mergedTable.startTime)}</small>
-                            <CButton
-                              size="sm"
-                              color="light"
-                              className="mt-2"
-                              onClick={(e) => { e.stopPropagation(); handleUnmergeTable(mergedTable) }}
-                            >
-                              Unmerge
-                            </CButton>
+                            <div className="fw-bold">Table {qr.tableNumber}</div>
+                            {isItemInCart(qr) && (
+                              <small className="text-center mt-1">{cart[qr.tableNumber]?.length || 0} items</small>
+                            )}
                           </CContainer>
                         </CCol>
-                      ))}
-                    </CRow>
-                  </div>
-                )}
-
-                {/* Individual Tables for this Floor */}
-                {availableFloorTables.length > 0 && (
-                  <div>
-                    {/* <h5 className="mb-3 text-muted">Individual Tables</h5> */}
-                    <CRow className="justify-content-start">
-                      {availableFloorTables.map((qr, index) => {
-                        // This is the same JSX you had before for individual tables
-                        const floorName = getFloorNameFromQr(qr);
-                        return (
-                          <CCol
-                            key={index}
-                            xs="6" sm="4" md="3" lg="2" xl="2"
-                            className="mx-2 mb-4 d-flex justify-content-center"
-                          >
-                            <CContainer
-                              className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${
-                                shouldTableBeRed(qr)
-                                  ? 'bg-danger text-white'
-                                  : theme === 'dark'
-                                  ? 'bg-secondary text-white'
-                                  : 'bg-white text-dark'
-                              }`}
-                              onClick={() => handleQrClick(qr)}
-                              style={{ height: '10rem', cursor: 'pointer', width: '100%', position: 'relative' }}
-                            >
-                              <CBadge color="secondary" className="position-absolute top-0 start-0 m-1" style={{ fontSize: '0.6rem' }}>
-                                {floorName}
-                              </CBadge>
-                              <div className="fw-bold">Table {qr.tableNumber}</div>
-                              {isItemInCart(qr) && (
-                                <small className="text-center mt-1">{cart[qr.tableNumber]?.length || 0} items</small>
-                              )}
-                            </CContainer>
-                          </CCol>
-                        );
-                      })}
-                    </CRow>
-                  </div>
-                )}
+                      );
+                    })}
+                  </CRow>
+                </div>
               </div>
             );
           })}

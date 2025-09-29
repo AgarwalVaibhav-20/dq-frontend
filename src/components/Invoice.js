@@ -18,6 +18,22 @@ const Invoice = React.forwardRef(
     },
     ref,
   ) => {
+    // Get tax display name
+    const getTaxDisplayName = () => {
+      const taxNames = cart
+        .filter(item => item.taxName && item.taxAmount > 0)
+        .map(item => item.taxName);
+      
+      if (taxNames.length > 0) {
+        const uniqueTaxNames = [...new Set(taxNames)];
+        if (uniqueTaxNames.length === 1) {
+          return uniqueTaxNames[0];
+        } else {
+          return "Total Tax";
+        }
+      }
+      return "Total Tax";
+    };
     const dispatch = useDispatch();
     const restaurantId = useSelector((state) => state.auth.restaurantId);
     const token = useSelector((state) => state.auth.token);
@@ -110,7 +126,7 @@ const Invoice = React.forwardRef(
           <strong>Subtotal:</strong> ₹{calculateSubtotal()}
         </p>
         <p style={{ margin: '2px 0' }}>
-          <strong>Tax :</strong> ₹{calculateTaxAmount().toFixed(2)}
+          <strong>{getTaxDisplayName()}:</strong> ₹{calculateTaxAmount().toFixed(2)}
         </p>
         <p style={{ margin: '2px 0' }}>
           <strong>Discount :</strong> ₹{calculateDiscountAmount().toFixed(2)}

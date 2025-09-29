@@ -21,34 +21,57 @@ import {
   CTableRow,
   CBadge,
   CContainer,
+  CNav,
+  CNavItem,
+  CNavLink,
+  CTabContent,
+  CTabPane,
 } from '@coreui/react'
 import { toast } from 'react-toastify'
 import axios from 'axios'
 import axiosInstance from '../../utils/axiosConfig'
 import { BASE_URL } from '../../utils/constants'
 import CIcon from '@coreui/icons-react'
-import { cilSettings, cilPlus, cilTrash, cilPencil, cilSave } from '@coreui/icons'
+import { cilSettings, cilPlus, cilTrash, cilPencil, cilSave, cilMoney } from '@coreui/icons'
 
 const Settings = () => {
-  const [formData, setFormData] = useState({
+  // Tab state
+  const [activeTab, setActiveTab] = useState('system')
+
+  // System state
+  const [systemFormData, setSystemFormData] = useState({
     systemName: '',
     chargeOfSystem: '',
     willOccupy: false,
   })
   const [systems, setSystems] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [saving, setSaving] = useState(false)
-  const [error, setError] = useState('')
+  const [systemLoading, setSystemLoading] = useState(false)
+  const [systemSaving, setSystemSaving] = useState(false)
+  const [systemError, setSystemError] = useState('')
   const [editingSystem, setEditingSystem] = useState(null)
 
-  // Fetch all systems on component mount
+  // Tax state
+  const [taxFormData, setTaxFormData] = useState({
+    taxName: '',
+    taxCharge: '',
+    taxType: 'percentage',
+  })
+  const [taxes, setTaxes] = useState([])
+  const [taxLoading, setTaxLoading] = useState(false)
+  const [taxSaving, setTaxSaving] = useState(false)
+  const [taxError, setTaxError] = useState('')
+  const [editingTax, setEditingTax] = useState(null)
+
+  // Fetch all systems and taxes on component mount
   useEffect(() => {
     fetchSystems()
+    fetchTaxes()
   }, [])
 
+  // System functions
   const fetchSystems = async () => {
     try {
-      setLoading(true)
+      setSystemLoading(true)
       const restaurantId = localStorage.getItem('restaurantId')
       const response = await axiosInstance.get(`/api/settings?restaurantId=${restaurantId}`)
       
@@ -58,45 +81,45 @@ const Settings = () => {
     } catch (error) {
       console.error('Error fetching systems:', error)
       if (error.response?.status !== 404) {
-        setError('Failed to fetch systems')
+        setSystemError('Failed to fetch systems')
         toast.error('Failed to fetch systems')
       }
     } finally {
-      setLoading(false)
+      setSystemLoading(false)
     }
   }
 
-  const handleInputChange = (e) => {
+  const handleSystemInputChange = (e) => {
     const { name, value, type, checked } = e.target
-    setFormData(prev => ({
+    setSystemFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : (name === 'willOccupy' ? value === 'true' : value)
     }))
-    setError('')
+    setSystemError('')
   }
 
-  const handleSubmit = async (e) => {
+  const handleSystemSubmit = async (e) => {
     e.preventDefault()
     
     // Validation
-    if (!formData.systemName.trim()) {
-      setError('System name is required')
+    if (!systemFormData.systemName.trim()) {
+      setSystemError('System name is required')
       return
     }
     
-    if (!formData.chargeOfSystem.trim()) {
-      setError('Charge of system is required')
+    if (!systemFormData.chargeOfSystem.trim()) {
+      setSystemError('Charge of system is required')
       return
     }
 
     try {
-      setSaving(true)
+      setSystemSaving(true)
       const restaurantId = localStorage.getItem('restaurantId')
       
       if (editingSystem) {
         // Update existing system
         const response = await axiosInstance.put(`/api/settings/${editingSystem._id}`, {
-          ...formData,
+          ...systemFormData,
           restaurantId
         })
 
@@ -104,31 +127,26 @@ const Settings = () => {
           toast.success('System updated successfully!')
           setEditingSystem(null)
         } else {
-          setError(response.data.message || 'Failed to update system')
+          setSystemError(response.data.message || 'Failed to update system')
           toast.error('Failed to update system')
         }
       } else {
         // Create new system
-        console.log('Sending data:', {
-          ...formData,
-          restaurantId
-        })
-        
         const response = await axiosInstance.post(`/api/settings`, {
-          ...formData,
+          ...systemFormData,
           restaurantId
         })
 
         if (response.data.success) {
           toast.success('System added successfully!')
         } else {
-          setError(response.data.message || 'Failed to add system')
+          setSystemError(response.data.message || 'Failed to add system')
           toast.error('Failed to add system')
         }
       }
 
-      setError('')
-      setFormData({
+      setSystemError('')
+      setSystemFormData({
         systemName: '',
         chargeOfSystem: '',
         willOccupy: false,
@@ -137,23 +155,23 @@ const Settings = () => {
       fetchSystems()
     } catch (error) {
       console.error('Error saving system:', error)
-      setError('Failed to save system')
+      setSystemError('Failed to save system')
       toast.error('Failed to save system')
     } finally {
-      setSaving(false)
+      setSystemSaving(false)
     }
   }
 
-  const handleEdit = (system) => {
+  const handleSystemEdit = (system) => {
     setEditingSystem(system)
-    setFormData({
+    setSystemFormData({
       systemName: system.systemName,
       chargeOfSystem: system.chargeOfSystem,
       willOccupy: system.willOccupy,
     })
   }
 
-  const handleDelete = async (systemId) => {
+  const handleSystemDelete = async (systemId) => {
     if (window.confirm('Are you sure you want to delete this system?')) {
       try {
         const response = await axiosInstance.delete(`/api/settings/${systemId}`)
@@ -171,27 +189,210 @@ const Settings = () => {
     }
   }
 
-  const handleCancel = () => {
+  const handleSystemCancel = () => {
     setEditingSystem(null)
-    setFormData({
+    setSystemFormData({
       systemName: '',
       chargeOfSystem: '',
       willOccupy: false,
     })
-    setError('')
+    setSystemError('')
   }
 
-  if (loading) {
-    return (
-      <div className="d-flex justify-content-center align-items-center" style={{ height: '400px' }}>
-        <CSpinner color="primary" variant="grow" />
-        <span className="ms-2">Loading settings...</span>
-      </div>
-    )
+  // Tax functions
+  const fetchTaxes = async () => {
+    try {
+      setTaxLoading(true)
+      const restaurantId = localStorage.getItem('restaurantId')
+      const response = await axiosInstance.get(`/api/tax?restaurantId=${restaurantId}`)
+      
+      if (response.data.success) {
+        setTaxes(response.data.data || [])
+      }
+    } catch (error) {
+      console.error('Error fetching taxes:', error)
+      if (error.response?.status !== 404) {
+        setTaxError('Failed to fetch taxes')
+        toast.error('Failed to fetch taxes')
+      }
+    } finally {
+      setTaxLoading(false)
+    }
+  }
+
+  const handleTaxInputChange = (e) => {
+    const { name, value } = e.target
+    setTaxFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+    setTaxError('')
+  }
+
+  const handleTaxSubmit = async (e) => {
+    e.preventDefault()
+    
+    // Validation
+    if (!taxFormData.taxName.trim()) {
+      setTaxError('Tax name is required')
+      return
+    }
+    
+    if (!taxFormData.taxCharge.trim()) {
+      setTaxError('Tax charge is required')
+      return
+    }
+
+    // Validate tax charge based on type
+    const chargeValue = parseFloat(taxFormData.taxCharge)
+    if (isNaN(chargeValue) || chargeValue < 0) {
+      setTaxError('Tax charge must be a valid positive number')
+      return
+    }
+
+    if (taxFormData.taxType === 'percentage' && chargeValue > 100) {
+      setTaxError('Percentage tax cannot exceed 100%')
+      return
+    }
+
+    try {
+      setTaxSaving(true)
+      const restaurantId = localStorage.getItem('restaurantId')
+      
+      if (editingTax) {
+        // Update existing tax
+        const response = await axiosInstance.put(`/api/tax/${editingTax._id}`, {
+          ...taxFormData,
+          restaurantId
+        })
+
+        if (response.data.success) {
+          toast.success('Tax updated successfully!')
+          setEditingTax(null)
+        } else {
+          setTaxError(response.data.message || 'Failed to update tax')
+          toast.error('Failed to update tax')
+        }
+      } else {
+        // Create new tax
+        const response = await axiosInstance.post(`/api/tax`, {
+          ...taxFormData,
+          restaurantId
+        })
+
+        if (response.data.success) {
+          toast.success('Tax added successfully!')
+        } else {
+          setTaxError(response.data.message || 'Failed to add tax')
+          toast.error('Failed to add tax')
+        }
+      }
+
+      setTaxError('')
+      setTaxFormData({
+        taxName: '',
+        taxCharge: '',
+        taxType: 'percentage',
+      })
+      // Refresh the taxes list
+      fetchTaxes()
+    } catch (error) {
+      console.error('Error saving tax:', error)
+      setTaxError('Failed to save tax')
+      toast.error('Failed to save tax')
+    } finally {
+      setTaxSaving(false)
+    }
+  }
+
+  const handleTaxEdit = (tax) => {
+    setEditingTax(tax)
+    setTaxFormData({
+      taxName: tax.taxName,
+      taxCharge: tax.taxCharge,
+      taxType: tax.taxType,
+    })
+  }
+
+  const handleTaxDelete = async (taxId) => {
+    if (window.confirm('Are you sure you want to delete this tax?')) {
+      try {
+        const response = await axiosInstance.delete(`/api/tax/${taxId}`)
+
+        if (response.data.success) {
+          toast.success('Tax deleted successfully!')
+          fetchTaxes()
+        } else {
+          toast.error('Failed to delete tax')
+        }
+      } catch (error) {
+        console.error('Error deleting tax:', error)
+        toast.error('Failed to delete tax')
+      }
+    }
+  }
+
+  const handleTaxCancel = () => {
+    setEditingTax(null)
+    setTaxFormData({
+      taxName: '',
+      taxCharge: '',
+      taxType: 'percentage',
+    })
+    setTaxError('')
+  }
+
+  const formatTaxCharge = (charge, type) => {
+    if (type === 'percentage') {
+      return `${charge}%`
+    } else {
+      return `₹${charge}`
+    }
   }
 
   return (
     <CContainer>
+      {/* Tab Navigation */}
+      <CRow className="mb-4">
+        <CCol>
+          <CCard>
+            <CCardHeader>
+              <CCardTitle>
+                <CIcon icon={cilSettings} className="me-2" />
+                Settings Management
+              </CCardTitle>
+            </CCardHeader>
+            <CCardBody>
+              <CNav variant="tabs" role="tablist">
+                <CNavItem>
+                  <CNavLink
+                    active={activeTab === 'system'}
+                    onClick={() => setActiveTab('system')}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <CIcon icon={cilSettings} className="me-2" />
+                    System Settings
+                  </CNavLink>
+                </CNavItem>
+                <CNavItem>
+                  <CNavLink
+                    active={activeTab === 'tax'}
+                    onClick={() => setActiveTab('tax')}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <CIcon icon={cilMoney} className="me-2" />
+                    Tax Settings
+                  </CNavLink>
+                </CNavItem>
+              </CNav>
+            </CCardBody>
+          </CCard>
+        </CCol>
+      </CRow>
+
+      <CTabContent>
+        {/* System Tab */}
+        <CTabPane role="tabpanel" aria-labelledby="system-tab" visible={activeTab === 'system'}>
       {/* Add/Edit System Form */}
       <CRow className="mb-4">
         <CCol>
@@ -203,13 +404,13 @@ const Settings = () => {
               </CCardTitle>
             </CCardHeader>
             <CCardBody>
-              {error && (
+                  {systemError && (
                 <CAlert color="danger" className="mb-3">
-                  {error}
+                      {systemError}
                 </CAlert>
               )}
               
-              <CForm onSubmit={handleSubmit}>
+                  <CForm onSubmit={handleSystemSubmit}>
                 <CRow className="mb-3">
                   <CCol md={6}>
                     <CFormLabel htmlFor="systemName">System Name</CFormLabel>
@@ -217,8 +418,8 @@ const Settings = () => {
                       type="text"
                       id="systemName"
                       name="systemName"
-                      value={formData.systemName}
-                      onChange={handleInputChange}
+                          value={systemFormData.systemName}
+                          onChange={handleSystemInputChange}
                       placeholder="Enter system name"
                       required
                     />
@@ -229,8 +430,8 @@ const Settings = () => {
                       type="text"
                       id="chargeOfSystem"
                       name="chargeOfSystem"
-                      value={formData.chargeOfSystem}
-                      onChange={handleInputChange}
+                          value={systemFormData.chargeOfSystem}
+                          onChange={handleSystemInputChange}
                       placeholder="Enter charge of system"
                       required
                     />
@@ -243,8 +444,8 @@ const Settings = () => {
                     <CFormSelect
                       id="willOccupy"
                       name="willOccupy"
-                      value={formData.willOccupy.toString()}
-                      onChange={handleInputChange}
+                          value={systemFormData.willOccupy.toString()}
+                          onChange={handleSystemInputChange}
                     >
                       <option value="true">True</option>
                       <option value="false">False</option>
@@ -257,10 +458,10 @@ const Settings = () => {
                     <CButton 
                       type="submit" 
                       color="primary" 
-                      disabled={saving}
+                          disabled={systemSaving}
                       className="me-2"
                     >
-                      {saving ? (
+                          {systemSaving ? (
                         <>
                           <CSpinner size="sm" className="me-2" />
                           {editingSystem ? 'Updating...' : 'Adding...'}
@@ -275,7 +476,7 @@ const Settings = () => {
                     {editingSystem && (
                       <CButton 
                         color="secondary" 
-                        onClick={handleCancel}
+                            onClick={handleSystemCancel}
                       >
                         Cancel
                       </CButton>
@@ -301,12 +502,12 @@ const Settings = () => {
                   className="me-2"
                   onClick={() => {
                     setEditingSystem(null)
-                    setFormData({
+                        setSystemFormData({
                       systemName: '',
                       chargeOfSystem: '',
                       willOccupy: false,
                     })
-                    setError('')
+                        setSystemError('')
                   }}
                 >
                   <CIcon icon={cilPlus} className="me-1" />
@@ -316,14 +517,14 @@ const Settings = () => {
                   color="primary" 
                   size="sm" 
                   onClick={fetchSystems}
-                  disabled={loading}
+                      disabled={systemLoading}
                 >
-                  {loading ? <CSpinner size="sm" /> : 'Refresh'}
+                      {systemLoading ? <CSpinner size="sm" /> : 'Refresh'}
                 </CButton>
               </div>
             </CCardHeader>
             <CCardBody>
-              {loading ? (
+                  {systemLoading ? (
                 <div className="text-center py-4">
                   <CSpinner />
                   <p className="mt-2">Loading systems...</p>
@@ -369,14 +570,220 @@ const Settings = () => {
                             color="warning"
                             size="sm"
                             className="me-2"
-                            onClick={() => handleEdit(system)}
+                                onClick={() => handleSystemEdit(system)}
+                              >
+                                <CIcon icon={cilPencil} />
+                              </CButton>
+                              <CButton
+                                color="danger"
+                                size="sm"
+                                onClick={() => handleSystemDelete(system._id)}
+                              >
+                                <CIcon icon={cilTrash} />
+                              </CButton>
+                            </CTableDataCell>
+                          </CTableRow>
+                        ))}
+                      </CTableBody>
+                    </CTable>
+                  )}
+                </CCardBody>
+              </CCard>
+            </CCol>
+          </CRow>
+        </CTabPane>
+
+        {/* Tax Tab */}
+        <CTabPane role="tabpanel" aria-labelledby="tax-tab" visible={activeTab === 'tax'}>
+          {/* Add/Edit Tax Form */}
+          <CRow className="mb-4">
+            <CCol>
+              <CCard>
+                <CCardHeader>
+                  <CCardTitle>
+                    <CIcon icon={cilMoney} className="me-2" />
+                    {editingTax ? 'Edit Tax' : 'Add New Tax'}
+                  </CCardTitle>
+                </CCardHeader>
+                <CCardBody>
+                  {taxError && (
+                    <CAlert color="danger" className="mb-3">
+                      {taxError}
+                    </CAlert>
+                  )}
+                  
+                  <CForm onSubmit={handleTaxSubmit}>
+                    <CRow className="mb-3">
+                      <CCol md={6}>
+                        <CFormLabel htmlFor="taxName">Tax Name</CFormLabel>
+                        <CFormInput
+                          type="text"
+                          id="taxName"
+                          name="taxName"
+                          value={taxFormData.taxName}
+                          onChange={handleTaxInputChange}
+                          placeholder="Enter tax name (e.g., GST, VAT)"
+                          required
+                        />
+                      </CCol>
+                      <CCol md={6}>
+                        <CFormLabel htmlFor="taxCharge">Tax Charge</CFormLabel>
+                        <CFormInput
+                          type="number"
+                          id="taxCharge"
+                          name="taxCharge"
+                          value={taxFormData.taxCharge}
+                          onChange={handleTaxInputChange}
+                          placeholder="Enter tax charge"
+                          min="0"
+                          step="0.01"
+                          required
+                        />
+                      </CCol>
+                    </CRow>
+                    
+                    <CRow className="mb-3">
+                      <CCol md={6}>
+                        <CFormLabel htmlFor="taxType">Tax Type</CFormLabel>
+                        <CFormSelect
+                          id="taxType"
+                          name="taxType"
+                          value={taxFormData.taxType}
+                          onChange={handleTaxInputChange}
+                        >
+                          <option value="percentage">Percentage (%)</option>
+                          <option value="fixed">Fixed Amount (₹)</option>
+                        </CFormSelect>
+                      </CCol>
+                    </CRow>
+                    
+                    <CRow>
+                      <CCol>
+                        <CButton 
+                          type="submit" 
+                          color="primary" 
+                          disabled={taxSaving}
+                          className="me-2"
+                        >
+                          {taxSaving ? (
+                            <>
+                              <CSpinner size="sm" className="me-2" />
+                              {editingTax ? 'Updating...' : 'Adding...'}
+                            </>
+                          ) : (
+                            <>
+                              <CIcon icon={cilSave} className="me-2" />
+                              {editingTax ? 'Update Tax' : 'Add Tax'}
+                            </>
+                          )}
+                        </CButton>
+                        {editingTax && (
+                          <CButton 
+                            color="secondary" 
+                            onClick={handleTaxCancel}
+                          >
+                            Cancel
+                          </CButton>
+                        )}
+                      </CCol>
+                    </CRow>
+                  </CForm>
+                </CCardBody>
+              </CCard>
+            </CCol>
+          </CRow>
+
+          {/* Taxes List */}
+          <CRow>
+            <CCol>
+              <CCard>
+                <CCardHeader className="d-flex justify-content-between align-items-center">
+                  <CCardTitle>Tax Settings</CCardTitle>
+                  <div>
+                    <CButton 
+                      color="success" 
+                      size="sm" 
+                      className="me-2"
+                      onClick={() => {
+                        setEditingTax(null)
+                        setTaxFormData({
+                          taxName: '',
+                          taxCharge: '',
+                          taxType: 'percentage',
+                        })
+                        setTaxError('')
+                      }}
+                    >
+                      <CIcon icon={cilPlus} className="me-1" />
+                      Add New
+                    </CButton>
+                    <CButton 
+                      color="primary" 
+                      size="sm" 
+                      onClick={fetchTaxes}
+                      disabled={taxLoading}
+                    >
+                      {taxLoading ? <CSpinner size="sm" /> : 'Refresh'}
+                    </CButton>
+                  </div>
+                </CCardHeader>
+                <CCardBody>
+                  {taxLoading ? (
+                    <div className="text-center py-4">
+                      <CSpinner />
+                      <p className="mt-2">Loading taxes...</p>
+                    </div>
+                  ) : taxes.length === 0 ? (
+                    <div className="text-center py-4">
+                      <CIcon icon={cilMoney} size="3xl" className="text-muted" />
+                      <p className="mt-2 text-muted">No taxes found. Add your first tax above.</p>
+                    </div>
+                  ) : (
+                    <CTable responsive>
+                      <CTableHead>
+                        <CTableRow>
+                          <CTableHeaderCell>Tax Name</CTableHeaderCell>
+                          <CTableHeaderCell>Charge</CTableHeaderCell>
+                          <CTableHeaderCell>Type</CTableHeaderCell>
+                          <CTableHeaderCell>Created</CTableHeaderCell>
+                          <CTableHeaderCell>Actions</CTableHeaderCell>
+                        </CTableRow>
+                      </CTableHead>
+                      <CTableBody>
+                        {taxes.map((tax) => (
+                          <CTableRow key={tax._id}>
+                            <CTableDataCell>
+                              <div className="d-flex align-items-center">
+                                <CIcon icon={cilMoney} className="me-2" />
+                                {tax.taxName}
+                              </div>
+                            </CTableDataCell>
+                            <CTableDataCell>
+                              <CBadge color="info">
+                                {formatTaxCharge(tax.taxCharge, tax.taxType)}
+                              </CBadge>
+                            </CTableDataCell>
+                            <CTableDataCell>
+                              <CBadge color={tax.taxType === 'percentage' ? 'success' : 'warning'}>
+                                {tax.taxType === 'percentage' ? 'Percentage' : 'Fixed'}
+                              </CBadge>
+                            </CTableDataCell>
+                            <CTableDataCell>
+                              {new Date(tax.createdAt).toLocaleDateString()}
+                            </CTableDataCell>
+                            <CTableDataCell>
+                              <CButton
+                                color="warning"
+                                size="sm"
+                                className="me-2"
+                                onClick={() => handleTaxEdit(tax)}
                           >
                             <CIcon icon={cilPencil} />
                           </CButton>
                           <CButton
                             color="danger"
                             size="sm"
-                            onClick={() => handleDelete(system._id)}
+                                onClick={() => handleTaxDelete(tax._id)}
                           >
                             <CIcon icon={cilTrash} />
                           </CButton>
@@ -390,6 +797,8 @@ const Settings = () => {
           </CCard>
         </CCol>
       </CRow>
+        </CTabPane>
+      </CTabContent>
     </CContainer>
   )
 }
