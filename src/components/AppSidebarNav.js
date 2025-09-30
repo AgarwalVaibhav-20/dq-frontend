@@ -30,7 +30,8 @@ export const AppSidebarNav = ({ items }) => {
           await dispatch(refreshUserRole({ userId }));
         }
       } catch (error) {
-        console.log('Auto-refresh role failed:', error);
+        console.error(error)
+        // console.log('Auto-refresh role failed:', error);
       }
     };
     
@@ -69,19 +70,9 @@ export const AppSidebarNav = ({ items }) => {
   const filteredItems = filterItemsByPermissions(items);
 
   // Debug logging
-  console.log('=== SIDEBAR DEBUG ===');
-  console.log('User role:', userRole);
-  console.log('User permissions:', userPermissions);
-  console.log('User permissions type:', typeof userPermissions);
-  console.log('User permissions array:', userPermissions);
-  console.log('Filtered items count:', filteredItems.length);
-  console.log('All items count:', items.length);
-  console.log('Sample navigation items:', items.slice(0, 3).map(item => ({ name: item.name })));
-  console.log('Filtered items:', filteredItems.map(item => ({ name: item.name })));
-  console.log('localStorage permissions:', localStorage.getItem('userPermissions'));
-  console.log('Redux state permissions:', userPermissions);
-  console.log('===================');
-
+  // console.log('User role:', userRole);
+  // console.log('Filtered items count:', filteredItems.length);
+  // console.log('All items count:', items.length);
 
   const navLink = (name, icon, badge, indent = false, disabled = false) => {
     return (

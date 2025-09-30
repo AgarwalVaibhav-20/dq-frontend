@@ -33,6 +33,7 @@ import PaymentTypeReport from './views/reports/PaymentTypeReport'
 import DashboardStatisticsReport from './views/reports/DashboardStatisticsReport'
 import TransactionCountReport from './views/reports/TransactionCountReport'
 import TaxCollectedReport from './views/reports/TaxCollectedReport'
+import DueReport from './views/reports/DueRepoert.js'
 import TableUsageReport from './views/reports/TableUsageReport'
 import DiscountUsageReport from './views/reports/DiscountUsageReport'
 import AverageOrderValueReport from './views/reports/AverageOrderValueReport'
@@ -53,7 +54,7 @@ const ForgotPassword = React.lazy(() => import('./views/pages/forgotPassword/For
 const Otp = React.lazy(() => import('./views/pages/otp/Otp'))
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
 const Orders = React.lazy(() => import('./views/orders/Orders'))
-const SalesAnalytics = React.lazy(()=>import('./views/salesanalytics/SalesAnalytics.js'))
+const SalesAnalytics = React.lazy(() => import('./views/salesanalytics/SalesAnalytics.js'))
 const Waiter = React.lazy(() => import('./views/Permssion/Permission.js'))
 const LoginActivity = React.lazy(() => import('./views/LoginActivity/LoginActivity.js'))
 const PurchaseAnalytics = React.lazy(() => import('./views/purchaseanalytics/PurchaseAnalytics.js'))
@@ -137,7 +138,7 @@ const App = () => {
   const playNotificationSound = () => {
     if (audioRef.current) {
       audioRef.current.play().catch((e) => {
-        console.log('Play prevented:', e)
+        // console.log('Play prevented:', e)
       })
       toast.success('New order received!')
     }
@@ -178,18 +179,19 @@ const App = () => {
       // Fetch user profile to get permissions
       dispatch(fetchUserProfile({ userId, token }))
         .then((result) => {
-          console.log('User profile fetch result:', result)
+          // console.log('Permission check result:', result)
           setPermissionCheckAttempted(true)
         })
         .catch((error) => {
           console.error('User profile fetch failed:', error)
           setPermissionCheckAttempted(true)
         })
-    } else if (!userId || !token) {
-      console.log('Missing userId or token for permission check')
-      console.log('UserId:', userId ? 'Present' : 'Missing')
-      console.log('Token:', token ? 'Present' : 'Missing')
     }
+    //  else if (!userId || !token) {
+    //   console.log('Missing userId or token for permission check')
+    //   console.log('UserId:', userId ? 'Present' : 'Missing')
+    //   console.log('Token:', token ? 'Present' : 'Missing')
+    // }
   }, [dispatch, userId, token, permissionCheckAttempted])
 
   // ✅ Also check permissions when restaurantId changes (if needed)
@@ -217,15 +219,15 @@ const App = () => {
   const isPermissionLoaded = restaurantPermission !== undefined || permissionCheckAttempted
 
   // ✅ Add debug logging
-  useEffect(() => {
-    console.log('App State Debug:')
-    console.log('- UserId:', userId)
-    console.log('- Token:', token ? 'Present' : 'Missing')
-    console.log('- RestaurantId:', restaurantId)
-    console.log('- RestaurantPermission:', restaurantPermission)
-    console.log('- Permission Check Attempted:', permissionCheckAttempted)
-    console.log('- Is Permission Loaded:', isPermissionLoaded)
-  }, [userId, token, restaurantId, restaurantPermission, permissionCheckAttempted, isPermissionLoaded])
+  // useEffect(() => {
+  //   console.log('App State Debug:')
+  //   console.log('- UserId:', userId)
+  //   console.log('- Token:', token ? 'Present' : 'Missing')
+  //   console.log('- RestaurantId:', restaurantId)
+  //   console.log('- RestaurantPermission:', restaurantPermission)
+  //   console.log('- Permission Check Attempted:', permissionCheckAttempted)
+  //   console.log('- Is Permission Loaded:', isPermissionLoaded)
+  // }, [userId, token, restaurantId, restaurantPermission, permissionCheckAttempted, isPermissionLoaded])
 
   return (
     <>
@@ -493,6 +495,11 @@ const App = () => {
                           <DashboardStatisticsReport />
                         </PermissionRestrictedRoute>
                       }
+                    />
+                    <Route path="due-report" element={<PermissionRestrictedRoute permission={restaurantPermission?.permission} >
+                      <DueReport />
+                    </PermissionRestrictedRoute>
+                    }
                     />
                     <Route
                       path="transactionByDate-report"

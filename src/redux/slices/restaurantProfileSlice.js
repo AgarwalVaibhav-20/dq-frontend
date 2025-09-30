@@ -22,7 +22,7 @@ export const getRestaurantProfile = createAsyncThunk(
       }
 
       const response = await axios.get(`${BASE_URL}/account/${userId}`, configureHeaders(token));
-      console.log("Restaurant profile fetched:", response.data);
+      // console.log("Restaurant profile fetched:", response.data);
 
       // Return the actual restaurant object
       return response.data.data;
@@ -57,18 +57,18 @@ export const checkRestaurantPermission = createAsyncThunk(
         throw new Error("No authentication token found");
       }
 
-      console.log("Permission check - userId:", userId);
-      console.log("Permission check - token exists:", !!authToken);
+      // console.log("Permission check - userId:", userId);
+      // console.log("Permission check - token exists:", !!authToken);
 
       const response = await axios.get(
         `${BASE_URL}/check-permission/${userId}`,
         configureHeaders(authToken)
       );
 
-      console.log("Permission response:", response.data);
+      // console.log("Permission response:", response.data);
       return response.data;
     } catch (error) {
-      console.log("Permission check error:", error.response?.data || error.message);
+      // console.log("Permission check error:", error.response?.data || error.message);
       return rejectWithValue(error.response?.data || error.message);
     }
   }
@@ -93,10 +93,10 @@ export const updateRestaurantProfile = createAsyncThunk(
         configureHeaders(token)
       );
 
-      console.log("Profile updated:", response.data);
+      // console.log("Profile updated:", response.data);
       return response.data;
     } catch (error) {
-      console.log(error , "error for updating profile")
+      // console.log(error , "error for updating profile")
       return rejectWithValue(error.response?.data || error.message || 'Something went wrong');
     }
   }
@@ -166,7 +166,7 @@ const restaurantProfileSlice = createSlice({
       })
       .addCase(getRestaurantProfile.fulfilled, (state, action) => {
         state.loading = false;
-        console.log("this is action payload", action.payload); // ✅ payload is the restaurant object
+        // console.log("this is action payload", action.payload); // ✅ payload is the restaurant object
         state.restaurantProfile = action.payload || {};        // store it directly
       })
 

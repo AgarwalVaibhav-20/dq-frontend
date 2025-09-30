@@ -89,13 +89,13 @@ const Menu = () => {
   useEffect(() => {
     if (selectedMenu) {
       // Transform database sizes (with 'label') to frontend format (with 'name')
-      const transformedSizes = selectedMenu.sizes?.length
-        ? selectedMenu.sizes.map(size => ({
-          name: size.label || size.name || "",
-          price: size.price || "",
+      const transformedSizes = Array.isArray(selectedMenu.sizes) && selectedMenu.sizes.length > 0
+      ? selectedMenu.sizes.map(size => ({
+          name: String(size.label || size.name || ""),
+          price: Number(size.price) || "",
           enabled: size.enabled !== undefined ? size.enabled : true
         }))
-        : [{ name: "", price: "", enabled: true }];
+      : [{ name: "", price: "", enabled: true }];
 
       // ✅ FIXED: Properly handle stockItems with units
       const transformedStockItems = selectedMenu.stockItems?.length
@@ -109,7 +109,7 @@ const Menu = () => {
       setFormData({
         menuId: selectedMenu.menuId || "",
         itemName: selectedMenu.itemName || "",
-        categoryId: selectedMenu.categoryId || "",
+        categoryId: selectedMenu.categoryId?._id || "", 
         sub_category: selectedMenu.sub_category || "",
         itemImage: null,
         price: selectedMenu.price || "",
@@ -192,9 +192,9 @@ const Menu = () => {
 
       // ✅ FIXED: Validate and filter stockItems properly
       const validStockItems = formData.stockItems.filter(item =>
-        item.stockId?.trim() && 
-        item.quantity && 
-        Number(item.quantity) > 0 && 
+        item.stockId?.trim() &&
+        item.quantity &&
+        Number(item.quantity) > 0 &&
         item.unit?.trim()
       );
 
@@ -237,7 +237,7 @@ const Menu = () => {
       const validSizes = formData.sizes.filter(size =>
         size.name?.trim() && size.price && Number(size.price) > 0
       );
-      
+
       if (validSizes.length > 0) {
         // Convert to the format expected by backend
         const sizesForBackend = validSizes.map(size => ({
@@ -251,9 +251,9 @@ const Menu = () => {
 
       // ✅ FIXED: Handle stockItems properly with validation
       const validStockItems = formData.stockItems.filter(item =>
-        item.stockId?.trim() && 
-        item.quantity && 
-        Number(item.quantity) > 0 && 
+        item.stockId?.trim() &&
+        item.quantity &&
+        Number(item.quantity) > 0 &&
         item.unit?.trim()
       );
 
@@ -291,16 +291,21 @@ const Menu = () => {
     }
   };
 
+  // In Menu.js
+
   const handleDeleteMenuItem = async () => {
     setIsSubmitting(true);
     try {
       await dispatch(
-        deleteMenuItem({ id: selectedMenu.id, restaurantId, token })
+        deleteMenuItem({ id: selectedMenu._id, token })
       ).unwrap();
+
+      await dispatch(fetchMenuItems({ restaurantId, token }));
+
       setDeleteModalVisible(false);
       toast.success("Menu item deleted successfully!");
     } catch (error) {
-      toast.error("Failed to delete menu item");
+      toast.error(error.message || "Failed to delete menu item"); e
     } finally {
       setIsSubmitting(false);
     }
@@ -546,7 +551,7 @@ const Menu = () => {
         {activeTab === "inventory" && (
           <div className="mb-3">
             <label className="form-label">Stock Items</label>
-            
+
             {formData.stockItems.map((stockItem, index) => (
               <div key={index} className="d-flex gap-2 align-items-center mb-2">
                 {/* Inventory Select */}

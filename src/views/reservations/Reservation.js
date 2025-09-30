@@ -23,7 +23,7 @@ import {
   CFormLabel
 } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
-import { cilPencil, cilTrash, cilPlus } from '@coreui/icons';
+import { cilPencil, cilTrash, cilPlus, cilHistory } from '@coreui/icons';
 import { useMediaQuery } from '@mui/material';
 import Select from 'react-select';
 
@@ -38,6 +38,7 @@ const Reservation = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [historyModalVisible, setHistoryModalVisible] = useState(false);
 
   // Form states
   const [formData, setFormData] = useState({
@@ -61,10 +62,10 @@ const Reservation = () => {
 
     // Use the restaurantId from your MongoDB data - override localStorage for testing
     const actualRestaurantId = "68c80294c2283cb53671cde9";
-    
+
     console.log("🔍 Using restaurantId for API call:", actualRestaurantId);
     console.log("🔍 API URL will be:", `http://localhost:4000/AllByRestaurantId/${actualRestaurantId}`);
-    
+
     if (actualRestaurantId) {
       console.log("📡 Fetching reservations with restaurantId:", actualRestaurantId);
       dispatch(fetchReservations({ restaurantId: actualRestaurantId }));
@@ -305,10 +306,14 @@ const Reservation = () => {
     {
       field: 'id',
       headerName: 'ID',
-      flex: isMobile ? undefined : 0.3,
-      minWidth: isMobile ? 100 : undefined,
-      valueGetter: (params) => getReservationId(params.row)
-    },
+      flex: isMobile ? undefined : 0.5,
+      minWidth: isMobile ? 150 : 200,
+      valueGetter: (params) => getReservationId(params.row),
+      renderCell: (params) => (
+        <span title={params.value}>{params.value}</span>
+      ),
+    }
+    ,
     {
       field: 'customerName',
       headerName: 'Customer Name',
@@ -433,25 +438,40 @@ const Reservation = () => {
     },
   ];
 
-  // Process reservations data for display
-  const processedReservations = React.useMemo(() => {
+  // History columns (read-only, no actions)
+  const historyColumns = columns.filter(col => col.field !== 'actions');
+
+  // Process reservations data - split into future and past
+  const { futureReservations, pastReservations } = React.useMemo(() => {
     if (!Array.isArray(reservations)) {
       console.warn('Reservations is not an array:', reservations);
-      return [];
+      return { futureReservations: [], pastReservations: [] };
     }
 
-    return reservations
-      .filter(reservation => {
-        // Filter out invalid reservations
-        const hasValidId = getReservationId(reservation);
-        return hasValidId;
-      })
-      .sort((a, b) => {
-        // Sort by creation date or ID (newest first)
-        const aTime = a?.createdAt || a?._id;
-        const bTime = b?.createdAt || b?._id;
-        return new Date(bTime) - new Date(aTime);
-      });
+    const now = new Date();
+    const future = [];
+    const past = [];
+
+    reservations.forEach(reservation => {
+      const hasValidId = getReservationId(reservation);
+      if (!hasValidId) return;
+
+      const endTime = new Date(reservation.endTime);
+
+      if (endTime >= now) {
+        future.push(reservation);
+      } else {
+        past.push(reservation);
+      }
+    });
+
+    // Sort future reservations (upcoming first)
+    future.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
+
+    // Sort past reservations (most recent first)
+    past.sort((a, b) => new Date(b.endTime) - new Date(a.endTime));
+
+    return { futureReservations: future, pastReservations: past };
   }, [reservations]);
 
   // Get customer options for Select dropdown
@@ -809,20 +829,93 @@ const Reservation = () => {
     </CModal>
   );
 
+  // Reservation History Modal
+  const renderHistoryModal = () => (
+    <CModal
+      visible={historyModalVisible}
+      onClose={() => setHistoryModalVisible(false)}
+      size="xl"
+      scrollable
+    >
+      <CModalHeader>
+        <CModalTitle>
+          <CIcon icon={cilHistory} className="me-2" />
+          Reservation History
+        </CModalTitle>
+      </CModalHeader>
+      <CModalBody>
+        {pastReservations.length === 0 ? (
+          <div className="text-center py-5">
+            <CIcon icon={cilHistory} size="3xl" className="text-muted mb-3" />
+            <p className="text-muted">No past reservations found</p>
+          </div>
+        ) : (
+          <div style={{ height: '500px', width: '100%' }}>
+            <DataGrid
+              rows={pastReservations}
+              columns={historyColumns}
+              getRowId={(row) => getReservationId(row)}
+              initialState={{
+                pagination: {
+                  paginationModel: { page: 0, pageSize: 10 },
+                },
+              }}
+              pageSizeOptions={[5, 10, 20, 50]}
+              slots={{
+                toolbar: CustomToolbar,
+              }}
+              disableSelectionOnClick
+              sx={{
+                '& .MuiDataGrid-cell': {
+                  borderBottom: '1px solid #f0f0f0',
+                },
+                '& .MuiDataGrid-columnHeaders': {
+                  backgroundColor: '#f8f9fa',
+                  borderBottom: '2px solid #dee2e6',
+                },
+                '& .MuiDataGrid-row': {
+                  backgroundColor: '#f9f9f9',
+                },
+              }}
+            />
+          </div>
+        )}
+      </CModalBody>
+      <CModalFooter>
+        <CButton
+          color="secondary"
+          onClick={() => setHistoryModalVisible(false)}
+        >
+          Close
+        </CButton>
+      </CModalFooter>
+    </CModal>
+  );
+
   // Main component render
   return (
     <div style={{ padding: '20px' }}>
       {/* Header Section */}
       <div className="d-flex justify-content-between align-items-center mb-4">
         <h2 className="mb-0">Reservations Management</h2>
-        <CButton
-          color="primary"
-          onClick={() => setModalVisible(true)}
-          disabled={!restaurantId}
-        >
-          <CIcon icon={cilPlus} className="me-2" />
-          Add Reservation
-        </CButton>
+        <div className="d-flex gap-2">
+          <CButton
+            color="secondary"
+            onClick={() => setHistoryModalVisible(true)}
+            disabled={!restaurantId}
+          >
+            <CIcon icon={cilHistory} className="me-2" />
+            View History ({pastReservations.length})
+          </CButton>
+          <CButton
+            color="primary"
+            onClick={() => setModalVisible(true)}
+            disabled={!restaurantId}
+          >
+            <CIcon icon={cilPlus} className="me-2" />
+            Add Reservation
+          </CButton>
+        </div>
       </div>
 
       {/* Error Alert */}
@@ -839,7 +932,27 @@ const Reservation = () => {
         </CAlert>
       )}
 
-      {/* Data Grid Container */}
+      {/* Stats Cards */}
+      <div className="row mb-4">
+        <div className="col-md-6">
+          <div className="card bg-primary text-white">
+            <div className="card-body">
+              <h5 className="card-title">Upcoming Reservations</h5>
+              <h2 className="mb-0">{futureReservations.length}</h2>
+            </div>
+          </div>
+        </div>
+        <div className="col-md-6">
+          <div className="card bg-secondary text-white">
+            <div className="card-body">
+              <h5 className="card-title">Past Reservations</h5>
+              <h2 className="mb-0">{pastReservations.length}</h2>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Data Grid Container - Future Reservations Only */}
       <div style={{
         height: 'auto',
         width: '100%',
@@ -854,9 +967,20 @@ const Reservation = () => {
               <p>Loading reservations...</p>
             </div>
           </div>
+        ) : futureReservations.length === 0 ? (
+          <div className="text-center py-5">
+            <p className="text-muted">No upcoming reservations found</p>
+            <CButton
+              color="primary"
+              onClick={() => setModalVisible(true)}
+            >
+              <CIcon icon={cilPlus} className="me-2" />
+              Create Your First Reservation
+            </CButton>
+          </div>
         ) : (
           <DataGrid
-            rows={processedReservations}
+            rows={futureReservations}
             columns={columns}
             getRowId={(row) => getReservationId(row)}
             initialState={{
@@ -887,6 +1011,7 @@ const Reservation = () => {
       {renderAddReservationModal()}
       {renderEditReservationModal()}
       {renderDeleteReservationModal()}
+      {renderHistoryModal()}
     </div>
   );
 };

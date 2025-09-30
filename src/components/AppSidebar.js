@@ -17,11 +17,6 @@ const AppSidebar = () => {
   const dispatch = useDispatch();
   const unfoldable = useSelector((state) => state.sidebar.sidebarUnfoldable);
   const sidebarShow = useSelector((state) => state.sidebar.sidebarShow);
-
-  // Debug logging
-  console.log('Sidebar state:', { sidebarShow, unfoldable });
-  console.log('Navigation items:', navigation.length);
-
   const handleSidebarToggle = () => {
     dispatch(setSidebarShow(!sidebarShow)); // Toggle sidebar state
   };

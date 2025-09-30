@@ -29,7 +29,7 @@ export const loginUser = createAsyncThunk(
   async (credentials, { rejectWithValue }) => {
     try {
       const response = await axios.post(`${BASE_URL}/signin`, credentials);
-      console.log("Login response:", response.data);
+      // console.log("Login response:", response.data);
 
       const { success, token, user } = response.data;
 
@@ -75,7 +75,7 @@ export const verifyOtp = createAsyncThunk(
   async (otpData, { rejectWithValue }) => {
     try {
       const response = await axios.post(`${BASE_URL}/verify-otp`, otpData);
-      console.log("OTP Verify response:", response.data);
+      // console.log("OTP Verify response:", response.data);
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'OTP verification failed.');
@@ -141,7 +141,7 @@ export const updateUserRole = createAsyncThunk(
         return rejectWithValue("User ID not found");
       }
 
-      console.log("🔄 Updating role for user:", id, "to role:", role);
+      // console.log("🔄 Updating role for user:", id, "to role:", role);
 
       const response = await axiosInstance.put(
         `${BASE_URL}/users/role/${id}`,

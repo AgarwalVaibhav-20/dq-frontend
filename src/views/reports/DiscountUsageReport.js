@@ -22,7 +22,7 @@ const formatDate = (d) => d.toISOString().split('T')[0];
 const DiscountUsageReport = () => {
   const dispatch = useDispatch();
   const { discountUsageByDate, loading } = useSelector((s) => s.reports);
-  const { token } = useSelector((s) => s.auth);
+  const { token } = localStorage.getItem('authToken')
 
 
   /* ---------------------- date pickers ---------------------- */

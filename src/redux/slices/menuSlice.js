@@ -232,7 +232,8 @@ export const deleteMenuItem = createAsyncThunk(
   }
 );
 
-// Update menu item status
+
+
 export const updateMenuItemStatus = createAsyncThunk(
   'menu/updateMenuItemStatus',
   async ({ id, status }, { rejectWithValue }) => {
@@ -243,11 +244,10 @@ export const updateMenuItemStatus = createAsyncThunk(
         'Content-Type': 'application/json',
       };
 
-      // Convert status from string to number for backend
       const numericStatus = status === 'available' ? 1 : 0;
 
+      // 👇 FIX THIS ENTIRE BLOCK
       const response = await axios.put(
-        `${BASE_URL}/menu/status`, // Fixed endpoint path
         `${BASE_URL}/menus/status`,
         { id, status: numericStatus },
         { headers }

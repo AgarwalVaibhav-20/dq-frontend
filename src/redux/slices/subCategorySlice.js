@@ -8,10 +8,10 @@ const configureHeaders = (token) => ({
     Authorization: `Bearer ${token}`,
   },
 })
-// ...existing code...
+
 export const createSubCategory = createAsyncThunk(
   "subCategory/create",
-  async ({ sub_category_name, categoryId, token , categoryName }, { rejectWithValue }) => {
+  async ({ sub_category_name, categoryId, token, categoryName }, { rejectWithValue }) => {
     try {
       const restaurantId = localStorage.getItem("restaurantId");
       if (!restaurantId) {
@@ -38,107 +38,56 @@ export const createSubCategory = createAsyncThunk(
   }
 );
 
-// ...existing code...
-
-// ✅ Fetch SubCategories
+// ✅ Fetch all subcategories - matches: GET /data/subCategory
 export const fetchSubCategories = createAsyncThunk(
-  "subCategory/fetch",
-  async ({ token }, { rejectWithValue }) => {
+  'subCategory/fetchAll',
+  async ({ token, restaurantId }, { rejectWithValue }) => {
     try {
       const response = await axios.get(
-        `${BASE_URL}/data/subCategory`,
-        configureHeaders(token)
-      );
-      return response.data;
+        `${BASE_URL}/data/subCategory?restaurantId=${restaurantId}`,
+        configureHeaders(token),
+      )
+      // Map 'id' to '_id' for consistency with MongoDB
+      return response.data.map(sub => ({
+        ...sub,
+        _id: sub.id || sub._id
+      }))
     } catch (error) {
-      console.log("Yer error >", error.response?.data?.message)
-      return rejectWithValue(error.response?.data?.message || "Failed to fetch subcategories");
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch subcategories')
     }
-  }
-);
+  },
+)
 
-
-
-// export const fetchSubCategories = createAsyncThunk(
-//   "subCategory/fetch",
-//   async ({ token, restaurantId }, { rejectWithValue }) => {
-//     try {
-//       const response = await axios.get(
-//         `${BASE_URL}/subcategories?restaurantId=${restaurantId}`,
-//         configureHeaders(token)
-//       );
-//       return response.data;
-//     } catch (error) {
-//       return rejectWithValue(error.response?.data?.message || "Failed to fetch subcategories");
-//     }
-//   }
-// );
-// Create subcategory
-// export const createSubCategory = createAsyncThunk(
-//   'subCategory/create',
-//   async ({ sub_category_name, categoryId, subCategoryImage, restaurantId, token }, { rejectWithValue }) => {
-//     try {
-//       const formData = new FormData();
-//       formData.append('sub_category_name', sub_category_name);
-//       // formData.append('categoryId', categoryId);
-//       // formData.append('restaurantId', restaurantId);
-//       // if (subCategoryImage) formData.append('subCategoryImage', subCategoryImage);
-
-//       const response = await axios.post(
-//         `${BASE_URL}/subcategories`,
-//         formData,
-//         configureHeaders(token)
-//       );+
-//       console.log(token + "this is token")
-//       console.log(response.data);
-//       return response.data;
-//     } catch (error) {
-//       return rejectWithValue(error.response?.data?.message || 'Failed to create subcategory');
-//     }
-//   }
-// );
-
-
-// Fetch all subcategories
-// export const fetchSubCategories = createAsyncThunk(
-//   'subCategory/fetchAll',
-//   async ({ token }, { rejectWithValue }) => {
-//     try {
-//       const response = await axios.get(
-//         `${BASE_URL}/subcategories`,
-//         configureHeaders(token),
-//       )
-//       return response.data
-//     } catch (error) {
-//       return rejectWithValue(error.response?.data?.message || 'Failed to fetch subcategories')
-//     }
-//   },
-// )
-
-// Update subcategory
+// ✅ Update subcategory - matches: PUT /subCategory/:id
 export const updateSubCategory = createAsyncThunk(
   'subCategory/update',
   async ({ id, sub_category_name, categoryId, token }, { rejectWithValue }) => {
     try {
       const response = await axios.put(
-        `${BASE_URL}/admin/subcategories/${id}`,
+        `${BASE_URL}/subCategory/${id}`,
         { sub_category_name, categoryId },
         configureHeaders(token),
       )
-      return response.data
+      return {
+        ...response.data,
+        _id: response.data.id || response.data._id
+      }
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to update subcategory')
     }
   },
 )
 
-// Delete subcategory
+// ✅ Delete subcategory - matches: DELETE /subCategory/:id
 export const deleteSubCategory = createAsyncThunk(
   'subCategory/delete',
   async ({ id, token }, { rejectWithValue }) => {
     try {
-      await axios.delete(`${BASE_URL}/admin/subcategories/${id}`, configureHeaders(token))
-      return { id }
+      await axios.delete(
+        `${BASE_URL}/subCategory/${id}`,
+        configureHeaders(token)
+      )
+      return { _id: id, id }
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to delete subcategory')
     }
@@ -155,6 +104,7 @@ const subCategorySlice = createSlice({
   reducers: {},
   extraReducers: (builder) => {
     builder
+      // CREATE
       .addCase(createSubCategory.pending, (state) => {
         state.loading = true
       })
@@ -169,6 +119,7 @@ const subCategorySlice = createSlice({
         toast.error(action.payload)
       })
 
+      // FETCH
       .addCase(fetchSubCategories.pending, (state) => {
         state.loading = true
       })
@@ -182,12 +133,15 @@ const subCategorySlice = createSlice({
         toast.error(action.payload)
       })
 
+      // UPDATE
       .addCase(updateSubCategory.pending, (state) => {
         state.loading = true
       })
       .addCase(updateSubCategory.fulfilled, (state, action) => {
         state.loading = false
-        const index = state.subCategories.findIndex((s) => s.id === action.payload.id)
+        const index = state.subCategories.findIndex(
+          (s) => s._id === action.payload._id || s._id === action.payload.id
+        )
         if (index !== -1) {
           state.subCategories[index] = action.payload
         }
@@ -199,13 +153,14 @@ const subCategorySlice = createSlice({
         toast.error(action.payload)
       })
 
+      // DELETE
       .addCase(deleteSubCategory.pending, (state) => {
         state.loading = true
       })
       .addCase(deleteSubCategory.fulfilled, (state, action) => {
         state.loading = false
         state.subCategories = state.subCategories.filter(
-          (sub) => sub.id !== action.payload.id,
+          (sub) => sub._id !== action.payload._id && sub._id !== action.payload.id
         )
         toast.success('Subcategory deleted successfully')
       })

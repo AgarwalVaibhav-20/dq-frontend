@@ -274,7 +274,7 @@ export default function Account() {
                     }}>
                       ID: {profileData?.restaurantId?.toUpperCase() || 'Not assigned'}
                     </p>
-                    <CButton
+                    {/* <CButton
                       variant="outline"
                       onClick={() => document.getElementById('fileInput').click()}
                       disabled={imageUploading}
@@ -301,13 +301,13 @@ export default function Account() {
                       color: '#5f6368', 
                       fontSize: '12px' 
                     }}>
-                      Max 5MB • JPG, PNG, GIF
-                    </p>
+                      Max 5MB • JPG, PNG, GIF */}
+                    {/* </p> */}
                   </div>
                 </div>
                 
                 {/* Status Badge */}
-                <div className="mt-3">
+                {/* <div className="mt-3">
                   <CBadge 
                     color="success" 
                     style={{
@@ -321,7 +321,7 @@ export default function Account() {
                   >
                     Active Profile
                   </CBadge>
-                </div>
+                </div> */}
               </CCol>
 
               {/* Profile Information */}

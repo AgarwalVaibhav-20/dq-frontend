@@ -4,11 +4,13 @@ import axiosInstance from '../../utils/axiosConfig'
 import { toast } from 'react-toastify'
 import { BASE_URL } from '../../utils/constants'
 
-const configureHeaders = (token) => ({
+export const configureHeaders = (token) => ({
   headers: {
     Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
   },
-})
+});
+
 // Fetch all days' reports
 export const fetchAllDaysReports = createAsyncThunk(
   'reports/fetchAllDaysReports',
@@ -170,7 +172,8 @@ export const fetchDiscountUsageByDate = createAsyncThunk(
   'reports/fetchDiscountUsageByDate',
   async ({ startDate, endDate, token, restaurantId }, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get(`/discountUsageByDate`, {
+      const token = localStorage.getItem('authToken')
+      const response = await axiosInstance.get(`${BASE_URL}/discountUsageByDate`, {
         params: {
           startDate,
           endDate,

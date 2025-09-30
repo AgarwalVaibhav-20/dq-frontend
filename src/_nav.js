@@ -5,7 +5,7 @@ import {
   cilStar,
   cilBasket,
   cilPeople,
-  cilCreditCard ,
+  cilCreditCard,
   cilLockLocked,
   cilRestaurant,
   cilPizza,
@@ -46,7 +46,7 @@ const _nav = [
     component: CNavItem,
     name: 'Purchase Analytics',
     to: '/purchaseanalytics',
-    icon: <CIcon icon={cilCreditCard } customClassName="nav-icon" />,
+    icon: <CIcon icon={cilCreditCard} customClassName="nav-icon" />,
     roles: ['admin'], // Only admin can see
   },
   {
@@ -244,6 +244,11 @@ const _nav = [
         component: CNavItem,
         name: 'Dahsboard Statistics Report',
         to: '/dashboard-statistics-report',
+      },
+      {
+        component: CNavItem,
+        name: 'Due Report',
+        to: '/due-report'
       },
       {
         component: CNavItem,
