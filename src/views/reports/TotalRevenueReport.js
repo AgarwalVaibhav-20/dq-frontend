@@ -25,7 +25,7 @@ const currency = (n) =>
 function TotalRevenueReport() {
   const dispatch = useDispatch();
   const { totalRevenueByDate, loading } = useSelector((s) => s.reports);
-  const { token } = useSelector((s) => s.auth);
+  const { token, restaurantId } = useSelector((s) => s.auth);
 
   /* -------- default range: last month → today -------------------------- */
   const today = new Date();
@@ -42,16 +42,16 @@ function TotalRevenueReport() {
 
   /* -------- first fetch ------------------------------------------------- */
   useEffect(() => {
-    if (token) {
-      dispatch(fetchTotalRevenueByDate({ token, startDate, endDate }));
+    if (token && restaurantId) {
+      dispatch(fetchTotalRevenueByDate({ token, startDate, endDate, restaurantId }));
     }
-  }, [dispatch, token]); // once on mount
+  }, [dispatch, token, restaurantId]); // once on mount
 
   const handleGenerateReport = () => {
     if (!startDate || !endDate) return alert('Please select both dates');
     if (new Date(endDate) < new Date(startDate))
       return alert('End date cannot be before start date');
-    dispatch(fetchTotalRevenueByDate({ token, startDate, endDate }));
+    dispatch(fetchTotalRevenueByDate({ token, startDate, endDate, restaurantId }));
   };
 
   /* -------- rows / columns -------------------------------------------- */

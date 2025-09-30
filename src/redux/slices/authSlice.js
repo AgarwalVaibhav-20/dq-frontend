@@ -49,8 +49,12 @@ export const loginUser = createAsyncThunk(
         if (categoryId) localStorage.setItem('categoryId', categoryId);
 
         // Role management
-        const role = user?.role || 'admin'; // Default to 'user' if no role provided
+        const role = user?.role || 'admin'; // Default to 'admin' if no role provided
         localStorage.setItem('userRole', role);
+        
+        // Permissions management
+        const permissions = user?.permissions || [];
+        localStorage.setItem('userPermissions', JSON.stringify(permissions));
 
         // Optional: Save username or email for quick access
         if (user?.username) localStorage.setItem('username', user.username);
@@ -215,6 +219,7 @@ const initialState = {
     email: localStorage.getItem('userEmail') || null,
     username: localStorage.getItem('username') || null,
     role: localStorage.getItem('userRole') || 'admin',
+    permissions: JSON.parse(localStorage.getItem('userPermissions') || '[]'),
   },
   users: [],
   loading: false,
@@ -247,6 +252,7 @@ const authSlice = createSlice({
       localStorage.removeItem('userId');
       localStorage.removeItem('categoryId');
       localStorage.removeItem('userRole');
+      localStorage.removeItem('userPermissions');
       localStorage.removeItem('userName');
       localStorage.removeItem('userEmail');
       localStorage.removeItem('username');
@@ -294,7 +300,13 @@ const authSlice = createSlice({
             email: user.email || null,
             username: user.username || null,
             role: user.role || 'admin',
+            permissions: user.permissions || [],
           };
+          
+          // Store permissions in localStorage
+          if (user.permissions) {
+            localStorage.setItem('userPermissions', JSON.stringify(user.permissions));
+          }
         }
 
         if (message === 'OTP sent to your email') {
@@ -351,7 +363,13 @@ const authSlice = createSlice({
             email: user.email || null,
             username: user.username || null,
             role: user.role || 'admin',
+            permissions: user.permissions || [],
           };
+          
+          // Store permissions in localStorage
+          if (user.permissions) {
+            localStorage.setItem('userPermissions', JSON.stringify(user.permissions));
+          }
         }
 
         if (token) localStorage.setItem('authToken', token);
@@ -395,6 +413,7 @@ const authSlice = createSlice({
         localStorage.removeItem('userId');
         localStorage.removeItem('categoryId');
         localStorage.removeItem('userRole');
+        localStorage.removeItem('userPermissions');
         localStorage.removeItem('userName');
         localStorage.removeItem('userEmail');
         localStorage.removeItem('username');
@@ -421,11 +440,15 @@ const authSlice = createSlice({
           ...state.user,
           ...userData,
           id: userData.userId || userData.id || userData._id || state.user.id,
+          permissions: userData.permissions || state.user.permissions || [],
         };
 
         if (userData.role) {
           state.role = userData.role;
           localStorage.setItem('userRole', userData.role);
+        }
+        if (userData.permissions) {
+          localStorage.setItem('userPermissions', JSON.stringify(userData.permissions));
         }
       })
       .addCase(fetchUserProfile.rejected, (state, action) => {
@@ -520,6 +543,7 @@ const authSlice = createSlice({
             email: user.email || state.user.email,
             username: user.username || state.user.username,
             role: role,
+            permissions: user.permissions || state.user.permissions || [],
           };
         }
 

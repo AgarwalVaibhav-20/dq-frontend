@@ -55,7 +55,7 @@ const ROLE_CONFIG = {
       'POS',
       'Purchase Analytics',
       'Category',
-      'Restauarnts',
+      'Restaurants',
       'SubCategory',
       'Customer Loyality',
       'Sales Analytics',
@@ -88,7 +88,7 @@ const ROLE_CONFIG = {
       'POS',
       'Purchase Analytics',
       'Category',
-      'Restauarnts',
+      'Restaurants',
       'SubCategory',
       'Customer Loyality',
       'Sales Analytics',
@@ -121,7 +121,7 @@ const ROLE_CONFIG = {
       'POS',
       'Purchase Analytics',
       'Category',
-      'Restauarnts',
+      'Restaurants',
       'SubCategory',
       'Customer Loyality',
       'Sales Analytics',
@@ -154,7 +154,7 @@ const ROLE_CONFIG = {
       'POS',
       'Purchase Analytics',
       'Category',
-      'Restauarnts',
+      'Restaurants',
       'SubCategory',
       'Customer Loyality',
       'Sales Analytics',
@@ -408,13 +408,19 @@ export default function PermissionManagement() {
       setUpdating(prev => ({ ...prev, [user._id]: true }));
 
       try {
-        // Get permissions for the new role
-        const permissions = ROLE_CONFIG[newRole]?.permissions || [];
+        // Get only the selected permissions from checkboxes
+        const selectedPermissions = Object.keys(checkboxStates.newPermissions)
+          .filter(permission => checkboxStates.newPermissions[permission] === true);
+
+        console.log('=== ROLE CHANGE DEBUG ===');
+        console.log('Selected permissions:', selectedPermissions);
+        console.log('Checkbox states:', checkboxStates.newPermissions);
+        console.log('========================');
 
         await dispatch(updateUserRole({
           userId: user._id,
           role: newRole,
-          permissions,
+          permissions: selectedPermissions,
           token
         })).unwrap();
 
@@ -433,15 +439,21 @@ export default function PermissionManagement() {
       setBulkUpdating(true);
 
       try {
-        // Get permissions for the new role
-        const permissions = ROLE_CONFIG[newRole]?.permissions || [];
+        // Get only the selected permissions from checkboxes
+        const selectedPermissions = Object.keys(checkboxStates.newPermissions)
+          .filter(permission => checkboxStates.newPermissions[permission] === true);
+
+        console.log('=== BULK ROLE CHANGE DEBUG ===');
+        console.log('Selected permissions:', selectedPermissions);
+        console.log('Checkbox states:', checkboxStates.newPermissions);
+        console.log('==============================');
 
         // Update users sequentially to avoid overwhelming the server
         const updatePromises = selectedUsers.map(userId =>
           dispatch(updateUserRole({
             userId,
             role: newRole,
-            permissions,
+            permissions: selectedPermissions,
             token
           })).unwrap()
         );

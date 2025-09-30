@@ -25,7 +25,7 @@ const currency = (n) =>
 const AverageOrderValueReport = () => {
   const dispatch = useDispatch();
   const { averageOrderValueByDate, avgOrderValueLoading } = useSelector((s) => s.reports);
-  const { token } = useSelector((s) => s.auth);
+  const { token, restaurantId } = useSelector((s) => s.auth);
 
   /* -------- date range (last month → today) ----------------- */
   const today = new Date();
@@ -42,16 +42,16 @@ const AverageOrderValueReport = () => {
 
   /* -------- initial fetch + manual fetch -------------------- */
   useEffect(() => {
-    if (token) {
-      dispatch(fetchAverageOrderValueByDate({ token, startDate, endDate }));
+    if (token && restaurantId) {
+      dispatch(fetchAverageOrderValueByDate({ token, startDate, endDate, restaurantId }));
     }
-  }, [dispatch, token]);         // fetch once on mount
+  }, [dispatch, token, restaurantId]);         // fetch once on mount
 
   const handleGenerateReport = () => {
     if (!startDate || !endDate) return alert('Please select both dates.');
     if (new Date(endDate) < new Date(startDate))
       return alert('End date cannot be before start date.');
-    dispatch(fetchAverageOrderValueByDate({ token, startDate, endDate }));
+    dispatch(fetchAverageOrderValueByDate({ token, startDate, endDate, restaurantId }));
   };
 
   /* -------- DataGrid rows & columns ------------------------- */

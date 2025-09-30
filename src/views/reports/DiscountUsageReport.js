@@ -39,11 +39,13 @@ const DiscountUsageReport = () => {
   const [modalTransactions, setModalTransactions] = useState([]);
 
 
+  const { restaurantId } = useSelector((s) => s.auth);
+
   useEffect(() => {
-  if (token) {
-    dispatch(fetchDiscountUsageByDate({ token, startDate, endDate }));
+  if (token && restaurantId) {
+    dispatch(fetchDiscountUsageByDate({ token, startDate, endDate, restaurantId }));
   }
-}, [dispatch, token]);
+}, [dispatch, token, restaurantId]);
   /* ------------------ fetch on button click ----------------- */
   const handleGenerateReport = () => {
     if (!startDate || !endDate) return alert('Please select both dates.');
@@ -51,7 +53,7 @@ const DiscountUsageReport = () => {
       return alert('End date cannot be before start date.');
 
     dispatch(
-      fetchDiscountUsageByDate({ token, startDate, endDate })
+      fetchDiscountUsageByDate({ token, startDate, endDate, restaurantId })
     );
   };
 

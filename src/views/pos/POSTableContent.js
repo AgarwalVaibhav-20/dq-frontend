@@ -40,7 +40,7 @@ const POSTableContent = () => {
   const { subCategories, loading: subCategoryLoading } = useSelector((state) => state.subCategory)
 
   const authState = useSelector((state) => state.auth)
-  const restaurantId = authState.restaurantId || localStorage.getItem('restaurantId') || '68cae19c377caa90e86f84a4' // Fallback for testing
+  const restaurantId = authState.restaurantId || localStorage.getItem('restaurantId') || '68d23850f227fcf59cfacf80' // Correct restaurantId from database
   const theme = useSelector((state) => state.theme.theme)
   const token = localStorage.getItem('authToken')
   
@@ -57,7 +57,7 @@ const POSTableContent = () => {
       console.log('RestaurantId restored from auth state:', authState.restaurantId)
     } else if (!localStorage.getItem('restaurantId') && token) {
       console.warn('No restaurantId found in auth state or localStorage. Using fallback for testing.')
-      localStorage.setItem('restaurantId', '68cae19c377caa90e86f84a4')
+      localStorage.setItem('restaurantId', '68d23850f227fcf59cfacf80')
     }
   }, [token, authState.restaurantId])
 

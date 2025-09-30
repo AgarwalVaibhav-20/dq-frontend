@@ -14,7 +14,11 @@ const currency = (n) => `₹${Number(n).toFixed(2)}`;
 const TransactionsByPaymentTypeReport = () => {
   const dispatch = useDispatch();
   const { transactionsByPaymentType, loading } = useSelector((s) => s.reports);
-  const { token } = useSelector((s) => s.auth);
+  const { token: authToken, restaurantId: authRestaurantId } = useSelector((s) => s.auth);
+  
+  // Get token and restaurantId from localStorage as fallback
+  const token = authToken || localStorage.getItem('authToken');
+  const restaurantId = authRestaurantId || localStorage.getItem('restaurantId');
 
   const today = new Date();
   const lastWeek = new Date(today);
@@ -28,15 +32,20 @@ const TransactionsByPaymentTypeReport = () => {
   const [modalTransactions, setModalTransactions] = useState([]);
 
   useEffect(() => {
-    if (token) {
-      dispatch(fetchTransactionsByPaymentType({ token, startDate, endDate }));
+    if (restaurantId) {
+      console.log('TransactionsByPaymentTypeReport - Using restaurantId:', restaurantId);
+      dispatch(fetchTransactionsByPaymentType({ startDate, endDate, restaurantId }));
+    } else {
+      console.warn('TransactionsByPaymentTypeReport - Missing restaurantId:', { restaurantId });
     }
-  }, [dispatch, token]);
+  }, [dispatch, restaurantId]);
 
   const handleGenerate = () => {
     if (!startDate || !endDate) return alert("Both dates are required.");
     if (new Date(endDate) < new Date(startDate)) return alert("End date cannot be before start date.");
-    dispatch(fetchTransactionsByPaymentType({ token, startDate, endDate }));
+    if (!restaurantId) return alert("Restaurant ID not found. Please login again.");
+    console.log('Generating report with restaurantId:', restaurantId);
+    dispatch(fetchTransactionsByPaymentType({ startDate, endDate, restaurantId }));
   };
 
   const rows = useMemo(() => {

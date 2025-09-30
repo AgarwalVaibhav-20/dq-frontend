@@ -12,14 +12,14 @@ import {
   CModalBody,
   CModalTitle,
 } from '@coreui/react';
-import { fetchAllTransactions } from '../../redux/slices/reportSlice';
+import { fetchTransactionCountByDate } from '../../redux/slices/reportSlice';
 import CustomToolbar from '../../utils/CustomToolbar';
 
 const formatDate = (d) => d.toISOString().split('T')[0];
 
 const TransactionCountReport = () => {
   const dispatch = useDispatch();
-  const { allTransactions, loading } = useSelector((s) => s.reports);
+  const { transactionCountByDate, loading } = useSelector((s) => s.reports);
   const { restaurantId, token } = useSelector((s) => s.auth);
 
   /* ---------------------- date pickers & local state ---------------------- */
@@ -38,8 +38,8 @@ const TransactionCountReport = () => {
 
   /* ------------------------------ fetch data ------------------------------ */
   useEffect(() => {
-    if (restaurantId)
-      dispatch(fetchTransactionCountByDate({ token, startDate, endDate }));
+    if (restaurantId && token)
+      dispatch(fetchTransactionCountByDate({ token, startDate, endDate, restaurantId }));
   }, [dispatch, restaurantId, token, startDate, endDate]);
 
   const handleGenerateReport = () => {
@@ -47,7 +47,7 @@ const TransactionCountReport = () => {
     if (new Date(endDate) < new Date(startDate))
       return alert('End date cannot be before start date.');
 
-    dispatch(fetchTransactionCountByDate({ token, startDate, endDate }));
+    dispatch(fetchTransactionCountByDate({ token, startDate, endDate, restaurantId }));
   };
 
   /* ---------------------------- column helpers ---------------------------- */

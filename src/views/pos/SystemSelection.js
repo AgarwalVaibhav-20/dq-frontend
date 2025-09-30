@@ -32,7 +32,7 @@ const SystemSelection = () => {
     try {
       setLoading(true)
       setError('')
-      const restaurantId = localStorage.getItem('restaurantId') || '68cae19c377caa90e86f84a4' // Fallback for testing
+      const restaurantId = localStorage.getItem('restaurantId') || '68d23850f227fcf59cfacf80' // Fallback for testing
       
       console.log('SystemSelection - restaurantId:', restaurantId)
       console.log('SystemSelection - localStorage restaurantId:', localStorage.getItem('restaurantId'))

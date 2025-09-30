@@ -40,8 +40,8 @@ const TableUsageReport = () => {
 
   // Fetch data effect
   useEffect(() => {
-    if (restaurantId)
-      dispatch(fetchTableUsageByDate({ token, startDate, endDate }));
+    if (restaurantId && token)
+      dispatch(fetchTableUsageByDate({ token, startDate, endDate, restaurantId }));
   }, [dispatch, restaurantId, token, startDate, endDate]);
 
   const handleGenerateReport = () => {
@@ -49,7 +49,7 @@ const TableUsageReport = () => {
     if (new Date(endDate) < new Date(startDate))
       return alert('End date cannot be before start date.');
 
-    dispatch(fetchTableUsageByDate({ token, startDate, endDate }));
+    dispatch(fetchTableUsageByDate({ token, startDate, endDate, restaurantId }));
   };
 
   // Currency formatter

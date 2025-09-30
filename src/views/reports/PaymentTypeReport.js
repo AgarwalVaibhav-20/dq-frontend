@@ -91,7 +91,7 @@ const PaymentTypeReport = () => {
 
   return (
     <div style={{ padding: '20px' }}>
-      <h2 className="mb-4">Table Report</h2>
+      <h2 className="mb-4">Payment Type Report</h2>
 
       {/* Date range input row */}
       <CRow

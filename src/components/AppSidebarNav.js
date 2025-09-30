@@ -9,10 +9,11 @@ import { shallowEqual } from 'react-redux';
 import { refreshUserRole } from '../redux/slices/authSlice';
 
 export const AppSidebarNav = ({ items }) => {
-  const { restaurantPermission, userRole } = useSelector(
+  const { restaurantPermission, userRole, userPermissions } = useSelector(
     (state) => ({ 
       restaurantPermission: state.restaurantProfile.restaurantPermission,
-      userRole: state.auth.role || localStorage.getItem('userRole') || 'admin'
+      userRole: state.auth.role || localStorage.getItem('userRole') || 'admin',
+      userPermissions: state.auth.user?.permissions || JSON.parse(localStorage.getItem('userPermissions') || '[]')
     }),
     shallowEqual
   );
@@ -36,34 +37,51 @@ export const AppSidebarNav = ({ items }) => {
     autoRefreshRole();
   }, [dispatch]);
 
-  // Filter navigation items based on user role
-  const filterItemsByRole = (items) => {
+  // Filter navigation items based on user permissions
+  const filterItemsByPermissions = (items) => {
     return items.filter(item => {
-      // If no roles specified, show to everyone (backward compatibility)
-      if (!item.roles) return true;
+      // Admin always sees everything
+      if (userRole === 'admin') return true;
       
-      // Check if user role is in the allowed roles
-      const hasAccess = item.roles.includes(userRole);
-      return hasAccess;
+      // For non-admin users, check if they have permission for this item
+      if (userPermissions && Array.isArray(userPermissions) && userPermissions.length > 0) {
+        // Check if the item name is in the permissions array
+        return userPermissions.includes(item.name);
+      }
+      
+      // If no permissions are set, show nothing (don't fall back to role-based filtering)
+      return false;
     }).map(item => {
       // Recursively filter nested items
       if (item.items) {
-        return {
+        const filteredSubItems = filterItemsByPermissions(item.items);
+        // Only include the group if it has at least one visible item
+        return filteredSubItems.length > 0 ? {
           ...item,
-          items: filterItemsByRole(item.items)
-        };
+          items: filteredSubItems
+        } : null;
       }
       return item;
-    });
+    }).filter(item => item !== null); // Remove null items
   };
 
-  // Temporarily disable role filtering to test
-  const filteredItems = items; // filterItemsByRole(items);
+  // Filter navigation items based on user permissions
+  const filteredItems = filterItemsByPermissions(items);
 
   // Debug logging
+  console.log('=== SIDEBAR DEBUG ===');
   console.log('User role:', userRole);
+  console.log('User permissions:', userPermissions);
+  console.log('User permissions type:', typeof userPermissions);
+  console.log('User permissions array:', userPermissions);
   console.log('Filtered items count:', filteredItems.length);
   console.log('All items count:', items.length);
+  console.log('Sample navigation items:', items.slice(0, 3).map(item => ({ name: item.name })));
+  console.log('Filtered items:', filteredItems.map(item => ({ name: item.name })));
+  console.log('localStorage permissions:', localStorage.getItem('userPermissions'));
+  console.log('Redux state permissions:', userPermissions);
+  console.log('===================');
+
 
   const navLink = (name, icon, badge, indent = false, disabled = false) => {
     return (

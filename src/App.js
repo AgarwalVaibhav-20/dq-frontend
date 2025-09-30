@@ -21,6 +21,7 @@ import Downloads from './views/downloads/Downloads'
 // import CustomerLoyality from './views/customer loyality/CustomerLoylity.js'
 import Delivery from './views/delivery/Delivery'
 import { checkRestaurantPermission } from './redux/slices/restaurantProfileSlice'
+import { fetchUserProfile } from './redux/slices/authSlice'
 import DeliveryTiming from './views/deliveryTiming/DeliveryTiming'
 import notificationSound from './assets/notification.mp3'
 import WooOrders from './views/delivery/WooOrders'
@@ -174,13 +175,14 @@ const App = () => {
   useEffect(() => {
     if (userId && token && !permissionCheckAttempted) {
       console.log('Checking permissions for userId:', userId)
-      dispatch(checkRestaurantPermission({ userId, token }))
+      // Fetch user profile to get permissions
+      dispatch(fetchUserProfile({ userId, token }))
         .then((result) => {
-          console.log('Permission check result:', result)
+          console.log('User profile fetch result:', result)
           setPermissionCheckAttempted(true)
         })
         .catch((error) => {
-          console.error('Permission check failed:', error)
+          console.error('User profile fetch failed:', error)
           setPermissionCheckAttempted(true)
         })
     } else if (!userId || !token) {
@@ -195,7 +197,7 @@ const App = () => {
     if (restaurantId && userId && token && permissionCheckAttempted) {
       // Only re-check if restaurantId changes after initial check
       console.log('Restaurant ID changed, re-checking permissions')
-      dispatch(checkRestaurantPermission({ userId, token }))
+      dispatch(fetchUserProfile({ userId, token }))
     }
   }, [dispatch, restaurantId, userId, token, permissionCheckAttempted])
 

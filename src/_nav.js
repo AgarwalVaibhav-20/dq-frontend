@@ -58,7 +58,7 @@ const _nav = [
   },
   {
     component: CNavItem,
-    name:"Restauarnts",
+    name:"Restaurants",
     to:"/restaurants",
     icon:<CIcon icon={cilRestaurant} customClassName="nav-icon" />,
     roles: ['admin'], // Only admin can see

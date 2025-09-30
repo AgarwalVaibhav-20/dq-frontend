@@ -84,12 +84,13 @@ export const fetchTableReport = createAsyncThunk(
 )
 export const fetchTransactionCountByDate = createAsyncThunk(
   'reports/fetchTransactionCountByDate',
-  async ({ startDate, endDate, token }, { rejectWithValue }) => {
+  async ({ startDate, endDate, token, restaurantId }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.get(`/transactionCountByDate`, {
         params: {
           startDate,
           endDate,
+          restaurantId,
         },
         ...configureHeaders(token), // ⬅️ Spread the headers outside `params`
       })
@@ -101,12 +102,13 @@ export const fetchTransactionCountByDate = createAsyncThunk(
 )
 export const fetchTaxCollectedByDate = createAsyncThunk(
   'reports/fetchTaxCollectedByDate',
-  async ({ startDate, endDate, token }, { rejectWithValue }) => {
+  async ({ startDate, endDate, token, restaurantId }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.get(`/taxCollectedByDate`, {
         params: {
           startDate,
           endDate,
+          restaurantId,
         },
         ...configureHeaders(token), // ⬅️ Spread the headers outside `params`
       })
@@ -119,12 +121,13 @@ export const fetchTaxCollectedByDate = createAsyncThunk(
 
 export const fetchTableUsageByDate = createAsyncThunk(
   'reports/fetchTableUsageByDate',
-  async ({ startDate, endDate, token }, { rejectWithValue }) => {
+  async ({ startDate, endDate, token, restaurantId }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.get(`/tableUsageByDate`, {
         params: {
           startDate,
           endDate,
+          restaurantId,
         },
         ...configureHeaders(token),
       })
@@ -165,12 +168,13 @@ export const fetchDashboardStatisticsReport = createAsyncThunk(
 )
 export const fetchDiscountUsageByDate = createAsyncThunk(
   'reports/fetchDiscountUsageByDate',
-  async ({ startDate, endDate, token }, { rejectWithValue }) => {
+  async ({ startDate, endDate, token, restaurantId }, { rejectWithValue }) => {
     try {
       const response = await axiosInstance.get(`/discountUsageByDate`, {
         params: {
           startDate,
           endDate,
+          restaurantId,
         },
         ...configureHeaders(token),
       })
@@ -184,12 +188,13 @@ export const fetchDiscountUsageByDate = createAsyncThunk(
 /* NEW THUNK: fetchAverageOrderValueByDate --------------------- */
 export const fetchAverageOrderValueByDate = createAsyncThunk(
   'reports/fetchAverageOrderValueByDate',
-  async ({ token, startDate, endDate }, { rejectWithValue }) => {
+  async ({ token, startDate, endDate, restaurantId }, { rejectWithValue }) => {
     try {
       const res = await axiosInstance.get(`/averageOrderValueByDate`, {
         params: {
           startDate,
           endDate,
+          restaurantId,
         },
         ...configureHeaders(token),
       })
@@ -205,11 +210,10 @@ export const fetchAverageOrderValueByDate = createAsyncThunk(
 // Thunk to fetch transactions by payment type grouped by date
 export const fetchTransactionsByPaymentType = createAsyncThunk(
   'reports/fetchTransactionsByPaymentType',
-  async ({ token, startDate, endDate }, { rejectWithValue }) => {
+  async ({ startDate, endDate, restaurantId }, { rejectWithValue }) => {
     try {
       const res = await axiosInstance.get(`/transactionsByPaymentType`, {
-        params: { startDate, endDate },
-        ...configureHeaders(token),
+        params: { startDate, endDate, restaurantId },
       })
       return res.data // array of { date, paymentTypes: [ { paymentType, transactionCount, transactions: [] } ] }
     } catch (err) {
@@ -223,10 +227,10 @@ export const fetchTransactionsByPaymentType = createAsyncThunk(
 //  total revenue
 export const fetchTotalRevenueByDate = createAsyncThunk(
   'reports/fetchTotalRevenueByDate',
-  async ({ token, startDate, endDate }, { rejectWithValue }) => {
+  async ({ token, startDate, endDate, restaurantId }, { rejectWithValue }) => {
     try {
       const res = await axiosInstance.get(`/totalRevenueByDate`, {
-        params: { startDate, endDate },
+        params: { startDate, endDate, restaurantId },
         ...configureHeaders(token),
       })
       return res.data
@@ -240,10 +244,10 @@ export const fetchTotalRevenueByDate = createAsyncThunk(
 
 export const fetchMostOrderedDishes = createAsyncThunk(
   'reports/fetchMostOrderedDishes',
-  async ({ token, startDate, endDate }, { rejectWithValue }) => {
+  async ({ token, startDate, endDate, restaurantId }, { rejectWithValue }) => {
     try {
       const res = await axiosInstance.get(`/mostOrderDishes`, {
-        params: { startDate, endDate },
+        params: { startDate, endDate, restaurantId },
         ...configureHeaders(token),
       })
       console.log(res.data)
