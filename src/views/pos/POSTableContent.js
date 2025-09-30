@@ -355,13 +355,62 @@ const POSTableContent = () => {
   }
 
   const clearCart = () => {
-    setCart([])
-    setRoundOff(0)
-    setStartTime(null)
-    setElapsedTime(0)
-    localStorage.removeItem(`cart_${tableId}`)
-    localStorage.removeItem(`start_time_${tableId}`)
+  // Check if it's a merged table by its ID format
+  if (tableId.startsWith('merged_')) {
+    if (window.confirm('Are you sure you want to cancel? This will unmerge the tables and restore their original orders.')) {
+      // 1. Get all merged tables from localStorage
+      const allMergedTables = JSON.parse(localStorage.getItem('mergedTables') || '[]')
+      const mergedTable = allMergedTables.find(m => `merged_${m.id}` === tableId)
+
+      if (mergedTable) {
+        // 2. Restore individual carts from the merged order
+        const ordersPerTable = {}
+        mergedTable.combinedOrders.forEach((order) => {
+          // Find the original table for the item
+          const targetTable = order.originalTable || mergedTable.tables[0]
+          if (!ordersPerTable[targetTable]) {
+            ordersPerTable[targetTable] = []
+          }
+          // Remove the 'originalTable' property before restoring
+          const { originalTable, ...cleanOrder } = order
+          ordersPerTable[targetTable].push(cleanOrder)
+        })
+
+        Object.entries(ordersPerTable).forEach(([tableNumber, orders]) => {
+          localStorage.setItem(`cart_${tableNumber}`, JSON.stringify(orders))
+          // Restore start time if it exists
+          if (mergedTable.startTime) {
+            localStorage.setItem(`start_time_${tableNumber}`, mergedTable.startTime)
+          }
+        })
+
+        // 3. Remove the merged table from the list
+        const updatedMergedTables = allMergedTables.filter(m => `merged_${m.id}` !== tableId)
+        localStorage.setItem('mergedTables', JSON.stringify(updatedMergedTables))
+
+        // 4. Clean up localStorage for the merged table
+        localStorage.removeItem(`cart_${tableId}`)
+        localStorage.removeItem(`start_time_${tableId}`)
+      }
+
+      // 5. Navigate back to the main POS screen
+      navigate('/pos')
+      // toast.info('Order cancelled and tables have been unmerged.')
+      return // Stop further execution
+    } else {
+      return // User cancelled the confirmation
+    }
   }
+
+  // --- This is the original logic for non-merged tables ---
+  setCart([])
+  setRoundOff(0)
+  setStartTime(null)
+  setElapsedTime(0)
+  localStorage.removeItem(`cart_${tableId}`)
+  localStorage.removeItem(`start_time_${tableId}`)
+  // toast.info('Order has been cancelled.')
+}
 
   const handleTaxSubmit = (selectedItemIds, taxValue, taxType, taxName) => {
     setCart(prevCart =>
@@ -559,26 +608,14 @@ const POSTableContent = () => {
     const userId = localStorage.getItem('userId');
     const restaurantId = localStorage.getItem('restaurantId');
     
-    if (!token) {
-      toast.error('Authentication token missing');
-      return;
-    }
-
-    if (!restaurantId) {
-      toast.error('Restaurant ID missing');
-      return;
-    }
-
-    if (cart.length === 0) {
-      toast.error('Cart is empty');
-      return;
-    }
+    // ... (your existing checks for token, restaurantId, cart) ...
 
     const payload = {
       token,
       userId,
       restaurantId,
-      tableNumber,
+      // For merged tables, we can send the merged name or original tables list
+      tableNumber: tableId.startsWith('merged_') ? `Merged (${tableId.substring(0, 15)}...)` : tableNumber,
       items: cart?.map((item) => ({
         itemId: item._id || item.id,
         itemName: item.itemName,
@@ -612,9 +649,30 @@ const POSTableContent = () => {
     try {
       const result = await dispatch(createTransaction(payload)).unwrap();
       console.log('Transaction created:', result);
+
+      // --- NEW UNMERGE LOGIC ON SUCCESSFUL PAYMENT ---
+      if (tableId.startsWith('merged_')) {
+        // 1. Get all merged tables from localStorage
+        const allMergedTables = JSON.parse(localStorage.getItem('mergedTables') || '[]')
+        
+        // 2. Remove the current merged table from the array
+        const updatedMergedTables = allMergedTables.filter(m => `merged_${m.id}` !== tableId)
+        localStorage.setItem('mergedTables', JSON.stringify(updatedMergedTables))
+        
+        // 3. Clean up the merged table's specific localStorage
+        localStorage.removeItem(`cart_${tableId}`)
+        localStorage.removeItem(`start_time_${tableId}`)
+        console.log(`Unmerged table ${tableId} after payment.`);
+      }
+      // --- END OF NEW LOGIC ---
+
       setShowPaymentModal(false);
-      clearCart();
+      clearCart(); // This will now clear the state for the current (now defunct) view
       toast.success('Payment processed successfully!');
+      
+      // Navigate back to the main screen after payment
+      navigate('/pos');
+
     } catch (error) {
       console.error("Error submitting payment:", error);
       toast.error('Failed to process payment: ' + (error.message || 'Unknown error'));

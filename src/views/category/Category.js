@@ -70,6 +70,7 @@ export default function Category() {
   };
 
   const handleEditCategory = (cat) => {
+    console.log("cAT =>", cat)
     setEditedCategory(cat);
     setSizes(cat.sizes || [{ sizeName: '', basePrice: '', description: '' }]);
     setEditModalVisible(true);

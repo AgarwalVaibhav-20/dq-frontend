@@ -71,8 +71,8 @@ export const updateCategory = createAsyncThunk(
   "category/updateCategory",
   async ({ id, formData, token }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(
-        `${BASE_URL}category/update/${id}`,
+      const response = await axios.put(
+        `${BASE_URL}/category/update/${id}`,
         formData,
         configureHeaders(token)
       );

@@ -360,8 +360,12 @@ const POS = () => {
   }
 
   const isTableMerged = (tableNumber) => {
+    // console.log("merged tables =>",mergedTables.some(merged => merged.tables.includes(Number(tableNumber))))
+    // console.log("ok isTableMerged =>", tableNumber +" table =>",(mergedTables.some(merged =>
+    //   merged.tables.includes(tableNumber)
+    // )))
     return mergedTables.some(merged =>
-      merged.tables.includes(tableNumber)
+      merged.tables.includes(Number(tableNumber))
     )
   }
 
@@ -571,6 +575,8 @@ const POS = () => {
 
  const getAvailableTables = (floorId) => {
   const floorTables = getTablesForFloor(floorId) // Now uses the passed floorId
+  // console.log("floor id here get available tables ", floorId)
+  // console.log("available tabkles =>", floorTables.filter(qr => !isTableMerged(qr.tableNumber)))
   return floorTables.filter(qr => !isTableMerged(qr.tableNumber))
 }
 
