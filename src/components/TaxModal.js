@@ -25,6 +25,8 @@ const TaxModal = ({
   const [taxes, setTaxes] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [taxValue, setTaxValue] = useState('');
+  const [taxType, setTaxType] = useState('percentage'); // 'percentage' or 'fixed'
 
   // Fetch taxes from database when modal opens
   useEffect(() => {
@@ -70,33 +72,55 @@ const TaxModal = ({
   };
 
   const onSubmit = () => {
-    if (selectedItemIds.length === 0 || !selectedTax) {
+    if (selectedItemIds.length === 0) {
       return;
     }
 
-    const taxValue = parseFloat(selectedTax.taxCharge);
-    const taxType = selectedTax.taxType;
-
-    handleTaxSubmit(selectedItemIds, taxValue, taxType, selectedTax.taxName);
+    if (selectedTax) {
+      // Use selected tax from database
+      const taxValue = parseFloat(selectedTax.taxCharge);
+      const taxType = selectedTax.taxType;
+      handleTaxSubmit(selectedItemIds, taxValue, taxType, selectedTax.taxName);
+    } else {
+      // Use manual input
+      if (!taxValue || Number(taxValue) <= 0) {
+        return;
+      }
+      handleTaxSubmit(selectedItemIds, Number(taxValue), taxType);
+    }
 
     // Reset form
     setSelectedItemIds([]);
     setSelectedTax(null);
+    setTaxValue('');
+    setTaxType('percentage');
     setShowTaxModal(false);
   };
 
   const handleClose = () => {
     setSelectedItemIds([]);
     setSelectedTax(null);
+    setTaxValue('');
+    setTaxType('percentage');
     setError('');
     setShowTaxModal(false);
   };
 
   const calculatePreview = () => {
-    if (!selectedTax || selectedItemIds.length === 0) return 0;
+    if (selectedItemIds.length === 0) return 0;
 
-    const taxValue = parseFloat(selectedTax.taxCharge);
-    const taxType = selectedTax.taxType;
+    let taxValueNum, taxTypeToUse;
+
+    if (selectedTax) {
+      // Use selected tax from database
+      taxValueNum = parseFloat(selectedTax.taxCharge);
+      taxTypeToUse = selectedTax.taxType;
+    } else {
+      // Use manual input
+      if (!taxValue || Number(taxValue) <= 0) return 0;
+      taxValueNum = Number(taxValue);
+      taxTypeToUse = taxType;
+    }
 
     return selectedItemIds.reduce((total, itemId) => {
       const item = cart.find(cartItem => (cartItem.id || cartItem._id) === itemId);
@@ -105,14 +129,39 @@ const TaxModal = ({
       const itemSubtotal = item.adjustedPrice * item.quantity;
       let itemTax = 0;
       
-      if (taxType === 'percentage') {
-        itemTax = (itemSubtotal * taxValue) / 100;
-      } else if (taxType === 'fixed') {
-        itemTax = taxValue;
+      if (taxTypeToUse === 'percentage') {
+        itemTax = (itemSubtotal * taxValueNum) / 100;
+      } else if (taxTypeToUse === 'fixed') {
+        itemTax = taxValueNum;
       }
 
       return total + itemTax;
     }, 0);
+  };
+
+  // Auto-fill percentage tax value when percentage is selected
+  const handleTaxTypeChange = (type) => {
+    setTaxType(type);
+    if (type === 'percentage' && !taxValue) {
+      setTaxValue('18'); // Default 18% tax
+    } else if (type === 'fixed' && taxValue === '18') {
+      setTaxValue(''); // Clear if switching from percentage default
+    }
+  };
+
+  // Handle tax selection from dropdown
+  const handleTaxSelection = (taxId) => {
+    if (taxId) {
+      const tax = taxes.find(t => t._id === taxId);
+      setSelectedTax(tax);
+      // Auto-fill tax type and value based on selected tax
+      setTaxType(tax.taxType);
+      setTaxValue(tax.taxCharge.toString());
+    } else {
+      setSelectedTax(null);
+      setTaxValue('');
+      setTaxType('percentage');
+    }
   };
 
   const formatTaxDisplay = (tax) => {
@@ -130,7 +179,7 @@ const TaxModal = ({
       </CModalHeader>
       <CModalBody style={{ maxHeight: '70vh', overflowY: 'auto' }}>
         
-        {/* Tax Selection */}
+        {/* Select Tax from Database */}
         <div className="mb-4">
           <label className="form-label fw-bold mb-2">Select Tax:</label>
           {loading ? (
@@ -147,11 +196,7 @@ const TaxModal = ({
           ) : (
             <CFormSelect
               value={selectedTax ? selectedTax._id : ''}
-              onChange={(e) => {
-                const taxId = e.target.value;
-                const tax = taxes.find(t => t._id === taxId);
-                setSelectedTax(tax || null);
-              }}
+              onChange={(e) => handleTaxSelection(e.target.value)}
               className="form-control-lg"
             >
               <option value="">Select a tax...</option>
@@ -168,6 +213,71 @@ const TaxModal = ({
               <strong>Selected:</strong> {formatTaxDisplay(selectedTax)}
             </small>
           )}
+        </div>
+
+        {/* Tax Type Selection */}
+        <div className="mb-4">
+          <label className="form-label fw-bold mb-2">Select Tax Type:</label>
+          <div className="btn-group w-100" role="group">
+            <button
+              type="button"
+              className={`btn ${taxType === 'percentage' ? 'btn-primary' : 'btn-outline-primary'}`}
+              onClick={() => handleTaxTypeChange('percentage')}
+              disabled={selectedTax ? true : false}
+            >
+              Percentage Tax (%)
+            </button>
+            <button
+              type="button"
+              className={`btn ${taxType === 'fixed' ? 'btn-primary' : 'btn-outline-primary'}`}
+              onClick={() => handleTaxTypeChange('fixed')}
+              disabled={selectedTax ? true : false}
+            >
+              Fixed Amount Tax (₹)
+            </button>
+          </div>
+          <small className="text-muted mt-2 d-block">
+            <strong>Selected:</strong> {taxType === 'percentage' ? 'Percentage Tax' : 'Fixed Amount Tax'}
+            {selectedTax && (
+              <span className="text-info ms-2">
+                <i className="fas fa-info-circle me-1"></i>
+                (Auto-filled from selected tax)
+              </span>
+            )}
+          </small>
+        </div>
+
+        {/* Tax Value Input */}
+        <div className="mb-4">
+          <label className="form-label fw-bold">
+            {taxType === 'percentage' ? 'Enter Tax Percentage (%)' : 'Enter Fixed Tax Amount (₹)'}
+          </label>
+          <CFormInput
+            type="number"
+            placeholder={
+              taxType === 'percentage'
+                ? 'e.g., 18 (for 18% tax)'
+                : 'e.g., 50 (for ₹50 tax per item)'
+            }
+            value={taxValue}
+            onChange={(e) => setTaxValue(e.target.value)}
+            step={taxType === 'percentage' ? '0.01' : '1'}
+            min="0"
+            className="form-control-lg"
+            disabled={selectedTax ? true : false}
+          />
+          <small className="text-muted mt-1">
+            {taxType === 'percentage'
+              ? 'Tax percentage will be applied to each item\'s subtotal (price × quantity)'
+              : 'Fixed tax amount will be added to each selected item'
+            }
+            {selectedTax && (
+              <span className="text-info d-block mt-1">
+                <i className="fas fa-info-circle me-1"></i>
+                Value auto-filled from selected tax
+              </span>
+            )}
+          </small>
         </div>
 
         {/* Items Selection */}
@@ -238,16 +348,24 @@ const TaxModal = ({
         </div>
 
         {/* Tax Preview */}
-        {selectedItemIds.length > 0 && selectedTax && (
+        {selectedItemIds.length > 0 && (
+          (selectedTax) || 
+          (taxValue && Number(taxValue) > 0)
+        ) && (
           <div className="alert alert-info">
             <div className="d-flex justify-content-between align-items-center">
               <div>
                 <strong>Tax Preview:</strong>
                 <div className="small text-muted mt-1">
-                  {selectedTax.taxType === 'percentage' 
-                    ? `${selectedTax.taxCharge}% ${selectedTax.taxName} on ${selectedItemIds.length} selected item(s)`
-                    : `₹${selectedTax.taxCharge} ${selectedTax.taxName} on ${selectedItemIds.length} selected item(s)`
-                  }
+                  {selectedTax ? (
+                    selectedTax.taxType === 'percentage' 
+                      ? `${selectedTax.taxCharge}% ${selectedTax.taxName} on ${selectedItemIds.length} selected item(s)`
+                      : `₹${selectedTax.taxCharge} ${selectedTax.taxName} on ${selectedItemIds.length} selected item(s)`
+                  ) : (
+                    taxType === 'percentage' 
+                      ? `${taxValue}% tax on ${selectedItemIds.length} selected item(s)`
+                      : `₹${taxValue} fixed tax on ${selectedItemIds.length} selected item(s)`
+                  )}
                 </div>
               </div>
               <div className="text-end">
@@ -268,9 +386,12 @@ const TaxModal = ({
         <CButton
           color="primary"
           onClick={onSubmit}
-          disabled={selectedItemIds.length === 0 || !selectedTax}
+          disabled={
+            selectedItemIds.length === 0 || 
+            (!selectedTax && (!taxValue || Number(taxValue) <= 0))
+          }
         >
-          Apply {selectedTax?.taxName || 'Tax'}
+          Apply {selectedTax ? selectedTax.taxName : `${taxType === 'percentage' ? 'Percentage' : 'Fixed'} Tax`}
         </CButton>
       </CModalFooter>
     </CModal>

@@ -34,6 +34,7 @@ const LoginActivity = () => {
   
   // State for form
   const [name, setName] = useState('');
+  const [pin, setPin] = useState('');
   const [saving, setSaving] = useState(false);
   
   // State for activities
@@ -112,25 +113,46 @@ const LoginActivity = () => {
       return;
     }
 
+    if (!pin.trim()) {
+      toast.error('Please enter your PIN');
+      return;
+    }
+
     setSaving(true);
     try {
+      console.log('🔍 Frontend: Sending request with:', { name: name.trim(), pin: pin.trim() });
+      
       const response = await fetch(`${BASE_URL}/api/login-activity`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ name: name.trim() }),
+        body: JSON.stringify({ 
+          name: name.trim(),
+          pin: pin.trim()
+        }),
       });
+
+      console.log('🔍 Frontend: Response status:', response.status);
+      console.log('🔍 Frontend: Response ok:', response.ok);
 
       if (response.ok) {
         const data = await response.json();
         toast.success('Login activity saved successfully!');
         setName('');
+        setPin('');
         loadCurrentSession();
         loadActivities();
+        
+        // Set session started flag in localStorage
+        localStorage.setItem('sessionStarted', 'true');
+        
+        // Dispatch action to update Redux state
+        dispatch({ type: 'auth/setSessionStarted', payload: true });
       } else {
         const errorData = await response.json();
+        console.error('❌ Backend error response:', errorData);
         toast.error(errorData.message || 'Failed to save login activity');
       }
     } catch (error) {
@@ -141,8 +163,33 @@ const LoginActivity = () => {
     }
   };
 
+  // Handle logout
+  const handleLogout = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/login-activity/logout`, {
+        method: 'PUT',
+        headers: {
+          'Authorization': `Bearer ${authToken}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-  // Format date
+      if (response.ok) {
+        toast.success('Logged out successfully!');
+        setCurrentSession(null);
+        loadActivities();
+        
+        // Clear session started flag
+        localStorage.removeItem('sessionStarted');
+        dispatch({ type: 'auth/setSessionStarted', payload: false });
+      } else {
+        toast.error('Failed to logout');
+      }
+    } catch (error) {
+      console.error('Error logging out:', error);
+      toast.error('Error logging out');
+    }
+  };
   const formatDate = (dateString) => {
     if (!dateString) return 'Not logged out';
     return new Date(dateString).toLocaleString();
@@ -181,10 +228,12 @@ const LoginActivity = () => {
         <CRow className="mb-4">
           <CCol>
             <CAlert color="info" className="d-flex align-items-center">
-              <CIcon icon={cilCheckCircle} className="me-2" />
-              <div>
-                <strong>Active Session:</strong> {currentSession.name} - 
-                Logged in at {formatDate(currentSession.logintime)}
+              <div className="d-flex align-items-center">
+                <CIcon icon={cilCheckCircle} className="me-2" />
+                <div>
+                  <strong>Active Session:</strong> {currentSession.name} - 
+                  Logged in at {formatDate(currentSession.logintime)}
+                </div>
               </div>
             </CAlert>
           </CCol>
@@ -213,6 +262,22 @@ const LoginActivity = () => {
                         placeholder="Enter your name"
                         value={name}
                         onChange={(e) => setName(e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                  <div className="mb-3">
+                    <label className="form-label">Enter PIN</label>
+                    <div className="input-group">
+                      <span className="input-group-text">
+                        🔒
+                      </span>
+                      <input
+                        type="password"
+                        className="form-control"
+                        placeholder="Enter your PIN"
+                        value={pin}
+                        onChange={(e) => setPin(e.target.value)}
                         required
                       />
                     </div>

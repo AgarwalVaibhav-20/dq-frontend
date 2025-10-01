@@ -2,7 +2,12 @@ import React from "react";
 
 const KOT = React.forwardRef(({ tableNumber, cart, selectedSystem }, ref) => {
   // Calculate total for the entire order
-  const totalAmount = cart.reduce((acc, item) => acc + item.adjustedPrice * item.quantity, 0);
+  const totalAmount = cart.reduce((acc, item) => {
+    const price = item.adjustedPrice || item.price || item.subtotal || 0;
+    const quantity = item.quantity || 1;
+    return acc + (price * quantity);
+  }, 0);
+  
   const totalTaxAmount = cart.reduce((acc, item) => acc + (Number(item.taxAmount) || 0), 0);
   const systemCharge = selectedSystem ? Number(selectedSystem.chargeOfSystem || 0) : 0;
   const grandTotal = totalAmount + totalTaxAmount + systemCharge;
@@ -50,24 +55,31 @@ const KOT = React.forwardRef(({ tableNumber, cart, selectedSystem }, ref) => {
 
       <h4 style={{ fontSize: "12px", margin: "5px 0" }}>Order Details:</h4>
       <ul style={{ listStyle: "none", padding: "0", margin: "0" }}>
-        {cart.map((item) => (
-          <li key={item.id} style={{ margin: "2px 0" }}>
-            <div>
-              <strong>{item.itemName} ({item.selectedSize})</strong> x {item.quantity} 
-            </div>
-            <div style={{ fontSize: "12px", color: "#555" }}>
-              Price: ₹{item.adjustedPrice.toFixed(2)}
-            </div>
-            <div style={{ fontSize: "12px", color: "#555" }}>
-               Total: ₹{(item.adjustedPrice * item.quantity).toFixed(2)}
-            </div>
-            {item.notes && (
-              <div style={{ fontSize: "11px", fontStyle: "italic", color: "#777" }}>
-                Notes: {item.notes}
+        {cart.map((item) => {
+          const price = item.adjustedPrice || item.price || item.subtotal || 0;
+          const quantity = item.quantity || 1;
+          const itemName = item.itemName || item.item_name || 'Unknown Item';
+          const selectedSize = item.selectedSize || '';
+          
+          return (
+            <li key={item.id || item._id || item.itemId} style={{ margin: "2px 0" }}>
+              <div>
+                <strong>{itemName}{selectedSize ? ` (${selectedSize})` : ''}</strong> x {quantity}
               </div>
-            )}
-          </li>
-        ))}
+              <div style={{ fontSize: "12px", color: "#555" }}>
+                Price: ₹{Number(price).toFixed(2)}
+              </div>
+              <div style={{ fontSize: "12px", color: "#555" }}>
+                 Total: ₹{(Number(price) * quantity).toFixed(2)}
+              </div>
+              {item.notes && (
+                <div style={{ fontSize: "11px", fontStyle: "italic", color: "#777" }}>
+                  Notes: {item.notes}
+                </div>
+              )}
+            </li>
+          );
+        })}
       </ul>
 
       <hr style={{ borderTop: "1px solid #000", margin: "5px 0" }} />

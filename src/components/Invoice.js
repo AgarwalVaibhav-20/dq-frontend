@@ -112,11 +112,17 @@ const Invoice = React.forwardRef(
         <ul style={{ listStyle: 'none', padding: '0', margin: '0' }}>
           {cart.map((item) => {
             console.log("item from bill,=>", item)
+            const price = item.adjustedPrice || item.price || item.subtotal || 0;
+            const quantity = item.quantity || 1;
+            const itemName = item.itemName || item.item_name || 'Unknown Item';
+            const selectedSize = item.selectedSize || '';
+            
             return (
-            <li key={item.id} style={{ margin: '2px 0' }}>
-              {item.itemName} ({item.selectedSize}) x {item.quantity} - ₹{item.adjustedPrice * item.quantity}
-            </li>
-          )})}
+              <li key={item.id || item._id || item.itemId} style={{ margin: '2px 0' }}>
+                {itemName}{selectedSize ? ` (${selectedSize})` : ''} x {quantity} - ₹{(Number(price) * quantity).toFixed(2)}
+              </li>
+            );
+          })}
         </ul>
 
         <hr style={{ borderTop: '1px solid #000', margin: '5px 0' }} />

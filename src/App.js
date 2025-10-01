@@ -11,6 +11,7 @@ import { useParams } from "react-router-dom";
 import './scss/style.scss'
 import './scss/examples.scss'
 import PrivateRoute from './components/PrivateRoute'
+import SessionGuard from './components/SessionGuard'
 import './global.css'
 import Reservation from './views/reservations/Reservation'
 import Dues from './views/dues/Dues'
@@ -262,7 +263,9 @@ const App = () => {
                 path="/*"
                 element={
                   <PrivateRoute>
-                    <DefaultLayout />
+                    <SessionGuard>
+                      <DefaultLayout />
+                    </SessionGuard>
                   </PrivateRoute>
                 }
               >

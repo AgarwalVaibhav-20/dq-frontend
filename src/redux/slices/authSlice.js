@@ -213,6 +213,7 @@ const initialState = {
   restaurantId: localStorage.getItem('restaurantId') || null,
   categoryId: localStorage.getItem('categoryId') || null,
   role: localStorage.getItem('userRole') || 'admin',
+  sessionStarted: localStorage.getItem('sessionStarted') === 'true',
   user: {
     id: localStorage.getItem('userId') || null,
     name: localStorage.getItem('userName') || null,
@@ -231,12 +232,17 @@ const authSlice = createSlice({
   name: 'auth',
   initialState,
   reducers: {
+    setSessionStarted: (state, action) => {
+      state.sessionStarted = action.payload;
+      localStorage.setItem('sessionStarted', action.payload.toString());
+    },
     localLogout: (state) => {
       state.userId = null;
       state.token = null;
       state.restaurantId = null;
       state.categoryId = null;
       state.role = 'admin';
+      state.sessionStarted = false;
       state.user = {
         id: null,
         name: null,
@@ -254,6 +260,7 @@ const authSlice = createSlice({
       localStorage.removeItem('userRole');
       localStorage.removeItem('userPermissions');
       localStorage.removeItem('userName');
+      localStorage.removeItem('sessionStarted');
       localStorage.removeItem('userEmail');
       localStorage.removeItem('username');
 
@@ -558,7 +565,7 @@ const authSlice = createSlice({
 });
 
 // Export actions
-export const { localLogout, updateCurrentUserRole, clearError, syncLocalStorage } = authSlice.actions;
+export const { localLogout, updateCurrentUserRole, clearError, syncLocalStorage, setSessionStarted } = authSlice.actions;
 
 // Selectors
 export const selectAuth = (state) => ({

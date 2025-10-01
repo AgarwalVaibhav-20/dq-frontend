@@ -574,7 +574,7 @@ const Order = () => {
               <strong>Customer Name:</strong> {selectedOrder.customerName|| 'N/A'}
             </p>
             <p>
-              <strong>Customer Address:</strong> {selectedOrder.user?.address || 'N/A'}
+              <strong>Customer Address:</strong> {selectedOrder.customerAddress || selectedOrder.customerId?.address || 'N/A'}
             </p>
             <p>
               <strong>Table Number:</strong> {selectedOrder.tableNumber}
@@ -589,11 +589,15 @@ const Order = () => {
               <strong>Items:</strong>
             </p>
             <ul style={{ paddingLeft: '20px' }}>
-              {selectedOrder.order_details?.map((item, index) => (
+              {selectedOrder.items?.map((item, index) => (
                 <li key={index}>
-                  {item.item_name} (x{item.quantity})
+                  {item.itemName} (x{item.quantity}) - ₹{item.subtotal}
                 </li>
-              ))}
+              )) || selectedOrder.order_details?.map((item, index) => (
+                <li key={index}>
+                  {item.item_name} (x{item.quantity}) - ₹{item.price * item.quantity}
+                </li>
+              )) || <li>No items found</li>}
             </ul>
           </div>
           <div
@@ -652,7 +656,13 @@ const Order = () => {
             <KOT
               ref={kotRef}
               tableNumber={selectedOrder.tableNumber || selectedOrder.table_number}
-              cart={selectedOrder.order_details?.map(item => ({
+              cart={selectedOrder.items?.map(item => ({
+                id: item._id || item.itemId,
+                itemName: item.itemName,
+                price: item.price,
+                quantity: item.quantity,
+                notes: item.notes || ''
+              })) || selectedOrder.order_details?.map(item => ({
                 id: item._id || item.id,
                 itemName: item.item_name,
                 price: item.price,
@@ -667,7 +677,13 @@ const Order = () => {
               ref={invoiceRef}
               tableNumber={selectedOrder.tableNumber || selectedOrder.table_number}
               selectedCustomerName={selectedOrder.customerName || selectedOrder.user?.name || 'Walk-in Customer'}
-              cart={selectedOrder.order_details?.map(item => ({
+              cart={selectedOrder.items?.map(item => ({
+                id: item._id || item.itemId,
+                itemName: item.itemName,
+                price: item.price,
+                quantity: item.quantity,
+                notes: item.notes || ''
+              })) || selectedOrder.order_details?.map(item => ({
                 id: item._id || item.id,
                 itemName: item.item_name,
                 price: item.price,

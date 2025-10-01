@@ -9,11 +9,12 @@ import { shallowEqual } from 'react-redux';
 import { refreshUserRole } from '../redux/slices/authSlice';
 
 export const AppSidebarNav = ({ items }) => {
-  const { restaurantPermission, userRole, userPermissions } = useSelector(
+  const { restaurantPermission, userRole, userPermissions, sessionStarted } = useSelector(
     (state) => ({ 
       restaurantPermission: state.restaurantProfile.restaurantPermission,
       userRole: state.auth.role || localStorage.getItem('userRole') || 'admin',
-      userPermissions: state.auth.user?.permissions || JSON.parse(localStorage.getItem('userPermissions') || '[]')
+      userPermissions: state.auth.user?.permissions || JSON.parse(localStorage.getItem('userPermissions') || '[]'),
+      sessionStarted: state.auth.sessionStarted || localStorage.getItem('sessionStarted') === 'true'
     }),
     shallowEqual
   );
@@ -105,27 +106,34 @@ export const AppSidebarNav = ({ items }) => {
     const { component, name, badge, icon, to, ...rest } = item;
     const Component = component;
     const isDisabled = restaurantPermission?.permission === 0 && to !== '/orders';
+    const isSessionDisabled = !sessionStarted && to !== '/login-activity';
 
     return (
       <Component as="div" key={index}>
         {to || rest.href ? (
           <CTooltip
-            content={isDisabled ? "Access restricted. Contact support." : ""}
+            content={
+              isDisabled 
+                ? "Access restricted. Contact support." 
+                : isSessionDisabled 
+                ? "Please start your session first by filling the Login Activity form."
+                : ""
+            }
             placement="right"
           >
             <div>
               <CNavLink
-                {...(to && { as: NavLink, to: isDisabled ? '#' : to })}
+                {...(to && { as: NavLink, to: (isDisabled || isSessionDisabled) ? '#' : to })}
                 {...(rest.href && { target: '_blank', rel: 'noopener noreferrer' })}
-                style={isDisabled ? { 
+                style={(isDisabled || isSessionDisabled) ? { 
                   cursor: 'not-allowed', 
                   opacity: 0.5,
                   pointerEvents: 'none' 
                 } : {}}
-                onClick={isDisabled ? handleDisabledClick : undefined}
+                onClick={(isDisabled || isSessionDisabled) ? handleDisabledClick : undefined}
                 {...rest}
               >
-                {navLink(name, icon, badge, indent, isDisabled)}
+                {navLink(name, icon, badge, indent, (isDisabled || isSessionDisabled))}
               </CNavLink>
             </div>
           </CTooltip>
@@ -140,15 +148,16 @@ export const AppSidebarNav = ({ items }) => {
     const { component, name, icon, items, to, ...rest } = item;
     const Component = component;
     const isDisabled = restaurantPermission?.permission === 0;
+    const isSessionDisabled = !sessionStarted && to !== '/login-activity';
 
     return (
       <Component
         compact
         as="div"
         key={index}
-        toggler={navLink(name, icon, undefined, false, isDisabled)}
-        style={isDisabled ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
-        onClick={isDisabled ? handleDisabledClick : undefined}
+        toggler={navLink(name, icon, undefined, false, (isDisabled || isSessionDisabled))}
+        style={(isDisabled || isSessionDisabled) ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+        onClick={(isDisabled || isSessionDisabled) ? handleDisabledClick : undefined}
         {...rest}
       >
         {items?.map((item, index) =>
