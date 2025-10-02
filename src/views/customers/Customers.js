@@ -1,17 +1,17 @@
 import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { DataGrid } from '@mui/x-data-grid'
-import { fetchCustomers, deleteCustomer, addCustomer } from '../../redux/slices/customerSlice'
-import { CButton, CSpinner, CModal, CModalHeader, CModalBody, CModalFooter, CForm, CFormInput, CFormTextarea, CFormLabel, CAlert } from '@coreui/react'
+import { fetchCustomers, deleteCustomer, addCustomer, setSelectedCustomerType, updateCustomerFrequency } from '../../redux/slices/customerSlice'
+import { CButton, CSpinner, CModal, CModalHeader, CModalBody, CModalFooter, CForm, CFormInput, CFormTextarea, CFormLabel, CAlert, CFormSelect } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilEnvelopeOpen, cilChatBubble, cilTrash, cilPlus } from '@coreui/icons'
+import { cilEnvelopeOpen, cilChatBubble, cilTrash, cilPlus, cilFilter } from '@coreui/icons'
 import CustomToolbar from '../../utils/CustomToolbar'
 import { sendBulkEmail, resetBulkEmailStatus } from '../../redux/slices/SendBulkEmailSlice'
 import { useMediaQuery } from '@mui/material'
 
 const Customer = () => {
   const dispatch = useDispatch()
-  const { customers, loading } = useSelector((state) => state.customers)
+  const { customers, loading, selectedCustomerType } = useSelector((state) => state.customers)
   const restaurantId = useSelector((state) => state.auth.restaurantId)
   const isMobile = useMediaQuery('(max-width:600px)')
 
@@ -34,11 +34,32 @@ const Customer = () => {
     anniversary: '',
   })
   const [formErrors, setFormErrors] = useState({})
+
+  // Customer type filter options
+  const customerTypeOptions = [
+    { value: 'All', label: 'All Customers' },
+    { value: 'FirstTimer', label: 'First Timer' },
+    { value: 'Corporate', label: 'Corporate' },
+    { value: 'Regular', label: 'Regular' },
+    { value: 'Lost Customer', label: 'Lost Customer' },
+    { value: 'High Spender', label: 'High Spender' },
+  ]
   useEffect(() => {
     if (restaurantId) {
       dispatch(fetchCustomers({ restaurantId }))
     }
   }, [dispatch, restaurantId])
+
+  // Handle customer type filter change
+  const handleCustomerTypeChange = (e) => {
+    const newType = e.target.value
+    dispatch(setSelectedCustomerType(newType))
+  }
+
+  // Filter customers based on selected type
+  const filteredCustomers = selectedCustomerType === 'All' 
+    ? customers 
+    : customers.filter(customer => customer.customerType === selectedCustomerType)
 
   const sendEmail = (email) => {
     window.location.href = `mailto:${email}?subject=Hello&body=Hi there!`
@@ -214,10 +235,61 @@ const Customer = () => {
       valueGetter: (params) => params.row.address || 'N/A',
     },
     {
+      field: 'frequency',
+      headerName: 'Frequency',
+      flex: isMobile ? undefined : 0.8,
+      minWidth: isMobile ? 100 : undefined,
+      headerClassName: 'header-style',
+      valueGetter: (params) => params.row.frequency || 0,
+    },
+    {
+      field: 'customerType',
+      headerName: 'Customer Type',
+      flex: isMobile ? undefined : 1,
+      minWidth: isMobile ? 120 : undefined,
+      headerClassName: 'header-style',
+      valueGetter: (params) => params.row.customerType || 'FirstTimer',
+      renderCell: (params) => {
+        const type = params.row.customerType || 'FirstTimer';
+        const getTypeColor = (type) => {
+          switch (type) {
+            case 'FirstTimer': return '#6c757d';
+            case 'Corporate': return '#0d6efd';
+            case 'Regular': return '#198754';
+            case 'Lost Customer': return '#dc3545';
+            case 'High Spender': return '#fd7e14';
+            default: return '#6c757d';
+          }
+        };
+        return (
+          <span 
+            style={{ 
+              backgroundColor: getTypeColor(type),
+              color: 'white',
+              padding: '4px 8px',
+              borderRadius: '12px',
+              fontSize: '0.75rem',
+              fontWeight: '500'
+            }}
+          >
+            {type}
+          </span>
+        );
+      },
+    },
+    {
+      field: 'totalSpent',
+      headerName: 'Total Spent',
+      flex: isMobile ? undefined : 0.8,
+      minWidth: isMobile ? 100 : undefined,
+      headerClassName: 'header-style',
+      valueGetter: (params) => `₹${params.row.totalSpent || 0}`,
+    },
+    {
       field: 'actions',
       headerName: 'Actions',
-      flex: isMobile ? undefined : 1.5,
-      minWidth: isMobile ? 225 : undefined,
+      flex: isMobile ? undefined : 2,
+      minWidth: isMobile ? 280 : 300,
       headerClassName: 'header-style',
       sortable: false,
       filterable: false,
@@ -225,7 +297,7 @@ const Customer = () => {
         const { email, phoneNumber, _id } = params.row; // ✅ safely destructure
 
         return (
-          <div style={{ display: 'flex', gap: '4px' }}>
+          <div style={{ display: 'flex', gap: '4px', flexWrap: 'nowrap' }}>
             <CButton color="primary" size="sm" onClick={() => sendEmail(email)}>
               <CIcon icon={cilEnvelopeOpen} /> Email
             </CButton>
@@ -233,7 +305,7 @@ const Customer = () => {
               <CIcon icon={cilChatBubble} /> WhatsApp
             </CButton>
             <CButton color="danger" size="sm" onClick={() => openDeleteModal(_id)}>
-              <CIcon icon={cilTrash} />
+              <CIcon icon={cilTrash} /> Delete
             </CButton>
           </div>
         );
@@ -256,6 +328,26 @@ const Customer = () => {
         </div>
       </div>
 
+      {/* Customer Type Filter */}
+      <div className="mb-4">
+        <div className="flex items-center gap-3">
+          <CIcon icon={cilFilter} className="text-gray-600" />
+          <label className="text-sm font-medium text-gray-700">Filter by Customer Type:</label>
+          <CFormSelect
+            value={selectedCustomerType}
+            onChange={handleCustomerTypeChange}
+            style={{ width: '200px' }}
+            className="shadow-sm"
+          >
+            {customerTypeOptions.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </CFormSelect>
+        </div>
+      </div>
+
       {loading ? (
         <div className="flex justify-center my-6">
           <CSpinner color="primary" variant="grow" />
@@ -264,7 +356,7 @@ const Customer = () => {
         <div className="bg-white rounded-xl shadow-sm p-2 sm:p-4">
           <DataGrid
             autoHeight
-            rows={customers?.map((customer, index) => ({
+            rows={filteredCustomers?.map((customer, index) => ({
               ...customer,
               sno: index + 1,
             }))}
@@ -484,6 +576,7 @@ const Customer = () => {
                 </div>
               </div>
             </div>
+
           </CForm>
         </CModalBody>
         <CModalFooter>

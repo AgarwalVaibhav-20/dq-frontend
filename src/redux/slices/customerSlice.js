@@ -13,13 +13,10 @@ export const fetchCustomers = createAsyncThunk(
   'customers/fetchCustomers',
   async ({ restaurantId }, { rejectWithValue }) => {
     try {
-      // If restaurantId is provided, fetch customers for that restaurant
-      // Otherwise, fetch all customers (for reservation dropdown)
-      const url = restaurantId 
-        ? `${BASE_URL}/customer/${restaurantId}`
-        : `${BASE_URL}/customer/all`;
+      // Always fetch all customers regardless of restaurantId
+      const url = `${BASE_URL}/customer/all`;
       
-      console.log("🚀 Fetching customers from:", url);
+      console.log("🚀 Fetching all customers from:", url);
       
       const response = await axios.get(url);
       console.log("✅ Customers fetched:", response.data?.length || 0);
@@ -36,7 +33,7 @@ export const fetchCustomers = createAsyncThunk(
 // Add customer
 export const addCustomer = createAsyncThunk(
   'customers/addCustomer',
-  async ({ token, name, email, address, phoneNumber , birthday , anniversary }, { rejectWithValue }) => {
+  async ({ token, name, email, address, phoneNumber, birthday, anniversary }, { rejectWithValue }) => {
     try {
       const restaurantId = localStorage.getItem("restaurantId");
       if (!restaurantId) {
@@ -79,6 +76,36 @@ export const deleteCustomer = createAsyncThunk(
   }
 );
 
+// Fetch customers by type
+export const fetchCustomersByType = createAsyncThunk(
+  'customers/fetchCustomersByType',
+  async ({ restaurantId, customerType }, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(`${BASE_URL}/customer/type/${restaurantId}/${customerType}`);
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
+// Update customer frequency
+export const updateCustomerFrequency = createAsyncThunk(
+  'customers/updateCustomerFrequency',
+  async ({ id, frequency, totalSpent }, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await axios.put(`${BASE_URL}/customer/frequency/${id}`, 
+        { frequency, totalSpent },
+        configureHeaders(token)
+      );
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
 
 // Customer slice
 const customerSlice = createSlice({
@@ -87,8 +114,13 @@ const customerSlice = createSlice({
     customers: [],
     loading: false,
     error: null,
+    selectedCustomerType: 'All',
   },
-  reducers: {},
+  reducers: {
+    setSelectedCustomerType: (state, action) => {
+      state.selectedCustomerType = action.payload;
+    },
+  },
   extraReducers: (builder) => {
     builder
       .addCase(fetchCustomers.pending, (state) => {
@@ -136,8 +168,34 @@ const customerSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
         toast.error('Failed to delete customer.');
+      })
+      .addCase(fetchCustomersByType.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchCustomersByType.fulfilled, (state, action) => {
+        state.loading = false;
+        state.customers = action.payload;
+      })
+      .addCase(fetchCustomersByType.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        toast.error('Failed to fetch customers by type.');
+      })
+      .addCase(updateCustomerFrequency.fulfilled, (state, action) => {
+        const updatedCustomer = action.payload.customer;
+        const index = state.customers.findIndex(customer => customer._id === updatedCustomer._id);
+        if (index !== -1) {
+          state.customers[index] = updatedCustomer;
+        }
+        toast.success('Customer frequency updated successfully.');
+      })
+      .addCase(updateCustomerFrequency.rejected, (state, action) => {
+        state.error = action.payload;
+        toast.error('Failed to update customer frequency.');
       });
   },
 });
 
+export const { setSelectedCustomerType } = customerSlice.actions;
 export default customerSlice.reducer;
