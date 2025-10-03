@@ -49,7 +49,8 @@ const Menu = () => {
     sizes: [{ name: "", price: "", enabled: true }],
     stockItems: [{ stockId: "", quantity: "", unit: "" }],
     description: "",
-    preparationTime: ""
+    preparationTime: "",
+    rewardPoints: 0
   });
 
   const [previewImage, setPreviewImage] = useState(null);
@@ -338,7 +339,25 @@ const Menu = () => {
         <CButton
           color="primary"
           className="px-4 rounded-pill fw-semibold"
-          onClick={() => setModalVisible(true)}
+          onClick={() => {
+            setFormData({
+              menuId: "",
+              itemName: "",
+              categoryId: "",
+              restaurantId: "",
+              itemImage: "",
+              sub_category: "",
+              stock: 0,
+              sizes: [{ name: "", price: "", enabled: true }],
+              stockItems: [{ stockId: "", quantity: "", unit: "" }],
+              description: "",
+              preparationTime: "",
+              rewardPoints: 0
+            });
+            setPreviewImage(null);
+            setActiveTab("basic");
+            setModalVisible(true);
+          }}
         >
           + Add Menu
         </CButton>
@@ -466,6 +485,23 @@ const Menu = () => {
                 onChange={handleInputChange}
                 required
               />
+            </div>
+
+            {/* Reward System */}
+            <div className="mb-3">
+              <label className="form-label">Reward Points</label>
+              <input
+                type="number"
+                className="form-control"
+                name="rewardPoints"
+                value={formData.rewardPoints || 0}
+                onChange={handleInputChange}
+                min="0"
+                placeholder="Enter reward points for this item"
+              />
+              <small className="form-text text-muted">
+                Points earned by customer when purchasing this item
+              </small>
             </div>
 
             <div className="mb-3">

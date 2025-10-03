@@ -50,6 +50,7 @@ export const addMenuItem = createAsyncThunk(
       sizes,
       token,
       unit,
+      rewardPoints,
     },
     { rejectWithValue }
   ) => {
@@ -66,6 +67,7 @@ export const addMenuItem = createAsyncThunk(
       formData.append("sub_category", sub_category || "");
       formData.append("status", status || 1);
       formData.append("unit", unit || "");
+      formData.append("rewardPoints", rewardPoints || 0);
 
       if (sizes && Array.isArray(sizes)) {
         formData.append("sizes", JSON.stringify(sizes));
