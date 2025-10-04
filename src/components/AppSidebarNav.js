@@ -10,14 +10,24 @@ import { refreshUserRole } from '../redux/slices/authSlice';
 
 export const AppSidebarNav = ({ items }) => {
   const { restaurantPermission, userRole, userPermissions, sessionStarted } = useSelector(
-    (state) => ({ 
+    (state) => ({
       restaurantPermission: state.restaurantProfile.restaurantPermission,
       userRole: state.auth.role || localStorage.getItem('userRole') || 'admin',
       userPermissions: state.auth.user?.permissions || JSON.parse(localStorage.getItem('userPermissions') || '[]'),
-      sessionStarted: state.auth.sessionStarted || localStorage.getItem('sessionStarted') === 'true'
+      // Now it correctly and reliably reads only from the Redux store
+      sessionStarted: state.auth.sessionStarted
     }),
     shallowEqual
   );
+  // const { restaurantPermission, userRole, userPermissions, sessionStarted } = useSelector(
+  //   (state) => ({ 
+  //     restaurantPermission: state.restaurantProfile.restaurantPermission,
+  //     userRole: state.auth.role || localStorage.getItem('userRole') || 'admin',
+  //     userPermissions: state.auth.user?.permissions || JSON.parse(localStorage.getItem('userPermissions') || '[]'),
+  //     sessionStarted: state.auth.sessionStarted || localStorage.getItem('sessionStarted') === 'true'
+  //   }),
+  //   shallowEqual
+  // );
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
@@ -35,7 +45,7 @@ export const AppSidebarNav = ({ items }) => {
         // console.log('Auto-refresh role failed:', error);
       }
     };
-    
+
     autoRefreshRole();
   }, [dispatch]);
 
@@ -44,13 +54,13 @@ export const AppSidebarNav = ({ items }) => {
     return items.filter(item => {
       // Admin always sees everything
       if (userRole === 'admin') return true;
-      
+
       // For non-admin users, check if they have permission for this item
       if (userPermissions && Array.isArray(userPermissions) && userPermissions.length > 0) {
         // Check if the item name is in the permissions array
         return userPermissions.includes(item.name);
       }
-      
+
       // If no permissions are set, show nothing (don't fall back to role-based filtering)
       return false;
     }).map(item => {
@@ -81,10 +91,10 @@ export const AppSidebarNav = ({ items }) => {
         {icon
           ? icon
           : indent && (
-              <span className="nav-icon">
-                <span className="nav-icon-bullet"></span>
-              </span>
-            )}
+            <span className="nav-icon">
+              <span className="nav-icon-bullet"></span>
+            </span>
+          )}
         <span style={disabled ? { opacity: 0.5 } : {}}>
           {name && name}
         </span>
@@ -113,11 +123,11 @@ export const AppSidebarNav = ({ items }) => {
         {to || rest.href ? (
           <CTooltip
             content={
-              isDisabled 
-                ? "Access restricted. Contact support." 
-                : isSessionDisabled 
-                ? "Please start your session first by filling the Login Activity form."
-                : ""
+              isDisabled
+                ? "Access restricted. Contact support."
+                : isSessionDisabled
+                  ? "Please start your session first by filling the Login Activity form."
+                  : ""
             }
             placement="right"
           >
@@ -125,10 +135,10 @@ export const AppSidebarNav = ({ items }) => {
               <CNavLink
                 {...(to && { as: NavLink, to: (isDisabled || isSessionDisabled) ? '#' : to })}
                 {...(rest.href && { target: '_blank', rel: 'noopener noreferrer' })}
-                style={(isDisabled || isSessionDisabled) ? { 
-                  cursor: 'not-allowed', 
+                style={(isDisabled || isSessionDisabled) ? {
+                  cursor: 'not-allowed',
                   opacity: 0.5,
-                  pointerEvents: 'none' 
+                  pointerEvents: 'none'
                 } : {}}
                 onClick={(isDisabled || isSessionDisabled) ? handleDisabledClick : undefined}
                 {...rest}

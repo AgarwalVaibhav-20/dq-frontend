@@ -24,11 +24,13 @@ import bannerReducer from './slices/bannerSlice'
 import couponReducer from "./slices/coupenSlice";
 import restaurantReducer from './slices/restaurantSlice'
 import floorSlices from './slices/floorSlices'
+import memeberSlice from './slices/memberSlice'
 // import floorRedux from './slices/FloorRedux'
 import tableReducer from './slices/tableSlice'
 // Configure the Redux store
 const store = configureStore({
   reducer: {
+    members:memeberSlice,
     floors: floorSlices,
     tables: tableReducer,
     restaurants: restaurantReducer,

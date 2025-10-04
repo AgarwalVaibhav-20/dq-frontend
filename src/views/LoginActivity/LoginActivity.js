@@ -142,14 +142,17 @@ const LoginActivity = () => {
         toast.success('Login activity saved successfully!');
         setName('');
         setPin('');
+
+        localStorage.setItem('sessionStarted', 'true');
+        dispatch({ type: 'auth/setSessionStarted', payload: true });
         loadCurrentSession();
         loadActivities();
         
         // Set session started flag in localStorage
-        localStorage.setItem('sessionStarted', 'true');
+        // localStorage.setItem('sessionStarted', 'true');
         
         // Dispatch action to update Redux state
-        dispatch({ type: 'auth/setSessionStarted', payload: true });
+        // dispatch({ type: 'auth/setSessionStarted', payload: true });
       } else {
         const errorData = await response.json();
         console.error('❌ Backend error response:', errorData);

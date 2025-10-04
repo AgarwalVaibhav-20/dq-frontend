@@ -1,6 +1,23 @@
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { LineChart, PieChart, BarChart } from "@mui/x-charts";
+import { 
+  FileText, 
+  Hash, 
+  Store, 
+  Boxes, 
+   IndianRupee , 
+  BarChart3, 
+  TrendingUp, 
+  TrendingDown,
+  Calendar, 
+  UtensilsCrossed, 
+   ReceiptIndianRupee , 
+  Info, 
+  Package,
+  // ExpandMore,
+  // ExpandLess
+} from 'lucide-react';
 import {
   Box,
   Typography,
@@ -33,8 +50,8 @@ import {
 } from "@mui/material";
 import {
   Search as SearchIcon,
-  TrendingUp,
-  TrendingDown,
+  // TrendingUp,
+  // TrendingDown,
   ShoppingCart,
   Layers as Inventory,
   ChevronUp as ExpandMore,
@@ -161,155 +178,155 @@ export default function PurchaseAnalytics() {
   }, [inventories, suppliers]);
 
   useEffect(() => {
-  if (menuItems.length > 0 && inventories.length > 0 && suppliers.length > 0) {
-    console.log("Starting menu items with ingredients transformation...");
+    if (menuItems.length > 0 && inventories.length > 0 && suppliers.length > 0) {
+      console.log("Starting menu items with ingredients transformation...");
 
-    // Sort inventories by purchasedAt date for historical comparison
-    const sortedInventories = [...inventories].sort((a, b) => {
-      const dateA = new Date(a.stock?.purchasedAt || a.createdAt);
-      const dateB = new Date(b.stock?.purchasedAt || b.createdAt);
-      return dateA - dateB;
-    });
+      // Sort inventories by purchasedAt date for historical comparison
+      const sortedInventories = [...inventories].sort((a, b) => {
+        const dateA = new Date(a.stock?.purchasedAt || a.createdAt);
+        const dateB = new Date(b.stock?.purchasedAt || b.createdAt);
+        return dateA - dateB;
+      });
 
-    const menuItemsWithCosts = menuItems.map(menuItem => {
-      const ingredients = menuItem.stockItems?.map(stockItem => {
-        const inventory = inventories.find(
-          inv => String(inv._id) === String(stockItem.stockId)
-        );
-
-        if (!inventory || !inventory.stock?.quantity || !inventory.stock?.amount) {
-          return {
-            stockId: stockItem.stockId,
-            name: "Unknown Item",
-            quantity: stockItem.quantity,
-            costPerUnit: 0,
-            totalCost: 0,
-            supplier: "Unknown",
-            rateChange: 0,
-            unit: "unit",
-            isFirstTimePurchase: true,
-          };
-        }
-
-        const supplier = suppliers.find(
-          s => String(s._id) === String(inventory.supplierId)
-        );
-
-        // === Inventory values ===
-        const inventoryRate = inventory.stock.amount;       // rate per unit (e.g. 25/kg, 60/litre, etc.)
-        const inventoryQuantity = inventory.stock.quantity; // total quantity purchased
-        // const unit = inventory.unit?.toLowerCase() || "unit";
-        const unit = stockItem.unit?.toLowerCase() || inventory.unit?.toLowerCase() || "unit";
-
-        // === Convert rate into smallest unit ===
-        let currentRate = 0;
-        if (unit === "kg") {
-          currentRate = inventoryRate ; 
-        } else if (unit === "gm") {
-          currentRate = inventoryRate / 1000; 
-        } else if (unit === "litre") {
-          currentRate = inventoryRate / 1000; // per ml
-        } else if (unit === "ml") {
-          currentRate = inventoryRate; // already per ml
-        } else if (unit === "pcs") {
-          currentRate = inventoryRate; // per piece
-        } else {
-          currentRate = inventoryRate; // fallback
-        }
-
-        // === Calculate costs ===
-        const totalCost = currentRate * stockItem.quantity; // recipe usage cost
-        const totalInventoryCost = inventoryRate * inventoryQuantity; // purchase cost
-
-        // === Historical rate change ===
-        const currentInventoryIndex = sortedInventories.findIndex(
-          inv => String(inv._id) === String(inventory._id)
-        );
-        const previousPurchase = sortedInventories
-          .slice(0, currentInventoryIndex)
-          .reverse()
-          .find(
-            prevInventory =>
-              prevInventory.itemName === inventory.itemName &&
-              String(prevInventory.supplierId) === String(inventory.supplierId)
+      const menuItemsWithCosts = menuItems.map(menuItem => {
+        const ingredients = menuItem.stockItems?.map(stockItem => {
+          const inventory = inventories.find(
+            inv => String(inv._id) === String(stockItem.stockId)
           );
 
-        let previousRate = 0;
-        let rateChange = 0;
-        let isFirstTimePurchase = !previousPurchase;
+          if (!inventory || !inventory.stock?.quantity || !inventory.stock?.amount) {
+            return {
+              stockId: stockItem.stockId,
+              name: "Unknown Item",
+              quantity: stockItem.quantity,
+              costPerUnit: 0,
+              totalCost: 0,
+              supplier: "Unknown",
+              rateChange: 0,
+              unit: "unit",
+              isFirstTimePurchase: true,
+            };
+          }
 
-        if (
-          previousPurchase &&
-          previousPurchase.stock?.amount &&
-          previousPurchase.stock?.quantity
-        ) {
-          previousRate =
-            previousPurchase.stock.amount / previousPurchase.stock.quantity;
-          rateChange =
-            previousRate > 0
-              ? (((currentRate - previousRate) / previousRate) * 100).toFixed(2)
-              : 0;
-        } else {
-          previousRate = currentRate;
-          rateChange = 0;
-        }
+          const supplier = suppliers.find(
+            s => String(s._id) === String(inventory.supplierId)
+          );
+
+          // === Inventory values ===
+          const inventoryRate = inventory.stock.amount;       // rate per unit (e.g. 25/kg, 60/litre, etc.)
+          const inventoryQuantity = inventory.stock.quantity; // total quantity purchased
+          // const unit = inventory.unit?.toLowerCase() || "unit";
+          const unit = stockItem.unit?.toLowerCase() || inventory.unit?.toLowerCase() || "unit";
+
+          // === Convert rate into smallest unit ===
+          let currentRate = 0;
+          if (unit === "kg") {
+            currentRate = inventoryRate;
+          } else if (unit === "gm") {
+            currentRate = inventoryRate / 1000;
+          } else if (unit === "litre") {
+            currentRate = inventoryRate / 1000; // per ml
+          } else if (unit === "ml") {
+            currentRate = inventoryRate; // already per ml
+          } else if (unit === "pcs") {
+            currentRate = inventoryRate; // per piece
+          } else {
+            currentRate = inventoryRate; // fallback
+          }
+
+          // === Calculate costs ===
+          const totalCost = currentRate * stockItem.quantity; // recipe usage cost
+          const totalInventoryCost = inventoryRate * inventoryQuantity; // purchase cost
+
+          // === Historical rate change ===
+          const currentInventoryIndex = sortedInventories.findIndex(
+            inv => String(inv._id) === String(inventory._id)
+          );
+          const previousPurchase = sortedInventories
+            .slice(0, currentInventoryIndex)
+            .reverse()
+            .find(
+              prevInventory =>
+                prevInventory.itemName === inventory.itemName &&
+                String(prevInventory.supplierId) === String(inventory.supplierId)
+            );
+
+          let previousRate = 0;
+          let rateChange = 0;
+          let isFirstTimePurchase = !previousPurchase;
+
+          if (
+            previousPurchase &&
+            previousPurchase.stock?.amount &&
+            previousPurchase.stock?.quantity
+          ) {
+            previousRate =
+              previousPurchase.stock.amount / previousPurchase.stock.quantity;
+            rateChange =
+              previousRate > 0
+                ? (((currentRate - previousRate) / previousRate) * 100).toFixed(2)
+                : 0;
+          } else {
+            previousRate = currentRate;
+            rateChange = 0;
+          }
+
+          return {
+            stockId: stockItem.stockId,
+            name: inventory.itemName,
+            quantity: stockItem.quantity,
+            costPerUnit: currentRate.toFixed(4), // smallest unit rate (gm, ml, pcs)
+            displayRate: `${inventoryRate}/${unit}`, // original input rate for UI
+            totalCost: totalCost,
+            supplier: supplier?.supplierName || inventory.supplierName || "Unknown",
+            unit: unit,
+            previousRate: previousRate.toFixed(4),
+            currentRate: currentRate,
+            rateChange: rateChange,
+            isFirstTimePurchase,
+            inventoryQuantity: inventoryQuantity,
+            totalInventoryCost: totalInventoryCost,
+            previousPurchaseDate: previousPurchase?.stock?.purchasedAt || null,
+          };
+        }) || [];
+
+        // === Menu item level calculations ===
+        const totalIngredientCost = ingredients.reduce(
+          (sum, ing) => sum + ing.totalCost,
+          0
+        );
+        const profitMargin = menuItem.price - totalIngredientCost;
+        const profitPercentage =
+          menuItem.price > 0
+            ? ((profitMargin / menuItem.price) * 100).toFixed(2)
+            : 0;
 
         return {
-          stockId: stockItem.stockId,
-          name: inventory.itemName,
-          quantity: stockItem.quantity,
-          costPerUnit: currentRate.toFixed(4), // smallest unit rate (gm, ml, pcs)
-          displayRate: `${inventoryRate}/${unit}`, // original input rate for UI
-          totalCost: totalCost,
-          supplier: supplier?.supplierName || inventory.supplierName || "Unknown",
-          unit: unit,
-          previousRate: previousRate.toFixed(4),
-          currentRate: currentRate,
-          rateChange: rateChange,
-          isFirstTimePurchase,
-          inventoryQuantity: inventoryQuantity,
-          totalInventoryCost: totalInventoryCost,
-          previousPurchaseDate: previousPurchase?.stock?.purchasedAt || null,
+          id: menuItem._id,
+          menuId: menuItem.menuId,
+          itemName: menuItem.itemName,
+          price: menuItem.price,
+          category: menuItem.sub_category || "General",
+          ingredients,
+          totalIngredientCost: totalIngredientCost,
+          profitMargin: profitMargin.toFixed(2),
+          profitPercentage,
+          stock:
+            menuItem.stockItems?.reduce(
+              (sum, item) => sum + (item.quantity || 0),
+              0
+            ) || 0,
+          isActive: menuItem.isActive,
+          date: menuItem.createdAt
+            ? new Date(menuItem.createdAt).toISOString().split("T")[0]
+            : new Date().toISOString().split("T")[0],
+          createdAt: menuItem.createdAt,
         };
-      }) || [];
+      });
 
-      // === Menu item level calculations ===
-      const totalIngredientCost = ingredients.reduce(
-        (sum, ing) => sum + ing.totalCost,
-        0
-      );
-      const profitMargin = menuItem.price - totalIngredientCost;
-      const profitPercentage =
-        menuItem.price > 0
-          ? ((profitMargin / menuItem.price) * 100).toFixed(2)
-          : 0;
-
-      return {
-        id: menuItem._id,
-        menuId: menuItem.menuId,
-        itemName: menuItem.itemName,
-        price: menuItem.price,
-        category: menuItem.sub_category || "General",
-        ingredients,
-        totalIngredientCost: totalIngredientCost,
-        profitMargin: profitMargin.toFixed(2),
-        profitPercentage,
-        stock:
-          menuItem.stockItems?.reduce(
-            (sum, item) => sum + (item.quantity || 0),
-            0
-          ) || 0,
-        isActive: menuItem.isActive,
-        date: menuItem.createdAt
-          ? new Date(menuItem.createdAt).toISOString().split("T")[0]
-          : new Date().toISOString().split("T")[0],
-        createdAt: menuItem.createdAt,
-      };
-    });
-
-    setMenuItemsWithIngredients(menuItemsWithCosts);
-  }
-}, [menuItems, inventories, suppliers]);
+      setMenuItemsWithIngredients(menuItemsWithCosts);
+    }
+  }, [menuItems, inventories, suppliers]);
 
 
   // useEffect(() => {
@@ -667,7 +684,7 @@ export default function PurchaseAnalytics() {
     link.click();
   };
 
-  
+
   const exportCSV = () => {
     if (viewMode === 'menu') {
       exportMenuItemsCSV();
@@ -724,7 +741,7 @@ export default function PurchaseAnalytics() {
           item.category,
           `₹${(item.amount || 0).toFixed(2)}`,
           item.quantity || 0,
-          `₹${item.previousRate}`,
+          `₹${(item.previousRate||0).toFixed(1)}`,
           `₹${item.currentRate}`,
           `${item.rateChange}%`,
         ]),
@@ -898,7 +915,7 @@ export default function PurchaseAnalytics() {
               InputLabelProps={{ shrink: true }}
             />
           </Grid>
-          <Grid item xs={12} md={2}>
+          {/* <Grid item xs={12} md={2}>
             <FormControl fullWidth>
               <InputLabel>Category</InputLabel>
               <Select
@@ -912,7 +929,7 @@ export default function PurchaseAnalytics() {
                 ))}
               </Select>
             </FormControl>
-          </Grid>
+          </Grid> */}
           <Grid item xs={12} md={2}>
             <FormControl fullWidth>
               <InputLabel>Supplier</InputLabel>
@@ -947,29 +964,87 @@ export default function PurchaseAnalytics() {
       </Paper>
 
       {/* Data Table */}
-      <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 3 }}>
-        <Typography variant="h6" gutterBottom>
-          {viewMode === 'inventory' ? 'Inventory Items' : 'Menu Items with Ingredient Costs'} ({filteredData.length} records)
-        </Typography>
+     <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 3 }}>
+        {/* Enhanced Header Section */}
+        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            {viewMode === 'inventory' ? <Package size={24} /> : <UtensilsCrossed size={24} />}
+            <Box>
+              <Typography variant="h5" gutterBottom sx={{ fontWeight: 600, mb: 0.5 }}>
+                {viewMode === 'inventory' ? 'Inventory Management' : 'Menu Items & Costs'}
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                {viewMode === 'inventory' 
+                  ? `Tracking ${filteredData.length} inventory items with real-time rate changes`
+                  : `Managing ${filteredData.length} menu items with detailed ingredient cost breakdown`}
+              </Typography>
+            </Box>
+          </Box>
+          <Chip 
+            label={`Total Records: ${filteredData.length}`} 
+            color="primary" 
+            variant="outlined"
+            sx={{ fontWeight: 600 }}
+          />
+        </Box>
+
         <TableContainer>
           <Table sx={{ borderRadius: 2, overflow: "hidden" }}>
+            {/* Enhanced Table Headers with Icons */}
             <TableHead>
-              <TableRow>
+              <TableRow sx={{ backgroundColor: isDark ? theme.palette.primary.dark : theme.palette.info.dark }}>
                 {viewMode === 'inventory' ? (
-                  ["Inventory Item", "ID", "Supplier", "Category", "Amount", "Quantity", "Rate Change", "Date"].map((header) => (
-                    <TableCell key={header} sx={{ fontWeight: "bold", backgroundColor: isDark ? theme.palette.grey[800] : theme.palette.grey[100] }}>
-                      {header}
+                  [
+                    { label: "Item Name", Icon: FileText },
+                    { label: "ID", Icon: Hash },
+                    { label: "Supplier", Icon: Store },
+                    { label:"Unit", Icon: Boxes },
+                    { label: "Amount", Icon:  IndianRupee  },
+                    { label: "Quantity", Icon: BarChart3 },
+                    { label: "Rate Change", Icon: TrendingUp },
+                    { label: "Date", Icon: Calendar }
+                  ].map((header) => (
+                    <TableCell 
+                      key={header.label} 
+                      sx={{ 
+                        fontWeight: "bold", 
+                        color: isDark ? theme.palette.common.white : theme.palette.primary.contrastText,
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <header.Icon size={16} />
+                        <span>{header.label}</span>
+                      </Box>
                     </TableCell>
                   ))
                 ) : (
-                  ["Menu Item", "Price", "Ingredient Cost", "Details", "Stock", "Date"].map((header) => (
-                    <TableCell key={header} sx={{ fontWeight: "bold", backgroundColor: isDark ? theme.palette.grey[800] : theme.palette.grey[100] }}>
-                      {header}
+                  [
+                    { label: "Menu Item", Icon: UtensilsCrossed },
+                    { label: "Price", Icon:  IndianRupee  },
+                    { label: "Ingredient Cost", Icon:  ReceiptIndianRupee  },
+                    { label: "Details", Icon: Info },
+                    { label: "Stock", Icon: Package },
+                    { label: "Date", Icon: Calendar }
+                  ].map((header) => (
+                    <TableCell 
+                      key={header.label} 
+                      sx={{ 
+                        fontWeight: "bold", 
+                        color: isDark ? theme.palette.common.white : theme.palette.primary.contrastText,
+                        fontSize: '0.875rem'
+                      }}
+                    >
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                        <header.Icon size={16} />
+                        <span>{header.label}</span>
+                      </Box>
                     </TableCell>
                   ))
                 )}
               </TableRow>
             </TableHead>
+
             <TableBody>
               {filteredData
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
@@ -997,15 +1072,19 @@ export default function PurchaseAnalytics() {
                           <TableCell>{item.quantity}</TableCell>
                           <TableCell>
                             <Stack spacing={1}>
-                              <Typography variant="caption" color="text.secondary">
-                                ₹{item.previousRate} → ₹{item.currentRate}
+                              <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                                Previous: ₹{item.previousRate}
+                              </Typography>
+                              <Typography variant="caption" color="success.main" sx={{ fontWeight: 500 }}>
+                                Current: ₹{item.currentRate}
                               </Typography>
                               <Chip
-                                label={`${item.rateChange}%`}
+                                label={`${parseFloat(item.rateChange) > 0 ? '+' : ''}${item.rateChange}%`}
                                 color={getRateChangeColor(item.rateChange)}
                                 variant="filled"
                                 size="small"
                                 icon={parseFloat(item.rateChange) > 0 ? <TrendingUp /> : <TrendingDown />}
+                                sx={{ fontWeight: 600 }}
                               />
                             </Stack>
                           </TableCell>
@@ -1024,27 +1103,25 @@ export default function PurchaseAnalytics() {
                           <TableCell>
                             <Typography variant="body2" fontWeight="medium">₹{item.price}</Typography>
                           </TableCell>
-                          {/* profit data*/}
+                          {/* Ingredient Cost */}
                           <TableCell>
                             <Typography variant="body2" color="warning.main" fontWeight="medium">
                               ₹{item.totalIngredientCost}
                             </Typography>
                           </TableCell>
-                          {/* <TableCell>
-                            <Stack spacing={1}>
-                              <Typography variant="body2" fontWeight="medium">₹{item.profitMargin}</Typography>
-                              <Chip
-                                label={`${item.profitPercentage}%`}
-                                color={getProfitColor(item.profitPercentage)}
-                                variant="filled"
-                                size="small"
-                              />
-                            </Stack>
-                          </TableCell>  */}
                           <TableCell>
-                            <Tooltip title="View ingredient breakdown">
-                              <IconButton onClick={() => handleExpandRow(item.id)} size="small">
-                                {expandedRows.has(item.id) ? <ExpandLess /> : <ExpandMore />}
+                            <Tooltip title="Click to view detailed ingredient breakdown" arrow placement="top">
+                              <IconButton 
+                                onClick={() => handleExpandRow(item.id)} 
+                                size="small"
+                                color="primary"
+                                sx={{ 
+                                  '&:hover': { 
+                                    backgroundColor: isDark ? 'rgba(144, 202, 249, 0.16)' : 'rgba(25, 118, 210, 0.08)' 
+                                  }
+                                }}
+                              >
+                                {expandedRows.has(item.id) ? <ExpandLess /> : < ExpandMore />}
                               </IconButton>
                             </Tooltip>
                           </TableCell>
@@ -1066,26 +1143,31 @@ export default function PurchaseAnalytics() {
                     {/* Expandable row for ingredient details (menu view only) */}
                     {viewMode === 'menu' && (
                       <TableRow>
-                        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={7}>
+                        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
                           <Collapse in={expandedRows.has(item.id)} timeout="auto" unmountOnExit>
-                            <Box sx={{ margin: 1 }}>
-                              <Typography variant="h6" gutterBottom component="div">
-                                Ingredient Breakdown
-                              </Typography>
+                            <Box sx={{ margin: 2, p: 2, backgroundColor: isDark ? theme.palette.grey[900] : theme.palette.grey[50], borderRadius: 2 }}>
+                              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
+                                < ReceiptIndianRupee  size={20} />
+                                <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
+                                  Ingredient Breakdown
+                                </Typography>
+                              </Box>
                               <Table size="small">
                                 <TableHead>
-                                  <TableRow>
-                                    <TableCell>Ingredient</TableCell>
-                                    <TableCell>Quantity</TableCell>
-                                    <TableCell>Cost/Unit</TableCell>
-                                    <TableCell>Total Cost</TableCell>
-                                    <TableCell>Supplier</TableCell>
-                                    <TableCell>Rate Change</TableCell>
+                                  <TableRow sx={{ backgroundColor: isDark ? theme.palette.grey[800] : theme.palette.grey[200] }}>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Ingredient</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Quantity</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Cost/Unit</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Total Cost</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Supplier</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold' }}>Rate Change</TableCell>
                                   </TableRow>
                                 </TableHead>
                                 <TableBody>
                                   {item.ingredients?.map((ingredient, ingIdx) => (
-                                    <TableRow key={ingredient.stockId}>
+                                    <TableRow key={ingredient.stockId} sx={{
+                                      '&:hover': { backgroundColor: isDark ? theme.palette.action.hover : theme.palette.grey[100] }
+                                    }}>
                                       <TableCell>
                                         <Typography variant="body2" fontWeight="medium">
                                           {ingredient.name}
@@ -1098,16 +1180,15 @@ export default function PurchaseAnalytics() {
                                       </TableCell>
                                       <TableCell>
                                         <Stack>
-                                          <Typography variant="body2">₹{ingredient.currentRate}</Typography>
+                                          <Typography variant="body2" fontWeight="medium">₹{ingredient.currentRate} / {ingredient.unit}</Typography>
                                           <Typography variant="caption" color="text.secondary">
-                                            Prev: ₹{ingredient.previousRate}
+                                            Previous: ₹{ingredient.previousRate}
                                           </Typography>
                                         </Stack>
                                       </TableCell>
                                       <TableCell>
-                                        <Typography variant="body2" fontWeight="medium">
-                                          {/* ₹{ingredient.totalCost.toFixed(2)} */}
-                                           ₹{ingredient.totalCost}
+                                        <Typography variant="body2" fontWeight="medium" color="primary.main">
+                                          ₹{ingredient.totalCost}
                                         </Typography>
                                       </TableCell>
                                       <TableCell>
@@ -1115,7 +1196,7 @@ export default function PurchaseAnalytics() {
                                       </TableCell>
                                       <TableCell>
                                         <Chip
-                                          label={`${ingredient.rateChange}%`}
+                                          label={`${parseFloat(ingredient.rateChange) > 0 ? '+' : ''}${ingredient.rateChange}%`}
                                           color={getRateChangeColor(ingredient.rateChange)}
                                           variant="outlined"
                                           size="small"
@@ -1124,14 +1205,17 @@ export default function PurchaseAnalytics() {
                                       </TableCell>
                                     </TableRow>
                                   )) || (
-                                      <TableRow>
-                                        <TableCell colSpan={6}>
-                                          <Typography variant="body2" color="text.secondary" align="center">
+                                    <TableRow>
+                                      <TableCell colSpan={6}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, py: 2 }}>
+                                          <Info size={16} color="gray" />
+                                          <Typography variant="body2" color="text.secondary">
                                             No ingredients found for this menu item
                                           </Typography>
-                                        </TableCell>
-                                      </TableRow>
-                                    )}
+                                        </Box>
+                                      </TableCell>
+                                    </TableRow>
+                                  )}
                                 </TableBody>
                               </Table>
                             </Box>
@@ -1158,7 +1242,6 @@ export default function PurchaseAnalytics() {
           showLastButton
         />
       </Paper>
-
       {/* Charts Section - Only for inventory view */}
       {viewMode === 'inventory' && (
         <Grid container spacing={3} sx={{ mt: 3 }}>

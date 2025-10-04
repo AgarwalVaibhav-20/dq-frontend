@@ -110,9 +110,9 @@ const PermissionRestrictedRoute = ({ children, permission }) => {
 
 const App = () => {
   const dispatch = useDispatch()
-
-  // Get userId and token from localStorage (more reliable than useParams in this context)
   const userId = localStorage.getItem('userId')
+  // Get userId and token from localStorage (more reliable than useParams in this context)
+  // const userId = localStorage.getItem('userId')
   const token = localStorage.getItem('authToken')
 
   const { restaurantPermission } = useSelector((state) => ({
@@ -215,6 +215,11 @@ const App = () => {
       setColorMode('light')
     }
   }, [])
+
+  useEffect(() => {
+    const sessionStarted = localStorage.getItem('sessionStarted') === 'true';
+    dispatch({ type: 'auth/setSessionStarted', payload: sessionStarted });
+  }, [dispatch]);
 
   // ✅ Better loading state handling
   const isPermissionLoaded = restaurantPermission !== undefined || permissionCheckAttempted
