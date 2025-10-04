@@ -28,6 +28,7 @@ export default function QRCode() {
   const [confirmDeleteModalVisible, setConfirmDeleteModalVisible] = useState(false)
   const [selectedQr, setSelectedQr] = useState(null)
   const [tableNumber, setTableNumber] = useState('')
+  const [error, setError] = useState('')
   const [floorId, setFloorId] = useState('')
   const [name, setname] = useState('')
   const [previewQr, setPreviewQr] = useState(null)
@@ -54,7 +55,7 @@ export default function QRCode() {
   // Fetch QR codes + floors on mount
   useEffect(() => {
     if (restaurantId) {
-      dispatch(getQrs({restaurantId}))
+      dispatch(getQrs({ restaurantId }))
       dispatch(getFloors(restaurantId))
     }
   }, [dispatch, token, restaurantId])
@@ -108,7 +109,7 @@ export default function QRCode() {
       setFloorId('')
       setPreviewQr(result.payload)
       // Refresh QR list to show the new table
-      dispatch(getQrs({restaurantId}))
+      dispatch(getQrs({ restaurantId }))
     } else {
       alert(result.payload.message || 'Failed to create QR code')
     }
@@ -120,7 +121,7 @@ export default function QRCode() {
       await dispatch(deleteQr(selectedQr._id))
       setConfirmDeleteModalVisible(false)
       setActionModalVisible(false)
-      dispatch(getQrs({restaurantId}))
+      dispatch(getQrs({ restaurantId }))
       setPreviewQr(null)
     }
   }
@@ -355,7 +356,7 @@ export default function QRCode() {
       </CModal>
 
       {/* Modal for Adding QR */}
-      <CModal visible={modalVisible} onClose={() => setModalVisible(false)}>
+      <CModal visible={modalVisible} backdrop="static" onClose={() => setModalVisible(false)}>
         <CModalHeader>
           <h2 className="fs-5 fw-bold">Generate QR Code for Table</h2>
         </CModalHeader>
@@ -376,9 +377,23 @@ export default function QRCode() {
             type="text"
             placeholder="Enter Table Number"
             value={tableNumber}
-            onChange={(e) => setTableNumber(e.target.value)}
-            className="mb-3"
+            //onChange={(e) => setTableNumber(e.target.value)}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (/^\d*$/.test(val)) {
+                setTableNumber(val);
+                if (val === '') {
+                  setError('Table number is required')
+                } else {
+                  setError('')
+                }
+              } else {
+                setError('Only numbers are allowed')
+              }
+            }}
+            className={`mb-1 ${error ? 'is-invalid' : ''}`}
           />
+          {error && <div style={{ color: 'red', fontSize: '12px' }}>{error}</div>}
         </CModalBody>
         <CModalFooter>
           <CButton

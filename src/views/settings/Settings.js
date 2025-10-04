@@ -43,6 +43,7 @@ const Settings = () => {
     systemName: '',
     chargeOfSystem: '',
     willOccupy: false,
+    color: '#ff0000',
   })
   const [systems, setSystems] = useState([])
   const [systemLoading, setSystemLoading] = useState(false)
@@ -74,7 +75,7 @@ const Settings = () => {
       setSystemLoading(true)
       const restaurantId = localStorage.getItem('restaurantId')
       const response = await axiosInstance.get(`/api/settings?restaurantId=${restaurantId}`)
-      
+
       if (response.data.success) {
         setSystems(response.data.data || [])
       }
@@ -100,28 +101,42 @@ const Settings = () => {
 
   const handleSystemSubmit = async (e) => {
     e.preventDefault()
-    
-    // Validation
+
     if (!systemFormData.systemName.trim()) {
       setSystemError('System name is required')
       return
     }
-    
+
     if (!systemFormData.chargeOfSystem.trim()) {
       setSystemError('Charge of system is required')
       return
     }
 
+    if (systemFormData.willOccupy && systemFormData.color) {
+      const colorRegex = /^#[0-9A-F]{6}$/i;
+      if (!colorRegex.test(systemFormData.color)) {
+        setSystemError('Please enter a valid hex color code (e.g., #FF0000)')
+        return
+      }
+    }
+
     try {
       setSystemSaving(true)
       const restaurantId = localStorage.getItem('restaurantId')
-      
+
+      const dataToSend = {
+        systemName: systemFormData.systemName.trim(),
+        chargeOfSystem: systemFormData.chargeOfSystem,
+        willOccupy: systemFormData.willOccupy,
+        restaurantId
+      };
+ 
+      if (systemFormData.willOccupy && systemFormData.color) {
+        dataToSend.color = systemFormData.color;
+      }
+
       if (editingSystem) {
-        // Update existing system
-        const response = await axiosInstance.put(`/api/settings/${editingSystem._id}`, {
-          ...systemFormData,
-          restaurantId
-        })
+        const response = await axiosInstance.put(`/api/settings/${editingSystem._id}`, dataToSend)
 
         if (response.data.success) {
           toast.success('System updated successfully!')
@@ -132,10 +147,7 @@ const Settings = () => {
         }
       } else {
         // Create new system
-        const response = await axiosInstance.post(`/api/settings`, {
-          ...systemFormData,
-          restaurantId
-        })
+        const response = await axiosInstance.post(`/api/settings`, dataToSend)
 
         if (response.data.success) {
           toast.success('System added successfully!')
@@ -150,7 +162,9 @@ const Settings = () => {
         systemName: '',
         chargeOfSystem: '',
         willOccupy: false,
+        color: '#ff0000', // Reset to default color
       })
+      
       // Refresh the systems list
       fetchSystems()
     } catch (error) {
@@ -168,6 +182,7 @@ const Settings = () => {
       systemName: system.systemName,
       chargeOfSystem: system.chargeOfSystem,
       willOccupy: system.willOccupy,
+      color: system.color || '#ff0000', // Default if color not present
     })
   }
 
@@ -195,6 +210,7 @@ const Settings = () => {
       systemName: '',
       chargeOfSystem: '',
       willOccupy: false,
+      color: '#ff0000', // Add default color
     })
     setSystemError('')
   }
@@ -205,7 +221,7 @@ const Settings = () => {
       setTaxLoading(true)
       const restaurantId = localStorage.getItem('restaurantId')
       const response = await axiosInstance.get(`/api/tax?restaurantId=${restaurantId}`)
-      
+
       if (response.data.success) {
         setTaxes(response.data.data || [])
       }
@@ -231,13 +247,13 @@ const Settings = () => {
 
   const handleTaxSubmit = async (e) => {
     e.preventDefault()
-    
+
     // Validation
     if (!taxFormData.taxName.trim()) {
       setTaxError('Tax name is required')
       return
     }
-    
+
     if (!taxFormData.taxCharge.trim()) {
       setTaxError('Tax charge is required')
       return
@@ -258,7 +274,7 @@ const Settings = () => {
     try {
       setTaxSaving(true)
       const restaurantId = localStorage.getItem('restaurantId')
-      
+
       if (editingTax) {
         // Update existing tax
         const response = await axiosInstance.put(`/api/tax/${editingTax._id}`, {
@@ -393,183 +409,249 @@ const Settings = () => {
       <CTabContent>
         {/* System Tab */}
         <CTabPane role="tabpanel" aria-labelledby="system-tab" visible={activeTab === 'system'}>
-      {/* Add/Edit System Form */}
-      <CRow className="mb-4">
-        <CCol>
-          <CCard>
-            <CCardHeader>
-              <CCardTitle>
-                <CIcon icon={cilSettings} className="me-2" />
-                {editingSystem ? 'Edit System' : 'Add New System'}
-              </CCardTitle>
-            </CCardHeader>
-            <CCardBody>
+          {/* Add/Edit System Form */}
+          <CRow className="mb-4">
+            <CCol>
+              <CCard>
+                <CCardHeader>
+                  <CCardTitle>
+                    <CIcon icon={cilSettings} className="me-2" />
+                    {editingSystem ? 'Edit System' : 'Add New System'}
+                  </CCardTitle>
+                </CCardHeader>
+                <CCardBody>
                   {systemError && (
-                <CAlert color="danger" className="mb-3">
+                    <CAlert color="danger" className="mb-3">
                       {systemError}
-                </CAlert>
-              )}
-              
+                    </CAlert>
+                  )}
+
                   <CForm onSubmit={handleSystemSubmit}>
-                <CRow className="mb-3">
-                  <CCol md={6}>
-                    <CFormLabel htmlFor="systemName">System Name</CFormLabel>
-                    <CFormInput
-                      type="text"
-                      id="systemName"
-                      name="systemName"
+                    <CRow className="mb-3">
+                      <CCol md={6}>
+                        <CFormLabel htmlFor="systemName">System Name</CFormLabel>
+                        <CFormInput
+                          type="text"
+                          id="systemName"
+                          name="systemName"
                           value={systemFormData.systemName}
                           onChange={handleSystemInputChange}
-                      placeholder="Enter system name"
-                      required
-                    />
-                  </CCol>
-                  <CCol md={6}>
-                    <CFormLabel htmlFor="chargeOfSystem">Charge of System</CFormLabel>
-                    <CFormInput
-                      type="text"
-                      id="chargeOfSystem"
-                      name="chargeOfSystem"
+                          placeholder="Enter system name"
+                          required
+                        />
+                      </CCol>
+                      <CCol md={6}>
+                        <CFormLabel htmlFor="chargeOfSystem">Charge of System</CFormLabel>
+                        <CFormInput
+                          type="text"
+                          id="chargeOfSystem"
+                          name="chargeOfSystem"
                           value={systemFormData.chargeOfSystem}
                           onChange={handleSystemInputChange}
-                      placeholder="Enter charge of system"
-                      required
-                    />
-                  </CCol>
-                </CRow>
-                
-                <CRow className="mb-3">
-                  <CCol md={6}>
-                    <CFormLabel htmlFor="willOccupy">Will Occupy</CFormLabel>
-                    <CFormSelect
-                      id="willOccupy"
-                      name="willOccupy"
+                          placeholder="Enter charge of system"
+                          required
+                        />
+                      </CCol>
+                    </CRow>
+
+                    <CRow className="mb-3">
+                      <CCol md={6}>
+                        <CFormLabel htmlFor="willOccupy">Will Occupy</CFormLabel>
+                        <CFormSelect
+                          id="willOccupy"
+                          name="willOccupy"
                           value={systemFormData.willOccupy.toString()}
                           onChange={handleSystemInputChange}
-                    >
-                      <option value="true">True</option>
-                      <option value="false">False</option>
-                    </CFormSelect>
-                  </CCol>
-                </CRow>
-                
-                <CRow>
-                  <CCol>
-                    <CButton 
-                      type="submit" 
-                      color="primary" 
-                          disabled={systemSaving}
-                      className="me-2"
-                    >
-                          {systemSaving ? (
-                        <>
-                          <CSpinner size="sm" className="me-2" />
-                          {editingSystem ? 'Updating...' : 'Adding...'}
-                        </>
-                      ) : (
-                        <>
-                          <CIcon icon={cilSave} className="me-2" />
-                          {editingSystem ? 'Update System' : 'Add System'}
-                        </>
-                      )}
-                    </CButton>
-                    {editingSystem && (
-                      <CButton 
-                        color="secondary" 
-                            onClick={handleSystemCancel}
-                      >
-                        Cancel
-                      </CButton>
-                    )}
-                  </CCol>
-                </CRow>
-              </CForm>
-            </CCardBody>
-          </CCard>
-        </CCol>
-      </CRow>
+                        >
+                          <option value="true">True</option>
+                          <option value="false">False</option>
+                        </CFormSelect>
+                      </CCol>
 
-      {/* Systems List */}
-      <CRow>
-        <CCol>
-          <CCard>
-            <CCardHeader className="d-flex justify-content-between align-items-center">
-              <CCardTitle>System Settings</CCardTitle>
-              <div>
-                <CButton 
-                  color="success" 
-                  size="sm" 
-                  className="me-2"
-                  onClick={() => {
-                    setEditingSystem(null)
-                        setSystemFormData({
-                      systemName: '',
-                      chargeOfSystem: '',
-                      willOccupy: false,
-                    })
-                        setSystemError('')
-                  }}
-                >
-                  <CIcon icon={cilPlus} className="me-1" />
-                  Add New
-                </CButton>
-                <CButton 
-                  color="primary" 
-                  size="sm" 
-                  onClick={fetchSystems}
-                      disabled={systemLoading}
-                >
-                      {systemLoading ? <CSpinner size="sm" /> : 'Refresh'}
-                </CButton>
-              </div>
-            </CCardHeader>
-            <CCardBody>
-                  {systemLoading ? (
-                <div className="text-center py-4">
-                  <CSpinner />
-                  <p className="mt-2">Loading systems...</p>
-                </div>
-              ) : systems.length === 0 ? (
-                <div className="text-center py-4">
-                  <CIcon icon={cilSettings} size="3xl" className="text-muted" />
-                  <p className="mt-2 text-muted">No systems found. Add your first system above.</p>
-                </div>
-              ) : (
-                <CTable responsive>
-                  <CTableHead>
-                    <CTableRow>
-                      <CTableHeaderCell>System Name</CTableHeaderCell>
-                      <CTableHeaderCell>Charge</CTableHeaderCell>
-                      <CTableHeaderCell>Will Occupy</CTableHeaderCell>
-                      <CTableHeaderCell>Created</CTableHeaderCell>
-                      <CTableHeaderCell>Actions</CTableHeaderCell>
-                    </CTableRow>
-                  </CTableHead>
-                  <CTableBody>
-                    {systems.map((system) => (
-                      <CTableRow key={system._id}>
-                        <CTableDataCell>
-                          <div className="d-flex align-items-center">
-                            <CIcon icon={cilSettings} className="me-2" />
-                            {system.systemName}
+                      {/* Conditional Color Picker - Show only when willOccupy is true */}
+                      {systemFormData.willOccupy && (
+                        <CCol md={6}>
+                          <CFormLabel htmlFor="color">Choose Table Color</CFormLabel>
+                          <div className="d-flex align-items-center gap-2">
+                            <CFormInput
+                              type="color"
+                              id="color"
+                              name="color"
+                              value={systemFormData.color}
+                              onChange={handleSystemInputChange}
+                              className="form-control-color"
+                              style={{
+                                width: '60px',
+                                height: '38px',
+                                padding: '4px',
+                                cursor: 'pointer'
+                              }}
+                              title="Choose table color"
+                            />
+                            <CFormInput
+                              type="text"
+                              name="color"
+                              value={systemFormData.color}
+                              onChange={(e) => {
+                                const value = e.target.value
+                                if (/^#[0-9A-F]{0,6}$/i.test(value) || value === '') {
+                                  handleSystemInputChange(e)
+                                }
+                              }}
+                              placeholder="#FF0000"
+                              maxLength={7}
+                              className="flex-grow-1"
+                              style={{ fontFamily: 'monospace' }}
+                            />
                           </div>
-                        </CTableDataCell>
-                        <CTableDataCell>
-                          <CBadge color="info">₹{system.chargeOfSystem}</CBadge>
-                        </CTableDataCell>
-                        <CTableDataCell>
-                          <CBadge color={system.willOccupy ? 'success' : 'secondary'}>
-                            {system.willOccupy ? 'Yes' : 'No'}
-                          </CBadge>
-                        </CTableDataCell>
-                        <CTableDataCell>
-                          {new Date(system.createdAt).toLocaleDateString()}
-                        </CTableDataCell>
-                        <CTableDataCell>
+                          <small className="text-muted">
+                            Selected color will be used to highlight occupied tables
+                          </small>
+                        </CCol>
+                      )}
+                    </CRow>
+
+                    <CRow>
+                      <CCol>
+                        <CButton
+                          type="submit"
+                          color="primary"
+                          disabled={systemSaving}
+                          className="me-2"
+                        >
+                          {systemSaving ? (
+                            <>
+                              <CSpinner size="sm" className="me-2" />
+                              {editingSystem ? 'Updating...' : 'Adding...'}
+                            </>
+                          ) : (
+                            <>
+                              <CIcon icon={cilSave} className="me-2" />
+                              {editingSystem ? 'Update System' : 'Add System'}
+                            </>
+                          )}
+                        </CButton>
+                        {editingSystem && (
                           <CButton
-                            color="warning"
-                            size="sm"
-                            className="me-2"
+                            color="secondary"
+                            onClick={handleSystemCancel}
+                          >
+                            Cancel
+                          </CButton>
+                        )}
+                      </CCol>
+                    </CRow>
+                  </CForm>
+                </CCardBody>
+              </CCard>
+            </CCol>
+          </CRow>
+
+          {/* Systems List */}
+          <CRow>
+            <CCol>
+              <CCard>
+                <CCardHeader className="d-flex justify-content-between align-items-center">
+                  <CCardTitle>System Settings</CCardTitle>
+                  <div>
+                    <CButton
+                      color="success"
+                      size="sm"
+                      className="me-2"
+                      onClick={() => {
+                        setEditingSystem(null)
+                        setSystemFormData({
+                          systemName: '',
+                          chargeOfSystem: '',
+                          willOccupy: false,
+                          color: '#ff0000', // Add default color
+                        })
+                        setSystemError('')
+                      }}
+                    >
+                      <CIcon icon={cilPlus} className="me-1" />
+                      Add New
+                    </CButton>
+                    <CButton
+                      color="primary"
+                      size="sm"
+                      onClick={fetchSystems}
+                      disabled={systemLoading}
+                    >
+                      {systemLoading ? <CSpinner size="sm" /> : 'Refresh'}
+                    </CButton>
+                  </div>
+                </CCardHeader>
+                <CCardBody>
+                  {systemLoading ? (
+                    <div className="text-center py-4">
+                      <CSpinner />
+                      <p className="mt-2">Loading systems...</p>
+                    </div>
+                  ) : systems.length === 0 ? (
+                    <div className="text-center py-4">
+                      <CIcon icon={cilSettings} size="3xl" className="text-muted" />
+                      <p className="mt-2 text-muted">No systems found. Add your first system above.</p>
+                    </div>
+                  ) : (
+                    <CTable responsive>
+                      <CTableHead>
+                        <CTableRow>
+                          <CTableHeaderCell>System Name</CTableHeaderCell>
+                          <CTableHeaderCell>Charge</CTableHeaderCell>
+                          <CTableHeaderCell>Will Occupy</CTableHeaderCell>
+                          <CTableHeaderCell>Color</CTableHeaderCell>
+                          <CTableHeaderCell>Created</CTableHeaderCell>
+                          <CTableHeaderCell>Actions</CTableHeaderCell>
+                        </CTableRow>
+                      </CTableHead>
+                      <CTableBody>
+                        {systems.map((system) => (
+                          <CTableRow key={system._id}>
+                            <CTableDataCell>
+                              <div className="d-flex align-items-center">
+                                <CIcon icon={cilSettings} className="me-2" />
+                                {system.systemName}
+                              </div>
+                            </CTableDataCell>
+                            <CTableDataCell>
+                              <CBadge color="info">₹{system.chargeOfSystem}</CBadge>
+                            </CTableDataCell>
+                            <CTableDataCell>
+                              <CBadge color={system.willOccupy ? 'success' : 'secondary'}>
+                                {system.willOccupy ? 'Yes' : 'No'}
+                              </CBadge>
+                            </CTableDataCell>
+                            <CTableDataCell>
+                              {system.willOccupy && system.color ? (
+                                <div className="d-flex align-items-center gap-2">
+                                  <div
+                                    style={{
+                                      width: '24px',
+                                      height: '24px',
+                                      backgroundColor: system.color,
+                                      borderRadius: '4px',
+                                      border: '2px solid #ffffff',
+                                      boxShadow: '0 0 0 1px rgba(0,0,0,0.1)'
+                                    }}
+                                    title={`Color: ${system.color}`}
+                                  />
+                                  <small className="text-muted" style={{ fontFamily: 'monospace' }}>
+                                    {system.color}
+                                  </small>
+                                </div>
+                              ) : (
+                                <span className="text-muted">-</span>
+                              )}
+                            </CTableDataCell>
+                            <CTableDataCell>
+                              {new Date(system.createdAt).toLocaleDateString()}
+                            </CTableDataCell>
+                            <CTableDataCell>
+                              <CButton
+                                color="warning"
+                                size="sm"
+                                className="me-2"
                                 onClick={() => handleSystemEdit(system)}
                               >
                                 <CIcon icon={cilPencil} />
@@ -611,7 +693,7 @@ const Settings = () => {
                       {taxError}
                     </CAlert>
                   )}
-                  
+
                   <CForm onSubmit={handleTaxSubmit}>
                     <CRow className="mb-3">
                       <CCol md={6}>
@@ -641,7 +723,7 @@ const Settings = () => {
                         />
                       </CCol>
                     </CRow>
-                    
+
                     <CRow className="mb-3">
                       <CCol md={6}>
                         <CFormLabel htmlFor="taxType">Tax Type</CFormLabel>
@@ -656,12 +738,12 @@ const Settings = () => {
                         </CFormSelect>
                       </CCol>
                     </CRow>
-                    
+
                     <CRow>
                       <CCol>
-                        <CButton 
-                          type="submit" 
-                          color="primary" 
+                        <CButton
+                          type="submit"
+                          color="primary"
                           disabled={taxSaving}
                           className="me-2"
                         >
@@ -678,8 +760,8 @@ const Settings = () => {
                           )}
                         </CButton>
                         {editingTax && (
-                          <CButton 
-                            color="secondary" 
+                          <CButton
+                            color="secondary"
                             onClick={handleTaxCancel}
                           >
                             Cancel
@@ -700,9 +782,9 @@ const Settings = () => {
                 <CCardHeader className="d-flex justify-content-between align-items-center">
                   <CCardTitle>Tax Settings</CCardTitle>
                   <div>
-                    <CButton 
-                      color="success" 
-                      size="sm" 
+                    <CButton
+                      color="success"
+                      size="sm"
                       className="me-2"
                       onClick={() => {
                         setEditingTax(null)
@@ -717,9 +799,9 @@ const Settings = () => {
                       <CIcon icon={cilPlus} className="me-1" />
                       Add New
                     </CButton>
-                    <CButton 
-                      color="primary" 
-                      size="sm" 
+                    <CButton
+                      color="primary"
+                      size="sm"
                       onClick={fetchTaxes}
                       disabled={taxLoading}
                     >
@@ -777,26 +859,26 @@ const Settings = () => {
                                 size="sm"
                                 className="me-2"
                                 onClick={() => handleTaxEdit(tax)}
-                          >
-                            <CIcon icon={cilPencil} />
-                          </CButton>
-                          <CButton
-                            color="danger"
-                            size="sm"
+                              >
+                                <CIcon icon={cilPencil} />
+                              </CButton>
+                              <CButton
+                                color="danger"
+                                size="sm"
                                 onClick={() => handleTaxDelete(tax._id)}
-                          >
-                            <CIcon icon={cilTrash} />
-                          </CButton>
-                        </CTableDataCell>
-                      </CTableRow>
-                    ))}
-                  </CTableBody>
-                </CTable>
-              )}
-            </CCardBody>
-          </CCard>
-        </CCol>
-      </CRow>
+                              >
+                                <CIcon icon={cilTrash} />
+                              </CButton>
+                            </CTableDataCell>
+                          </CTableRow>
+                        ))}
+                      </CTableBody>
+                    </CTable>
+                  )}
+                </CCardBody>
+              </CCard>
+            </CCol>
+          </CRow>
         </CTabPane>
       </CTabContent>
     </CContainer>
