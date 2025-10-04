@@ -33,12 +33,15 @@ export const fetchCustomers = createAsyncThunk(
 // Add customer
 export const addCustomer = createAsyncThunk(
   'customers/addCustomer',
-  async ({ token, name, email, address, phoneNumber, birthday, anniversary }, { rejectWithValue }) => {
+  async ({ token, name, email, address, phoneNumber, birthday, anniversary }, { rejectWithValue, dispatch }) => {
     try {
       const restaurantId = localStorage.getItem("restaurantId");
       if (!restaurantId) {
         return rejectWithValue("Restaurant ID not found in localStorage");
       }
+      
+      console.log('Adding customer with data:', { name, email, address, phoneNumber, birthday, anniversary, restaurantId });
+      
       const response = await axios.post(`${BASE_URL}/customer/add`,
         {
           name,
@@ -50,11 +53,19 @@ export const addCustomer = createAsyncThunk(
           birthday,
         },
         configureHeaders(token));
-      console.log(response.data)
+      
+      console.log('Customer add response:', response.data);
+      
+      // Optionally refresh the customers list after adding
+      if (response.data && response.data.customer) {
+        // Dispatch fetchCustomers to ensure data consistency
+        dispatch(fetchCustomers({ restaurantId }));
+      }
+      
       return response.data;
     } catch (error) {
-      console.log("This is error", error)
-      console.error(error)
+      console.log("Add customer error:", error);
+      console.error(error);
       return rejectWithValue(error.response?.data || error.message);
     }
   }
@@ -129,7 +140,8 @@ const customerSlice = createSlice({
       })
       .addCase(fetchCustomers.fulfilled, (state, action) => {
         state.loading = false;
-        state.customers = action.payload;
+        console.log('Fetched customers:', action.payload);
+        state.customers = action.payload || [];
       })
       .addCase(fetchCustomers.rejected, (state, action) => {
         state.loading = false;
@@ -142,10 +154,32 @@ const customerSlice = createSlice({
       })
       .addCase(addCustomer.fulfilled, (state, action) => {
         state.loading = false;
-        console.log(action.payload)
-        state.customers.push(action.payload);
-        console.log(action.payload)
-        toast.success('Customer added successfully.');
+        console.log('Add customer response:', action.payload);
+        
+        // Backend sends: { message: "...", customer: newCustomer }
+        const newCustomer = action.payload.customer;
+        
+        if (newCustomer && (newCustomer._id || newCustomer.id)) {
+          // Check if customer already exists to avoid duplicates
+          const existingIndex = state.customers.findIndex(
+            customer => customer._id === newCustomer._id || customer.id === newCustomer.id
+          );
+          
+          if (existingIndex === -1) {
+            // Add the new customer to the beginning of the array for immediate visibility
+            state.customers.unshift(newCustomer);
+            console.log('Customer added to state:', newCustomer);
+          } else {
+            // Update existing customer if found
+            state.customers[existingIndex] = newCustomer;
+            console.log('Customer updated in state:', newCustomer);
+          }
+          
+          toast.success('Customer added successfully.');
+        } else {
+          console.error('Invalid customer data received:', action.payload);
+          toast.error('Customer added but data format is invalid.');
+        }
       })
       .addCase(addCustomer.rejected, (state, action) => {
         state.loading = false;

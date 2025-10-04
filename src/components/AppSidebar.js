@@ -29,6 +29,12 @@ const AppSidebar = () => {
       unfoldable={false}
       visible={sidebarShow} // Controlled by Redux state
       onVisibleChange={(visible) => dispatch(setSidebarShow(visible))} // Sync visibility with Redux
+      style={{ 
+        '--cui-sidebar-width': '256px',
+        '--cui-sidebar-bg': '#2c3e50',
+        '--cui-sidebar-nav-link-hover-bg': 'rgba(255, 255, 255, 0.1)',
+        '--cui-sidebar-nav-link-hover-color': '#ffffff'
+      }}
     >
       <CSidebarHeader className="border-bottom">
         <CSidebarBrand to="/">

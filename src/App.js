@@ -21,8 +21,9 @@ import Downloads from './views/downloads/Downloads'
 // import PurchaseAnalytics from  './views/purchaseanalytics/PurchaseAnalytics.js'
 // import CustomerLoyality from './views/customer loyality/CustomerLoylity.js'
 import Delivery from './views/delivery/Delivery'
-import { checkRestaurantPermission } from './redux/slices/restaurantProfileSlice'
+import { checkRestaurantPermission, debugProfile, forceLoadProfile } from './redux/slices/restaurantProfileSlice'
 import { fetchUserProfile } from './redux/slices/authSlice'
+import store from './redux/store'
 import DeliveryTiming from './views/deliveryTiming/DeliveryTiming'
 import notificationSound from './assets/notification.mp3'
 import WooOrders from './views/delivery/WooOrders'
@@ -114,6 +115,56 @@ const App = () => {
   // Get userId and token from localStorage (more reliable than useParams in this context)
   // const userId = localStorage.getItem('userId')
   const token = localStorage.getItem('authToken')
+
+  // Make store and actions available in browser console for debugging
+  React.useEffect(() => {
+    window.store = store
+    window.debugProfile = function() {
+      try {
+        const state = store.getState()
+        console.log('=== PROFILE DEBUG INFO ===')
+        console.log('Current profile state:', state.restaurantProfile.restaurantProfile)
+        console.log('localStorage profile:', localStorage.getItem('restaurantProfile'))
+        console.log('Profile state keys:', state.restaurantProfile.restaurantProfile ? Object.keys(state.restaurantProfile.restaurantProfile) : 'No profile')
+        console.log('localStorage keys:', localStorage.getItem('restaurantProfile') ? Object.keys(JSON.parse(localStorage.getItem('restaurantProfile'))) : 'No localStorage data')
+        console.log('========================')
+        return 'Debug completed - check console logs'
+      } catch (error) {
+        console.error('Debug error:', error)
+        return 'Debug failed - check console for error'
+      }
+    }
+    window.forceLoadProfile = function() {
+      try {
+        store.dispatch(forceLoadProfile())
+        console.log('Profile loaded from localStorage')
+        return 'Profile loaded successfully'
+      } catch (error) {
+        console.error('Force load error:', error)
+        return 'Force load failed - check console for error'
+      }
+    }
+    window.checkLocalStorage = function() {
+      try {
+        const profile = localStorage.getItem('restaurantProfile')
+        console.log('=== LOCALSTORAGE CHECK ===')
+        console.log('Raw localStorage data:', profile)
+        if (profile) {
+          const parsed = JSON.parse(profile)
+          console.log('Parsed profile data:', parsed)
+          console.log('Profile keys:', Object.keys(parsed))
+        } else {
+          console.log('No profile data in localStorage')
+        }
+        console.log('========================')
+        return profile ? 'Profile found in localStorage' : 'No profile in localStorage'
+      } catch (error) {
+        console.error('localStorage check error:', error)
+        return 'localStorage check failed'
+      }
+    }
+    console.log('Debug functions available: window.debugProfile(), window.forceLoadProfile(), window.checkLocalStorage()')
+  }, [])
 
   const { restaurantPermission } = useSelector((state) => ({
     restaurantPermission: state.restaurantProfile.restaurantPermission,

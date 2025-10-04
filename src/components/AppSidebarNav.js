@@ -3,7 +3,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import PropTypes from 'prop-types';
 import SimpleBar from 'simplebar-react';
 import 'simplebar-react/dist/simplebar.min.css';
-import { CBadge, CNavLink, CSidebarNav, CTooltip } from '@coreui/react';
+import { CBadge, CNavLink, CSidebarNav } from '@coreui/react';
 import { useSelector, useDispatch } from 'react-redux';
 import { shallowEqual } from 'react-redux';
 import { refreshUserRole } from '../redux/slices/authSlice';
@@ -121,32 +121,21 @@ export const AppSidebarNav = ({ items }) => {
     return (
       <Component as="div" key={index}>
         {to || rest.href ? (
-          <CTooltip
-            content={
-              isDisabled
-                ? "Access restricted. Contact support."
-                : isSessionDisabled
-                  ? "Please start your session first by filling the Login Activity form."
-                  : ""
-            }
-            placement="right"
-          >
-            <div>
-              <CNavLink
-                {...(to && { as: NavLink, to: (isDisabled || isSessionDisabled) ? '#' : to })}
-                {...(rest.href && { target: '_blank', rel: 'noopener noreferrer' })}
-                style={(isDisabled || isSessionDisabled) ? {
-                  cursor: 'not-allowed',
-                  opacity: 0.5,
-                  pointerEvents: 'none'
-                } : {}}
-                onClick={(isDisabled || isSessionDisabled) ? handleDisabledClick : undefined}
-                {...rest}
-              >
-                {navLink(name, icon, badge, indent, (isDisabled || isSessionDisabled))}
-              </CNavLink>
-            </div>
-          </CTooltip>
+          <div>
+            <CNavLink
+              {...(to && { as: NavLink, to: (isDisabled || isSessionDisabled) ? '#' : to })}
+              {...(rest.href && { target: '_blank', rel: 'noopener noreferrer' })}
+              style={(isDisabled || isSessionDisabled) ? {
+                cursor: 'not-allowed',
+                opacity: 0.5,
+                pointerEvents: 'none'
+              } : {}}
+              onClick={(isDisabled || isSessionDisabled) ? handleDisabledClick : undefined}
+              {...rest}
+            >
+              {navLink(name, icon, badge, indent, (isDisabled || isSessionDisabled))}
+            </CNavLink>
+          </div>
         ) : (
           navLink(name, icon, badge, indent)
         )}
@@ -178,7 +167,14 @@ export const AppSidebarNav = ({ items }) => {
   };
 
   return (
-    <CSidebarNav as={SimpleBar}>
+    <CSidebarNav 
+      as={SimpleBar}
+      style={{
+        '--cui-sidebar-nav-link-hover-bg': 'rgba(255, 255, 255, 0.1)',
+        '--cui-sidebar-nav-link-hover-color': '#ffffff'
+      }}
+      className="custom-sidebar-nav"
+    >
       {filteredItems &&
         filteredItems.map((item, index) =>
           item.items ? navGroup(item, index) : navItem(item, index)

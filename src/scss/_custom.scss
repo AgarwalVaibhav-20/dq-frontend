@@ -1,1 +1,364 @@
 // Here you can add other styles
+
+// Fix sidebar hover issue - remove unwanted tooltip/pointer
+.sidebar {
+  .nav-link {
+    &:hover {
+      &::before {
+        display: none !important;
+      }
+    }
+  }
+  
+  // Remove any unwanted hover effects
+  .nav-item {
+    &:hover {
+      &::after {
+        display: none !important;
+      }
+    }
+  }
+}
+
+// Fix CoreUI sidebar hover tooltip issue
+.c-sidebar {
+  .c-sidebar-nav-link {
+    &:hover {
+      &::before,
+      &::after {
+        display: none !important;
+        content: none !important;
+      }
+    }
+  }
+  
+  .c-sidebar-nav-item {
+    &:hover {
+      &::before,
+      &::after {
+        display: none !important;
+        content: none !important;
+      }
+    }
+  }
+}
+
+// Additional fix for any remaining hover issues
+.c-sidebar-nav {
+  .nav-link {
+    &:hover {
+      &::before,
+      &::after {
+        display: none !important;
+        content: none !important;
+        visibility: hidden !important;
+      }
+    }
+  }
+}
+
+// Fix for CoreUI specific hover tooltip issues
+.c-sidebar-nav-link {
+  &:hover {
+    &::before,
+    &::after {
+      display: none !important;
+      content: none !important;
+      visibility: hidden !important;
+    }
+  }
+}
+
+// Remove any unwanted pseudo-elements on hover
+.c-sidebar {
+  * {
+    &:hover {
+      &::before,
+      &::after {
+        &:not(.nav-icon):not(.nav-icon-bullet) {
+          display: none !important;
+          content: none !important;
+          visibility: hidden !important;
+        }
+      }
+    }
+  }
+}
+
+// Specific fix for tooltip hover issues
+.c-tooltip {
+  .c-tooltip-inner {
+    &::before,
+    &::after {
+      display: none !important;
+      content: none !important;
+    }
+  }
+}
+
+// Fix the specific triangular point issue in sidebar
+.c-sidebar-nav-link {
+  position: relative;
+  
+  &::before,
+  &::after {
+    display: none !important;
+    content: none !important;
+    visibility: hidden !important;
+  }
+  
+  &:hover {
+    &::before,
+    &::after {
+      display: none !important;
+      content: none !important;
+      visibility: hidden !important;
+    }
+  }
+}
+
+// Remove any arrow/triangle indicators
+.c-sidebar-nav-item {
+  .c-sidebar-nav-link {
+    &::before,
+    &::after {
+      display: none !important;
+      content: none !important;
+      visibility: hidden !important;
+    }
+  }
+}
+
+// Specific fix for the triangular point that appears on hover
+.c-sidebar {
+  .c-sidebar-nav {
+    .c-sidebar-nav-item {
+      .c-sidebar-nav-link {
+        &:hover {
+          &::before,
+          &::after {
+            display: none !important;
+            content: none !important;
+            visibility: hidden !important;
+            opacity: 0 !important;
+            width: 0 !important;
+            height: 0 !important;
+            border: none !important;
+          }
+        }
+      }
+    }
+  }
+}
+
+// Additional fix for any remaining pseudo-elements
+.c-sidebar-nav-link:hover::before,
+.c-sidebar-nav-link:hover::after,
+.c-sidebar-nav-item:hover::before,
+.c-sidebar-nav-item:hover::after {
+  display: none !important;
+  content: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  border: none !important;
+}
+
+// Specific fix for the triangular point issue
+.custom-sidebar-nav {
+  .c-sidebar-nav-link {
+    &::before,
+    &::after {
+      display: none !important;
+      content: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      width: 0 !important;
+      height: 0 !important;
+      border: none !important;
+      background: none !important;
+      box-shadow: none !important;
+    }
+    
+    &:hover {
+      &::before,
+      &::after {
+        display: none !important;
+        content: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        width: 0 !important;
+        height: 0 !important;
+        border: none !important;
+        background: none !important;
+        box-shadow: none !important;
+      }
+    }
+  }
+}
+
+// Nuclear option - remove ALL pseudo-elements from sidebar
+.c-sidebar * {
+  &::before,
+  &::after {
+    &:not(.nav-icon):not(.nav-icon-bullet):not(.c-sidebar-brand):not(.c-sidebar-nav-link) {
+      display: none !important;
+      content: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      width: 0 !important;
+      height: 0 !important;
+      border: none !important;
+      background: none !important;
+      box-shadow: none !important;
+    }
+  }
+}
+
+// ULTIMATE FIX - Target the specific tooltip/arrow issue
+.c-sidebar {
+  // Remove all tooltips
+  .c-tooltip {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+  }
+  
+  // Target the specific arrow/triangle that appears
+  .c-sidebar-nav-item {
+    position: relative;
+    
+    &::before,
+    &::after {
+      display: none !important;
+      content: none !important;
+      visibility: hidden !important;
+      opacity: 0 !important;
+      width: 0 !important;
+      height: 0 !important;
+      border: none !important;
+      background: none !important;
+      box-shadow: none !important;
+    }
+    
+    .c-sidebar-nav-link {
+      &::before,
+      &::after {
+        display: none !important;
+        content: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        width: 0 !important;
+        height: 0 !important;
+        border: none !important;
+        background: none !important;
+        box-shadow: none !important;
+      }
+      
+      &:hover {
+        &::before,
+        &::after {
+          display: none !important;
+          content: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          width: 0 !important;
+          height: 0 !important;
+          border: none !important;
+          background: none !important;
+          box-shadow: none !important;
+        }
+      }
+    }
+  }
+}
+
+// Disable all tooltips globally in sidebar
+.c-sidebar .c-tooltip,
+.c-sidebar .tooltip,
+.c-sidebar [data-bs-toggle="tooltip"],
+.c-sidebar [data-tooltip] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+// Force remove any remaining pseudo-elements
+.c-sidebar-nav-item:hover::before,
+.c-sidebar-nav-item:hover::after,
+.c-sidebar-nav-link:hover::before,
+.c-sidebar-nav-link:hover::after {
+  display: none !important;
+  content: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  width: 0 !important;
+  height: 0 !important;
+  border: none !important;
+  background: none !important;
+  box-shadow: none !important;
+  transform: none !important;
+  position: absolute !important;
+  left: -9999px !important;
+  top: -9999px !important;
+}
+
+// FINAL NUCLEAR OPTION - Remove everything that could cause the arrow
+.c-sidebar {
+  // Disable all tooltips and popovers
+  .tooltip,
+  .popover,
+  .c-tooltip,
+  .c-popover,
+  [data-bs-toggle="tooltip"],
+  [data-bs-toggle="popover"],
+  [data-tooltip],
+  [data-popover] {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+  }
+  
+  // Remove any arrow-like elements
+  .arrow,
+  .arrow::before,
+  .arrow::after,
+  .tooltip-arrow,
+  .popover-arrow,
+  .bs-tooltip-arrow,
+  .bs-popover-arrow {
+    display: none !important;
+    content: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    width: 0 !important;
+    height: 0 !important;
+    border: none !important;
+    background: none !important;
+  }
+  
+  // Target any remaining pseudo-elements that could be the arrow
+  * {
+    &::before,
+    &::after {
+      &:not(.nav-icon):not(.nav-icon-bullet):not(.c-sidebar-brand) {
+        display: none !important;
+        content: none !important;
+        visibility: hidden !important;
+        opacity: 0 !important;
+        width: 0 !important;
+        height: 0 !important;
+        border: none !important;
+        background: none !important;
+        box-shadow: none !important;
+        transform: none !important;
+        position: absolute !important;
+        left: -9999px !important;
+        top: -9999px !important;
+      }
+    }
+  }
+}

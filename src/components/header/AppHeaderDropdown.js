@@ -119,11 +119,13 @@ const AppHeaderDropdown = () => {
       <CDropdownMenu className="pt-0" placement="bottom-end">
         <CDropdownHeader className="bg-body-secondary fw-semibold my-2">Settings</CDropdownHeader>
 
-        <CDropdownItem style={{ cursor: 'pointer' }}>
-          <Link to={`/account/${userId}`} style={{ textDecoration: 'none', color: 'inherit' }}>
-            <CIcon icon={cilUser} className="me-2" />
-            Profile
-          </Link>
+        <CDropdownItem 
+          as={Link} 
+          to={`/account/${userId}`} 
+          style={{ cursor: 'pointer', textDecoration: 'none', color: 'inherit' }}
+        >
+          <CIcon icon={cilUser} className="me-2" />
+          Profile
         </CDropdownItem>
 
         <CDropdownItem style={{ cursor: 'pointer' }}>
