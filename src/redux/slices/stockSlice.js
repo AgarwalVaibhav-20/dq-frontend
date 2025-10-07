@@ -268,7 +268,16 @@ const stockSlice = createSlice({
       })
       .addCase(fetchInventories.fulfilled, (state, action) => {
         state.loading = false;
-        console.log("action payload inventory", action.payload)
+        console.log("=== REDUX RECEIVED DATA ===");
+        console.log("action payload inventory", action.payload);
+        console.log("Data type:", typeof action.payload);
+        console.log("Is array:", Array.isArray(action.payload));
+        console.log("Length:", action.payload?.length);
+        if (action.payload && action.payload.length > 0) {
+          console.log("First item:", action.payload[0]);
+          console.log("First item stock:", action.payload[0]?.stock);
+        }
+        console.log("=== END REDUX DATA ===");
         state.inventories = action.payload;
       })
       .addCase(fetchInventories.rejected, (state, action) => {
@@ -347,7 +356,10 @@ const stockSlice = createSlice({
         if (index !== -1) {
           state.inventories[index] = updatedItem || {
             ...state.inventories[index],
-            quantity: newQuantity,
+            stock: {
+              ...state.inventories[index].stock,
+              quantity: newQuantity,
+            },
           };
         }
 

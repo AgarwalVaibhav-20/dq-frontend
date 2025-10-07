@@ -63,7 +63,15 @@ import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 import { fetchSuppliers } from '../../redux/slices/supplierSlice';
 import { fetchInventories } from '../../redux/slices/stockSlice';
-import { fetchMenuItems } from '../../redux/slices/menuSlice'
+import { fetchMenuItems } from '../../redux/slices/menuSlice';
+import {
+  CModal,
+  CModalBody,
+  CModalFooter,
+  CModalHeader,
+  CModalTitle,
+  CButton,
+} from '@coreui/react';
 
 export default function PurchaseAnalytics() {
   const dispatch = useDispatch();
@@ -90,6 +98,10 @@ export default function PurchaseAnalytics() {
   const [searchQuery, setSearchQuery] = useState('');
   const [viewMode, setViewMode] = useState('inventory'); // 'inventory' or 'menu'
   const [expandedRows, setExpandedRows] = useState(new Set());
+  const [suppliersModalOpen, setSuppliersModalOpen] = useState(false);
+  const [selectedItemSuppliers, setSelectedItemSuppliers] = useState([]);
+  const [selectedItemName, setSelectedItemName] = useState('');
+  const [selectedItemUnit, setSelectedItemUnit] = useState('');
 
   // Fetch data
   useEffect(() => {
@@ -154,6 +166,7 @@ export default function PurchaseAnalytics() {
           inventoryId: inventory._id.slice(-6),
           supplier: supplier?.supplierName || inventory.supplierName || 'Unknown Supplier',
           supplierId: inventory.supplierId,
+          suppliers: inventory.suppliers || [], // Add suppliers array
           category: inventory.unit || 'General',
           amount: currentAmount,
           quantity: currentQuantity,
@@ -499,7 +512,7 @@ export default function PurchaseAnalytics() {
       };
     } else {
       // Menu items calculations
-      const totalRevenuePotential = filteredData.reduce((sum, item) => sum + (parseFloat(item.price) || 0), 0);
+      const totalRevenuePotential = filteredData.reduce((sum, item) => sum + (parseFloat(item.totalIngredientCost) || 0), 0);
       const totalIngredientCost = filteredData.reduce((sum, item) => sum + (parseFloat(item.totalIngredientCost) || 0), 0);
       const totalProfitPotential = filteredData.reduce((sum, item) => sum + (parseFloat(item.profitMargin) || 0), 0);
       const profitableItems = filteredData.filter(item => parseFloat(item.profitPercentage || 0) > 20).length;
@@ -597,18 +610,17 @@ export default function PurchaseAnalytics() {
       // Summary section
       ["=== MENU ITEMS FINANCIAL SUMMARY ==="],
       ["Total Menu Items", filteredData.length],
-      ["Total Revenue Potential", `₹${summaryData.main.toFixed(2)}`],
-      ["Total Ingredient Cost", `₹${summaryData.third.toFixed(2)}`],
+      ["Total Ingredient Cost", `₹${summaryData.main.toFixed(2)}`],
+      ["Total Ingredient Cost (Detailed)", `₹${summaryData.third.toFixed(2)}`],
       ["Total Profit Potential", `₹${summaryData.totalProfitPotential.toFixed(2)}`],
       ["Average Profit Margin per Item", `₹${summaryData.averageProfitMargin.toFixed(2)}`],
       ["Average Profit Percentage", `${summaryData.averageProfitPercentage.toFixed(2)}%`],
       [],
       // Menu items data
-      ["Menu Item", "Menu ID", "Selling Price", "Category", "Total Ingredient Cost", "Profit Margin", "Profit %", "Stock", "Active", "Date"],
+      ["Menu Item", "Menu ID", "Category", "Total Ingredient Cost", "Profit Margin", "Profit %", "Stock", "Active", "Date"],
       ...filteredData.map((item) => [
         item.itemName || '',
         item.menuId || '',
-        parseFloat(item.price) || 0,
         item.category || '',
         parseFloat(item.totalIngredientCost) || 0,
         parseFloat(item.profitMargin) || 0,
@@ -703,18 +715,17 @@ export default function PurchaseAnalytics() {
     if (viewMode === 'menu') {
       doc.setFontSize(12);
       doc.text(`Total Menu Items: ${filteredData.length}`, 14, 35);
-      doc.text(`Total Revenue Potential: ₹${summaryData.main.toFixed(2)}`, 14, 45);
-      doc.text(`Total Ingredient Cost: ₹${summaryData.third.toFixed(2)}`, 14, 55);
+      doc.text(`Total Ingredient Cost: ₹${summaryData.main.toFixed(2)}`, 14, 45);
+      doc.text(`Total Ingredient Cost (Detailed): ₹${summaryData.third.toFixed(2)}`, 14, 55);
       doc.text(`Total Profit Potential: ₹${summaryData.totalProfitPotential.toFixed(2)}`, 14, 65);
       doc.text(`Average Profit Margin: ₹${summaryData.averageProfitMargin}`, 14, 75);
       doc.text(`Average Profit %: ${summaryData.averageProfitPercentage}%`, 14, 85);
 
       doc.autoTable({
         startY: 95,
-        head: [["Menu Item", "Selling Price", "Ingredient Cost", "Profit Margin", "Profit %", "Stock"]],
+        head: [["Menu Item", "Ingredient Cost", "Profit Margin", "Profit %", "Stock"]],
         body: filteredData.map((item) => [
           item.itemName,
-          `₹${item.price.toFixed(2)}`,
           `₹${item.totalIngredientCost.toFixed(2)}`,
           `₹${item.profitMargin.toFixed(2)}`,
           `${item.profitPercentage}%`,
@@ -804,11 +815,11 @@ export default function PurchaseAnalytics() {
                   <Typography variant="h4">
                     {viewMode === 'inventory'
                       ? `₹${filteredData.reduce((sum, item) => sum + item.amount, 0).toLocaleString()}`
-                      : `₹${filteredData.reduce((sum, item) => sum + item.price, 0).toLocaleString()}`
+                      : `₹${filteredData.reduce((sum, item) => sum + item.totalIngredientCost, 0).toLocaleString()}`
                     }
                   </Typography>
                   <Typography color="text.secondary">
-                    {viewMode === 'inventory' ? 'Total Purchases' : 'Total Revenue Potential'}
+                    {viewMode === 'inventory' ? 'Total Purchases' : 'Total Ingredient Cost'}
                   </Typography>
                 </Box>
               </Stack>
@@ -997,7 +1008,7 @@ export default function PurchaseAnalytics() {
                   [
                     { label: "Item Name", Icon: FileText },
                     { label: "ID", Icon: Hash },
-                    { label: "Supplier", Icon: Store },
+                    { label: "Suppliers", Icon: Store },
                     { label:"Unit", Icon: Boxes },
                     { label: "Amount", Icon:  IndianRupee  },
                     { label: "Quantity", Icon: BarChart3 },
@@ -1021,7 +1032,6 @@ export default function PurchaseAnalytics() {
                 ) : (
                   [
                     { label: "Menu Item", Icon: UtensilsCrossed },
-                    { label: "Price", Icon:  IndianRupee  },
                     { label: "Ingredient Cost", Icon:  ReceiptIndianRupee  },
                     { label: "Details", Icon: Info },
                     { label: "Stock", Icon: Package },
@@ -1062,7 +1072,38 @@ export default function PurchaseAnalytics() {
                           <TableCell>
                             <Typography variant="body2" color="text.secondary">{item.inventoryId}</Typography>
                           </TableCell>
-                          <TableCell>{item.supplier}</TableCell>
+                          <TableCell>
+                            {item.suppliers && item.suppliers.length > 0 ? (
+                              <Button
+                                variant="outlined"
+                                size="small"
+                                onClick={() => {
+                                  setSelectedItemSuppliers(item.suppliers);
+                                  setSelectedItemName(item.inventoryName);
+                                  setSelectedItemUnit(item.category);
+                                  setSuppliersModalOpen(true);
+                                }}
+                                sx={{
+                                  fontSize: '0.75rem',
+                                  height: '32px',
+                                  minWidth: '120px',
+                                  textTransform: 'none',
+                                  borderColor: theme.palette.primary.main,
+                                  color: theme.palette.primary.main,
+                                  '&:hover': {
+                                    backgroundColor: theme.palette.primary.light,
+                                    color: 'white'
+                                  }
+                                }}
+                              >
+                                View Suppliers ({item.suppliers.length})
+                              </Button>
+                            ) : (
+                              <Typography variant="caption" color="text.secondary" sx={{ fontStyle: 'italic' }}>
+                                No suppliers
+                              </Typography>
+                            )}
+                          </TableCell>
                           <TableCell>
                             <Chip label={item.category} color="primary" variant="outlined" size="small" />
                           </TableCell>
@@ -1099,9 +1140,6 @@ export default function PurchaseAnalytics() {
                               <Typography variant="body2" fontWeight="medium">{item.itemName}</Typography>
                               <Typography variant="caption" color="text.secondary">{item.menuId}</Typography>
                             </Stack>
-                          </TableCell>
-                          <TableCell>
-                            <Typography variant="body2" fontWeight="medium">₹{item.price}</Typography>
                           </TableCell>
                           {/* Ingredient Cost */}
                           <TableCell>
@@ -1143,7 +1181,7 @@ export default function PurchaseAnalytics() {
                     {/* Expandable row for ingredient details (menu view only) */}
                     {viewMode === 'menu' && (
                       <TableRow>
-                        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+                        <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={5}>
                           <Collapse in={expandedRows.has(item.id)} timeout="auto" unmountOnExit>
                             <Box sx={{ margin: 2, p: 2, backgroundColor: isDark ? theme.palette.grey[900] : theme.palette.grey[50], borderRadius: 2 }}>
                               <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -1320,14 +1358,12 @@ export default function PurchaseAnalytics() {
                 <LineChart
                   dataset={filteredData.map((item, index) => ({
                     menuItem: item.itemName,
-                    price: item.price,
                     ingredientCost: parseFloat(item.totalIngredientCost),
                     profit: parseFloat(item.profitMargin),
                     index: index + 1
                   }))}
                   xAxis={[{ dataKey: "index", label: "Menu Item No." }]}
                   series={[
-                    { dataKey: "price", label: "Selling Price (₹)", color: "#4caf50" },
                     { dataKey: "ingredientCost", label: "Ingredient Cost (₹)", color: "#f44336" },
                     { dataKey: "profit", label: "Profit Margin (₹)", color: "#2196f3" }
                   ]}
@@ -1386,6 +1422,94 @@ export default function PurchaseAnalytics() {
           </Grid>
         </Grid>
       )}
+
+      {/* Suppliers Modal */}
+      <CModal 
+        visible={suppliersModalOpen} 
+        alignment="center" 
+        onClose={() => setSuppliersModalOpen(false)} 
+        size="lg"
+      >
+        <CModalHeader className="bg-light border-0">
+          <CModalTitle className="fw-bold">
+            📦 Suppliers for {selectedItemName}
+          </CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <div className="p-3 rounded" style={{ backgroundColor: '#f8f9fa' }}>
+            <TableContainer component={Paper} sx={{ maxHeight: 400 }}>
+              <Table stickyHeader size="small">
+                <TableHead>
+                  <TableRow sx={{ backgroundColor: isDark ? theme.palette.grey[800] : theme.palette.grey[200] }}>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>Supplier Name</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>Item</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>Quantity</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>Unit</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>Price</TableCell>
+                    <TableCell sx={{ fontWeight: 'bold', fontSize: '0.875rem' }}>Total Amount</TableCell>
+                  </TableRow>
+                </TableHead>
+                <TableBody>
+                  {selectedItemSuppliers.map((supplier, index) => (
+                    <TableRow 
+                      key={supplier._id || index}
+                      sx={{
+                        '&:hover': { backgroundColor: isDark ? theme.palette.action.hover : theme.palette.grey[100] },
+                        '&:nth-of-type(odd)': { backgroundColor: isDark ? theme.palette.grey[900] : '#f9f9f9' }
+                      }}
+                    >
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="medium">
+                          {supplier.supplierName}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {selectedItemName}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {supplier.quantity || 0}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2">
+                          {selectedItemUnit || 'N/A'}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="medium" color="primary.main">
+                          ₹{supplier.amount || 0}
+                        </Typography>
+                      </TableCell>
+                      <TableCell>
+                        <Typography variant="body2" fontWeight="bold" color="success.main">
+                          ₹{supplier.total || 0}
+                        </Typography>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </TableContainer>
+            <div className="mt-3">
+              <Typography variant="caption" color="text.secondary">
+                Total Suppliers: {selectedItemSuppliers.length}
+              </Typography>
+            </div>
+          </div>
+        </CModalBody>
+        <CModalFooter className="d-flex justify-content-end gap-2 border-0">
+          <CButton 
+            color="secondary" 
+            variant="outline" 
+            onClick={() => setSuppliersModalOpen(false)}
+          >
+            Close
+          </CButton>
+        </CModalFooter>
+      </CModal>
     </Box>
   );
 }

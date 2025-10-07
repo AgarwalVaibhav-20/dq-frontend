@@ -49,6 +49,7 @@ import "jspdf-autotable";
 import { fetchOrders } from '../../redux/slices/orderSlice';
 import { fetchCustomers } from '../../redux/slices/customerSlice';
 import { fetchMenuItems } from '../../redux/slices/menuSlice';
+import { fetchInventories } from '../../redux/slices/stockSlice';
 
 export default function SalesAnalytics() {
   const dispatch = useDispatch();
@@ -65,6 +66,9 @@ export default function SalesAnalytics() {
   const { menuItems = [], loading: menuItemsLoading = false } = useSelector(
     (state) => state.menuItems || { menuItems: [], loading: false }
   );
+  const { inventories = [], loading: inventoriesLoading = false } = useSelector(
+    (state) => state.inventories || { inventories: [], loading: false }
+  );
 
   const restaurantId = localStorage.getItem('restaurantId');
   const token = localStorage.getItem('authToken');
@@ -80,7 +84,7 @@ export default function SalesAnalytics() {
   const [categoryFilter, setCategoryFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [viewMode, setViewMode] = useState('sales'); // 'sales', 'menu', 'customers'
+  const [viewMode, setViewMode] = useState('menu'); // 'sales', 'menu', 'customers'
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -100,7 +104,8 @@ export default function SalesAnalytics() {
         await Promise.all([
           dispatch(fetchOrders({ restaurantId, token })),
           dispatch(fetchCustomers({ restaurantId, token })),
-          dispatch(fetchMenuItems({ restaurantId, token }))
+          dispatch(fetchMenuItems({ restaurantId, token })),
+          dispatch(fetchInventories({ restaurantId, token }))
         ]);
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -155,7 +160,7 @@ export default function SalesAnalytics() {
               price: item.price,
               total: item.price * item.quantity,
               category: item.categoryName || 'General',
-              menuItemId: item.menuItemId,
+              menuItemId: item.itemId || item.menuItemId, // Try both field names
             })),
             itemsCount: items.length,
             subtotal: subtotal.toFixed(2),
@@ -178,70 +183,133 @@ export default function SalesAnalytics() {
 
       setSalesData(transformedSalesData);
     } catch (error) {
-      console.error('Error transforming sales data:', error);
+      console.error('❌ Error transforming sales data:', error);
       setError('Error processing sales data');
     }
   }, [orders, menuItems]);
 
   // Transform menu performance data
   useEffect(() => {
-    if (salesData.length === 0) return;
+    if (menuItems.length === 0 || inventories.length === 0) {
+      return;
+    }
 
     try {
       const menuPerformance = {};
 
-      salesData.forEach(order => {
-        order.items.forEach(item => {
-          if (!menuPerformance[item.name]) {
-            menuPerformance[item.name] = {
-              itemName: item.name,
-              category: item.category,
-              totalQuantity: 0,
+      // Process menu items directly (not from orders)
+      menuItems.forEach(menuItem => {
+        const itemName = menuItem.itemName;
+        const basePrice = menuItem.price || 0;
+        
+        // Process each size separately
+        if (menuItem.sizes && menuItem.sizes.length > 0) {
+          menuItem.sizes.forEach(size => {
+            const sizeName = size.name || size.label || 'Regular';
+            const sizePrice = size.price || basePrice;
+            const sizeKey = `${itemName}_${sizeName}`;
+            
+            if (!menuPerformance[sizeKey]) {
+              menuPerformance[sizeKey] = {
+                id: `${menuItem._id}_${sizeName}`, // Unique ID for each size
+                itemName: itemName,
+                sizeName: sizeName,
+                menuId: menuItem.menuId,
+                category: menuItem.categoryName || menuItem.sub_category || 'General',
+                totalQuantity: menuItem.stock || 0,
+                totalRevenue: 0,
+                totalCost: 0,
+                orderCount: 0,
+                averagePrice: sizePrice,
+                averageCostPrice: 0,
+                profit: 0,
+                profitMargin: 0,
+                sizes: [sizeName],
+                menuItem: menuItem,
+                sizeInfo: size
+              };
+            }
+          });
+        } else {
+          // No sizes, use base price
+          if (!menuPerformance[itemName]) {
+            menuPerformance[itemName] = {
+              id: menuItem._id,
+              itemName: itemName,
+              sizeName: 'Regular',
+              menuId: menuItem.menuId,
+              category: menuItem.categoryName || menuItem.sub_category || 'General',
+              totalQuantity: menuItem.stock || 0,
               totalRevenue: 0,
               totalCost: 0,
               orderCount: 0,
-              averagePrice: 0,
+              averagePrice: basePrice,
+              averageCostPrice: 0,
               profit: 0,
               profitMargin: 0,
+              sizes: ['Regular'],
+              menuItem: menuItem
             };
           }
+        }
 
-          const itemRevenue = (item.price || 0) * (item.quantity || 0);
-          menuPerformance[item.name].totalQuantity += item.quantity || 0;
-          menuPerformance[item.name].totalRevenue += itemRevenue;
+        // Calculate cost from menu item's stockItems (ingredients) using actual inventory data
+        let itemCost = 0;
+        if (menuItem.stockItems && menuItem.stockItems.length > 0) {
+          // Calculate cost based on actual inventory data
+          itemCost = menuItem.stockItems.reduce((totalCost, stockItem) => {
+            // Find the inventory item
+            const inventoryItem = inventories.find(inv => String(inv._id) === String(stockItem.stockId));
+            
+            if (inventoryItem && inventoryItem.stock) {
+              // Calculate cost per unit from inventory
+              const inventoryAmount = inventoryItem.stock.amount || 0;
+              const inventoryQuantity = inventoryItem.stock.quantity || 0;
+              const costPerUnit = inventoryQuantity > 0 ? inventoryAmount / inventoryQuantity : 0;
+              
+              // Calculate total cost for this ingredient
+              const ingredientCost = costPerUnit * stockItem.quantity;
+              return totalCost + ingredientCost;
+            } else {
+              // Fallback: use 40% of selling price as cost
+              const estimatedCostPerUnit = (menuItem.price || 0) * 0.4;
+              return totalCost + (estimatedCostPerUnit * stockItem.quantity);
+            }
+          }, 0);
+        } else {
+          // Fallback: use 40% of selling price as cost
+          itemCost = basePrice * 0.4;
+        }
 
-          const menuItem = menuItems.find(
-            m => m.name === item.name || m._id === item.menuItemId
-          );
-          const itemCost = menuItem?.costPrice || ((item.price || 0) * 0.6);
-          menuPerformance[item.name].totalCost += itemCost * (item.quantity || 0);
-          menuPerformance[item.name].orderCount += 1;
+        // Apply cost to all sizes of this menu item
+        Object.values(menuPerformance).forEach(performanceItem => {
+          if (performanceItem.menuItem._id === menuItem._id) {
+            performanceItem.totalCost = itemCost;
+            performanceItem.totalRevenue = performanceItem.averagePrice * (menuItem.stock || 0);
+          }
         });
       });
 
       const menuPerformanceArray = Object.values(menuPerformance)
         .map(item => {
-          item.averagePrice = item.totalQuantity > 0
-            ? (item.totalRevenue / item.totalQuantity).toFixed(2)
+          const itemPrice = item.averagePrice; // Use size-specific price
+          item.averageCostPrice = item.totalCost.toFixed(2);
+
+          const profit = itemPrice - item.totalCost;
+          item.profit = parseFloat(profit.toFixed(2));
+          item.profitMargin = itemPrice > 0
+            ? ((profit / itemPrice) * 100).toFixed(1)
             : "0";
 
-          const profit = item.totalRevenue - item.totalCost;
-          item.profit = parseFloat(profit.toFixed(2));
-          item.profitMargin =
-            item.totalRevenue > 0
-              ? ((profit / item.totalRevenue) * 100).toFixed(1)
-              : "0";
-          console.log("profit", profit)
-          console.log("profit margin ", ((profit / item.totalRevenue) * 100))
           return item;
         })
-        .sort((a, b) => b.totalRevenue - a.totalRevenue);
+        .sort((a, b) => b.profit - a.profit);
 
       setMenuPerformanceData(menuPerformanceArray);
     } catch (error) {
-      console.error("Error transforming menu performance data:", error);
+      console.error("❌ Error transforming menu performance data:", error);
     }
-  }, [salesData, menuItems]);
+  }, [menuItems, inventories]);
 
   // Transform customer analytics data
   useEffect(() => {
@@ -438,8 +506,18 @@ export default function SalesAnalytics() {
         break;
       case 'menu':
         csvRows = [
-          ["Item Name", "Category", "Quantity Sold", "Total Revenue", "Avg Price", "Profit", "Profit Margin (%)", "Orders"],
-          ...filteredData.map(item => [item.itemName, item.category, item.totalQuantity, item.totalRevenue, item.averagePrice, item.profit, item.profitMargin, item.orderCount])
+          ["Menu Item", "Menu ID", "Size", "Cost Price (CP)", "Sold Price (SP)", "Profit", "Profit Percentage (%)", "Total Quantity", "Total Revenue"],
+          ...filteredData.map(item => [
+            item.itemName, 
+            item.menuId || '',
+            item.sizeName || item.sizes?.join(', ') || 'Regular',
+            item.averageCostPrice || (item.totalCost / item.totalQuantity).toFixed(2), 
+            item.averagePrice, 
+            item.profit, 
+            item.profitMargin,
+            item.totalQuantity,
+            item.totalRevenue
+          ])
         ];
         fileName = `menu-performance-${fileName}`;
         break;
@@ -478,8 +556,15 @@ export default function SalesAnalytics() {
     } else if (viewMode === 'menu') {
       doc.autoTable({
         startY: 30,
-        head: [["Item", "Category", "Qty Sold", "Revenue", "Profit", "Profit Margin"]],
-        body: filteredData.slice(0, 50).map(item => [item.itemName, item.category, item.totalQuantity, `₹${item.totalRevenue.toFixed(2)}`, `₹${item.profit}`, `${item.profitMargin}%`]),
+        head: [["Menu Item", "Size", "Cost Price (CP)", "Sold Price (SP)", "Profit", "Profit Percentage (%)"]],
+        body: filteredData.slice(0, 50).map(item => [
+          item.itemName, 
+          item.sizeName || item.sizes?.join(', ') || 'Regular',
+          `₹${item.averageCostPrice || (item.totalCost / item.totalQuantity).toFixed(2)}`, 
+          `₹${item.averagePrice}`, 
+          `₹${item.profit}`, 
+          `${item.profitMargin}%`
+        ]),
         styles: { fontSize: 8 },
       });
     } else {
@@ -505,7 +590,7 @@ export default function SalesAnalytics() {
 
   const availableStatuses = [...new Set(salesData.map(order => order.status).filter(Boolean))];
 
-  if (loading || ordersLoading || customersLoading || menuItemsLoading) {
+  if (loading || ordersLoading || customersLoading || menuItemsLoading || inventoriesLoading) {
     return (
       <Box sx={{ p: 3, display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '60vh' }}>
         <CircularProgress />
@@ -513,6 +598,7 @@ export default function SalesAnalytics() {
       </Box>
     );
   }
+
 
   if (error) {
     return (
@@ -534,9 +620,11 @@ export default function SalesAnalytics() {
       <Paper sx={{ p: 2, mb: 3, borderRadius: 3, boxShadow: 3 }}>
         <Stack direction="row" spacing={2} alignItems="center">
           <Typography variant="h6">View Mode:</Typography>
-          <Button variant={viewMode === 'sales' ? 'contained' : 'outlined'} startIcon={<Receipt />} onClick={() => setViewMode('sales')}>Sales Overview</Button>
+          {/* Sales Overview button hidden */}
+          {/* <Button variant={viewMode === 'sales' ? 'contained' : 'outlined'} startIcon={<Receipt />} onClick={() => setViewMode('sales')}>Sales Overview</Button> */}
           <Button variant={viewMode === 'menu' ? 'contained' : 'outlined'} startIcon={<BarChart3 />} onClick={() => setViewMode('menu')}>Menu Performance</Button>
-          <Button variant={viewMode === 'customers' ? 'contained' : 'outlined'} startIcon={<Users />} onClick={() => setViewMode('customers')}>Customer Analytics</Button>
+          {/* Customer Analytics button hidden */}
+          {/* <Button variant={viewMode === 'customers' ? 'contained' : 'outlined'} startIcon={<Users />} onClick={() => setViewMode('customers')}>Customer Analytics</Button> */}
         </Stack>
       </Paper>
 
@@ -638,7 +726,7 @@ export default function SalesAnalytics() {
             <TableHead>
               <TableRow>
                 {viewMode === 'sales' ? ["Order ID", "Customer", "Date", "Total", "Profit", "Status", "Details"].map((h) => (<TableCell key={h} sx={{ fontWeight: "bold" }}>{h}</TableCell>))
-                  : viewMode === 'menu' ? ["Menu Item", "Qty Sold", "Revenue", "Avg Price", "Profit", "Profit Margin", "Status"].map((h) => (<TableCell key={h} sx={{ fontWeight: "bold" }}>{h}</TableCell>))
+                  : viewMode === 'menu' ? ["Menu Item", "Size", "Cost Price (CP)", "Sold Price (SP)", "Profit", "Profit Percentage (%)"].map((h) => (<TableCell key={h} sx={{ fontWeight: "bold" }}>{h}</TableCell>))
                     : ["Customer", "Orders", "Total Spent", "Avg Order", "Last Order", "Favorite Item", "Frequency"].map((h) => (<TableCell key={h} sx={{ fontWeight: "bold" }}>{h}</TableCell>))}
               </TableRow>
             </TableHead>
@@ -658,13 +746,24 @@ export default function SalesAnalytics() {
                       </>
                     ) : viewMode === 'menu' ? (
                       <>
-                        <TableCell>{item.itemName}</TableCell>
-                        <TableCell>{item.totalQuantity}</TableCell>
-                        <TableCell>₹{item.totalRevenue.toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Stack>
+                            <Typography variant="body2" fontWeight="medium">{item.itemName}</Typography>
+                            <Typography variant="caption" color="text.secondary">{item.menuId}</Typography>
+                          </Stack>
+                        </TableCell>
+                        <TableCell>
+                          <Chip 
+                            label={item.sizeName || item.sizes?.join(', ') || 'Regular'} 
+                            color="primary" 
+                            variant="outlined" 
+                            size="small" 
+                          />
+                        </TableCell>
+                        <TableCell>₹{item.averageCostPrice || (item.totalCost / item.totalQuantity).toFixed(2)}</TableCell>
                         <TableCell>₹{item.averagePrice}</TableCell>
                         <TableCell color="success.main">₹{item.profit}</TableCell>
                         <TableCell><Typography color={parseFloat(item.profitMargin) >= 20 ? "success.main" : "warning.main"}>{item.profitMargin}%</Typography></TableCell>
-                        <TableCell><Chip label={Number(item.totalQuantity) > 50 ? "Best Seller" : "Regular"} color={Number(item.totalQuantity) > 50 ? "success" : "default"} size="small" /></TableCell>
                       </>
                     ) : (
                       <>

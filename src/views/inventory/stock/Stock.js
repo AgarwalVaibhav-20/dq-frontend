@@ -53,6 +53,28 @@ const Stock = () => {
     }
   }, [restaurantId, token, dispatch])
 
+  // Debug: Log inventories data
+  useEffect(() => {
+    console.log('=== FRONTEND DEBUG ===');
+    console.log('Inventories data:', inventories);
+    console.log('Inventories length:', inventories?.length);
+    
+    if (inventories && inventories.length > 0) {
+      inventories.forEach((item, index) => {
+        console.log(`Item ${index + 1}:`, {
+          name: item.itemName,
+          stock: item.stock,
+          quantity: item.stock?.quantity,
+          hasStock: !!item.stock,
+          stockKeys: item.stock ? Object.keys(item.stock) : 'No stock object'
+        });
+      });
+    } else {
+      console.log('No inventories data found');
+    }
+    console.log('=== END FRONTEND DEBUG ===');
+  }, [inventories])
+
   // Extract unique items from all suppliers (based on rawItem field)
   useEffect(() => {
     console.log('Suppliers data:', suppliers) // Debug log
@@ -107,7 +129,7 @@ const Stock = () => {
 
   // Monitor low stock
   useEffect(() => {
-    const lowStock = inventories.filter(item => item.quantity <= 5)
+    const lowStock = inventories.filter(item => (item.stock?.quantity || 0) <= 5)
     setLowStockItems(lowStock)
   }, [inventories])
 
@@ -258,25 +280,33 @@ const Stock = () => {
     { field: 'id', headerName: 'Stock ID', flex: 1, valueGetter: (params) => `STK-${params.row.id.slice(-8).toUpperCase()}` },
     {
       field: 'itemName', headerName: 'Item Name', flex: 1,
-      renderCell: (params) => (
-        <div style={{
-          display: 'flex',
-          alignItems: 'center',
-          color: params.row.quantity <= 5 ? '#dc3545' : 'inherit',
-          fontWeight: params.row.quantity <= 5 ? 'bold' : 'normal'
-        }}>
-          {params.row.quantity <= 5 && <span style={{ marginRight: '5px' }}>⚠️</span>}
-          {params.value}
-        </div>
-      )
+      renderCell: (params) => {
+        const quantity = params.row.stock?.quantity || 0;
+        return (
+          <div style={{
+            display: 'flex',
+            alignItems: 'center',
+            color: quantity <= 5 ? '#dc3545' : 'inherit',
+            fontWeight: quantity <= 5 ? 'bold' : 'normal'
+          }}>
+            {quantity <= 5 && <span style={{ marginRight: '5px' }}>⚠️</span>}
+            {params.value}
+          </div>
+        )
+      }
     },
     {
       field: 'quantity',
       headerName: 'Quantity',
       flex: 1,
-      valueGetter: (params) => params.row?.stock?.quantity ?? 0,  // <-- safely get stock.quantity
+      valueGetter: (params) => {
+        const qty = params.row?.stock?.quantity ?? 0;
+        console.log('Quantity for', params.row?.itemName, ':', qty);
+        return qty;
+      },
       renderCell: (params) => {
-        const qty = params.value
+        const qty = params.row?.stock?.quantity ?? 0;
+        console.log('Render cell quantity for', params.row?.itemName, ':', qty);
         return (
           <span
             style={{
@@ -290,24 +320,87 @@ const Stock = () => {
       },
     },
     { field: 'unit', headerName: 'Unit', flex: 1 },
-    { field: 'amount', headerName: 'Amount', flex: 1, valueGetter: (params) => params?.row?.stock.amount || 'N/A' },
+    {
+      field: 'suppliers',
+      headerName: 'Suppliers',
+      flex: 2,
+      renderCell: (params) => {
+        const suppliers = params.row?.suppliers || [];
+        if (!suppliers || suppliers.length === 0) {
+          return <span style={{ color: '#6c757d', fontStyle: 'italic' }}>No suppliers</span>;
+        }
+        
+        return (
+          <div style={{ maxWidth: '350px' }}>
+            <CFormSelect 
+              size="sm" 
+              style={{ 
+                fontSize: '11px',
+                border: '1px solid #dee2e6',
+                borderRadius: '4px',
+                padding: '4px 8px',
+                backgroundColor: '#fff'
+              }}
+              onChange={(e) => {
+                const selectedSupplier = suppliers.find(s => s._id === e.target.value);
+                if (selectedSupplier) {
+                  console.log('Selected supplier details:', {
+                    supplierName: selectedSupplier.supplierName,
+                    item: params.row.itemName,
+                    quantity: selectedSupplier.quantity,
+                    unit: params.row.unit,
+                    price: selectedSupplier.amount,
+                    totalAmount: selectedSupplier.total
+                  });
+                }
+              }}
+            >
+              <option value="">Select Supplier</option>
+              {suppliers.map((supplier, index) => (
+                <option key={supplier._id || index} value={supplier._id}>
+                  {supplier.supplierName} | ₹{supplier.amount || 0} | {supplier.quantity || 0} {params.row.unit} | Total: ₹{supplier.total || 0}
+                </option>
+              ))}
+            </CFormSelect>
+            <div style={{ fontSize: '9px', color: '#6c757d', marginTop: '2px', textAlign: 'center' }}>
+              {suppliers.length} supplier(s) available
+            </div>
+          </div>
+        );
+      }
+    },
     {
       field: 'total',
-      headerName: 'Total',
+      headerName: 'Total Amount',
       flex: 1,
-      valueGetter: (params) => params?.row?.stock?.total ?? 'N/A'
+      valueGetter: (params) => {
+        const total = params?.row?.stock?.total ?? 0;
+        console.log('Total Amount for', params.row?.itemName, ':', total);
+        return total;
+      },
+      renderCell: (params) => {
+        const total = params?.row?.stock?.total ?? 0;
+        return (
+          <span style={{
+            color: total > 0 ? '#28a745' : '#6c757d',
+            fontWeight: total > 0 ? 'bold' : 'normal'
+          }}>
+            ₹{total.toLocaleString()}
+          </span>
+        )
+      }
     },
-    { field: 'supplierName', headerName: 'Supplier Name', flex: 1, valueGetter: (params) => params?.row?.supplierName || 'N/A' },
     {
       field: 'actions', headerName: 'Actions', flex: 1.5, sortable: false, filterable: false,
       renderCell: (params) => (
         <div style={{ display: 'flex', gap: '8px' }}>
-          <CButton color="success" size="sm" onClick={() => {
+          {/* Plus button hidden as requested */}
+          {/* <CButton color="success" size="sm" onClick={() => {
             setSelectedStock(params.row)
             setaddQuantityStockModalVisible(true)
           }} title="Add Stock">
             <CIcon icon={cilPlus} />
-          </CButton>
+          </CButton> */}
 
           <CButton color="secondary" size="sm" onClick={() => {
             setSelectedStock(params.row)
@@ -329,9 +422,9 @@ const Stock = () => {
 
             setFormData({
               itemName: params.row.itemName || '',
-              quantity: params.row.quantity || '',
+              quantity: params.row.stock?.quantity || '',
               unit: params.row.unit || '',
-              amount: params.row.amount || '',
+              amount: params.row.stock?.amount || '',
               supplierId: params.row.supplierId || '',
             })
             setEditModalVisible(true)
@@ -359,7 +452,7 @@ const Stock = () => {
           <div className="mt-2">
             {lowStockItems.map(item => (
               <div key={item._id} className="mb-1">
-                <strong>{item.itemName}</strong>: Only {item.quantity} {item.unit} remaining
+                <strong>{item.itemName}</strong>: Only {item.stock?.quantity || 0} {item.unit} remaining
               </div>
             ))}
           </div>
@@ -436,12 +529,19 @@ const Stock = () => {
               </div>
               <div className="col-md-6 mb-3">
                 <label className="form-label fw-semibold">Unit <span className="text-danger">*</span></label>
-                <CFormInput
-                  placeholder="e.g., kg, pcs, ltr"
+                <CFormSelect
                   name="unit"
                   value={formData.unit}
                   onChange={handleChange}
-                />
+                >
+                  <option value="">Select Unit</option>
+                  <option value="kg">kg</option>
+                  <option value="gm">gm</option>
+                  <option value="ltr">ltr</option>
+                  <option value="mg">mg</option>
+                  <option value="pcs">pcs</option>
+                  <option value="ml">ml</option>
+                </CFormSelect>
               </div>
             </div>
 
@@ -500,7 +600,7 @@ const Stock = () => {
             <>
               <div className="mb-3 p-3 bg-light rounded">
                 <h6 className="fw-bold mb-2">{selectedStock.itemName}</h6>
-                <p className="mb-1 text-muted">Current Stock: <strong>{selectedStock.quantity} {selectedStock.unit}</strong></p>
+                <p className="mb-1 text-muted">Current Stock: <strong>{selectedStock.stock?.quantity || 0} {selectedStock.unit}</strong></p>
                 <p className="mb-0 text-muted">Supplier: <strong>{selectedStock.supplierName || 'N/A'}</strong></p>
               </div>
 
@@ -520,7 +620,7 @@ const Stock = () => {
               {addQuantityStockData.quantityToAdd && (
                 <div className="mb-3 p-2 bg-info bg-opacity-10 rounded">
                   <small className="text-info">
-                    <strong>New Total Stock:</strong> {selectedStock.quantity + parseInt(addQuantityStockData.quantityToAdd || 0)} {selectedStock.unit}
+                    <strong>New Total Stock:</strong> {(selectedStock.stock?.quantity || 0) + parseInt(addQuantityStockData.quantityToAdd || 0)} {selectedStock.unit}
                   </small>
                 </div>
               )}
@@ -581,13 +681,20 @@ const Stock = () => {
               </div>
               <div className="col-md-6 mb-3">
                 <label className="form-label fw-semibold">Unit</label>
-                <CFormInput
+                <CFormSelect
                   className="shadow-sm"
-                  placeholder="Unit (e.g., kg, ltr)"
                   name="unit"
                   value={formData.unit}
                   onChange={handleChange}
-                />
+                >
+                  <option value="">Select Unit</option>
+                  <option value="kg">kg</option>
+                  <option value="gm">gm</option>
+                  <option value="ltr">ltr</option>
+                  <option value="mg">mg</option>
+                  <option value="pcs">pcs</option>
+                  <option value="ml">ml</option>
+                </CFormSelect>
               </div>
             </div>
 
@@ -640,7 +747,7 @@ const Stock = () => {
               <p className="fs-6 mb-3">Are you sure you want to delete this inventory item?</p>
               <div className="p-3 bg-light rounded">
                 <strong>{selectedStock.itemName}</strong><br />
-                <span className="text-muted">Quantity: {selectedStock.quantity} {selectedStock.unit}</span><br />
+                <span className="text-muted">Quantity: {selectedStock.stock?.quantity || 0} {selectedStock.unit}</span><br />
                 <span className="text-muted">Supplier: {selectedStock.supplierName || 'N/A'}</span>
               </div>
               <p className="text-danger mt-3 mb-0"><strong>This action cannot be undone!</strong></p>
