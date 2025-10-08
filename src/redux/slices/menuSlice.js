@@ -15,6 +15,8 @@ export const fetchMenuItems = createAsyncThunk(
   "menu/fetchMenuItems",
   async ({ restaurantId, token }, { rejectWithValue }) => {
     try {
+      console.log("🔍 fetchMenuItems called with:", { restaurantId, token: token ? "present" : "missing" });
+      
       const headers = {
         Authorization: `Bearer ${token}`,
       };
@@ -23,9 +25,19 @@ export const fetchMenuItems = createAsyncThunk(
         ? `${BASE_URL}/menu/allmenues?restaurantId=${restaurantId}`
         : `${BASE_URL}/menu/allmenues`;
 
+      console.log("🔍 API URL:", url);
+      
       const response = await axios.get(url, { headers });
+      
+      console.log("🔍 API Response:", {
+        status: response.status,
+        dataLength: response.data?.length || 0,
+        data: response.data
+      });
+      
       return response.data; // Array of menu items
     } catch (error) {
+      console.error("❌ fetchMenuItems error:", error);
       return rejectWithValue(
         error.response?.data?.message ||
         error.response?.data?.error ||
@@ -293,8 +305,14 @@ const menuSlice = createSlice({
         state.error = null;
       })
       .addCase(fetchMenuItems.fulfilled, (state, action) => {
+        console.log("🔍 fetchMenuItems.fulfilled:", {
+          payloadLength: action.payload?.length || 0,
+          payload: action.payload,
+          isArray: Array.isArray(action.payload)
+        });
         state.loading = false;
         state.menuItems = Array.isArray(action.payload) ? action.payload : [];
+        console.log("🔍 Final state.menuItems length:", state.menuItems.length);
       })
       .addCase(fetchMenuItems.rejected, (state, action) => {
         state.loading = false;

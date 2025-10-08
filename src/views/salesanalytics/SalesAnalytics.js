@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { LineChart, PieChart, BarChart } from "@mui/x-charts";
 import {
@@ -70,8 +70,16 @@ export default function SalesAnalytics() {
     (state) => state.inventories || { inventories: [], loading: false }
   );
 
-  const restaurantId = localStorage.getItem('restaurantId');
-  const token = localStorage.getItem('authToken');
+  const [restaurantId, setRestaurantId] = useState(null);
+  const [token, setToken] = useState(null);
+
+  // Initialize restaurantId and token once
+  useEffect(() => {
+    const storedRestaurantId = localStorage.getItem('restaurantId');
+    const storedToken = localStorage.getItem('authToken');
+    setRestaurantId(storedRestaurantId);
+    setToken(storedToken);
+  }, []);
 
   // Local state
   const [salesData, setSalesData] = useState([]);
@@ -121,6 +129,12 @@ export default function SalesAnalytics() {
   // Transform sales data
   useEffect(() => {
     if (!Array.isArray(orders) || orders.length === 0) {
+      return;
+    }
+
+    // Prevent unnecessary re-processing if data hasn't changed
+    const ordersString = JSON.stringify(orders.map(o => ({ id: o._id, createdAt: o.createdAt })));
+    if (ordersString === salesData.length > 0 ? JSON.stringify(salesData.map(s => ({ id: s.id, createdAt: s.createdAt }))) : '') {
       return;
     }
 
@@ -194,11 +208,24 @@ export default function SalesAnalytics() {
       return;
     }
 
+    // Prevent unnecessary re-processing if data hasn't changed
+    const menuItemsString = JSON.stringify(menuItems.map(m => ({ id: m._id, itemName: m.itemName, price: m.price })));
+    const inventoriesString = JSON.stringify(inventories.map(i => ({ id: i._id, stock: i.stock })));
+    const currentDataString = JSON.stringify(menuPerformanceData.map(m => ({ id: m.id, itemName: m.itemName })));
+    
+    if (menuItemsString === currentDataString && inventoriesString === currentDataString) {
+      return;
+    }
+
     try {
       const menuPerformance = {};
 
       // Process menu items directly (not from orders)
       menuItems.forEach(menuItem => {
+        // Skip deleted items
+        if (menuItem.status === 0) {
+          return;
+        }
         const itemName = menuItem.itemName;
         const basePrice = menuItem.price || 0;
         
@@ -437,41 +464,43 @@ export default function SalesAnalytics() {
 
   const currentData = getCurrentData();
 
-  const filteredData = currentData.filter(item => {
-    if (!item) return false;
+  const filteredData = useMemo(() => {
+    return currentData.filter(item => {
+      if (!item) return false;
 
-    let matchesDate = true;
-    if (startDate || endDate) {
-      const itemDate = new Date(viewMode === 'customers' ? item.lastOrderDate : item.orderDate);
-      if (startDate) matchesDate = matchesDate && itemDate >= new Date(startDate);
-      if (endDate) matchesDate = matchesDate && itemDate <= new Date(endDate);
-    }
-
-    const matchesCategory = !categoryFilter ||
-      (viewMode === 'sales' && item.items.some(orderItem => orderItem.category === categoryFilter)) ||
-      (viewMode === 'menu' && item.category === categoryFilter);
-
-    const matchesStatus = !statusFilter ||
-      (viewMode === 'sales' && item.status === statusFilter);
-
-    let matchesSearch = true;
-    if (searchQuery) {
-      const query = searchQuery.toLowerCase();
-      if (viewMode === 'sales') {
-        matchesSearch = (item.orderId?.toLowerCase() || '').includes(query) ||
-          (item.customerName?.toLowerCase() || '').includes(query) ||
-          item.items.some(orderItem => (orderItem.name?.toLowerCase() || '').includes(query));
-      } else if (viewMode === 'menu') {
-        matchesSearch = (item.itemName?.toLowerCase() || '').includes(query) ||
-          (item.category?.toLowerCase() || '').includes(query);
-      } else {
-        matchesSearch = (item.customerName?.toLowerCase() || '').includes(query) ||
-          (item.favoriteItem?.toLowerCase() || '').includes(query);
+      let matchesDate = true;
+      if (startDate || endDate) {
+        const itemDate = new Date(viewMode === 'customers' ? item.lastOrderDate : item.orderDate);
+        if (startDate) matchesDate = matchesDate && itemDate >= new Date(startDate);
+        if (endDate) matchesDate = matchesDate && itemDate <= new Date(endDate);
       }
-    }
 
-    return matchesDate && matchesCategory && matchesStatus && matchesSearch;
-  });
+      const matchesCategory = !categoryFilter ||
+        (viewMode === 'sales' && item.items.some(orderItem => orderItem.category === categoryFilter)) ||
+        (viewMode === 'menu' && item.category === categoryFilter);
+
+      const matchesStatus = !statusFilter ||
+        (viewMode === 'sales' && item.status === statusFilter);
+
+      let matchesSearch = true;
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        if (viewMode === 'sales') {
+          matchesSearch = (item.orderId?.toLowerCase() || '').includes(query) ||
+            (item.customerName?.toLowerCase() || '').includes(query) ||
+            item.items.some(orderItem => (orderItem.name?.toLowerCase() || '').includes(query));
+        } else if (viewMode === 'menu') {
+          matchesSearch = (item.itemName?.toLowerCase() || '').includes(query) ||
+            (item.category?.toLowerCase() || '').includes(query);
+        } else {
+          matchesSearch = (item.customerName?.toLowerCase() || '').includes(query) ||
+            (item.favoriteItem?.toLowerCase() || '').includes(query);
+        }
+      }
+
+      return matchesDate && matchesCategory && matchesStatus && matchesSearch;
+    });
+  }, [currentData, startDate, endDate, categoryFilter, statusFilter, searchQuery, viewMode]);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
