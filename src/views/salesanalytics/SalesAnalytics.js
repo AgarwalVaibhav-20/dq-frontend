@@ -56,7 +56,7 @@ export default function SalesAnalytics() {
   const theme = useTheme();
   const isDark = theme.palette.mode === "dark";
 
-  // Redux state
+  // Redux state - Fixed selectors to match store configuration
   const { orders = [], loading: ordersLoading = false } = useSelector(
     (state) => state.orders || { orders: [], loading: false }
   );
@@ -70,6 +70,18 @@ export default function SalesAnalytics() {
     (state) => state.inventories || { inventories: [], loading: false }
   );
 
+  // Debug Redux state
+  console.log("🔍 Redux State Debug:", {
+    orders: orders.length,
+    customers: customers.length,
+    menuItems: menuItems.length,
+    inventories: inventories.length,
+    ordersLoading,
+    customersLoading,
+    menuItemsLoading,
+    inventoriesLoading
+  });
+
   const [restaurantId, setRestaurantId] = useState(null);
   const [token, setToken] = useState(null);
 
@@ -81,10 +93,19 @@ export default function SalesAnalytics() {
     setToken(storedToken);
   }, []);
 
-  // Local state
-  const [salesData, setSalesData] = useState([]);
-  const [menuPerformanceData, setMenuPerformanceData] = useState([]);
-  const [customerAnalyticsData, setCustomerAnalyticsData] = useState([]);
+  // Local state with persistence
+  const [salesData, setSalesData] = useState(() => {
+    const saved = localStorage.getItem('salesAnalytics_salesData');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [menuPerformanceData, setMenuPerformanceData] = useState(() => {
+    const saved = localStorage.getItem('salesAnalytics_menuPerformanceData');
+    return saved ? JSON.parse(saved) : [];
+  });
+  const [customerAnalyticsData, setCustomerAnalyticsData] = useState(() => {
+    const saved = localStorage.getItem('salesAnalytics_customerAnalyticsData');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(10);
   const [startDate, setStartDate] = useState('');
@@ -196,6 +217,9 @@ export default function SalesAnalytics() {
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
       setSalesData(transformedSalesData);
+      
+      // Save to localStorage for persistence
+      localStorage.setItem('salesAnalytics_salesData', JSON.stringify(transformedSalesData));
     } catch (error) {
       console.error('❌ Error transforming sales data:', error);
       setError('Error processing sales data');
@@ -333,8 +357,12 @@ export default function SalesAnalytics() {
         .sort((a, b) => b.profit - a.profit);
 
       setMenuPerformanceData(menuPerformanceArray);
+      
+      // Save to localStorage for persistence
+      localStorage.setItem('salesAnalytics_menuPerformanceData', JSON.stringify(menuPerformanceArray));
     } catch (error) {
       console.error("❌ Error transforming menu performance data:", error);
+      setError(`Menu performance data processing failed: ${error.message}`);
     }
   }, [menuItems, inventories]);
 
@@ -392,6 +420,9 @@ export default function SalesAnalytics() {
       }).sort((a, b) => b.totalSpent - a.totalSpent);
 
       setCustomerAnalyticsData(customerAnalyticsArray);
+      
+      // Save to localStorage for persistence
+      localStorage.setItem('salesAnalytics_customerAnalyticsData', JSON.stringify(customerAnalyticsArray));
     } catch (error) {
       console.error('Error transforming customer analytics data:', error);
     }

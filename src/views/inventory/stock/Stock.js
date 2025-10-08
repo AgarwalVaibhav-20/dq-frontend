@@ -321,55 +321,6 @@ const Stock = () => {
     },
     { field: 'unit', headerName: 'Unit', flex: 1 },
     {
-      field: 'suppliers',
-      headerName: 'Suppliers',
-      flex: 2,
-      renderCell: (params) => {
-        const suppliers = params.row?.suppliers || [];
-        if (!suppliers || suppliers.length === 0) {
-          return <span style={{ color: '#6c757d', fontStyle: 'italic' }}>No suppliers</span>;
-        }
-        
-        return (
-          <div style={{ maxWidth: '350px' }}>
-            <CFormSelect 
-              size="sm" 
-              style={{ 
-                fontSize: '11px',
-                border: '1px solid #dee2e6',
-                borderRadius: '4px',
-                padding: '4px 8px',
-                backgroundColor: '#fff'
-              }}
-              onChange={(e) => {
-                const selectedSupplier = suppliers.find(s => s._id === e.target.value);
-                if (selectedSupplier) {
-                  console.log('Selected supplier details:', {
-                    supplierName: selectedSupplier.supplierName,
-                    item: params.row.itemName,
-                    quantity: selectedSupplier.quantity,
-                    unit: params.row.unit,
-                    price: selectedSupplier.amount,
-                    totalAmount: selectedSupplier.total
-                  });
-                }
-              }}
-            >
-              <option value="">Select Supplier</option>
-              {suppliers.map((supplier, index) => (
-                <option key={supplier._id || index} value={supplier._id}>
-                  {supplier.supplierName} | ₹{supplier.amount || 0} | {supplier.quantity || 0} {params.row.unit} | Total: ₹{supplier.total || 0}
-                </option>
-              ))}
-            </CFormSelect>
-            <div style={{ fontSize: '9px', color: '#6c757d', marginTop: '2px', textAlign: 'center' }}>
-              {suppliers.length} supplier(s) available
-            </div>
-          </div>
-        );
-      }
-    },
-    {
       field: 'total',
       headerName: 'Total Amount',
       flex: 1,

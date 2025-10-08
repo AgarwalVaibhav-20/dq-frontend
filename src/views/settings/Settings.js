@@ -178,6 +178,16 @@ const Settings = () => {
   const [customerSaving, setCustomerSaving] = useState(false)
   const [customerError, setCustomerError] = useState('')
 
+  // Inventory Stock Settings state
+  const [inventoryStockSettings, setInventoryStockSettings] = useState({
+    lowStockThreshold: 10
+  })
+  const [inventoryStockLoading, setInventoryStockLoading] = useState(false)
+  const [inventoryStockSaving, setInventoryStockSaving] = useState(false)
+  const [inventoryStockError, setInventoryStockError] = useState('')
+  const [lowStockItems, setLowStockItems] = useState([])
+  const [checkingLowStock, setCheckingLowStock] = useState(false)
+
 
 
   // Fetch all systems and taxes on component mount
@@ -186,6 +196,7 @@ const Settings = () => {
     fetchSystems()
     fetchTaxes()
     fetchCustomerSettings()
+    fetchInventoryStockSettings()
   }, [dispatch, token, restaurantId])
 
   const validateMemberForm = () => {
@@ -689,6 +700,132 @@ const Settings = () => {
     }
   }
 
+  // INVENTORY STOCK SETTINGS FUNCTIONS
+  const fetchInventoryStockSettings = async () => {
+    try {
+      setInventoryStockLoading(true)
+      const restaurantId = localStorage.getItem('restaurantId')
+      const response = await axiosInstance.get(`/api/inventory-stock-settings?restaurantId=${restaurantId}`)
+
+      if (response.data.success) {
+        setInventoryStockSettings(prev => ({
+          ...prev,
+          ...response.data.data
+        }))
+      }
+    } catch (error) {
+      console.error('Error fetching inventory stock settings:', error)
+      if (error.response?.status !== 404) {
+        setInventoryStockError('Failed to fetch inventory stock settings')
+        toast.error('Failed to fetch inventory stock settings')
+      }
+    } finally {
+      setInventoryStockLoading(false)
+    }
+  }
+
+  const handleInventoryStockInputChange = (e) => {
+    const { name, value } = e.target
+    setInventoryStockSettings(prev => ({
+      ...prev,
+      [name]: parseFloat(value) || value
+    }))
+    setInventoryStockError('')
+  }
+
+  const handleInventoryStockSettingsSubmit = async (e) => {
+    e.preventDefault()
+
+    // Simple validation
+    if (inventoryStockSettings.lowStockThreshold < 1 || inventoryStockSettings.lowStockThreshold > 1000) {
+      setInventoryStockError('Low stock threshold must be between 1 and 1000')
+      return
+    }
+
+    try {
+      setInventoryStockSaving(true)
+      const restaurantId = localStorage.getItem('restaurantId')
+
+      const response = await axiosInstance.post(`/api/inventory-stock-settings`, {
+        ...inventoryStockSettings,
+        restaurantId
+      })
+
+      if (response.data.success) {
+        toast.success('Inventory stock settings saved successfully!')
+      } else {
+        setInventoryStockError(response.data.message || 'Failed to save inventory stock settings')
+        toast.error('Failed to save inventory stock settings')
+      }
+
+      setInventoryStockError('')
+    } catch (error) {
+      console.error('Error saving inventory stock settings:', error)
+      setInventoryStockError('Failed to save inventory stock settings')
+      toast.error('Failed to save inventory stock settings')
+    } finally {
+      setInventoryStockSaving(false)
+    }
+  }
+
+  // Check low stock items and trigger auto email
+  const checkLowStockItems = async () => {
+    try {
+      setCheckingLowStock(true)
+      const restaurantId = localStorage.getItem('restaurantId')
+      
+      // First check low stock items
+      const itemsResponse = await axiosInstance.get(`/api/low-stock/items?restaurantId=${restaurantId}`)
+      
+      if (itemsResponse.data.success) {
+        setLowStockItems(itemsResponse.data.data.items || [])
+        
+        // Then trigger auto email check
+        try {
+          const emailResponse = await axiosInstance.post(`/api/low-stock/auto-check?restaurantId=${restaurantId}`)
+          if (emailResponse.data.success) {
+            console.log('Auto email check completed')
+          }
+        } catch (emailError) {
+          console.error('Auto email check failed:', emailError)
+          // Don't show error to user, just log it
+        }
+        
+        if (itemsResponse.data.data.items.length > 0) {
+          toast.warning(`Found ${itemsResponse.data.data.items.length} low stock items! Email sent if needed.`)
+        } else {
+          toast.success('No low stock items found!')
+        }
+      }
+    } catch (error) {
+      console.error('Error checking low stock items:', error)
+      toast.error('Failed to check low stock items')
+    } finally {
+      setCheckingLowStock(false)
+    }
+  }
+
+  // Test immediate email for all restaurants
+  const testImmediateEmail = async () => {
+    try {
+      setTestingEmail(true)
+      const response = await axiosInstance.post('/api/low-stock/immediate-test')
+
+      if (response.data.success) {
+        toast.success('Immediate email test completed! Check console for details.')
+        console.log('Email test result:', response.data.data)
+      } else {
+        toast.error('Failed to test immediate email')
+      }
+    } catch (error) {
+      console.error('Error testing immediate email:', error)
+      toast.error('Failed to test immediate email')
+    } finally {
+      setTestingEmail(false)
+    }
+  }
+
+
 
   return (
     <CContainer>
@@ -742,6 +879,16 @@ const Settings = () => {
                   >
                     <CIcon icon={cilMoney} className="me-2" />
                     Membership Settings
+                  </CNavLink>
+                </CNavItem>
+                <CNavItem>
+                  <CNavLink
+                    active={activeTab === 'inventory'}
+                    onClick={() => setActiveTab('inventory')}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <CIcon icon={cilSettings} className="me-2" />
+                    Inventory Stock Settings
                   </CNavLink>
                 </CNavItem>
               </CNav>
@@ -1634,9 +1781,167 @@ const Settings = () => {
           </Snackbar>
         </CTabPane>
 
+        {/* Inventory Stock Settings Tab */}
+        <CTabPane role="tabpanel" aria-labelledby="inventory-tab" visible={activeTab === 'inventory'}>
+          <CRow>
+            <CCol>
+              <CCard>
+                <CCardHeader>
+                  <CCardTitle>
+                    <CIcon icon={cilSettings} className="me-2" />
+                    Inventory Stock Settings
+                  </CCardTitle>
+                </CCardHeader>
+                <CCardBody>
+                  {inventoryStockError && (
+                    <CAlert color="danger" className="mb-3">
+                      {inventoryStockError}
+                    </CAlert>
+                  )}
+
+                  {inventoryStockLoading ? (
+                    <div className="text-center py-4">
+                      <CSpinner />
+                      <p className="mt-2">Loading inventory stock settings...</p>
+                    </div>
+                  ) : (
+                    <CForm onSubmit={handleInventoryStockSettingsSubmit}>
+                      <CRow className="mb-4">
+                        {/* Low Stock Threshold */}
+                        <CCol md={6}>
+                          <div className="mb-3">
+                            <CFormLabel htmlFor="lowStockThreshold">
+                              Low Stock Threshold
+                            </CFormLabel>
+                            <CInputGroup>
+                              <CFormInput
+                                type="number"
+                                id="lowStockThreshold"
+                                name="lowStockThreshold"
+                                value={inventoryStockSettings.lowStockThreshold}
+                                onChange={handleInventoryStockInputChange}
+                                placeholder="10"
+                                min="1"
+                                max="1000"
+                                required
+                              />
+                              <CInputGroupText>units</CInputGroupText>
+                            </CInputGroup>
+                            <small className="text-muted">
+                              Set the minimum quantity threshold for low stock alerts
+                            </small>
+                          </div>
+                        </CCol>
+                      </CRow>
+
+                      {/* Action Buttons */}
+                      <CRow className="mb-3">
+                        <CCol>
+                          <CButton
+                            type="submit"
+                            color="primary"
+                            disabled={inventoryStockSaving}
+                            className="me-2"
+                          >
+                            {inventoryStockSaving ? (
+                              <>
+                                <CSpinner size="sm" className="me-2" />
+                                Saving...
+                              </>
+                            ) : (
+                              <>
+                                <CIcon icon={cilSave} className="me-2" />
+                                Save Settings
+                              </>
+                            )}
+                          </CButton>
+                          
+                          <CButton
+                            color="info"
+                            onClick={checkLowStockItems}
+                            disabled={checkingLowStock}
+                            className="me-2"
+                          >
+                            {checkingLowStock ? (
+                              <>
+                                <CSpinner size="sm" className="me-2" />
+                                Checking...
+                              </>
+                            ) : (
+                              <>
+                                <CIcon icon={cilSettings} className="me-2" />
+                                Check Low Stock
+                              </>
+                            )}
+                          </CButton>
+
+
+
+
+                        </CCol>
+                      </CRow>
+
+
+
+
+                      {/* Low Stock Items Display */}
+                      {lowStockItems.length > 0 && (
+                        <CRow>
+                          <CCol>
+                            <CCard>
+                              <CCardHeader>
+                                <CCardTitle>
+                                  <CIcon icon={cilSettings} className="me-2" />
+                                  Low Stock Items ({lowStockItems.length})
+                                </CCardTitle>
+                              </CCardHeader>
+                              <CCardBody>
+                                <CTable responsive>
+                                  <CTableHead>
+                                    <CTableRow>
+                                      <CTableHeaderCell>Item Name</CTableHeaderCell>
+                                      <CTableHeaderCell>Current Stock</CTableHeaderCell>
+                                      <CTableHeaderCell>Status</CTableHeaderCell>
+                                    </CTableRow>
+                                  </CTableHead>
+                                  <CTableBody>
+                                    {lowStockItems.map((item, index) => {
+                                      // Use the currentQuantity that was calculated in backend
+                                      const currentQuantity = item.currentQuantity || item.usedQuantity || 0;
+
+                                      return (
+                                        <CTableRow key={index}>
+                                          <CTableDataCell>
+                                            {item.itemName || 'Unknown Item'}
+                                          </CTableDataCell>
+                                          <CTableDataCell>
+                                            <CBadge color="danger">{currentQuantity}</CBadge>
+                                          </CTableDataCell>
+                                          <CTableDataCell>
+                                            <CBadge color="warning">LOW STOCK</CBadge>
+                                          </CTableDataCell>
+                                        </CTableRow>
+                                      );
+                                    })}
+                                  </CTableBody>
+                                </CTable>
+                              </CCardBody>
+                            </CCard>
+                          </CCol>
+                        </CRow>
+                      )}
+                    </CForm>
+                  )}
+                </CCardBody>
+              </CCard>
+            </CCol>
+          </CRow>
+        </CTabPane>
+
       </CTabContent>
     </CContainer >
   )
 }
 
 export default Settings
+
