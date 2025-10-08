@@ -32,7 +32,7 @@ const SystemSelection = () => {
     try {
       setLoading(true)
       setError('')
-      const restaurantId = localStorage.getItem('restaurantId') || '68d23850f227fcf59cfacf80' // Fallback for testing
+      const restaurantId = localStorage.getItem('restaurantId');
       
       console.log('SystemSelection - restaurantId:', restaurantId)
       console.log('SystemSelection - localStorage restaurantId:', localStorage.getItem('restaurantId'))
@@ -61,7 +61,8 @@ const SystemSelection = () => {
           _id: setting._id,
           systemName: setting.systemName,
           chargeOfSystem: parseInt(setting.chargeOfSystem) || 0,
-          willOccupy: setting.willOccupy
+          willOccupy: setting.willOccupy,
+          color:setting.color
         }))
         
         setSystems(transformedSystems)

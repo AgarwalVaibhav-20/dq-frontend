@@ -59,7 +59,8 @@ const SystemSelectionModal = ({
           _id: setting._id,
           systemName: setting.systemName,
           chargeOfSystem: parseInt(setting.chargeOfSystem) || 0,
-          willOccupy: setting.willOccupy
+          willOccupy: setting.willOccupy,
+          color:setting.color
         }))
         
         setSystems(transformedSystems)

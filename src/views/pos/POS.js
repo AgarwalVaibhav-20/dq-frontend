@@ -69,6 +69,8 @@ const POS = () => {
 
   // Table merging states
   const [showMergeModal, setShowMergeModal] = useState(false)
+  // const [tableOccupyColor, setTableOccupyColor] = useState('')
+  let tableOccupyColor = ''
   const [mergedTables, setMergedTables] = useState(() => {
     const saved = localStorage.getItem('mergedTables')
     return saved ? JSON.parse(saved) : []
@@ -345,8 +347,9 @@ const POS = () => {
     let systemWillOccupy = false // Default to false if no system
 
     if (savedSystem) {
+      const system = JSON.parse(savedSystem)
+      tableOccupyColor = system.color
       try {
-        const system = JSON.parse(savedSystem)
         systemWillOccupy = system.willOccupy === true && cart[qr.tableNumber]?.length
         // console.log("system, =>",cart[qr.tableNumber])
       } catch (error) {
@@ -964,16 +967,16 @@ const POS = () => {
                           xs="6" sm="4" md="3" lg="2" xl="2"
                           className="mx-2 mb-4 d-flex justify-content-center"
                         >
-                          <CContainer
+                          <div
                             className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${
                               shouldTableBeRed(qr)
-                                ? 'bg-danger text-white'
+                                ? ' text-dark'
                                 : theme === 'dark'
                                 ? 'bg-secondary text-white'
                                 : 'bg-white text-dark'
                             }`}
                             onClick={() => handleQrClick(qr)}
-                            style={{ height: '10rem', cursor: 'pointer', width: '100%', position: 'relative' }}
+                            style={{ height: '10rem', cursor: 'pointer', width: '100%', position: 'relative', backgroundColor:shouldTableBeRed(qr) ? tableOccupyColor : '' }}
                           >
                             <CBadge color="secondary" className="position-absolute top-0 start-0 m-1" style={{ fontSize: '0.6rem' }}>
                               {floorName}
@@ -982,7 +985,7 @@ const POS = () => {
                             {isItemInCart(qr) && (
                               <small className="text-center mt-1">{cart[qr.tableNumber]?.length || 0} items</small>
                             )}
-                          </CContainer>
+                          </div>
                         </CCol>
                       );
                     })}

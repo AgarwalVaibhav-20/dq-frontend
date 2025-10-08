@@ -184,7 +184,7 @@ const qrSlice = createSlice({
         state.error = null;
       })
       .addCase(deleteQr.fulfilled, (state, action) => {
-        state.data = state.data.filter((qr) => qr._id !== action.payload);
+        state.data = action.payload;
       })
       .addCase(deleteQr.rejected, (state, action) => {
         state.loading = false;
