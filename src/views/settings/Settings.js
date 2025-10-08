@@ -1523,7 +1523,7 @@ const Settings = () => {
                   />
                 </Grid>
 
-                <Grid item xs={12} sm={6}>
+                {/* <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
                     label="Start Date"
@@ -1571,8 +1571,8 @@ const Settings = () => {
                     value={memberForm.notes}
                     onChange={(e) => setMemberForm({ ...memberForm, notes: e.target.value })}
                   />
-                </Grid>
-              </Grid>
+                </Grid> */}
+              </Grid> 
             </DialogContent>
             <DialogActions>
               <Button onClick={() => setMemberDialog({ open: false, mode: 'create', member: null })}>
