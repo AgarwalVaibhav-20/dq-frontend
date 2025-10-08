@@ -35,8 +35,13 @@ const Cart = ({
   setShowTaxModal,
   setShowDiscountModal,
   setShowRoundOffModal,
+  membershipDiscount,
+   membershipName,
   selectedSystem,
   onSystemChange,
+  // optional parent handlers (if parent passed them)
+  handleQuantityChange: parentHandleQuantityChange,
+  handleDeleteClick: parentHandleDeleteClick,
 }) => {
   const [tempDiscount, setTempDiscount] = useState(0);
   const [tempRoundOff, setTempRoundOff] = useState(roundOff || 0);
@@ -54,6 +59,7 @@ const Cart = ({
   // Helper function to get the correct price for an item
   const getItemPrice = (item) => {
     // Use adjustedPrice if available (from size selection), otherwise use original price
+    const val = item?.adjustedPrice ?? item?.price ?? 0;
     return Number(item.adjustedPrice);
   };
   const getCartDiscountPercentage = () => {
@@ -90,7 +96,7 @@ const Cart = ({
     const taxNames = cart
       .filter(item => item.taxName && item.taxAmount > 0)
       .map(item => item.taxName);
-    
+
     if (taxNames.length > 0) {
       // If all items have the same tax name, show that name
       const uniqueTaxNames = [...new Set(taxNames)];
@@ -348,7 +354,9 @@ const Cart = ({
               <span>₹{getTotalTaxAmount().toFixed(2)}</span>
             </div>
             <div className="d-flex justify-content-between mb-2">
-              <span>Discount ({getCartDiscountPercentage() || 0}%)</span>
+              <span>Discount ({getCartDiscountPercentage() || 0}%)
+                 {membershipName && ` (${membershipName})`}
+                </span>
               <span className="text-danger">- ₹{getDiscountAmount().toFixed(2)}</span>
             </div>
             {selectedSystem && (
@@ -391,6 +399,7 @@ const Cart = ({
                   color="light"
                   className="w-100 shadow-sm"
                   onClick={() => setShowDiscountModal ? setShowDiscountModal(true) : setLocalDiscountModal(true)}
+                  disabled={membershipDiscount > 0}
                 >
                   Discount
                 </CButton>

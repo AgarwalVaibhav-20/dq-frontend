@@ -15,12 +15,12 @@ export const fetchCustomers = createAsyncThunk(
     try {
       // Always fetch all customers regardless of restaurantId
       const url = `${BASE_URL}/customer/all`;
-      
+
       console.log("🚀 Fetching all customers from:", url);
-      
+
       const response = await axios.get(url);
       console.log("✅ Customers fetched:", response.data?.length || 0);
-      
+
       return response.data;
     } catch (error) {
       console.error("❌ Error fetching customers:", error);
@@ -33,15 +33,15 @@ export const fetchCustomers = createAsyncThunk(
 // Add customer
 export const addCustomer = createAsyncThunk(
   'customers/addCustomer',
-  async ({ token, name, email, address, phoneNumber, birthday, anniversary, corporate }, { rejectWithValue, dispatch }) => {
+  async ({ token, name, email, address, phoneNumber, birthday, anniversary, membershipId, membershipName, corporate }, { rejectWithValue, dispatch }) => {
     try {
       const restaurantId = localStorage.getItem("restaurantId");
       if (!restaurantId) {
         return rejectWithValue("Restaurant ID not found in localStorage");
       }
-      
+
       console.log('Adding customer with data:', { name, email, address, phoneNumber, birthday, anniversary, restaurantId });
-      
+
       const response = await axios.post(`${BASE_URL}/customer/add`,
         {
           name,
@@ -52,17 +52,19 @@ export const addCustomer = createAsyncThunk(
           anniversary,
           corporate,
           birthday,
+          membershipId,
+          membershipName
         },
         configureHeaders(token));
-      
+
       console.log('Customer add response:', response.data);
-      
+
       // Optionally refresh the customers list after adding
       if (response.data && response.data.customer) {
         // Dispatch fetchCustomers to ensure data consistency
         dispatch(fetchCustomers({ restaurantId }));
       }
-      
+
       return response.data;
     } catch (error) {
       console.log("Add customer error:", error);
@@ -87,6 +89,71 @@ export const deleteCustomer = createAsyncThunk(
     }
   }
 );
+// Update customer
+export const updateCustomer = createAsyncThunk(
+  "customers/updateCustomer",
+  async (
+    {
+      _id,
+      token,
+      name,
+      email,
+      address,
+      phoneNumber,
+      birthday,
+      anniversary,
+      membershipId,
+      membershipName,
+    },
+    { rejectWithValue, dispatch }
+  ) => {
+    try {
+      const restaurantId = localStorage.getItem("restaurantId");
+      if (!restaurantId) {
+        return rejectWithValue("Restaurant ID not found in localStorage");
+      }
+
+      console.log("Updating customer with data:", {
+        _id,
+        name,
+        email,
+        address,
+        phoneNumber,
+        birthday,
+        anniversary,
+        membershipId,
+        membershipName,
+      });
+
+      const response = await axios.put(
+        `${BASE_URL}/customer/update/${_id}`,
+        {
+          name,
+          email,
+          address,
+          phoneNumber,
+          birthday,
+          anniversary,
+          membershipId,   // ✅ correct key
+          membershipName, // ✅ correct key
+          restaurantId,
+        },
+        configureHeaders(token)
+      );
+
+      console.log("Customer update response:", response.data);
+
+      if (response.data && response.data.customer) {
+        dispatch(fetchCustomers({ restaurantId }));
+      }
+
+      return response.data;
+    } catch (error) {
+      console.error("Update customer error:", error);
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
 
 // Fetch customers by type
 export const fetchCustomersByType = createAsyncThunk(
@@ -107,7 +174,7 @@ export const updateCustomerFrequency = createAsyncThunk(
   async ({ id, frequency, totalSpent }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('authToken');
-      const response = await axios.put(`${BASE_URL}/customer/frequency/${id}`, 
+      const response = await axios.put(`${BASE_URL}/customer/frequency/${id}`,
         { frequency, totalSpent },
         configureHeaders(token)
       );
@@ -156,16 +223,16 @@ const customerSlice = createSlice({
       .addCase(addCustomer.fulfilled, (state, action) => {
         state.loading = false;
         console.log('Add customer response:', action.payload);
-        
+
         // Backend sends: { message: "...", customer: newCustomer }
         const newCustomer = action.payload.customer;
-        
+
         if (newCustomer && (newCustomer._id || newCustomer.id)) {
           // Check if customer already exists to avoid duplicates
           const existingIndex = state.customers.findIndex(
             customer => customer._id === newCustomer._id || customer.id === newCustomer.id
           );
-          
+
           if (existingIndex === -1) {
             // Add the new customer to the beginning of the array for immediate visibility
             state.customers.unshift(newCustomer);
@@ -175,7 +242,7 @@ const customerSlice = createSlice({
             state.customers[existingIndex] = newCustomer;
             console.log('Customer updated in state:', newCustomer);
           }
-          
+
           toast.success('Customer added successfully.');
         } else {
           console.error('Invalid customer data received:', action.payload);
@@ -186,6 +253,37 @@ const customerSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
         toast.error('Failed to add customer.');
+      })
+      .addCase(updateCustomer.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(updateCustomer.fulfilled, (state, action) => {
+        state.loading = false;
+        console.log('Update customer response:', action.payload);
+
+        const updatedCustomer = action.payload.customer;
+
+        if (updatedCustomer && (updatedCustomer._id || updatedCustomer.id)) {
+          const index = state.customers.findIndex(
+            customer => customer._id === updatedCustomer._id || customer.id === updatedCustomer.id
+          );
+
+          if (index !== -1) {
+            state.customers[index] = updatedCustomer;
+            console.log('Customer updated in state:', updatedCustomer);
+          }
+
+          toast.success('Customer updated successfully.');
+        } else {
+          console.error('Invalid customer data received:', action.payload);
+          toast.error('Customer updated but data format is invalid.');
+        }
+      })
+      .addCase(updateCustomer.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        toast.error('Failed to update customer.');
       })
       .addCase(deleteCustomer.pending, (state) => {
         state.loading = true;

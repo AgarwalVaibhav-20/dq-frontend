@@ -1,16 +1,17 @@
 import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { DataGrid } from '@mui/x-data-grid'
-import { fetchCustomers, deleteCustomer, addCustomer, setSelectedCustomerType, updateCustomerFrequency } from '../../redux/slices/customerSlice'
-import { CButton, CSpinner, CModal, CModalHeader, CModalBody, CModalFooter, CForm, CFormInput, CFormTextarea, CFormLabel, CAlert, CFormSelect, CFormCheck } from '@coreui/react'
+import { fetchCustomers, deleteCustomer, addCustomer, updateCustomer, setSelectedCustomerType, updateCustomerFrequency } from '../../redux/slices/customerSlice'
+import { CButton, CSpinner, CModal, CModalHeader, CModalBody, CModalFooter, CForm, CFormInput, CFormTextarea, CFormLabel, CAlert, CFormSelect, CDropdown, CDropdownToggle, CDropdownMenu, CDropdownItem, CFormCheck } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilEnvelopeOpen, cilChatBubble, cilTrash, cilPlus, cilFilter } from '@coreui/icons'
+import { cilEnvelopeOpen, cilChatBubble, cilTrash, cilPlus, cilFilter, cilPencil, cilOptions } from '@coreui/icons'
 import CustomToolbar from '../../utils/CustomToolbar'
 import { sendBulkEmail, resetBulkEmailStatus } from '../../redux/slices/SendBulkEmailSlice'
 import { useMediaQuery } from '@mui/material'
 import axiosInstance from '../../utils/axiosConfig'
 import { toast } from 'react-toastify'
-
+import { fetchMembers } from '../../redux/slices/memberSlice'
+import { Portal } from '@mui/material';
 const Customer = () => {
   const dispatch = useDispatch()
   const { customers, loading, selectedCustomerType } = useSelector((state) => state.customers)
@@ -24,7 +25,6 @@ const Customer = () => {
   const [title, setTitle] = useState('')
   const [body, setBody] = useState('')
 
-  // Add Customer Modal states
   const [addCustomerModalVisible, setAddCustomerModalVisible] = useState(false)
   const [formData, setFormData] = useState({
     name: '',
@@ -33,9 +33,27 @@ const Customer = () => {
     address: '',
     birthday: '',
     anniversary: '',
+    membershipId: '',
+    membershipName: ''
+  })
+
+  const [updateModalVisible, setUpdateModalVisible] = useState(false)
+  const [updateFormData, setUpdateFormData] = useState({
+    _id: '',
+    name: '',
+    email: '',
+    phoneNumber: '',
+    address: '',
+    birthday: '',
+    anniversary: '',
+    membershipId: '',
+    membershipName: '',
     corporate: false,
   })
+
   const [formErrors, setFormErrors] = useState({})
+  const { members } = useSelector((state) => state.members)
+  const token = localStorage.getItem('authToken')
 
   // CUSTOMER SETTINGS STATE - UPDATED WITH CORRECT FIELD NAMES
   const [customerSettings, setCustomerSettings] = useState({
@@ -129,12 +147,14 @@ const Customer = () => {
   }
 
   // LOAD DATA ON COMPONENT MOUNT
+
   useEffect(() => {
     if (restaurantId) {
       dispatch(fetchCustomers({ restaurantId }))
+      dispatch(fetchMembers(token))
       fetchCustomerSettings();
     }
-  }, [dispatch, restaurantId])
+  }, [dispatch, restaurantId, token])
 
   // GET CUSTOMERS WITH DYNAMIC CLASSIFICATION
   const getClassifiedCustomers = () => {
@@ -195,6 +215,7 @@ const Customer = () => {
   const handleDelete = () => {
     if (selectedCustomerId) {
       dispatch(deleteCustomer({ _id: selectedCustomerId })).then(() => {
+        dispatch(fetchCustomers({ restaurantId })) // ✅ FIXED
         setDeleteModalVisible(false)
         setSelectedCustomerId(null)
       })
@@ -215,6 +236,7 @@ const Customer = () => {
     setBulkEmailModalVisible(true)
   }
 
+
   const handleSendBulkEmail = () => {
     if (!subject || !title || !body) {
       alert('Please fill in all fields')
@@ -222,58 +244,64 @@ const Customer = () => {
     }
 
     try {
-      dispatch(sendBulkEmail({ restaurantId, subject, title, body }));
-      setBulkEmailModalVisible(false);
-      setSubject('');
-      setTitle('');
-      setBody('');
+      dispatch(sendBulkEmail({ restaurantId, subject, title, body }))
+      setBulkEmailModalVisible(false)
+      setSubject('')
+      setTitle('')
+      setBody('')
     } catch (error) {
       console.error('Send bulk email failed:', error)
     }
   }
 
   const handleInputChange = (e) => {
-    const { name, type, value, checked } = e.target;
+    const { name, type, value, checked } = e.target
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
-    }));
+    }))
 
-    // Clear error when user starts typing
     if (formErrors[name]) {
       setFormErrors(prev => ({
         ...prev,
         [name]: ''
-      }));
+      }))
     }
-  };
+  }
+
+  // Update Customer input handler
+  const handleUpdateInputChange = (e) => {
+    const { name, value } = e.target
+    setUpdateFormData(prev => ({
+      ...prev,
+      [name]: value
+    }))
+  }
 
   const validateForm = () => {
-    const errors = {};
+    const errors = {}
 
     if (!formData.name?.trim()) {
-      errors.name = 'Customer name is required';
+      errors.name = 'Customer name is required'
     }
 
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = 'Please enter a valid email address';
+      errors.email = 'Please enter a valid email address'
     }
 
     if (formData.phoneNumber && !/^\d{10}$/.test(formData.phoneNumber.replace(/\D/g, ''))) {
-      errors.phoneNumber = 'Please enter a valid 10-digit phone number';
+      errors.phoneNumber = 'Please enter a valid 10-digit phone number'
     }
 
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
+    setFormErrors(errors)
+    return Object.keys(errors).length === 0
+  }
 
   const handleAddCustomer = async () => {
-    if (!validateForm()) {
-      return;
-    }
+    if (!validateForm()) return
 
     try {
-      const token = localStorage.getItem('authToken');
+      const token = localStorage.getItem('authToken')
       await dispatch(addCustomer({
         token,
         name: formData.name,
@@ -282,10 +310,13 @@ const Customer = () => {
         phoneNumber: formData.phoneNumber,
         birthday: formData.birthday,
         anniversary: formData.anniversary,
-        corporate: formData.corporate
-      })).unwrap();
+        corporate: formData.corporate,
+        membershipId: formData.membershipId || null,
+        membershipName: formData.membershipName || null
+      })).unwrap()
 
-      // Reset form and close modal
+      dispatch(fetchCustomers({ restaurantId })) // ✅ FIXED
+
       setFormData({
         name: '',
         email: '',
@@ -294,16 +325,74 @@ const Customer = () => {
         birthday: '',
         anniversary: '',
         corporate: false,
-      });
-      setFormErrors({});
-      setAddCustomerModalVisible(false);
+        membershipId: '',
+        membershipName: ''
+      })
+      setFormErrors({})
+      setAddCustomerModalVisible(false)
     } catch (error) {
-      console.error('Failed to add customer:', error);
+      console.error('Failed to add customer:', error)
     }
-  };
+  }
+
+  const openUpdateModal = (customer) => {
+    console.log("customer is thi", customer)
+    setUpdateFormData({
+      _id: customer._id,
+      name: customer.name || '',
+      email: customer.email || '',
+      phoneNumber: customer.phoneNumber || '',
+      address: customer.address || '',
+      birthday: customer.birthday ? customer.birthday.split('T')[0] : '',
+      anniversary: customer.anniversary ? customer.anniversary.split('T')[0] : '',
+      membershipId: customer.membershipId?._id || customer.membershipId || '',
+      membershipName: customer.membership?.membershipName || customer.membershipName || ''
+    })
+    setUpdateModalVisible(true)
+  }
+
+  const handleUpdateCustomer = async () => {
+    if (!updateFormData.name?.trim()) {
+      alert('Customer name is required')
+      return
+    }
+
+    try {
+      const token = localStorage.getItem('authToken')
+      await dispatch(updateCustomer({
+        _id: updateFormData._id,
+        token,
+        name: updateFormData.name,
+        email: updateFormData.email,
+        address: updateFormData.address,
+        phoneNumber: updateFormData.phoneNumber,
+        birthday: updateFormData.birthday,
+        anniversary: updateFormData.anniversary,
+        membershipId: updateFormData.membershipId || null,
+        membershipName: updateFormData.membershipName || null
+      })).unwrap()
+
+      dispatch(fetchCustomers({ restaurantId })) // ✅ FIXED
+
+      setUpdateModalVisible(false)
+      setUpdateFormData({
+        _id: '',
+        name: '',
+        email: '',
+        phoneNumber: '',
+        address: '',
+        birthday: '',
+        anniversary: '',
+        membershipId: '',
+        membershipName: ''
+      })
+    } catch (error) {
+      console.error('Failed to update customer:', error)
+    }
+  }
 
   const closeAddCustomerModal = () => {
-    setAddCustomerModalVisible(false);
+    setAddCustomerModalVisible(false)
     setFormData({
       name: '',
       email: '',
@@ -312,10 +401,26 @@ const Customer = () => {
       birthday: '',
       anniversary: '',
       corporate: false,
-    });
-    setFormErrors({});
-  };
+      membershipId: '',
+      membershipName: ''
+    })
+    setFormErrors({})
+  }
 
+  const closeUpdateModal = () => {
+    setUpdateModalVisible(false)
+    setUpdateFormData({
+      _id: '',
+      name: '',
+      email: '',
+      phoneNumber: '',
+      address: '',
+      birthday: '',
+      anniversary: '',
+      membershipId: '',
+      membershipName: ''
+    })
+  }
   // UPDATED COLUMNS WITH DYNAMIC CLASSIFICATION
   const columns = [
     {
@@ -374,17 +479,17 @@ const Customer = () => {
       headerClassName: 'header-style',
       valueGetter: (params) => params.row.dynamicCustomerType || 'FirstTimer',
       renderCell: (params) => {
-        const type = params.row.dynamicCustomerType || 'FirstTimer';
+        const type = params.row.dynamicCustomerType || 'FirstTimer'
         const getTypeColor = (type) => {
           switch (type) {
-            case 'FirstTimer': return '#6c757d';
-            case 'Corporate': return '#0d6efd';
-            case 'Regular': return '#198754';
-            case 'Lost Customer': return '#dc3545';
-            case 'High Spender': return '#fd7e14';
-            default: return '#6c757d';
+            case 'FirstTimer': return '#6c757d'
+            case 'Corporate': return '#0d6efd'
+            case 'Regular': return '#198754'
+            case 'Lost Customer': return '#dc3545'
+            case 'High Spender': return '#fd7e14'
+            default: return '#6c757d'
           }
-        };
+        }
         return (
           <span
             style={{
@@ -398,7 +503,7 @@ const Customer = () => {
           >
             {type}
           </span>
-        );
+        )
       },
     },
     {
@@ -421,18 +526,45 @@ const Customer = () => {
         const { email, phoneNumber, _id } = params.row;
 
         return (
-          <div style={{ display: 'flex', gap: '4px', flexWrap: 'nowrap' }}>
+          <div className='relative'
+            style={{
+              display: 'flex',
+              gap: '4px',
+              flexWrap: 'nowrap',
+              alignItems: 'center',
+              overflow: 'visible',
+              zIndex: 9999,
+            }}
+          >
             <CButton color="primary" size="sm" onClick={() => sendEmail(email)}>
               <CIcon icon={cilEnvelopeOpen} /> Email
             </CButton>
+
             <CButton color="success" size="sm" onClick={() => sendWhatsApp(phoneNumber)}>
               <CIcon icon={cilChatBubble} /> WhatsApp
             </CButton>
-            <CButton color="danger" size="sm" onClick={() => openDeleteModal(_id)}>
-              <CIcon icon={cilTrash} /> Delete
-            </CButton>
+
+            <CDropdown variant="btn-group">
+              <CDropdownToggle color="secondary" size="sm" caret={false}>
+                <CIcon icon={cilOptions} />
+              </CDropdownToggle>
+              <Portal>
+                <CDropdownMenu placement="bottom-end" style={{ zIndex: 2000 }}>
+                  <CDropdownItem onClick={() => openUpdateModal(params.row)}>
+                    <CIcon icon={cilPencil} className="me-2" /> Update
+                  </CDropdownItem>
+                  <CDropdownItem
+                    onClick={() => openDeleteModal(_id)}
+                    className="text-danger"
+                  >
+                    <CIcon icon={cilTrash} className="me-2" /> Delete
+                  </CDropdownItem>
+                </CDropdownMenu>
+              </Portal>
+            </CDropdown>
           </div>
-        );
+
+        )
       },
     }
   ]
@@ -485,6 +617,7 @@ const Customer = () => {
             rows={filteredCustomers?.map((customer, index) => ({
               ...customer,
               sno: index + 1,
+              membership: customer.membership || '',
             }))}
             columns={columns}
             getRowId={(row) => row.id || row._id || Math.random()}
@@ -717,6 +850,39 @@ const Customer = () => {
                 />
               </div>
             </div>
+            <div className="row">
+              <div className="col-md-6">
+                <div className="mb-3">
+                  <CFormLabel htmlFor="membershipId" className="fw-semibold">
+                    Membership Plan
+                  </CFormLabel>
+                  <CFormSelect
+                    id="membershipId"
+                    name="membershipId"
+                    value={formData.membershipId}
+                    onChange={(e) => {
+                      const selectedId = e.target.value
+                      const selectedMembership = members.find(m => m._id === selectedId)
+
+                      setFormData({
+                        ...formData,
+                        membershipId: selectedId,
+                        membershipName: selectedMembership?.membershipName || ''
+                      })
+                    }}
+                  >
+                    <option value="">No Membership</option>
+                    {members?.map((member) => (
+                      <option key={member._id} value={member._id}>
+                        {member.membershipName} -
+                        {member.discountType === 'fixed' ? `₹${member.discount}` : `${member.discount}%`} OFF
+                        (Min: ₹{member.minSpend})
+                      </option>
+                    ))}
+                  </CFormSelect>
+                </div>
+              </div>
+            </div>
           </CForm>
         </CModalBody>
         <CModalFooter>
@@ -726,6 +892,160 @@ const Customer = () => {
           <CButton color="success" className="shadow-sm" onClick={handleAddCustomer}>
             <CIcon icon={cilPlus} className="me-2" />
             Add Customer
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* Update Customer Modal */}
+      <CModal
+        visible={updateModalVisible}
+        onClose={closeUpdateModal}
+        backdrop="static"
+        size="lg"
+      >
+        <CModalHeader className="fw-bold">Update Customer</CModalHeader>
+        <CModalBody>
+          <CForm>
+            <div className="row">
+              <div className="col-md-6">
+                <div className="mb-3">
+                  <CFormLabel htmlFor="update-name" className="fw-semibold">
+                    Customer Name <span className="text-danger">*</span>
+                  </CFormLabel>
+                  <CFormInput
+                    type="text"
+                    id="update-name"
+                    name="name"
+                    value={updateFormData.name}
+                    onChange={handleUpdateInputChange}
+                    placeholder="Enter customer name"
+                    required
+                  />
+                </div>
+              </div>
+              <div className="col-md-6">
+                <div className="mb-3">
+                  <CFormLabel htmlFor="update-email" className="fw-semibold">
+                    Email Address
+                  </CFormLabel>
+                  <CFormInput
+                    type="email"
+                    id="update-email"
+                    name="email"
+                    value={updateFormData.email}
+                    onChange={handleUpdateInputChange}
+                    placeholder="Enter email address"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="row">
+              <div className="col-md-6">
+                <div className="mb-3">
+                  <CFormLabel htmlFor="update-phoneNumber" className="fw-semibold">
+                    Phone Number
+                  </CFormLabel>
+                  <CFormInput
+                    type="tel"
+                    id="update-phoneNumber"
+                    name="phoneNumber"
+                    value={updateFormData.phoneNumber}
+                    onChange={handleUpdateInputChange}
+                    placeholder="Enter phone number"
+                  />
+                </div>
+              </div>
+              <div className="col-md-6">
+                <div className="mb-3">
+                  <CFormLabel htmlFor="update-address" className="fw-semibold">
+                    Address
+                  </CFormLabel>
+                  <CFormTextarea
+                    id="update-address"
+                    name="address"
+                    rows="3"
+                    value={updateFormData.address}
+                    onChange={handleUpdateInputChange}
+                    placeholder="Enter address"
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="row">
+              <div className="col-md-6">
+                <div className="mb-3">
+                  <CFormLabel htmlFor="update-birthday" className="fw-semibold">
+                    Birthday
+                  </CFormLabel>
+                  <CFormInput
+                    type="date"
+                    id="update-birthday"
+                    name="birthday"
+                    value={updateFormData.birthday}
+                    onChange={handleUpdateInputChange}
+                  />
+                </div>
+              </div>
+              <div className="col-md-6">
+                <div className="mb-3">
+                  <CFormLabel htmlFor="update-anniversary" className="fw-semibold">
+                    Anniversary
+                  </CFormLabel>
+                  <CFormInput
+                    type="date"
+                    id="update-anniversary"
+                    name="anniversary"
+                    value={updateFormData.anniversary}
+                    onChange={handleUpdateInputChange}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="row">
+              <div className="col-md-6">
+                <div className="mb-3">
+                  <CFormLabel htmlFor="update-membershipId" className="fw-semibold">
+                    Membership Plan
+                  </CFormLabel>
+                  <CFormSelect
+                    id="update-membershipId"
+                    name="membershipId"
+                    value={updateFormData.membershipId}
+                    onChange={(e) => {
+                      const selectedId = e.target.value
+                      const selectedMembership = members.find(m => m._id === selectedId)
+
+                      setUpdateFormData({
+                        ...updateFormData,
+                        membershipId: selectedId,
+                        membershipName: selectedMembership?.membershipName || ''
+                      })
+                    }}
+                  >
+                    <option value="">No Membership</option>
+                    {members?.map((member) => (
+                      <option key={member._id} value={member._id}>
+                        {member.membershipName} -
+                        {member.discountType === 'fixed' ? `₹${member.discount}` : `${member.discount}%`} OFF
+                        (Min: ₹{member.minSpend})
+                      </option>
+                    ))}
+                  </CFormSelect>
+                </div>
+              </div>
+            </div>
+          </CForm>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" variant="outline" onClick={closeUpdateModal}>
+            Cancel
+          </CButton>
+          <CButton color="warning" className="shadow-sm" onClick={handleUpdateCustomer}>
+            <CIcon icon={cilPencil} className="me-2" />
+            Update Customer
           </CButton>
         </CModalFooter>
       </CModal>

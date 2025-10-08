@@ -43,12 +43,12 @@ const POSTableContent = () => {
   const restaurantId = authState.restaurantId || localStorage.getItem('restaurantId') || '68d23850f227fcf59cfacf80' // Correct restaurantId from database
   const theme = useSelector((state) => state.theme.theme)
   const token = localStorage.getItem('authToken')
-  
+
   // Debug: Log restaurantId to console
   console.log('POSTableContent - restaurantId:', restaurantId)
   console.log('POSTableContent - localStorage restaurantId:', localStorage.getItem('restaurantId'))
   console.log('POSTableContent - authState:', authState)
-  
+
   // Fallback: If restaurantId is missing, try to get it from user profile or redirect
   useEffect(() => {
     if (!localStorage.getItem('restaurantId') && token && authState.restaurantId) {
@@ -79,6 +79,8 @@ const POSTableContent = () => {
   const [inputValue, setInputValue] = useState('')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedCustomerName, setSelectedCustomerName] = useState('')
+  const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [membershipDiscount, setMembershipDiscount] = useState(0);
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [paymentType, setPaymentType] = useState('')
   const [splitPercentages, setSplitPercentages] = useState({ online: 0, cash: 0, due: 0 })
@@ -152,7 +154,7 @@ const POSTableContent = () => {
     console.log('POSTableContent - Component mounted, checking system for table:', tableId)
     const savedSystem = localStorage.getItem(`selectedSystem_${tableId}`)
     console.log('POSTableContent - Saved system from localStorage:', savedSystem)
-    
+
     if (!savedSystem) {
       console.log('POSTableContent - No saved system found, opening modal')
       setShowSystemModal(true)
@@ -208,8 +210,8 @@ const POSTableContent = () => {
         const cartItemSizeId = cartItem.sizeId || null;
         // We now check for product ID, subcategory ID, AND size ID to define a unique item
         return cartItemId === itemId &&
-              cartItem.selectedSubcategoryId === item.selectedSubcategoryId &&
-              cartItemSizeId === sizeId;
+          cartItem.selectedSubcategoryId === item.selectedSubcategoryId &&
+          cartItemSizeId === sizeId;
       }
     );
 
@@ -223,7 +225,8 @@ const POSTableContent = () => {
               quantity: newQuantity,
               // Recalculate tax amount if item has tax
               taxAmount: cartItem.taxPercentage ?
-                (cartitem.adjustedPrice * newQuantity * cartItem.taxPercentage) / 100 : 0
+                (cartItem.adjustedPrice * newQuantity * cartItem.taxPercentage) / 100 : 0
+
             };
           }
           return cartItem;
@@ -262,16 +265,16 @@ const POSTableContent = () => {
       setSelectedMenuItemForSubcategory(product);
       setShowSubCategoryModal(true);
     } else {
-        // A product is considered unique based on its ID AND its size ID.
-        const productId = product._id || product.id;
-        const sizeId = product.sizeId || null; // sizeId comes from ProductList.js
+      // A product is considered unique based on its ID AND its size ID.
+      const productId = product._id || product.id;
+      const sizeId = product.sizeId || null; // sizeId comes from ProductList.js
 
-        const existingItemIndex = cart.findIndex((item) => {
-          const cartItemId = item._id || item.id;
-          const cartItemSizeId = item.sizeId || null;
-          // Match both product ID and size ID
-          return cartItemId === productId && cartItemSizeId === sizeId;
-        });
+      const existingItemIndex = cart.findIndex((item) => {
+        const cartItemId = item._id || item.id;
+        const cartItemSizeId = item.sizeId || null; // use 'item' here
+        return cartItemId === productId && cartItemSizeId === sizeId;
+      });
+
       if (existingItemIndex > -1) {
         setCart(prevCart =>
           prevCart.map((item, index) => {
@@ -293,15 +296,17 @@ const POSTableContent = () => {
         const cartItemId = `${productId}${product.sizeId ? `_${product.sizeId}` : ''}`;
         const newCartItem = {
           ...product,
-          id: cartItemId, // Use our new unique ID here
+          id: cartItemId,
           _id: product._id,
           quantity: 1,
-          price: Number(product.adjustedPrice) || 0, // Use adjustedPrice
+          price: Number(product.adjustedPrice) || Number(product.price) || 0,
+          adjustedPrice: Number(product.adjustedPrice) || Number(product.price) || 0, // IMPORTANT: always set adjustedPrice
           taxType: null,
           taxPercentage: 0,
           fixedTaxAmount: 0,
           taxAmount: 0
         };
+
         setCart(prevCart => [...prevCart, newCartItem]);
       }
 
@@ -314,7 +319,7 @@ const POSTableContent = () => {
   }, [cart, startTime, tableNumber, subCategories]);
 
   const handleCustomerSelect = (customer) => {
-    console.log("hsdjhsjh",customer)
+    setSelectedCustomer(customer);
     setSelectedCustomerName(customer.name)
     setShowCustomerModal(false)
   }
@@ -355,62 +360,64 @@ const POSTableContent = () => {
   }
 
   const clearCart = () => {
-  // Check if it's a merged table by its ID format
-  if (tableId.startsWith('merged_')) {
-    if (window.confirm('Are you sure you want to cancel? This will unmerge the tables and restore their original orders.')) {
-      // 1. Get all merged tables from localStorage
-      const allMergedTables = JSON.parse(localStorage.getItem('mergedTables') || '[]')
-      const mergedTable = allMergedTables.find(m => `merged_${m.id}` === tableId)
+    // Check if it's a merged table by its ID format
+    if (tableId.startsWith('merged_')) {
+      if (window.confirm('Are you sure you want to cancel? This will unmerge the tables and restore their original orders.')) {
+        // 1. Get all merged tables from localStorage
+        const allMergedTables = JSON.parse(localStorage.getItem('mergedTables') || '[]')
+        const mergedTable = allMergedTables.find(m => `merged_${m.id}` === tableId)
 
-      if (mergedTable) {
-        // 2. Restore individual carts from the merged order
-        const ordersPerTable = {}
-        mergedTable.combinedOrders.forEach((order) => {
-          // Find the original table for the item
-          const targetTable = order.originalTable || mergedTable.tables[0]
-          if (!ordersPerTable[targetTable]) {
-            ordersPerTable[targetTable] = []
-          }
-          // Remove the 'originalTable' property before restoring
-          const { originalTable, ...cleanOrder } = order
-          ordersPerTable[targetTable].push(cleanOrder)
-        })
+        if (mergedTable) {
+          // 2. Restore individual carts from the merged order
+          const ordersPerTable = {}
+          mergedTable.combinedOrders.forEach((order) => {
+            // Find the original table for the item
+            const targetTable = order.originalTable || mergedTable.tables[0]
+            if (!ordersPerTable[targetTable]) {
+              ordersPerTable[targetTable] = []
+            }
+            // Remove the 'originalTable' property before restoring
+            const { originalTable, ...cleanOrder } = order
+            ordersPerTable[targetTable].push(cleanOrder)
+          })
 
-        Object.entries(ordersPerTable).forEach(([tableNumber, orders]) => {
-          localStorage.setItem(`cart_${tableNumber}`, JSON.stringify(orders))
-          // Restore start time if it exists
-          if (mergedTable.startTime) {
-            localStorage.setItem(`start_time_${tableNumber}`, mergedTable.startTime)
-          }
-        })
+          Object.entries(ordersPerTable).forEach(([tableNumber, orders]) => {
+            localStorage.setItem(`cart_${tableNumber}`, JSON.stringify(orders))
+            // Restore start time if it exists
+            if (mergedTable.startTime) {
+              localStorage.setItem(`start_time_${tableNumber}`, mergedTable.startTime)
+            }
+          })
 
-        // 3. Remove the merged table from the list
-        const updatedMergedTables = allMergedTables.filter(m => `merged_${m.id}` !== tableId)
-        localStorage.setItem('mergedTables', JSON.stringify(updatedMergedTables))
+          // 3. Remove the merged table from the list
+          const updatedMergedTables = allMergedTables.filter(m => `merged_${m.id}` !== tableId)
+          localStorage.setItem('mergedTables', JSON.stringify(updatedMergedTables))
 
-        // 4. Clean up localStorage for the merged table
-        localStorage.removeItem(`cart_${tableId}`)
-        localStorage.removeItem(`start_time_${tableId}`)
+          // 4. Clean up localStorage for the merged table
+          localStorage.removeItem(`cart_${tableId}`)
+          localStorage.removeItem(`start_time_${tableId}`)
+        }
+
+        // 5. Navigate back to the main POS screen
+        navigate('/pos')
+        // toast.info('Order cancelled and tables have been unmerged.')
+        return // Stop further execution
+      } else {
+        return // User cancelled the confirmation
       }
-
-      // 5. Navigate back to the main POS screen
-      navigate('/pos')
-      // toast.info('Order cancelled and tables have been unmerged.')
-      return // Stop further execution
-    } else {
-      return // User cancelled the confirmation
     }
-  }
 
-  // --- This is the original logic for non-merged tables ---
-  setCart([])
-  setRoundOff(0)
-  setStartTime(null)
-  setElapsedTime(0)
-  localStorage.removeItem(`cart_${tableId}`)
-  localStorage.removeItem(`start_time_${tableId}`)
-  // toast.info('Order has been cancelled.')
-}
+    // --- This is the original logic for non-merged tables ---
+    setCart([])
+    setRoundOff(0)
+    setStartTime(null)
+    setElapsedTime(0)
+    setSelectedCustomer(null);
+    setSelectedCustomerName('');
+    localStorage.removeItem(`cart_${tableId}`)
+    localStorage.removeItem(`start_time_${tableId}`)
+    // toast.info('Order has been cancelled.')
+  }
 
   const handleTaxSubmit = (selectedItemIds, taxValue, taxType, taxName) => {
     setCart(prevCart =>
@@ -427,7 +434,7 @@ const POSTableContent = () => {
           } else if (taxType === 'fixed') {
             // Fixed amount is per item, not affected by quantity in this logic
             fixedTaxAmount = taxValue;
-            taxAmount = taxValue; 
+            taxAmount = taxValue;
           }
 
           return {
@@ -520,28 +527,29 @@ const POSTableContent = () => {
     return cart.reduce((total, item) => total + (Number(item.taxAmount) || 0), 0);
   }, [cart]);
 
-  // const calculateDiscountAmount = () => {
-  //   const subtotal = calculateSubtotal()
-  //   return (subtotal * discount) / 100
-  // }
   const calculateDiscountAmount = useCallback(() => {
     const subtotal = calculateSubtotal();
     let totalDiscount = 0;
 
-    console.log("discount of the cooupon",discount)
-    // Add percentage discount from coupon or manual discount
-    totalDiscount += (subtotal * discount) / 100;
-    
-    // Add item-specific discounts
-    cart.forEach(item => {
-      if (item.discountAmount) {
-        console.log("discount of the item specific",item)
-        totalDiscount += Number(item.discountAmount);
+    // This logic correctly handles fixed vs percentage for memberships.
+    if (membershipDiscount && membershipDiscount.value > 0) {
+      if (membershipDiscount.type === 'fixed') {
+        totalDiscount = membershipDiscount.value;
+      } else { // 'percentage'
+        totalDiscount = (subtotal * membershipDiscount.value) / 100;
       }
-    });
+    } else {
+      // Handles manual and item-specific discounts
+      totalDiscount = (subtotal * discount) / 100;
+      cart.forEach(item => {
+        if (item.discountAmount) totalDiscount += Number(item.discountAmount);
+      });
+    }
 
     return totalDiscount;
-  }, [calculateSubtotal, discount, cart]);
+  }, [calculateSubtotal, discount, cart, membershipDiscount]);
+
+
   const calculateTotal = useCallback(() => {
     const subtotal = calculateSubtotal();
     const totalTaxAmount = calculateTotalTaxAmount();
@@ -552,7 +560,7 @@ const POSTableContent = () => {
     console.log("round off amount :", roundOff)
     const total = subtotal + totalTaxAmount + systemCharge - discountAmount - roundOff
     console.log("total from calculate total: ", total)
-    return total ;
+    return total;
   }, [calculateSubtotal, calculateTotalTaxAmount, calculateDiscountAmount, roundOff, selectedSystem]);
 
   // Initialize inputValue when round off modal opens
@@ -562,6 +570,45 @@ const POSTableContent = () => {
       setInputValue(currentTotal.toString());
     }
   }, [showRoundOffModal, calculateSubtotal, calculateTotalTaxAmount, calculateDiscountAmount]);
+
+  // --- MODIFIED CODE BLOCK ---
+  // This useEffect now depends on the cart to re-evaluate the discount
+  // if items are added or removed.
+  useEffect(() => {
+    const subtotal = calculateSubtotal(); // Calculate subtotal first
+
+    if (
+      selectedCustomer &&
+      selectedCustomer.membershipId &&
+      selectedCustomer.membershipId.status === 'active' &&
+      selectedCustomer.membershipId.discount > 0
+    ) {
+      const membership = selectedCustomer.membershipId;
+      
+      // FIX 2: Check if subtotal meets the minimum spend requirement
+      if (subtotal >= membership.minSpend) {
+        const discountValue = Number(membership.discount);
+        const discountType = membership.discountType || 'percentage'; // Safely default to percentage
+
+        setMembershipDiscount({ value: discountValue, type: discountType });
+        setDiscount(0); // Reset any manual discount
+
+        // FIX 1 & 3: Display the correct discount type in the notification
+        toast.info(
+          `Applied ${
+            discountType === 'fixed' ? `₹${discountValue}` : `${discountValue}%`
+          } membership discount for ${selectedCustomer.name}.`
+        );
+      } else {
+        // If spend is not met, ensure no membership discount is applied
+        setMembershipDiscount({ value: 0, type: 'percentage' });
+      }
+    } else {
+      // If no customer or no active membership, reset the discount
+      setMembershipDiscount({ value: 0, type: 'percentage' });
+    }
+  }, [selectedCustomer, cart, calculateSubtotal]); // Dependency array now includes cart
+  // --- END OF MODIFIED CODE BLOCK ---
 
   // FIXED: Quantity change handler with proper ID matching
   const handleQuantityChange = (itemId, newQty) => {
@@ -607,7 +654,7 @@ const POSTableContent = () => {
     const token = localStorage.getItem('authToken');
     const userId = localStorage.getItem('userId');
     const restaurantId = localStorage.getItem('restaurantId');
-    
+
     // ... (your existing checks for token, restaurantId, cart) ...
 
     const payload = {
@@ -629,10 +676,13 @@ const POSTableContent = () => {
         taxAmount: item.taxAmount || 0
       })),
       tax: calculateTotalTaxAmount(),
-      discount:calculateDiscountAmount(),
-      discountAmount:calculateDiscountAmount(),
-      roundOff:roundOff,
-      systemCharge:selectedSystem ? Number(selectedSystem.chargeOfSystem) : 0,
+      discount: calculateDiscountAmount(),
+      // discountAmount: calculateDiscountAmount(),
+      // discount: membershipDiscount > 0 ? membershipDiscount : discount,
+      discountAmount: calculateDiscountAmount(),
+      customerId: selectedCustomer ? selectedCustomer._id : null,
+      roundOff: roundOff,
+      systemCharge: selectedSystem ? Number(selectedSystem.chargeOfSystem) : 0,
       sub_total: calculateSubtotal(),
       total: calculateTotal(),
       type: paymentType,
@@ -654,11 +704,11 @@ const POSTableContent = () => {
       if (tableId.startsWith('merged_')) {
         // 1. Get all merged tables from localStorage
         const allMergedTables = JSON.parse(localStorage.getItem('mergedTables') || '[]')
-        
+
         // 2. Remove the current merged table from the array
         const updatedMergedTables = allMergedTables.filter(m => `merged_${m.id}` !== tableId)
         localStorage.setItem('mergedTables', JSON.stringify(updatedMergedTables))
-        
+
         // 3. Clean up the merged table's specific localStorage
         localStorage.removeItem(`cart_${tableId}`)
         localStorage.removeItem(`start_time_${tableId}`)
@@ -669,7 +719,7 @@ const POSTableContent = () => {
       setShowPaymentModal(false);
       clearCart(); // This will now clear the state for the current (now defunct) view
       toast.success('Payment processed successfully!');
-      
+
       // Navigate back to the main screen after payment
       navigate('/pos');
 
@@ -869,13 +919,13 @@ const POSTableContent = () => {
       const kotTaxAmount = newItems.reduce((total, item) => total + (Number(item.taxAmount) || 0), 0);
       const kotDiscountAmount = (kotSubtotal * discount) / 100;
       const kotTotal = kotSubtotal + kotTaxAmount - kotDiscountAmount;
-      console.log("opprotypo",selectedCustomerName)
+      console.log("opprotypo", selectedCustomerName)
       const orderData = {
         token: localStorage.getItem('authToken'),
         restaurantId: localStorage.getItem('restaurantId'),
         userId: localStorage.getItem('userId'),
         tableNumber: tableNumber,
-        customerName: selectedCustomerName ,
+        customerName: selectedCustomerName,
         items: newItems.map((item) => ({
           itemId: item._id || item.id,
           itemName: item.itemName,
@@ -1102,6 +1152,8 @@ const POSTableContent = () => {
             setAppliedDiscounts={setAppliedDiscounts}
             roundOff={roundOff}
             setShowTaxModal={setShowTaxModal}
+            membershipDiscount={membershipDiscount}
+            membershipName={selectedCustomer?.membershipName}
             setShowDiscountModal={setShowDiscountModal}
             setShowRoundOffModal={setShowRoundOffModal}
             selectedSystem={selectedSystem}
@@ -1230,7 +1282,7 @@ const POSTableContent = () => {
         inputValue={inputValue}
         setInputValue={setInputValue}
         roundOff={roundOff}
-        setRoundOff = {setRoundOff}
+        setRoundOff={setRoundOff}
         handleRoundOffSubmit={handleRoundOffSubmit}
         subtotal={calculateSubtotal()}
         tax={calculateTotalTaxAmount()}

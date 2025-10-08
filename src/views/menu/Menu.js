@@ -212,7 +212,7 @@ const Menu = () => {
       });
 
       await dispatch(addMenuItem({ ...dataToSend, token })).unwrap();
-      await dispatch(fetchMenuItems({ restaurantId, token }));
+      await dispatch(fetchMenuItems({ token }));
       handleCancel();
       toast.success("Menu item added successfully!");
     } catch (error) {
@@ -281,7 +281,7 @@ const Menu = () => {
         })
       ).unwrap();
 
-      await dispatch(fetchMenuItems({ restaurantId, token }));
+      await dispatch(fetchMenuItems({ token }));
       handleCancel();
       toast.success("Menu item updated successfully!");
     } catch (error) {
@@ -301,7 +301,7 @@ const Menu = () => {
         deleteMenuItem({ id: selectedMenu._id, token })
       ).unwrap();
 
-      await dispatch(fetchMenuItems({ restaurantId, token }));
+      await dispatch(fetchMenuItems({ token }));
 
       setDeleteModalVisible(false);
       toast.success("Menu item deleted successfully!");
@@ -323,7 +323,7 @@ const Menu = () => {
           status: newStatus,
         })
       ).unwrap();
-      await dispatch(fetchMenuItems({ restaurantId, token }));
+      await dispatch(fetchMenuItems({ token }));
       toast.success(`Menu item marked as ${newStatus}`);
     } catch (error) {
       toast.error(error.message || "Failed to update status");

@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchCustomers } from "../../src/redux/slices/customerSlice";
+import { fetchMembers } from "../../src/redux/slices/memberSlice";
 
 import {
   CModal,
@@ -13,6 +14,8 @@ import {
   CFormTextarea,
   CForm,
   CAlert,
+  CFormSelect,
+  CFormLabel,
 } from "@coreui/react";
 import CIcon from "@coreui/icons-react";
 import { cilSearch, cilPlus } from "@coreui/icons";
@@ -26,8 +29,10 @@ const CustomerModal = ({
   restaurantId,
 }) => {
   const dispatch = useDispatch();
-  // const { customers, loading, error } = useSelector((state) => state.customers);
-  const { customers, loading, error } = useSelector((state) => state.customers)
+  const { customers, loading, error } = useSelector((state) => state.customers);
+  const { members } = useSelector((state) => state.members);
+  const token = localStorage.getItem('authToken');
+
   console.log("all customers from its modal : ", customers);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -38,16 +43,19 @@ const CustomerModal = ({
     address: "",
     birthday: "",
     anniversary: "",
+    membershipId: "",
+    membershipName: ""
   });
   const [formErrors, setFormErrors] = useState({});
   const [selectedCustomer, setSelectedCustomer] = useState(null);
 
-  // Fetch customers when modal opens
+  // Fetch customers and members when modal opens
   useEffect(() => {
     if (showCustomerModal && restaurantId) {
       dispatch(fetchCustomers({ restaurantId }));
+      dispatch(fetchMembers(token));
     }
-  }, [showCustomerModal, restaurantId, dispatch]);
+  }, [showCustomerModal, restaurantId, dispatch, token]);
 
   // Handle input changes
   const handleInputChange = (e) => {
@@ -63,6 +71,18 @@ const CustomerModal = ({
         [name]: "",
       }));
     }
+  };
+
+  // Handle membership selection
+  const handleMembershipChange = (e) => {
+    const selectedId = e.target.value;
+    const selectedMembership = members.find(m => m._id === selectedId);
+
+    setFormValues({
+      ...formValues,
+      membershipId: selectedId,
+      membershipName: selectedMembership?.membershipName || ''
+    });
   };
 
   // Validate form
@@ -91,7 +111,7 @@ const CustomerModal = ({
   // Handle form submission
   const handleSubmit = () => {
     if (validateForm()) {
-      console.log("the datat of customer from customer modal",formValues)
+      console.log("the data of customer from customer modal", formValues);
       handleAddCustomer(formValues);
       setFormValues({
         name: "",
@@ -100,6 +120,8 @@ const CustomerModal = ({
         address: "",
         birthday: "",
         anniversary: "",
+        membershipId: "",
+        membershipName: ""
       });
       setFormErrors({});
     }
@@ -115,6 +137,8 @@ const CustomerModal = ({
       address: "",
       birthday: "",
       anniversary: "",
+      membershipId: "",
+      membershipName: ""
     });
     setFormErrors({});
     setSelectedCustomer(null);
@@ -157,7 +181,7 @@ const CustomerModal = ({
                 <CIcon icon={cilSearch} />
               </span>
             </div>
-            <div style={{ maxHeight: "300px", overflowY: "auto" }}>
+            <div style={{ maxHeight: "600px", overflowY: "auto" }}>
               {loading ? (
                 <div className="text-center p-3">
                   <div
@@ -176,9 +200,8 @@ const CustomerModal = ({
                 filteredCustomers.map((customer) => (
                   <div
                     key={customer.id || customer._id}
-                    className={`d-flex justify-content-between align-items-center border rounded p-2 mb-2 ${
-                      selectedCustomer?._id === customer._id ? "bg-light" : ""
-                    }`}
+                    className={`d-flex justify-content-between align-items-center border rounded p-2 mb-2 ${selectedCustomer?._id === customer._id ? "bg-light" : ""
+                      }`}
                     onClick={() => handleSelectCustomer(customer)}
                     style={{ cursor: "pointer" }}
                   >
@@ -188,6 +211,13 @@ const CustomerModal = ({
                         <small className="text-muted">
                           {customer.phoneNumber}
                         </small>
+                      )}
+                      {customer.membership?.membershipName && (
+                        <div>
+                          <small className="badge bg-info text-dark mt-1">
+                            {customer.membership.membershipName}
+                          </small>
+                        </div>
                       )}
                     </div>
                     <span className="badge bg-success">
@@ -223,9 +253,13 @@ const CustomerModal = ({
                   <strong>Birthday:</strong>{" "}
                   {selectedCustomer.birthday || "N/A"}
                 </p>
-                <p className="mb-0">
+                <p className="mb-1">
                   <strong>Anniversary:</strong>{" "}
                   {selectedCustomer.anniversary || "N/A"}
+                </p>
+                <p className="mb-0">
+                  <strong>Membership:</strong>{" "}
+                  {selectedCustomer.membership?.membershipName || "None"}
                 </p>
               </div>
             )}
@@ -254,9 +288,9 @@ const CustomerModal = ({
             <CForm>
               {/* Name */}
               <div className="mb-3">
-                <label htmlFor="name" className="form-label fw-semibold">
-                  Customer Name *
-                </label>
+                <CFormLabel htmlFor="name" className="fw-semibold">
+                  Customer Name <span className="text-danger">*</span>
+                </CFormLabel>
                 <CFormInput
                   type="text"
                   id="name"
@@ -264,15 +298,16 @@ const CustomerModal = ({
                   value={formValues.name}
                   onChange={handleInputChange}
                   invalid={!!formErrors.name}
+                  placeholder="Enter customer name"
                   required
                 />
               </div>
 
               {/* Email */}
               <div className="mb-3">
-                <label htmlFor="email" className="form-label fw-semibold">
+                <CFormLabel htmlFor="email" className="fw-semibold">
                   Email Address
-                </label>
+                </CFormLabel>
                 <CFormInput
                   type="email"
                   id="email"
@@ -280,14 +315,15 @@ const CustomerModal = ({
                   value={formValues.email}
                   onChange={handleInputChange}
                   invalid={!!formErrors.email}
+                  placeholder="Enter email address"
                 />
               </div>
 
               {/* Phone */}
               <div className="mb-3">
-                <label htmlFor="phoneNumber" className="form-label fw-semibold">
+                <CFormLabel htmlFor="phoneNumber" className="fw-semibold">
                   Phone Number
-                </label>
+                </CFormLabel>
                 <CFormInput
                   type="tel"
                   id="phoneNumber"
@@ -295,28 +331,30 @@ const CustomerModal = ({
                   value={formValues.phoneNumber}
                   onChange={handleInputChange}
                   invalid={!!formErrors.phoneNumber}
+                  placeholder="Enter phone number"
                 />
               </div>
 
               {/* Address */}
               <div className="mb-3">
-                <label htmlFor="address" className="form-label fw-semibold">
+                <CFormLabel htmlFor="address" className="fw-semibold">
                   Address
-                </label>
+                </CFormLabel>
                 <CFormTextarea
                   id="address"
                   name="address"
-                  rows="3"
+                  rows="2"
                   value={formValues.address}
                   onChange={handleInputChange}
+                  placeholder="Enter address"
                 />
               </div>
 
               {/* Birthday */}
               <div className="mb-3">
-                <label htmlFor="birthday" className="form-label fw-semibold">
+                <CFormLabel htmlFor="birthday" className="fw-semibold">
                   Birthday
-                </label>
+                </CFormLabel>
                 <CFormInput
                   type="date"
                   id="birthday"
@@ -328,12 +366,9 @@ const CustomerModal = ({
 
               {/* Anniversary */}
               <div className="mb-3">
-                <label
-                  htmlFor="anniversary"
-                  className="form-label fw-semibold"
-                >
+                <CFormLabel htmlFor="anniversary" className="fw-semibold">
                   Anniversary
-                </label>
+                </CFormLabel>
                 <CFormInput
                   type="date"
                   id="anniversary"
@@ -341,6 +376,28 @@ const CustomerModal = ({
                   value={formValues.anniversary}
                   onChange={handleInputChange}
                 />
+              </div>
+
+              {/* Membership Plan */}
+              <div className="mb-3">
+                <CFormLabel htmlFor="membershipId" className="fw-semibold">
+                  Membership Plan
+                </CFormLabel>
+                <CFormSelect
+                  id="membershipId"
+                  name="membershipId"
+                  value={formValues.membershipId}
+                  onChange={handleMembershipChange}
+                >
+                  <option value="">No Membership</option>
+                  {members?.map((member) => (
+                    <option key={member._id} value={member._id}>
+                      {member.membershipName} -
+                      {member.discountType === 'fixed' ? `₹${member.discount}` : `${member.discount}%`} OFF
+                      (Min: ₹{member.minSpend})
+                    </option>
+                  ))}
+                </CFormSelect>
               </div>
 
               {/* Add Button */}

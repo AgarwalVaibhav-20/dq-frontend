@@ -24,6 +24,9 @@ import Delivery from './views/delivery/Delivery'
 import { checkRestaurantPermission, debugProfile, forceLoadProfile } from './redux/slices/restaurantProfileSlice'
 import { fetchUserProfile } from './redux/slices/authSlice'
 import store from './redux/store'
+
+import TableRedirect from './views/tableredirect/TableRedirect.js'
+import CustomerMenu from './views/customer-menu/CustomerMenu.js'
 import DeliveryTiming from './views/deliveryTiming/DeliveryTiming'
 import notificationSound from './assets/notification.mp3'
 import WooOrders from './views/delivery/WooOrders'
@@ -119,7 +122,7 @@ const App = () => {
   // Make store and actions available in browser console for debugging
   React.useEffect(() => {
     window.store = store
-    window.debugProfile = function() {
+    window.debugProfile = function () {
       try {
         const state = store.getState()
         console.log('=== PROFILE DEBUG INFO ===')
@@ -134,7 +137,7 @@ const App = () => {
         return 'Debug failed - check console for error'
       }
     }
-    window.forceLoadProfile = function() {
+    window.forceLoadProfile = function () {
       try {
         store.dispatch(forceLoadProfile())
         console.log('Profile loaded from localStorage')
@@ -144,7 +147,7 @@ const App = () => {
         return 'Force load failed - check console for error'
       }
     }
-    window.checkLocalStorage = function() {
+    window.checkLocalStorage = function () {
       try {
         const profile = localStorage.getItem('restaurantProfile')
         console.log('=== LOCALSTORAGE CHECK ===')
@@ -347,6 +350,11 @@ const App = () => {
                         </PermissionRestrictedRoute>
                       }
                     />
+                    <Route path='customer-menu' element={
+                      <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                        <CustomerMenu />
+                      </PermissionRestrictedRoute>
+                    } />
                     <Route path="restaurants" element={
                       <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
                         <Restaurants />
@@ -479,6 +487,13 @@ const App = () => {
                         </PermissionRestrictedRoute>
                       }
                     />
+                    <Route
+                      path="table/:restaurantId/:floorId/:tableNumber"
+                      element={<PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                        <TableRedirect />
+                      </PermissionRestrictedRoute>}
+                    />
+
                     <Route
                       path="pos/system/tableNumber/:tableNumber"
                       element={

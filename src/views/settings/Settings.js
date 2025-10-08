@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { Tag } from 'lucide-react';
 import {
   CCard,
   CCardBody,
@@ -28,18 +29,90 @@ import {
   CTabPane,
   CInputGroup,        // ADD THIS
   CInputGroupText,
+  // cilTag,
 } from '@coreui/react'
+import {
+  Box,
+  Card,
+  CardContent,
+  Typography,
+  Button,
+  TextField,
+  Grid,
+  Paper,
+  Chip,
+  Divider,
+  Alert,
+  IconButton,
+  Tooltip,
+  CircularProgress,
+  FormControlLabel,
+  Switch,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  Menu,
+  MenuItem,
+  ListItemIcon,
+  ListItemText,
+  Snackbar,
+  Tabs,
+  Tab,
+  Select,
+  FormControl,
+  InputLabel
+} from '@mui/material';
+import {
+  fetchMembers,
+  addMember,
+  updateMember,
+  deleteMember
+} from '../../redux/slices/memberSlice';
 import { toast } from 'react-toastify'
-import axios from 'axios'
+// import axios from 'axios'
 import axiosInstance from '../../utils/axiosConfig'
-import { BASE_URL } from '../../utils/constants'
+// import { BASE_URL } from '../../utils/constants'
+import { fetchCustomers } from '../../redux/slices/customerSlice';
 import CIcon from '@coreui/icons-react'
 import { cilSettings, cilPlus, cilTrash, cilPencil, cilSave, cilMoney, cilUser } from '@coreui/icons'
-
+import { useDispatch, useSelector } from 'react-redux';
+import {
+  Heart,
+  Copy,
+  RefreshCw,
+  Calendar,
+  Save,
+  Edit,
+  Trash2,
+  MoreVertical,
+  Plus,
+  AlertCircle,
+  CheckCircle,
+  Users,
+  Award,
+  X
+} from 'lucide-react';
 const Settings = () => {
   // Tab state
   const [activeTab, setActiveTab] = useState('system')
-
+  const [memberForm, setMemberForm] = useState({
+    // customerName: '',
+    // customerId: '',
+    membershipName: '',
+    minSpend: '', // <-- ADD THIS
+    discountType: 'percentage',
+    discount: '',
+    startDate: '',
+    expirationDate: '',
+    status: 'active',
+    notes: ''
+  });
+  const [memberDialog, setMemberDialog] = useState({ open: false, mode: 'create', member: null });
+  const [memberDetailDialog, setMemberDetailDialog] = useState({ open: false, member: null });
+  const [discountType, setDiscountType] = useState('percentage');
+  const { members, loading: memberLoading, error: memberError } = useSelector(state => state.members);
+  const token = localStorage.getItem('authToken');
   // System state
   const [systemFormData, setSystemFormData] = useState({
     systemName: '',
@@ -52,18 +125,33 @@ const Settings = () => {
   const [systemSaving, setSystemSaving] = useState(false)
   const [systemError, setSystemError] = useState('')
   const [editingSystem, setEditingSystem] = useState(null)
+  const [deleteDialog, setDeleteDialog] = useState({ open: false, type: '', item: null });
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedItem, setSelectedItem] = useState(null);
+  const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
 
+  const { customers, loading } = useSelector((state) => state.customers);
   // Tax state
   const [taxFormData, setTaxFormData] = useState({
     taxName: '',
     taxCharge: '',
     taxType: 'percentage',
   })
+  const formatDate = (dateString) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    });
+  };
   const [taxes, setTaxes] = useState([])
   const [taxLoading, setTaxLoading] = useState(false)
   const [taxSaving, setTaxSaving] = useState(false)
   const [taxError, setTaxError] = useState('')
   const [editingTax, setEditingTax] = useState(null)
+
+  const restaurantId = useSelector((state) => state.auth.restaurantId);
+  const dispatch = useDispatch();
 
 
   // ADD CUSTOMER SETTINGS STATE (after tax state)
@@ -73,18 +161,155 @@ const Settings = () => {
     regularCustomerDays: 30,   // Regular Customer Period
   })
 
+  // const [customerLoading, setCustomerLoading] = useState(false)
+  // const [customerSaving, setCustomerSaving] = useState(false)
+  // const [customerError, setCustomerError] = useState('')
+
+
+
+  // ADD CUSTOMER SETTINGS STATE (after tax state)
+  // const [customerSettings, setCustomerSettings] = useState({
+  //   lostCustomerDays: 60,      // Lost Customer Period
+  //   highSpenderAmount: 10000,  // High Spender Amount  
+  //   regularCustomerDays: 30,   // Regular Customer Period
+  // })
+
   const [customerLoading, setCustomerLoading] = useState(false)
   const [customerSaving, setCustomerSaving] = useState(false)
   const [customerError, setCustomerError] = useState('')
 
 
+
   // Fetch all systems and taxes on component mount
   useEffect(() => {
+    dispatch(fetchMembers(token));
     fetchSystems()
     fetchTaxes()
     fetchCustomerSettings()
-  }, [])
+  }, [dispatch, token, restaurantId])
 
+  const validateMemberForm = () => {
+    // Updated validation for membership plans
+    if (!memberForm.membershipName || !memberForm.minSpend || !memberForm.discount) {
+      setSnackbar({ open: true, message: 'Please fill all required fields', severity: 'error' });
+      return false;
+    }
+    if (parseFloat(memberForm.discount) < 0) {
+      setSnackbar({ open: true, message: 'Discount cannot be negative', severity: 'error' });
+      return false;
+    }
+    if (memberForm.discountType === 'percentage' && parseFloat(memberForm.discount) > 100) {
+      setSnackbar({ open: true, message: 'Discount percentage cannot exceed 100', severity: 'error' });
+      return false;
+    }
+    // The expiration date check is for a specific user, so we remove it for a general plan.
+    return true;
+  };
+
+  const handleDelete = async () => {
+    if (deleteDialog.type === 'coupon' && deleteDialog.item) {
+      try {
+        await dispatch(deleteCoupon(deleteDialog.item._id)).unwrap();
+        setDeleteDialog({ open: false, type: '', item: null });
+        dispatch(fetchCoupons());
+      } catch (error) {
+        console.error('Delete error:', error);
+      }
+    } else if (deleteDialog.type === 'member' && deleteDialog.item) {
+      try {
+        await dispatch(deleteMember(deleteDialog.item._id)).unwrap();
+        setSnackbar({ open: true, message: 'Member deleted successfully', severity: 'success' });
+        setDeleteDialog({ open: false, type: '', item: null });
+        dispatch(fetchMembers(token));
+      } catch (error) {
+        console.error('Delete error:', error);
+      }
+    }
+  };
+  const handleMenuClose = () => {
+    setAnchorEl(null);
+    setSelectedItem(null);
+  };
+  const handleMemberSubmit = async () => {
+    if (!validateMemberForm()) return;
+
+    const memberData = {
+      ...memberForm,
+      discount: parseFloat(memberForm.discount),
+      discountType: memberForm.discountType, // ✅ include this line
+      startDate: memberForm.startDate || new Date().toISOString(),
+    };
+
+    try {
+      if (memberDialog.mode === 'edit') {
+        await dispatch(updateMember({ id: memberDialog.member._id, memberData })).unwrap();
+        setSnackbar({
+          open: true,
+          message: 'Member updated successfully',
+          severity: 'success',
+        });
+      } else {
+        await dispatch(addMember(memberData)).unwrap();
+        setSnackbar({
+          open: true,
+          message: 'Member added successfully',
+          severity: 'success',
+        });
+      }
+
+      setMemberDialog({ open: false, mode: 'create', member: null });
+      resetMemberForm();
+      dispatch(fetchMembers(token));
+    } catch (error) {
+      console.error('Member submission error:', error);
+      setSnackbar({
+        open: true,
+        message: 'Failed to save member',
+        severity: 'error',
+      });
+    }
+  };
+
+
+  const resetMemberForm = () => {
+    setMemberForm({
+      // customerName: '',
+      // customerId: '',
+      membershipName: '',
+      minSpend: '', // <-- ADD THIS
+      discountType: 'percentage',
+      discount: '',
+      startDate: '',
+      expirationDate: '',
+      status: 'active',
+      notes: ''
+    });
+  };
+  const handleEditMember = (member) => {
+    setMemberForm({
+      // customerName: member.customerName,
+      // customerId: member.customerId._id,
+      membershipName: member.membershipName,
+      minSpend: member.minSpend?.toString() || '', // <-- ADD THIS
+      discountType: member.discountType || 'percentage',
+      discount: member.discount.toString(),
+      startDate: member.startDate ? new Date(member.startDate).toISOString().split('T')[0] : '',
+      expirationDate: member.expirationDate ? new Date(member.expirationDate).toISOString().split('T')[0] : '',
+      status: member.status,
+      notes: member.notes || ''
+    });
+    setMemberDialog({ open: true, mode: 'edit', member });
+    setAnchorEl(null);
+  };
+
+  const getMembershipStatus = (member) => {
+    const isExpired = new Date(member.expirationDate) < new Date();
+    return {
+      isExpired,
+      isInactive: member.status === 'inactive',
+      statusColor: isExpired ? 'error' : member.status === 'active' ? 'success' : 'warning'
+    };
+  };
   // System functions
   const fetchSystems = async () => {
     try {
@@ -219,6 +444,10 @@ const Settings = () => {
       }
     }
   }
+  const handleMenuClick = (event, item, type) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedItem({ item, type });
+  };
 
   const handleSystemCancel = () => {
     setEditingSystem(null)
@@ -503,6 +732,16 @@ const Settings = () => {
                   >
                     <CIcon icon={cilUser} className="me-2" />
                     Customer Settings
+                  </CNavLink>
+                </CNavItem>
+                <CNavItem>
+                  <CNavLink
+                    active={activeTab === 'membership'}
+                    onClick={() => setActiveTab('membership')}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <CIcon icon={cilMoney} className="me-2" />
+                    Membership Settings
                   </CNavLink>
                 </CNavItem>
               </CNav>
@@ -1112,8 +1351,291 @@ const Settings = () => {
           </CRow>
         </CTabPane>
 
+
+        {/* Membership tab */}
+        <CTabPane role="tabpanel" aria-labelledby="membership-tab" visible={activeTab === 'membership'}>
+          <Grid container spacing={3}>
+            <Grid item xs={12}>
+              <Card elevation={3}>
+                <CardContent>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="h6" color="primary">
+                      All Membership Plans ({members?.length || 0})
+                    </Typography>
+                    <Box sx={{ display: 'flex', gap: 2 }}>
+                      <Button
+                        size="small"
+                        onClick={() => dispatch(fetchMembers(token))}
+                        startIcon={<RefreshCw size={16} />}
+                      >
+                        Refresh
+                      </Button>
+                      <Button
+                        variant="contained"
+                        onClick={() => {
+                          resetMemberForm();
+                          setMemberDialog({ open: true, mode: 'create', member: null });
+                        }}
+                        startIcon={<Plus size={20} />}
+                      >
+                        Add Plan
+                      </Button>
+                    </Box>
+                  </Box>
+                  <Divider sx={{ mb: 2 }} />
+
+                  {memberLoading ? (
+                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                      <CircularProgress />
+                    </Box>
+                  ) : members?.length === 0 ? (
+                    <Box sx={{ textAlign: 'center', py: 4 }}>
+                      <Users size={48} style={{ color: '#ccc' }} />
+                      <Typography variant="body1" color="text.secondary" sx={{ mt: 2 }}>
+                        No membership plans found
+                      </Typography>
+                    </Box>
+                  ) : (
+                    <Grid container spacing={2}>
+                      {(members ?? []).map((member) => (
+                        <Grid item xs={12} sm={6} md={4} key={member._id}>
+                          <Paper
+                            elevation={2}
+                            sx={{ p: 2, '&:hover': { elevation: 4 } }}
+                          >
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', mb: 1 }}>
+                              <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
+                                {member.membershipName}
+                              </Typography>
+                              <IconButton
+                                size="small"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleMenuClick(e, member, 'member');
+                                }}
+                              >
+                                <MoreVertical size={16} />
+                              </IconButton>
+                            </Box>
+                            <Typography variant="body2" color="text.secondary" gutterBottom>
+                              {member.notes || 'No description.'}
+                            </Typography>
+                            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', mt: 1 }}>
+                              <Chip
+                                icon={<CIcon icon={cilMoney} />}
+                                label={`Min Spend: ₹${member.minSpend}`}
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                              />
+                              <Chip
+                                icon={<Tag size={20} />}
+                                label={
+                                  member.discountType === 'fixed'
+                                    ? `₹${member.discount} OFF`
+                                    : `${member.discount}% OFF`
+                                }
+                                size="small"
+                                color="success"
+                              />
+                            </Box>
+
+                          </Paper>
+                        </Grid>
+                      ))}
+                    </Grid>
+                  )}
+                </CardContent>
+              </Card>
+            </Grid>
+          </Grid>
+
+          {/* DIALOG FOR ADD/EDIT MEMBER */}
+          <Dialog open={memberDialog.open} onClose={() => setMemberDialog({ open: false, mode: 'create', member: null })} maxWidth="sm" fullWidth>
+            <DialogTitle>
+              {memberDialog.mode === 'edit' ? 'Edit Membership Plan' : 'Add New Membership Plan'}
+            </DialogTitle>
+            <DialogContent>
+              <Grid container spacing={2} sx={{ mt: 1 }}>
+                {/* <Grid item xs={12}>
+                  <FormControl fullWidth required>
+                    <InputLabel>Select Customer</InputLabel>
+                    <Select
+                      value={memberForm.customerId}
+                      label="Select Customer"
+                      onChange={(e) => handleCustomerChange(e.target.value)}
+                      native
+                    >
+                      <option value=""></option>
+                      {customers.map((customer) => (
+                        <option key={customer._id} value={customer._id}>
+                          {customer.name}
+                        </option>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid> */}
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="Membership Name"
+                    value={memberForm.membershipName}
+                    onChange={(e) => setMemberForm({ ...memberForm, membershipName: e.target.value })}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="Minimum Spend (₹)"
+                    type="number"
+                    value={memberForm.minSpend}
+                    onChange={(e) => setMemberForm({ ...memberForm, minSpend: e.target.value })}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <FormControl fullWidth required>
+                    <InputLabel>Discount Type</InputLabel>
+                    <Select
+                      value={memberForm.discountType}
+                      label="Discount Type"
+                      onChange={(e) => setMemberForm({ ...memberForm, discountType: e.target.value })}
+                      native
+                    >
+                      <option value="percentage">Percentage (%)</option>
+                      <option value="fixed">Fixed Amount (₹)</option>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    required
+                    label={`Discount ${memberForm.discountType === 'percentage' ? '%' : 'Amount'}`}
+                    type="number"
+                    value={memberForm.discount}
+                    onChange={(e) => setMemberForm({ ...memberForm, discount: e.target.value })}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    label="Start Date"
+                    type="date"
+                    value={memberForm.startDate}
+                    onChange={(e) => setMemberForm({ ...memberForm, startDate: e.target.value })}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+
+                <Grid item xs={12} sm={6}>
+                  <TextField
+                    fullWidth
+                    required
+                    label="Expiration Date"
+                    type="date"
+                    value={memberForm.expirationDate}
+                    onChange={(e) => setMemberForm({ ...memberForm, expirationDate: e.target.value })}
+                    InputLabelProps={{ shrink: true }}
+                  />
+                </Grid>
+
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>Status</InputLabel>
+                    <Select
+                      value={memberForm.status}
+                      label="Status"
+                      onChange={(e) => setMemberForm({ ...memberForm, status: e.target.value })}
+                      native
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="expired">Expired</option>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Notes"
+                    multiline
+                    rows={3}
+                    value={memberForm.notes}
+                    onChange={(e) => setMemberForm({ ...memberForm, notes: e.target.value })}
+                  />
+                </Grid>
+              </Grid>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setMemberDialog({ open: false, mode: 'create', member: null })}>
+                Cancel
+              </Button>
+              <Button onClick={handleMemberSubmit} variant="contained" disabled={memberLoading}>
+                {memberDialog.mode === 'edit' ? 'Update Plan' : 'Create Plan'}
+              </Button>
+            </DialogActions>
+          </Dialog>
+
+          {/* Your other dialogs (Delete, Details, etc.) and Menu components go here... */}
+          {/* Make sure to adjust the handleDelete function if you have one for members */}
+          <Dialog open={deleteDialog.open} onClose={() => setDeleteDialog({ open: false, type: '', item: null })}>
+            <DialogTitle>Confirm Delete</DialogTitle>
+            <DialogContent>
+              <Typography>
+                Are you sure you want to delete this {deleteDialog.type}?
+                {deleteDialog.type === 'member' && deleteDialog.item && ` (${deleteDialog.item.membershipName})`}
+              </Typography>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={() => setDeleteDialog({ open: false, type: '', item: null })}>Cancel</Button>
+              <Button onClick={handleDelete} color="error" variant="contained">Delete</Button>
+            </DialogActions>
+          </Dialog>
+
+          <Menu anchorEl={anchorEl} open={Boolean(anchorEl)} onClose={handleMenuClose}>
+            <MenuItem onClick={() => {
+              if (selectedItem?.type === 'member') {
+                handleEditMember(selectedItem.item);
+              }
+            }}>
+              <ListItemIcon><Edit size={16} /></ListItemIcon>
+              <ListItemText>Edit</ListItemText>
+            </MenuItem>
+            <MenuItem onClick={() => {
+              setDeleteDialog({ open: true, type: selectedItem?.type, item: selectedItem?.item });
+              handleMenuClose();
+            }}>
+              <ListItemIcon><Trash2 size={16} /></ListItemIcon>
+              <ListItemText>Delete</ListItemText>
+            </MenuItem>
+          </Menu>
+
+          <Snackbar
+            open={snackbar.open}
+            autoHideDuration={4000}
+            onClose={() => setSnackbar({ ...snackbar, open: false })}
+            anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+          >
+            <Alert
+              onClose={() => setSnackbar({ ...snackbar, open: false })}
+              severity={snackbar.severity}
+              icon={snackbar.severity === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+            >
+              {snackbar.message}
+            </Alert>
+          </Snackbar>
+        </CTabPane>
+
       </CTabContent>
-    </CContainer>
+    </CContainer >
   )
 }
 
