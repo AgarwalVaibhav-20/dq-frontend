@@ -2,12 +2,14 @@ import React, { useState, useEffect } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { DataGrid } from '@mui/x-data-grid'
 import { fetchCustomers, deleteCustomer, addCustomer, setSelectedCustomerType, updateCustomerFrequency } from '../../redux/slices/customerSlice'
-import { CButton, CSpinner, CModal, CModalHeader, CModalBody, CModalFooter, CForm, CFormInput, CFormTextarea, CFormLabel, CAlert, CFormSelect } from '@coreui/react'
+import { CButton, CSpinner, CModal, CModalHeader, CModalBody, CModalFooter, CForm, CFormInput, CFormTextarea, CFormLabel, CAlert, CFormSelect, CFormCheck } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilEnvelopeOpen, cilChatBubble, cilTrash, cilPlus, cilFilter } from '@coreui/icons'
 import CustomToolbar from '../../utils/CustomToolbar'
 import { sendBulkEmail, resetBulkEmailStatus } from '../../redux/slices/SendBulkEmailSlice'
 import { useMediaQuery } from '@mui/material'
+import axiosInstance from '../../utils/axiosConfig'
+import { toast } from 'react-toastify'
 
 const Customer = () => {
   const dispatch = useDispatch()
@@ -17,7 +19,6 @@ const Customer = () => {
 
   const [deleteModalVisible, setDeleteModalVisible] = useState(false)
   const [selectedCustomerId, setSelectedCustomerId] = useState(null)
-
   const [bulkEmailModalVisible, setBulkEmailModalVisible] = useState(false)
   const [subject, setSubject] = useState('')
   const [title, setTitle] = useState('')
@@ -32,8 +33,19 @@ const Customer = () => {
     address: '',
     birthday: '',
     anniversary: '',
+    corporate: false,
   })
   const [formErrors, setFormErrors] = useState({})
+
+  // CUSTOMER SETTINGS STATE - UPDATED WITH CORRECT FIELD NAMES
+  const [customerSettings, setCustomerSettings] = useState({
+    lostCustomerDays: '',            
+    highSpenderAmount: '',        
+    regularCustomerVisits: ''         
+  })
+  
+  const [customerLoading, setCustomerLoading] = useState(false)
+  const [customerError, setCustomerError] = useState('')
 
   // Customer type filter options
   const customerTypeOptions = [
@@ -44,11 +56,116 @@ const Customer = () => {
     { value: 'Lost Customer', label: 'Lost Customer' },
     { value: 'High Spender', label: 'High Spender' },
   ]
+
+  // Calculate days since customer was created (for Lost Customer logic)
+  const daysSinceCreation = (createdAt) => {
+    if (!createdAt) return 0;
+    
+    const today = new Date();
+    const createdDate = new Date(createdAt);
+    const diffTime = Math.abs(today - createdDate);
+    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+  };
+
+  // Main classification function - CORRECTED
+  const classifyCustomer = (customer) => {
+    console.log('Classifying customer:', customer.name, {
+      corporate: customer.corporate,
+      totalSpent: customer.totalSpent,
+      frequency: customer.frequency,
+      createdAt: customer.createdAt,
+      settings: customerSettings
+    });
+
+    // 1. Corporate customer (highest priority)
+    if (customer.corporate === true) {
+      return 'Corporate';
+    }
+    
+    // 2. High Spender check - based on totalSpent
+    if ((customer.totalSpent || 0) >= customerSettings.highSpenderAmount) {
+      return 'High Spender';
+    }
+    
+    // 3. Regular Customer check - based on frequency (visit count)
+    if ((customer.frequency || 0) >= customerSettings.regularCustomerVisits) {
+      return 'Regular';
+    }
+    
+    // 4. Lost Customer check - based on days since creation
+    const daysSinceCreated = daysSinceCreation(customer.createdAt);
+    if (daysSinceCreated > customerSettings.lostCustomerDays) {
+      return 'Lost Customer';
+    }
+ 
+    return 'FirstTimer';
+  };
+
+  // FETCH CUSTOMER SETTINGS FUNCTION
+  const fetchCustomerSettings = async () => {
+    try {
+      setCustomerLoading(true)
+      const restaurantIdFromStorage = localStorage.getItem('restaurantId')
+      const response = await axiosInstance.get(`/api/customer-settings?restaurantId=${restaurantIdFromStorage}`)
+
+      if (response.data.success) {
+        const settings = {
+          lostCustomerDays: response.data.data.lostCustomerDays || 60,
+          highSpenderAmount: response.data.data.highSpenderAmount || 10000,
+          regularCustomerVisits: response.data.data.regularCustomerVisits || 5
+        };
+        setCustomerSettings(settings)
+        console.log('Customer settings loaded:', settings)
+      }
+    } catch (error) {
+      console.error('Error fetching customer settings:', error)
+      if (error.response?.status !== 404) {
+        setCustomerError('Failed to fetch customer settings')
+        toast.error('Failed to fetch customer settings')
+      }
+    } finally {
+      setCustomerLoading(false)
+    }
+  }
+
+  // LOAD DATA ON COMPONENT MOUNT
   useEffect(() => {
     if (restaurantId) {
       dispatch(fetchCustomers({ restaurantId }))
+      fetchCustomerSettings();
     }
   }, [dispatch, restaurantId])
+
+  // GET CUSTOMERS WITH DYNAMIC CLASSIFICATION
+  const getClassifiedCustomers = () => {
+    return customers.map(customer => ({
+      ...customer,
+      dynamicCustomerType: classifyCustomer(customer)
+    }));
+  };
+
+  // FILTER CUSTOMERS BASED ON CLASSIFICATION
+  const getFilteredCustomers = () => {
+    const classifiedCustomers = getClassifiedCustomers();
+    
+    if (selectedCustomerType === 'All') {
+      return classifiedCustomers;
+    }
+    
+    return classifiedCustomers.filter(customer => 
+      customer.dynamicCustomerType === selectedCustomerType
+    );
+  };
+
+  // GET COUNT FOR EACH CUSTOMER TYPE
+  const getCustomerTypeCount = (type) => {
+    if (type === 'All') return customers.length;
+    
+    const classifiedCustomers = getClassifiedCustomers();
+    return classifiedCustomers.filter(customer => 
+      customer.dynamicCustomerType === type
+    ).length;
+  };
 
   // Handle customer type filter change
   const handleCustomerTypeChange = (e) => {
@@ -56,17 +173,22 @@ const Customer = () => {
     dispatch(setSelectedCustomerType(newType))
   }
 
-  // Filter customers based on selected type
-  const filteredCustomers = selectedCustomerType === 'All' 
-    ? customers 
-    : customers.filter(customer => customer.customerType === selectedCustomerType)
+  // Get filtered customers for display
+  const filteredCustomers = getFilteredCustomers();
 
+  // REFRESH SETTINGS FUNCTION
+  const refreshCustomerSettings = async () => {
+    await fetchCustomerSettings();
+    toast.success('Customer settings refreshed!');
+  };
+
+  // REST OF YOUR EXISTING FUNCTIONS (unchanged)
   const sendEmail = (email) => {
     window.location.href = `mailto:${email}?subject=Hello&body=Hi there!`
   }
 
   const sendWhatsApp = (phoneNumber) => {
-    const sanitizedPhone = phoneNumber.replace(/[^0-9]/g, '') // Ensure the number is in the correct format
+    const sanitizedPhone = phoneNumber.replace(/[^0-9]/g, '')
     window.open(`https://wa.me/${sanitizedPhone}?text=Hi!`, '_blank')
   }
 
@@ -84,15 +206,15 @@ const Customer = () => {
     setDeleteModalVisible(true)
   }
 
-  // Static method to generate serial numbers
   let serialCounter = 1
   const generateSerialNumber = () => {
     return serialCounter++
   }
+
   const sendbulkEmail = () => {
     setBulkEmailModalVisible(true)
-
   }
+
   const handleSendBulkEmail = () => {
     if (!subject || !title || !body) {
       alert('Please fill in all fields')
@@ -110,12 +232,11 @@ const Customer = () => {
     }
   }
 
-  // Add Customer functions
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
+    const { name, type, value, checked } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value
+      [name]: type === 'checkbox' ? checked : value
     }));
 
     // Clear error when user starts typing
@@ -160,7 +281,8 @@ const Customer = () => {
         address: formData.address,
         phoneNumber: formData.phoneNumber,
         birthday: formData.birthday,
-        anniversary: formData.anniversary
+        anniversary: formData.anniversary,
+        corporate: formData.corporate
       })).unwrap();
 
       // Reset form and close modal
@@ -171,6 +293,7 @@ const Customer = () => {
         address: '',
         birthday: '',
         anniversary: '',
+        corporate: false,
       });
       setFormErrors({});
       setAddCustomerModalVisible(false);
@@ -188,11 +311,12 @@ const Customer = () => {
       address: '',
       birthday: '',
       anniversary: '',
+      corporate: false,
     });
     setFormErrors({});
   };
 
-
+  // UPDATED COLUMNS WITH DYNAMIC CLASSIFICATION
   const columns = [
     {
       field: 'sno',
@@ -200,7 +324,7 @@ const Customer = () => {
       flex: isMobile ? undefined : 0.5,
       minWidth: isMobile ? 80 : undefined,
       headerClassName: 'header-style',
-      valueGetter: (params) => params.row.sno, // Use the `sno` from rows
+      valueGetter: (params) => params.row.sno,
     },
     {
       field: 'name',
@@ -243,14 +367,14 @@ const Customer = () => {
       valueGetter: (params) => params.row.frequency || 0,
     },
     {
-      field: 'customerType',
+      field: 'dynamicCustomerType',
       headerName: 'Customer Type',
       flex: isMobile ? undefined : 1,
       minWidth: isMobile ? 120 : undefined,
       headerClassName: 'header-style',
-      valueGetter: (params) => params.row.customerType || 'FirstTimer',
+      valueGetter: (params) => params.row.dynamicCustomerType || 'FirstTimer',
       renderCell: (params) => {
-        const type = params.row.customerType || 'FirstTimer';
+        const type = params.row.dynamicCustomerType || 'FirstTimer';
         const getTypeColor = (type) => {
           switch (type) {
             case 'FirstTimer': return '#6c757d';
@@ -262,8 +386,8 @@ const Customer = () => {
           }
         };
         return (
-          <span 
-            style={{ 
+          <span
+            style={{
               backgroundColor: getTypeColor(type),
               color: 'white',
               padding: '4px 8px',
@@ -294,7 +418,7 @@ const Customer = () => {
       sortable: false,
       filterable: false,
       renderCell: (params) => {
-        const { email, phoneNumber, _id } = params.row; // ✅ safely destructure
+        const { email, phoneNumber, _id } = params.row;
 
         return (
           <div style={{ display: 'flex', gap: '4px', flexWrap: 'nowrap' }}>
@@ -311,7 +435,6 @@ const Customer = () => {
         );
       },
     }
-
   ]
 
   return (
@@ -328,7 +451,7 @@ const Customer = () => {
         </div>
       </div>
 
-      {/* Customer Type Filter */}
+      {/* Customer Type Filter with Counts */}
       <div className="mb-4">
         <div className="flex items-center gap-3">
           <CIcon icon={cilFilter} className="text-gray-600" />
@@ -336,14 +459,17 @@ const Customer = () => {
           <CFormSelect
             value={selectedCustomerType}
             onChange={handleCustomerTypeChange}
-            style={{ width: '200px' }}
+            style={{ width: '250px' }}
             className="shadow-sm"
           >
-            {customerTypeOptions.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
+            {customerTypeOptions.map((option) => {
+              const count = getCustomerTypeCount(option.value);
+              return (
+                <option key={option.value} value={option.value}>
+                  {option.label} ({count})
+                </option>
+              );
+            })}
           </CFormSelect>
         </div>
       </div>
@@ -361,7 +487,7 @@ const Customer = () => {
               sno: index + 1,
             }))}
             columns={columns}
-            getRowId={(row) => row.id || row.data?.id || Math.random()}
+            getRowId={(row) => row.id || row._id || Math.random()}
             pageSize={10}
             rowsPerPageOptions={[10]}
             slots={{ Toolbar: CustomToolbar }}
@@ -388,6 +514,8 @@ const Customer = () => {
         </div>
       )}
 
+      {/* ALL YOUR EXISTING MODALS REMAIN THE SAME */}
+      
       {/* Delete Confirmation Modal */}
       <CModal
         visible={deleteModalVisible}
@@ -576,7 +704,19 @@ const Customer = () => {
                 </div>
               </div>
             </div>
-
+            <div className="col-md-6">
+              <div className="mb-3">
+                <CFormCheck
+                  id="corporate"
+                  name="corporate"
+                  label="Corporate Customer"
+                  checked={formData.corporate}
+                  onChange={handleInputChange}
+                  inline
+                  style={{ transform: 'scale(1.3)' }}
+                />
+              </div>
+            </div>
           </CForm>
         </CModalBody>
         <CModalFooter>
@@ -590,7 +730,6 @@ const Customer = () => {
         </CModalFooter>
       </CModal>
     </div>
-
   )
 }
 

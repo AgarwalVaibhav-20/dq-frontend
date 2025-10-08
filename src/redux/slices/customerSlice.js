@@ -33,7 +33,7 @@ export const fetchCustomers = createAsyncThunk(
 // Add customer
 export const addCustomer = createAsyncThunk(
   'customers/addCustomer',
-  async ({ token, name, email, address, phoneNumber, birthday, anniversary }, { rejectWithValue, dispatch }) => {
+  async ({ token, name, email, address, phoneNumber, birthday, anniversary, corporate }, { rejectWithValue, dispatch }) => {
     try {
       const restaurantId = localStorage.getItem("restaurantId");
       if (!restaurantId) {
@@ -50,6 +50,7 @@ export const addCustomer = createAsyncThunk(
           phoneNumber,
           restaurantId,
           anniversary,
+          corporate,
           birthday,
         },
         configureHeaders(token));

@@ -26,13 +26,15 @@ import {
   CNavLink,
   CTabContent,
   CTabPane,
+  CInputGroup,        // ADD THIS
+  CInputGroupText,
 } from '@coreui/react'
 import { toast } from 'react-toastify'
 import axios from 'axios'
 import axiosInstance from '../../utils/axiosConfig'
 import { BASE_URL } from '../../utils/constants'
 import CIcon from '@coreui/icons-react'
-import { cilSettings, cilPlus, cilTrash, cilPencil, cilSave, cilMoney } from '@coreui/icons'
+import { cilSettings, cilPlus, cilTrash, cilPencil, cilSave, cilMoney, cilUser } from '@coreui/icons'
 
 const Settings = () => {
   // Tab state
@@ -63,10 +65,24 @@ const Settings = () => {
   const [taxError, setTaxError] = useState('')
   const [editingTax, setEditingTax] = useState(null)
 
+
+  // ADD CUSTOMER SETTINGS STATE (after tax state)
+  const [customerSettings, setCustomerSettings] = useState({
+    lostCustomerDays: 60,      // Lost Customer Period
+    highSpenderAmount: 10000,  // High Spender Amount  
+    regularCustomerDays: 30,   // Regular Customer Period
+  })
+
+  const [customerLoading, setCustomerLoading] = useState(false)
+  const [customerSaving, setCustomerSaving] = useState(false)
+  const [customerError, setCustomerError] = useState('')
+
+
   // Fetch all systems and taxes on component mount
   useEffect(() => {
     fetchSystems()
     fetchTaxes()
+    fetchCustomerSettings()
   }, [])
 
   // System functions
@@ -130,7 +146,7 @@ const Settings = () => {
         willOccupy: systemFormData.willOccupy,
         restaurantId
       };
- 
+
       if (systemFormData.willOccupy && systemFormData.color) {
         dataToSend.color = systemFormData.color;
       }
@@ -164,7 +180,7 @@ const Settings = () => {
         willOccupy: false,
         color: '#ff0000', // Reset to default color
       })
-      
+
       // Refresh the systems list
       fetchSystems()
     } catch (error) {
@@ -366,6 +382,85 @@ const Settings = () => {
     }
   }
 
+  // CUSTOMER FUNCTIONS (add after tax functions)
+  const fetchCustomerSettings = async () => {
+    try {
+      setCustomerLoading(true)
+      const restaurantId = localStorage.getItem('restaurantId')
+      const response = await axiosInstance.get(`/api/customer-settings?restaurantId=${restaurantId}`)
+
+      if (response.data.success) {
+        setCustomerSettings(prev => ({
+          ...prev,
+          ...response.data.data
+        }))
+      }
+    } catch (error) {
+      console.error('Error fetching customer settings:', error)
+      if (error.response?.status !== 404) {
+        setCustomerError('Failed to fetch customer settings')
+        toast.error('Failed to fetch customer settings')
+      }
+    } finally {
+      setCustomerLoading(false)
+    }
+  }
+
+  const handleCustomerInputChange = (e) => {
+    const { name, value } = e.target
+    setCustomerSettings(prev => ({
+      ...prev,
+      [name]: parseFloat(value) || value
+    }))
+    setCustomerError('')
+  }
+
+  const handleCustomerSettingsSubmit = async (e) => {
+    e.preventDefault()
+
+    // Simple validation
+    if (customerSettings.lostCustomerDays < 1 || customerSettings.lostCustomerDays > 365) {
+      setCustomerError('Lost customer days must be between 1 and 365')
+      return
+    }
+
+    if (customerSettings.regularCustomerDays < 1 || customerSettings.regularCustomerDays > 365) {
+      setCustomerError('Regular customer days must be between 1 and 365')
+      return
+    }
+
+    if (customerSettings.highSpenderAmount < 100) {
+      setCustomerError('High spender amount must be at least ₹100')
+      return
+    }
+
+    try {
+      setCustomerSaving(true)
+      const restaurantId = localStorage.getItem('restaurantId')
+
+      const response = await axiosInstance.post(`/api/customer-settings`, {
+        ...customerSettings,
+        restaurantId
+      })
+
+      if (response.data.success) {
+        toast.success('Customer settings saved successfully!')
+      } else {
+        setCustomerError(response.data.message || 'Failed to save customer settings')
+        toast.error('Failed to save customer settings')
+      }
+
+      setCustomerError('')
+    } catch (error) {
+      console.error('Error saving customer settings:', error)
+      setCustomerError('Failed to save customer settings')
+      toast.error('Failed to save customer settings')
+    } finally {
+      setCustomerSaving(false)
+    }
+  }
+
+
   return (
     <CContainer>
       {/* Tab Navigation */}
@@ -398,6 +493,16 @@ const Settings = () => {
                   >
                     <CIcon icon={cilMoney} className="me-2" />
                     Tax Settings
+                  </CNavLink>
+                </CNavItem>
+                <CNavItem>
+                  <CNavLink
+                    active={activeTab === 'customer'}
+                    onClick={() => setActiveTab('customer')}
+                    style={{ cursor: 'pointer' }}
+                  >
+                    <CIcon icon={cilUser} className="me-2" />
+                    Customer Settings
                   </CNavLink>
                 </CNavItem>
               </CNav>
@@ -880,6 +985,133 @@ const Settings = () => {
             </CCol>
           </CRow>
         </CTabPane>
+
+        {/*Customer tab*/}
+        <CTabPane role="tabpanel" aria-labelledby="customer-tab" visible={activeTab === 'customer'}>
+          <CRow>
+            <CCol>
+              <CCard>
+                <CCardHeader>
+                  <CCardTitle>
+                    <CIcon icon={cilUser} className="me-2" />
+                    Customer Settings
+                  </CCardTitle>
+                </CCardHeader>
+                <CCardBody>
+                  {customerError && (
+                    <CAlert color="danger" className="mb-3">
+                      {customerError}
+                    </CAlert>
+                  )}
+
+                  {customerLoading ? (
+                    <div className="text-center py-4">
+                      <CSpinner />
+                      <p className="mt-2">Loading customer settings...</p>
+                    </div>
+                  ) : (
+                    <CForm onSubmit={handleCustomerSettingsSubmit}>
+                      <CRow className="mb-4">
+                        {/* Lost Customer Period */}
+                        <CCol md={4}>
+                          <div className="mb-3">
+                            <CFormLabel htmlFor="lostCustomerDays">
+                              Lost Customer Period
+                            </CFormLabel>
+                            <CInputGroup>
+                              <CFormInput
+                                type="number"
+                                id="lostCustomerDays"
+                                name="lostCustomerDays"
+                                value={customerSettings.lostCustomerDays}
+                                onChange={handleCustomerInputChange}
+                                placeholder="60"
+                                min="1"
+                                max="365"
+                                required
+                              />
+                              <CInputGroupText>days</CInputGroupText>
+                            </CInputGroup>
+                          </div>
+                        </CCol>
+
+                        {/* High Spender Amount */}
+                        <CCol md={4}>
+                          <div className="mb-3">
+                            <CFormLabel htmlFor="highSpenderAmount">
+                              High Spender Amount
+                            </CFormLabel>
+                            <CInputGroup>
+                              <CInputGroupText>₹</CInputGroupText>
+                              <CFormInput
+                                type="number"
+                                id="highSpenderAmount"
+                                name="highSpenderAmount"
+                                value={customerSettings.highSpenderAmount}
+                                onChange={handleCustomerInputChange}
+                                placeholder="10000"
+                                min="100"
+                                step="100"
+                                required
+                              />
+                            </CInputGroup>
+                          </div>
+                        </CCol>
+
+                        {/* Regular Customer Period */}
+                        <CCol md={4}>
+                          <div className="mb-3">
+                            <CFormLabel htmlFor="regularCustomerDays">
+                              Regular Customer Period
+                            </CFormLabel>
+                            <CInputGroup>
+                              <CFormInput
+                                type="number"
+                                id="regularCustomerDays"
+                                name="regularCustomerDays"
+                                value={customerSettings.regularCustomerDays}
+                                onChange={handleCustomerInputChange}
+                                placeholder="30"
+                                min="1"
+                                max="365"
+                                required
+                              />
+                              <CInputGroupText>days</CInputGroupText>
+                            </CInputGroup>
+                          </div>
+                        </CCol>
+                      </CRow>
+
+                      {/* Save Button */}
+                      <CRow>
+                        <CCol>
+                          <CButton
+                            type="submit"
+                            color="primary"
+                            disabled={customerSaving}
+                          >
+                            {customerSaving ? (
+                              <>
+                                <CSpinner size="sm" className="me-2" />
+                                Saving...
+                              </>
+                            ) : (
+                              <>
+                                <CIcon icon={cilSave} className="me-2" />
+                                Save Settings
+                              </>
+                            )}
+                          </CButton>
+                        </CCol>
+                      </CRow>
+                    </CForm>
+                  )}
+                </CCardBody>
+              </CCard>
+            </CCol>
+          </CRow>
+        </CTabPane>
+
       </CTabContent>
     </CContainer>
   )

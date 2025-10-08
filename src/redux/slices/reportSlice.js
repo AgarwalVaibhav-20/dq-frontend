@@ -282,8 +282,9 @@ export const fetchDashboardChartData = createAsyncThunk(
 
 export const fetchWeeklyChartData = createAsyncThunk(
   'report/fetchWeeklyChartData',
-  async ({ year, restaurantId }, { rejectWithValue }) => {
+  async ({ year, restaurantId}, { rejectWithValue }) => {
     try {
+       const token = localStorage.getItem('authToken')
       const { data } = await axiosInstance.get(
         `/dashboard/weekly-chart-data`,
         {
@@ -561,7 +562,7 @@ const reportSlice = createSlice({
       })
       .addCase(fetchWeeklyChartData.fulfilled, (state, action) => {
         state.loading = false;
-        state.weeklyChartData = action.payload;
+        state.weeklyChartData = action.payload.data;
       })
       .addCase(fetchWeeklyChartData.rejected, (state, action) => {
         state.loading = false;

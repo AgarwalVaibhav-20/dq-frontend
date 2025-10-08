@@ -579,23 +579,27 @@ const Reservation = () => {
 
           <div className="row">
             <div className="col-md-6">
-              <FormField
+              <CFormInput
                 label="Total Payment"
                 name="payment"
                 type="number"
                 min="0"
                 step="0.01"
+                value={formData.payment}
+                onChange={handleChange}
                 placeholder="Enter total amount"
                 required
               />
             </div>
             <div className="col-md-6">
-              <FormField
+              <CFormInput
                 label="Advance Payment"
                 name="advance"
                 type="number"
                 min="0"
                 step="0.01"
+                value={formData.advance}
+                onChange={handleChange}
                 placeholder="Enter advance amount"
               />
             </div>
@@ -603,16 +607,20 @@ const Reservation = () => {
 
           <div className="row">
             <div className="col-md-6">
-              <FormField
+              <CFormInput
                 label="Table Number"
                 name="tableNumber"
                 placeholder="Enter table number"
+                value={formData.tableNumber}
+                onChange={handleChange}
               />
             </div>
             <div className="col-md-6">
-              <FormField
+              <CFormInput
                 label="Notes"
                 name="notes"
+                value={formData.notes}
+                onChange={handleChange}
                 placeholder="Additional notes"
               />
             </div>
