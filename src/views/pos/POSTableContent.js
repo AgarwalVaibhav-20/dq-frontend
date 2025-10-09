@@ -4,7 +4,7 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchMenuItems } from '../../redux/slices/menuSlice'
-import { fetchCustomers, addCustomer } from '../../redux/slices/customerSlice'
+import { fetchCustomers, updateCustomerFrequency, addCustomer } from '../../redux/slices/customerSlice'
 import { createTransaction } from '../../redux/slices/transactionSlice'
 import { fetchSubCategories } from '../../redux/slices/subCategorySlice'
 import { fetchCategories } from '../../redux/slices/categorySlice'
@@ -25,6 +25,7 @@ import DeleteModal from '../../components/DeleteModal'
 import RoundOffAmountModal from '../../components/RoundOffAmountModal'
 import SubCategorySelectionModal from '../../components/SubCategorySelectionModal'
 import SystemSelectionModal from '../../components/SystemSelectionModal'
+import { jwtDecode } from "jwt-decode";
 
 const POSTableContent = () => {
   const { tableNumber: tableId } = useParams();
@@ -43,6 +44,7 @@ const POSTableContent = () => {
   const restaurantId = authState.restaurantId || localStorage.getItem('restaurantId') || '68d23850f227fcf59cfacf80' // Correct restaurantId from database
   const theme = useSelector((state) => state.theme.theme)
   const token = localStorage.getItem('authToken')
+
 
   // Debug: Log restaurantId to console
   console.log('POSTableContent - restaurantId:', restaurantId)
@@ -319,7 +321,7 @@ const POSTableContent = () => {
   }, [cart, startTime, tableNumber, subCategories]);
 
   const handleCustomerSelect = (customer) => {
-    setSelectedCustomer(customer);
+    setSelectedCustomer( customer);
     setSelectedCustomerName(customer.name)
     setShowCustomerModal(false)
   }
@@ -407,17 +409,17 @@ const POSTableContent = () => {
       }
     }
 
-    // --- This is the original logic for non-merged tables ---
-    setCart([])
-    setRoundOff(0)
-    setStartTime(null)
-    setElapsedTime(0)
+      // --- This is the original logic for non-merged tables ---
+      setCart([])
+      setRoundOff(0)
+      setStartTime(null)
+      setElapsedTime(0)
     setSelectedCustomer(null);
     setSelectedCustomerName('');
-    localStorage.removeItem(`cart_${tableId}`)
-    localStorage.removeItem(`start_time_${tableId}`)
-    // toast.info('Order has been cancelled.')
-  }
+      localStorage.removeItem(`cart_${tableId}`)
+      localStorage.removeItem(`start_time_${tableId}`)
+      // toast.info('Order has been cancelled.')
+    }
 
   const handleTaxSubmit = (selectedItemIds, taxValue, taxType, taxName) => {
     setCart(prevCart =>
@@ -655,6 +657,16 @@ const POSTableContent = () => {
     const userId = localStorage.getItem('userId');
     const restaurantId = localStorage.getItem('restaurantId');
 
+    const customerInfo = JSON.parse(localStorage.getItem('customer'));
+
+      const { _id, frequency, totalSpent } = customerInfo;
+      console.log("postTable",_id, frequency, totalSpent);
+
+
+    let freq = frequency + 1;
+    let updatedTotalSpent = totalSpent + calculateTotal();
+
+
     // ... (your existing checks for token, restaurantId, cart) ...
 
     const payload = {
@@ -676,13 +688,13 @@ const POSTableContent = () => {
         taxAmount: item.taxAmount || 0
       })),
       tax: calculateTotalTaxAmount(),
-      discount: calculateDiscountAmount(),
-      // discountAmount: calculateDiscountAmount(),
+      discount:  calculateDiscountAmount(),
+      // discountAmount:  calculateDiscountAmount(),
       // discount: membershipDiscount > 0 ? membershipDiscount : discount,
       discountAmount: calculateDiscountAmount(),
       customerId: selectedCustomer ? selectedCustomer._id : null,
-      roundOff: roundOff,
-      systemCharge: selectedSystem ? Number(selectedSystem.chargeOfSystem) : 0,
+      roundOff:  roundOff,
+      systemCharge:  selectedSystem ? Number(selectedSystem.chargeOfSystem) : 0,
       sub_total: calculateSubtotal(),
       total: calculateTotal(),
       type: paymentType,
@@ -699,6 +711,14 @@ const POSTableContent = () => {
     try {
       const result = await dispatch(createTransaction(payload)).unwrap();
       console.log('Transaction created:', result);
+
+      const response = await dispatch(updateCustomerFrequency({ id: _id, frequency: freq, totalSpent: updatedTotalSpent }))
+      //  const {_id, frequency,totalSpent} = response.payload;
+      //  const updatedTotalSpent=totalSpent+calculateTotal();
+      //  const feq=frequency+1;
+
+      //  console.log(response.payload,"freq:",feq,"spent:",updatedTotalSpent,"total::",calculateTotal())
+
 
       // --- NEW UNMERGE LOGIC ON SUCCESSFUL PAYMENT ---
       if (tableId.startsWith('merged_')) {
@@ -1298,6 +1318,8 @@ const POSTableContent = () => {
         splitPercentages={splitPercentages}
         setSplitPercentages={setSplitPercentages}
         handlePaymentSubmit={handlePaymentSubmit}
+
+
       />
 
       <DeleteModal

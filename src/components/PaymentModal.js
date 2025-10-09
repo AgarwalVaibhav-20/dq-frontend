@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { fetchCustomers, addCustomer ,} from '../redux/slices/customerSlice'
 import {
   CModal,
   CModalHeader,
@@ -21,7 +22,7 @@ const PaymentModal = ({
   const [numPeople, setNumPeople] = useState(2);
 
   // Handle payment type selection
-  const handleSelectPayment = (value) => {
+  const handleSelectPayment = async(value) => {
     setPaymentType(value);
     if (value === "Split") {
       setNumPeople(2); // default number of people

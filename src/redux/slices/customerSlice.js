@@ -315,6 +315,12 @@ const customerSlice = createSlice({
         state.error = action.payload;
         toast.error('Failed to fetch customers by type.');
       })
+      // ADD THESE LINES AFTER LINE ~180 (before updateCustomerFrequency.fulfilled)
+      .addCase(updateCustomerFrequency.pending, (state) => {
+        state.loading = true;  // Show spinner during loyalty update
+        state.error = null;    // Clear previous errors
+      })
+
       .addCase(updateCustomerFrequency.fulfilled, (state, action) => {
         const updatedCustomer = action.payload.customer;
         const index = state.customers.findIndex(customer => customer._id === updatedCustomer._id);
