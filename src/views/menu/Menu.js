@@ -91,12 +91,12 @@ const Menu = () => {
     if (selectedMenu) {
       // Transform database sizes (with 'label') to frontend format (with 'name')
       const transformedSizes = Array.isArray(selectedMenu.sizes) && selectedMenu.sizes.length > 0
-      ? selectedMenu.sizes.map(size => ({
+        ? selectedMenu.sizes.map(size => ({
           name: String(size.label || size.name || ""),
           price: Number(size.price) || "",
           enabled: size.enabled !== undefined ? size.enabled : true
         }))
-      : [{ name: "", price: "", enabled: true }];
+        : [{ name: "", price: "", enabled: true }];
 
       // ✅ FIXED: Properly handle stockItems with units
       const transformedStockItems = selectedMenu.stockItems?.length
@@ -110,7 +110,7 @@ const Menu = () => {
       setFormData({
         menuId: selectedMenu.menuId || "",
         itemName: selectedMenu.itemName || "",
-        categoryId: selectedMenu.categoryId?._id || "", 
+        categoryId: selectedMenu.categoryId?._id || "",
         sub_category: selectedMenu.sub_category || "",
         itemImage: null,
         price: selectedMenu.price || "",
@@ -186,12 +186,20 @@ const Menu = () => {
   const handleAddMenuItem = async () => {
     setIsSubmitting(true);
     try {
-      // ✅ Validate sizes before sending
       const validSizes = formData.sizes.filter(size =>
         size.name?.trim() && size.price && Number(size.price) > 0
       );
 
-      // ✅ FIXED: Validate and filter stockItems properly
+      // 🚨 Show erroring if no valid sizes
+      if (validSizes.length === 0) {
+        toast.error("Please enter at least one size and price before saving.", {
+          position: "top-center",
+          autoClose: 3000,
+        });
+        setIsSubmitting(false);
+        return;
+      }
+
       const validStockItems = formData.stockItems.filter(item =>
         item.stockId?.trim() &&
         item.quantity &&
@@ -201,15 +209,10 @@ const Menu = () => {
 
       const dataToSend = {
         ...formData,
-        restaurantId, // Make sure restaurantId is included
+        restaurantId,
         sizes: validSizes,
         stockItems: validStockItems
       };
-
-      console.log("📦 Sending data:", {
-        sizes: validSizes,
-        stockItems: validStockItems
-      });
 
       await dispatch(addMenuItem({ ...dataToSend, token })).unwrap();
       await dispatch(fetchMenuItems({ token }));
@@ -222,6 +225,7 @@ const Menu = () => {
       setIsSubmitting(false);
     }
   };
+
 
   const handleEditMenuItem = async () => {
     setIsSubmitting(true);
@@ -513,6 +517,7 @@ const Menu = () => {
               {formData.sizes.map((size, index) => (
                 <div key={index} className="d-flex flex-column flex-md-row align-items-center gap-2 mb-2">
                   {/* Size Name */}
+                  {/* Size Name */}
                   <input
                     type="text"
                     className="form-control flex-fill"
@@ -522,6 +527,15 @@ const Menu = () => {
                       const updatedSizes = [...formData.sizes];
                       updatedSizes[index].name = e.target.value;
                       setFormData((prev) => ({ ...prev, sizes: updatedSizes }));
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        toast.error("Please Write the size!", {
+                          position: "top-center",
+                          autoClose: 2000,
+                        });
+                      }
                     }}
                   />
 
@@ -536,7 +550,17 @@ const Menu = () => {
                       updatedSizes[index].price = e.target.value;
                       setFormData((prev) => ({ ...prev, sizes: updatedSizes }));
                     }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        toast.error("Press Tab or click outside to move — Enter key is disabled here.", {
+                          position: "top-center",
+                          autoClose: 2000,
+                        });
+                      }
+                    }}
                   />
+
 
                   {/* Remove Button */}
                   <button

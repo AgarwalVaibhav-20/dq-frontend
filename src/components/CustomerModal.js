@@ -148,6 +148,7 @@ const CustomerModal = ({
   // Handle selecting an existing customer
   const handleSelectCustomer = (customer) => {
     setSelectedCustomer(customer);
+    localStorage.setItem("customer", JSON.stringify(customer));
     handleCustomerSelect(customer);
   };
 
