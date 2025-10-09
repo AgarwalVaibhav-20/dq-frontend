@@ -2,7 +2,17 @@ import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { DataGrid } from '@mui/x-data-grid'
 import { fetchAllTransactions } from '../../redux/slices/reportSlice'
-import { CSpinner, CButton, CFormInput, CRow, CCol } from '@coreui/react'
+import { 
+  CSpinner, 
+  CButton, 
+  CFormInput, 
+  CRow, 
+  CCol, 
+  CCard, 
+  CCardBody, 
+  CCardHeader, 
+  CContainer
+} from '@coreui/react'
 import CustomToolbar from '../../utils/CustomToolbar'
 
 const formatDate = (date) => date.toISOString().split('T')[0]
@@ -17,12 +27,26 @@ const TableReport = () => {
 
   const [startDate, setStartDate] = useState(formatDate(oneYearAgo))
   const [endDate, setEndDate] = useState(formatDate(today))
+  const [filterTableNumber, setFilterTableNumber] = useState('')
+  const [isMobileView, setIsMobileView] = useState(false)
 
   useEffect(() => {
     if (restaurantId) {
       dispatch(fetchAllTransactions({ restaurantId }))
     }
   }, [dispatch, restaurantId])
+
+  // Check for mobile view
+  useEffect(() => {
+    const checkMobileView = () => {
+      setIsMobileView(window.innerWidth < 768)
+    }
+    
+    checkMobileView()
+    window.addEventListener('resize', checkMobileView)
+    
+    return () => window.removeEventListener('resize', checkMobileView)
+  }, [])
 
   const handleGenerateReport = () => {
     if (!startDate || !endDate) {
@@ -67,7 +91,16 @@ const TableReport = () => {
     return acc
   }, {})
 
-  const rows = Object.values(tableData).map((item, index) => ({
+  // Apply additional filters
+  let filteredTableData = Object.values(tableData)
+  
+  if (filterTableNumber) {
+    filteredTableData = filteredTableData.filter(item => 
+      item.tableNumber.toString().toLowerCase().includes(filterTableNumber.toLowerCase())
+    )
+  }
+
+  const rows = filteredTableData.map((item, index) => ({
     id: index + 1,
     tableNumber: item.tableNumber,
     transaction_count: item.transaction_count,
@@ -91,71 +124,163 @@ const TableReport = () => {
     },
   ]
 
+  // Mobile Card Component
+  const MobileCard = ({ item, index }) => (
+    <CCard className="mb-3 shadow-sm">
+      <CCardHeader className="bg-primary text-white">
+        <h6 className="mb-0">Table #{item.tableNumber}</h6>
+      </CCardHeader>
+      <CCardBody>
+        <CRow>
+          <CCol xs={6}>
+            <strong>Transactions:</strong>
+            <p className="mb-0">{item.transaction_count}</p>
+          </CCol>
+          <CCol xs={6}>
+            <strong>Total Amount:</strong>
+            <p className="mb-0 text-success">₹{item.total_amount}</p>
+          </CCol>
+        </CRow>
+      </CCardBody>
+    </CCard>
+  )
+
   return (
-    <div style={{ padding: '20px' }}>
+    <CContainer fluid className="p-3">
       <h2 className="mb-4">Table Report</h2>
 
-      {/* Date range input row */}
-      <CRow
-        className="align-items-end mb-3"
-        style={{ gap: '1rem', flexWrap: 'nowrap', overflowX: 'auto' }}
-      >
-        <CCol xs="auto">
-          <label htmlFor="startDate" className="form-label fw-bold">
-            Start Date
-          </label>
-          <CFormInput
-            id="startDate"
-            type="date"
-            value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
-            max={endDate}
-          />
-        </CCol>
-        <CCol xs="auto">
-          <label htmlFor="endDate" className="form-label fw-bold">
-            End Date
-          </label>
-          <CFormInput
-            id="endDate"
-            type="date"
-            value={endDate}
-            onChange={(e) => setEndDate(e.target.value)}
-            min={startDate}
-            max={formatDate(today)}
-          />
-        </CCol>
-        <CCol xs="auto" className="pt-2">
-          <CButton color="primary" onClick={handleGenerateReport}>
-            Generate Report
-          </CButton>
-        </CCol>
-      </CRow>
+      {/* Date range and filters */}
+      <CCard className="mb-4">
+        <CCardHeader>
+          <h5 className="mb-0">Filters</h5>
+        </CCardHeader>
+        <CCardBody>
+          {/* Date Range */}
+          <CRow className="mb-3">
+            <CCol xs={12} md={3}>
+              <label htmlFor="startDate" className="form-label fw-bold">
+                Start Date
+              </label>
+              <CFormInput
+                id="startDate"
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                max={endDate}
+              />
+            </CCol>
+            <CCol xs={12} md={3}>
+              <label htmlFor="endDate" className="form-label fw-bold">
+                End Date
+              </label>
+              <CFormInput
+                id="endDate"
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                min={startDate}
+                max={formatDate(today)}
+              />
+            </CCol>
+            <CCol xs={12} md={3} className="d-flex align-items-end">
+              <CButton color="primary" onClick={handleGenerateReport} className="w-100">
+                Generate Report
+              </CButton>
+            </CCol>
+          </CRow>
 
-      {/* Data grid */}
+          {/* Additional Filters */}
+          <CRow>
+            <CCol xs={12} md={4}>
+              <label htmlFor="filterTableNumber" className="form-label fw-bold">
+                Table Number
+              </label>
+              <CFormInput
+                id="filterTableNumber"
+                type="text"
+                placeholder="Search table number..."
+                value={filterTableNumber}
+                onChange={(e) => setFilterTableNumber(e.target.value)}
+              />
+            </CCol>
+          </CRow>
+        </CCardBody>
+      </CCard>
+
+      {/* Data Display */}
       {loading ? (
         <div className="d-flex justify-content-center">
           <CSpinner color="primary" variant="grow" />
         </div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <DataGrid
-            style={{ height: 'auto', width: '100%', backgroundColor: 'white' }}
-            rows={rows}
-            columns={columns}
-            pageSize={10}
-            rowsPerPageOptions={[10]}
-            slots={{ toolbar: CustomToolbar }}
-            sx={{
-              '& .header-style': {
-                fontWeight: 'bold',
-                fontSize: '1.1rem',
-              },
-            }}
-          />
-        </div>
+        <>
+          {/* Results Summary */}
+          <CCard className="mb-3">
+            <CCardBody>
+              <CRow>
+                <CCol xs={12} md={4}>
+                  <div className="text-center">
+                    <h4 className="text-primary mb-1">{rows.length}</h4>
+                    <p className="mb-0 text-muted">Total Tables</p>
+                  </div>
+                </CCol>
+                <CCol xs={12} md={4}>
+                  <div className="text-center">
+                    <h4 className="text-success mb-1">
+                      {rows.reduce((sum, row) => sum + parseInt(row.transaction_count), 0)}
+                    </h4>
+                    <p className="mb-0 text-muted">Total Transactions</p>
+                  </div>
+                </CCol>
+                <CCol xs={12} md={4}>
+                  <div className="text-center">
+                    <h4 className="text-info mb-1">
+                      ₹{rows.reduce((sum, row) => sum + parseFloat(row.total_amount), 0).toFixed(2)}
+                    </h4>
+                    <p className="mb-0 text-muted">Total Amount</p>
+                  </div>
+                </CCol>
+              </CRow>
+            </CCardBody>
+          </CCard>
+
+          {/* Mobile View - Cards */}
+          {isMobileView ? (
+            <div>
+              {rows.length === 0 ? (
+                <CCard>
+                  <CCardBody className="text-center">
+                    <p className="mb-0 text-muted">No data found for the selected criteria.</p>
+                  </CCardBody>
+                </CCard>
+              ) : (
+                rows.map((item, index) => (
+                  <MobileCard key={item.id} item={item} index={index} />
+                ))
+              )}
+            </div>
+          ) : (
+            /* Desktop View - DataGrid */
+            <div style={{ overflowX: 'auto', width: '100%', minWidth: '600px' }}>
+              <DataGrid
+                style={{ height: 'auto', width: '100%', backgroundColor: 'white', minWidth: '600px' }}
+                rows={rows}
+                columns={columns}
+                pageSize={10}
+                rowsPerPageOptions={[10]}
+                slots={{ toolbar: CustomToolbar }}
+                sx={{
+                  '& .header-style': {
+                    fontWeight: 'bold',
+                    fontSize: '1.1rem',
+                  },
+                }}
+              />
+            </div>
+          )}
+        </>
       )}
-    </div>
+    </CContainer>
   )
 }
 

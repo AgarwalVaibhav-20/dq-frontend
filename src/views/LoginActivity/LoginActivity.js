@@ -218,24 +218,29 @@ const LoginActivity = () => {
   };
 
   return (
-    <CContainer fluid>
-      <CRow className="mb-4">
+    <CContainer fluid className="px-2 px-md-3">
+      {/* Header Section - Mobile Responsive */}
+      <CRow className="mb-3 mb-md-4">
         <CCol>
-          <h2>Login Activity</h2>
-          <p className="text-muted">Track your login and logout activities</p>
+          <h2 className="h4 h3-md mb-2">Login Activity</h2>
+          <p className="text-muted small">Track your login and logout activities</p>
         </CCol>
       </CRow>
 
-      {/* Current Session Status */}
+      {/* Current Session Status - Mobile Responsive */}
       {currentSession && (
-        <CRow className="mb-4">
+        <CRow className="mb-3 mb-md-4">
           <CCol>
-            <CAlert color="info" className="d-flex align-items-center">
-              <div className="d-flex align-items-center">
-                <CIcon icon={cilCheckCircle} className="me-2" />
-                <div>
-                  <strong>Active Session:</strong> {currentSession.name} - 
-                  Logged in at {formatDate(currentSession.logintime)}
+            <CAlert color="info" className="d-flex align-items-start">
+              <div className="d-flex align-items-start w-100">
+                <CIcon icon={cilCheckCircle} className="me-2 mt-1 flex-shrink-0" />
+                <div className="flex-grow-1">
+                  <strong>Active Session:</strong><br className="d-md-none" />
+                  <span className="d-md-inline d-block">{currentSession.name}</span>
+                  <br className="d-md-none" />
+                  <small className="d-block d-md-inline ms-md-2">
+                    Logged in at {formatDate(currentSession.logintime)}
+                  </small>
                 </div>
               </div>
             </CAlert>
@@ -243,18 +248,18 @@ const LoginActivity = () => {
         </CRow>
       )}
 
-      {/* Login Form */}
+      {/* Login Form - Mobile Responsive */}
       {!currentSession && (
-        <CRow className="mb-4">
-          <CCol md={6}>
-            <CCard>
-              <CCardHeader>
-                <CCardTitle>Record Login Activity</CCardTitle>
+        <CRow className="mb-3 mb-md-4">
+          <CCol xs={12} sm={12} md={8} lg={6} xl={5}>
+            <CCard className="shadow-sm">
+              <CCardHeader className="py-3">
+                <CCardTitle className="h5 mb-0">Record Login Activity</CCardTitle>
               </CCardHeader>
-              <CCardBody>
+              <CCardBody className="p-3 p-md-4">
                 <form onSubmit={handleSaveActivity}>
                   <div className="mb-3">
-                    <label className="form-label">Your Name</label>
+                    <label className="form-label fw-semibold">Your Name</label>
                     <div className="input-group">
                       <span className="input-group-text">
                         <CIcon icon={cilUser} />
@@ -270,7 +275,7 @@ const LoginActivity = () => {
                     </div>
                   </div>
                   <div className="mb-3">
-                    <label className="form-label">Enter PIN</label>
+                    <label className="form-label fw-semibold">Enter PIN</label>
                     <div className="input-group">
                       <span className="input-group-text">
                         🔒
@@ -289,6 +294,8 @@ const LoginActivity = () => {
                     type="submit" 
                     color="primary" 
                     disabled={saving}
+                    className="w-100 w-md-auto"
+                    size="lg"
                   >
                     {saving ? (
                       <>
@@ -309,22 +316,25 @@ const LoginActivity = () => {
         </CRow>
       )}
 
-      {/* Activities List */}
+      {/* Activities List - Mobile Responsive */}
       <CRow>
         <CCol>
-          <CCard>
-            <CCardHeader className="d-flex justify-content-between align-items-center">
-              <CCardTitle>Login Activities History</CCardTitle>
-              <CButton 
-                color="primary" 
-                size="sm" 
-                onClick={loadActivities}
-                disabled={loading}
-              >
-                {loading ? <CSpinner size="sm" /> : 'Refresh'}
-              </CButton>
+          <CCard className="shadow-sm">
+            <CCardHeader className="py-3">
+              <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+                <CCardTitle className="h5 mb-2 mb-md-0">Login Activities History</CCardTitle>
+                <CButton 
+                  color="primary" 
+                  size="sm" 
+                  onClick={loadActivities}
+                  disabled={loading}
+                  className="w-100 w-md-auto"
+                >
+                  {loading ? <CSpinner size="sm" /> : 'Refresh'}
+                </CButton>
+              </div>
             </CCardHeader>
-            <CCardBody>
+            <CCardBody className="p-0">
               {loading ? (
                 <div className="text-center py-4">
                   <CSpinner />
@@ -336,51 +346,59 @@ const LoginActivity = () => {
                   <p className="mt-2 text-muted">No login activities found</p>
                 </div>
               ) : (
-                <CTable responsive>
-                  <CTableHead>
-                    <CTableRow>
-                      <CTableHeaderCell>Name</CTableHeaderCell>
-                      <CTableHeaderCell>Login Time</CTableHeaderCell>
-                      <CTableHeaderCell>Logout Time</CTableHeaderCell>
-                      <CTableHeaderCell>Duration</CTableHeaderCell>
-                      <CTableHeaderCell>Status</CTableHeaderCell>
-                    </CTableRow>
-                  </CTableHead>
-                  <CTableBody>
-                    {activities.map((activity, index) => (
-                      <CTableRow key={activity._id || index}>
-                        <CTableDataCell>
-                          <div className="d-flex align-items-center">
-                            <CIcon icon={cilUser} className="me-2" />
-                            {activity.name}
-                          </div>
-                        </CTableDataCell>
-                        <CTableDataCell>
-                          <CIcon icon={cilClock} className="me-2" />
-                          {formatDate(activity.logintime)}
-                        </CTableDataCell>
-                        <CTableDataCell>
-                          {activity.logouttime ? (
-                            <>
-                              <CIcon icon={cilXCircle} className="me-2" />
-                              {formatDate(activity.logouttime)}
-                            </>
-                          ) : (
-                            <span className="text-muted">-</span>
-                          )}
-                        </CTableDataCell>
-                        <CTableDataCell>
-                          {calculateDuration(activity.logintime, activity.logouttime)}
-                        </CTableDataCell>
-                        <CTableDataCell>
-                          <CBadge color={getStatusBadgeColor(activity.status)}>
-                            {activity.status}
-                          </CBadge>
-                        </CTableDataCell>
+                <div className="table-responsive">
+                  <CTable responsive hover className="mb-0">
+                    <CTableHead>
+                      <CTableRow>
+                        <CTableHeaderCell className="border-0">Name</CTableHeaderCell>
+                        <CTableHeaderCell className="border-0 d-none d-md-table-cell">Login Time</CTableHeaderCell>
+                        <CTableHeaderCell className="border-0 d-none d-lg-table-cell">Logout Time</CTableHeaderCell>
+                        <CTableHeaderCell className="border-0 d-none d-sm-table-cell">Duration</CTableHeaderCell>
+                        <CTableHeaderCell className="border-0">Status</CTableHeaderCell>
                       </CTableRow>
-                    ))}
-                  </CTableBody>
-                </CTable>
+                    </CTableHead>
+                    <CTableBody>
+                      {activities.map((activity, index) => (
+                        <CTableRow key={activity._id || index}>
+                          <CTableDataCell className="border-0">
+                            <div className="d-flex align-items-center">
+                              <CIcon icon={cilUser} className="me-2" />
+                              <div>
+                                <div className="fw-semibold">{activity.name}</div>
+                                <div className="small text-muted d-md-none">
+                                  <CIcon icon={cilClock} className="me-1" />
+                                  {formatDate(activity.logintime)}
+                                </div>
+                              </div>
+                            </div>
+                          </CTableDataCell>
+                          <CTableDataCell className="border-0 d-none d-md-table-cell">
+                            <CIcon icon={cilClock} className="me-2" />
+                            {formatDate(activity.logintime)}
+                          </CTableDataCell>
+                          <CTableDataCell className="border-0 d-none d-lg-table-cell">
+                            {activity.logouttime ? (
+                              <>
+                                <CIcon icon={cilXCircle} className="me-2" />
+                                {formatDate(activity.logouttime)}
+                              </>
+                            ) : (
+                              <span className="text-muted">-</span>
+                            )}
+                          </CTableDataCell>
+                          <CTableDataCell className="border-0 d-none d-sm-table-cell">
+                            {calculateDuration(activity.logintime, activity.logouttime)}
+                          </CTableDataCell>
+                          <CTableDataCell className="border-0">
+                            <CBadge color={getStatusBadgeColor(activity.status)}>
+                              {activity.status}
+                            </CBadge>
+                          </CTableDataCell>
+                        </CTableRow>
+                      ))}
+                    </CTableBody>
+                  </CTable>
+                </div>
               )}
             </CCardBody>
           </CCard>

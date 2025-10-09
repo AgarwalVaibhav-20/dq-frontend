@@ -272,106 +272,106 @@ const Transactions = () => {
     {
       field: 'id',
       headerName: 'ID',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 100 : undefined,
+      width: 80,
       headerClassName: 'header-style',
+      hide: isMobile, // Hide ID column on mobile
     },
     {
       field: 'userId',
       headerName: 'User ID',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
+      width: 120,
       headerClassName: 'header-style',
       valueGetter: (params) => params.row.userId?._id || 'N/A',
+      hide: isMobile, // Hide User ID column on mobile
     },
     {
       field: 'username',
       headerName: 'Name',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
+      width: 150,
       headerClassName: 'header-style',
     },
     {
       field: 'sub_total',
       headerName: 'Sub Total',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
+      width: 120,
       headerClassName: 'header-style',
       valueFormatter: (params) => `₹${params.value?.toFixed(2) || '0.00'}`
     },
     {
       field: 'tax',
       headerName: 'Tax',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
+      width: 100,
       headerClassName: 'header-style',
-      valueFormatter: (params) => `₹${params.value?.toFixed(2) || '0.00'}`
+      valueFormatter: (params) => `₹${params.value?.toFixed(2) || '0.00'}`,
+      hide: isMobile, // Hide Tax column on mobile
     },
     {
       field: 'systemCharge',
       headerName: 'System Charge',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
+      width: 140,
       headerClassName: 'header-style',
-      valueFormatter: (params) => `₹${params.value?.toFixed(2) || '0.00'}`
+      valueFormatter: (params) => `₹${params.value?.toFixed(2) || '0.00'}`,
+      hide: isMobile, // Hide System Charge column on mobile
     },
     {
       field: 'discount',
       headerName: 'Discount',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
+      width: 120,
       headerClassName: 'header-style',
-      valueFormatter: (params) => `₹${params.value?.toFixed(2) || '0.00'}`
+      valueFormatter: (params) => `₹${params.value?.toFixed(2) || '0.00'}`,
+      hide: isMobile, // Hide Discount column on mobile
     },
     {
       field: 'roundOff',
       headerName: 'Round Off',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
+      width: 120,
       headerClassName: 'header-style',
-      valueFormatter: (params) => `₹${params.value?.toFixed(2) || '0.00'}`
+      valueFormatter: (params) => `₹${params.value?.toFixed(2) || '0.00'}`,
+      hide: isMobile, // Hide Round Off column on mobile
     },
     {
       field: 'total',
       headerName: 'Total',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
+      width: 120,
       headerClassName: 'header-style',
       valueFormatter: (params) => `₹${params.value?.toFixed(2) || '0.00'}`
     },
     {
       field: 'date',
       headerName: 'Date',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 200 : undefined,
+      width: 180,
       headerClassName: 'header-style',
-      valueGetter: (params) => new Date(params.row.createdAt).toLocaleString() || 'N/A',
+      valueGetter: (params) => {
+        if (isMobile) {
+          // Show shorter date format on mobile
+          return new Date(params.row.createdAt).toLocaleDateString() || 'N/A';
+        }
+        return new Date(params.row.createdAt).toLocaleString() || 'N/A';
+      },
     },
     {
       field: 'type',
       headerName: 'Payment Type',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
+      width: 130,
       headerClassName: 'header-style',
     },
     {
       field: 'notes',
       headerName: 'Note',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
+      width: 120,
       headerClassName: 'header-style',
+      hide: isMobile, // Hide Notes column on mobile
     },
     {
       field: 'invoice',
       headerName: 'Invoice',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
+      width: 100,
       headerClassName: 'header-style',
       sortable: false,
       renderCell: (params) => (
         <CIcon
           icon={cilFile}
-          style={{ fontSize: '1.5rem', cursor: 'pointer', color: 'blue' }}
+          style={{ fontSize: isMobile ? '1.2rem' : '1.5rem', cursor: 'pointer', color: 'blue' }}
           onClick={() => handleGenerateInvoice(params.row.transactionId || params.row._id)}
         />
       ),
@@ -379,14 +379,13 @@ const Transactions = () => {
     {
       field: 'customerDues',
       headerName: 'Customer Dues',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
+      width: 140,
       headerClassName: 'header-style',
       sortable: false,
       renderCell: (params) => (
         <CIcon
           icon={cilUser}
-          style={{ fontSize: '1.5rem', cursor: 'pointer', color: 'green' }}
+          style={{ fontSize: isMobile ? '1.2rem' : '1.5rem', cursor: 'pointer', color: 'green' }}
           onClick={() => handleCustomerDues(params.row)}
         />
       ),
@@ -394,14 +393,13 @@ const Transactions = () => {
     {
       field: 'delete',
       headerName: 'Delete',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 100 : undefined,
+      width: 100,
       headerClassName: 'header-style',
       sortable: false,
       renderCell: (params) => (
         <CIcon
           icon={cilTrash}
-          style={{ fontSize: '1.5rem', cursor: 'pointer', color: 'red' }}
+          style={{ fontSize: isMobile ? '1.2rem' : '1.5rem', cursor: 'pointer', color: 'red' }}
           onClick={() => handleDeleteTransaction(params.row.id)}
         />
       ),
@@ -409,70 +407,162 @@ const Transactions = () => {
   ]
 
   // Transform data to ensure each row has an id
-  const transformedTransactions = transactions
-    ?.slice()
-    ?.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
-    ?.map((transaction) => ({
+  const transformedTransactions = React.useMemo(() => {
+    if (!transactions || !Array.isArray(transactions)) {
+      console.log('No transactions data available:', transactions);
+      return [];
+    }
+    
+    const sortedTransactions = transactions
+      .slice()
+      .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    
+    const transformed = sortedTransactions.map((transaction, index) => ({
       ...transaction,
-      id: transaction._id || transaction.id, // Use _id as id if id doesn't exist
-    })) || []
+      id: transaction._id || transaction.id || `temp-${index}`, // Ensure unique ID
+    }));
+    
+    console.log('Transformed transactions:', transformed.length, 'items');
+    return transformed;
+  }, [transactions]);
 
   return (
-    <div style={{ paddingLeft: '20px', paddingRight: '20px' }}>
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2>Transactions</h2>
-        <CButton color="primary" onClick={() => dispatch(fetchTransactionsByRestaurant({ restaurantId, token })) }>
-          Fetch POS Transactions
+    <div style={{ 
+      paddingLeft: isMobile ? '10px' : '20px', 
+      paddingRight: isMobile ? '10px' : '20px',
+      paddingTop: isMobile ? '10px' : '0px'
+    }}>
+      <div className={`d-flex ${isMobile ? 'flex-column' : 'justify-content-between'} align-items-${isMobile ? 'start' : 'center'} mb-4`}>
+        <h2 className={isMobile ? 'mb-3' : ''}>Transactions</h2>
+        <CButton 
+          color="primary" 
+          onClick={() => dispatch(fetchTransactionsByRestaurant({ restaurantId, token })) }
+          className={isMobile ? 'w-100' : ''}
+          size={isMobile ? 'sm' : 'md'}
+        >
+          {isMobile ? 'Fetch POS' : 'Fetch POS Transactions'}
         </CButton>
       </div>
       {loading ? (
-        <div className="d-flex justify-content-center">
-          <CSpinner color="primary" variant="grow" />
+        <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '200px' }}>
+          <div className="text-center">
+            <CSpinner color="primary" variant="grow" />
+            <div className="mt-2">Loading transactions...</div>
+          </div>
         </div>
       ) : transformedTransactions.length > 0 ? (
-        <div style={{ width: '100%' }}>
+        <div style={{ width: '100%', minWidth: '600px' }}>
           <DataGrid
             autoHeight
             rows={transformedTransactions}
             columns={columns}
-            pageSize={10}
-            rowsPerPageOptions={[10]}
+            pageSize={isMobile ? 5 : 10}
+            rowsPerPageOptions={isMobile ? [5, 10] : [10, 25, 50]}
             slots={{
               toolbar: CustomToolbar,
             }}
-            getRowId={(row) => row._id || row.id} // Alternative approach
+            getRowId={(row) => row._id || row.id}
+            disableColumnMenu={isMobile}
+            disableColumnFilter={isMobile}
+            disableColumnSelector={isMobile}
             sx={{
               backgroundColor: theme === 'dark' ? '#2A2A2A' : '#ffffff',
               color: theme === 'dark' ? '#ffffff' : '#000000',
               '& .MuiDataGrid-cell': {
                 color: theme === 'dark' ? '#ffffff' : '#000000',
+                fontSize: isMobile ? '0.75rem' : '0.875rem',
+                padding: isMobile ? '4px 8px' : '8px 16px',
+                borderRight: '1px solid rgba(224, 224, 224, 1)',
+                whiteSpace: 'nowrap',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
               },
               '& .MuiDataGrid-columnHeaders': {
                 backgroundColor: theme === 'dark' ? '#333333' : '#f5f5f5',
                 color: theme === 'dark' ? '#ffffff' : '#000000',
+                fontSize: isMobile ? '0.75rem' : '0.875rem',
+                padding: isMobile ? '4px 8px' : '8px 16px',
+                fontWeight: 'bold',
+                borderBottom: '2px solid rgba(224, 224, 224, 1)',
+              },
+              '& .MuiDataGrid-footerContainer': {
+                fontSize: isMobile ? '0.75rem' : '0.875rem',
+                borderTop: '1px solid rgba(224, 224, 224, 1)',
+              },
+              '& .MuiTablePagination-root': {
+                fontSize: isMobile ? '0.75rem' : '0.875rem',
+              },
+              '& .MuiDataGrid-toolbarContainer': {
+                flexDirection: isMobile ? 'column' : 'row',
+                gap: isMobile ? '8px' : '16px',
+                padding: isMobile ? '8px' : '16px',
+                borderBottom: '1px solid rgba(224, 224, 224, 1)',
+              },
+              '& .MuiDataGrid-row': {
+                '&:hover': {
+                  backgroundColor: theme === 'dark' ? '#404040' : '#f5f5f5',
+                },
+              },
+              '& .MuiDataGrid-row:nth-of-type(even)': {
+                backgroundColor: theme === 'dark' ? '#2A2A2A' : '#fafafa',
               },
             }}
           />
         </div>
       ) : (
-        <center>No transactions found.</center>
+        <div className="text-center py-5">
+          <div className="mb-3">
+            <CIcon icon={cilFile} size="3xl" className="text-muted" />
+          </div>
+          <h5 className="text-muted">No transactions found</h5>
+          <p className="text-muted">Try refreshing the page or check your connection</p>
+          <CButton 
+            color="primary" 
+            onClick={() => dispatch(fetchTransactionsByRestaurant({ restaurantId, token }))}
+            className="mt-3"
+          >
+            Refresh Data
+          </CButton>
+        </div>
       )}
 
       {/* Modal for Invoice Preview */}
       {invoiceContent && (
-        <CModal visible={modalVisible} onClose={() => setModalVisible(false)}>
-          <CModalHeader>Invoice Preview</CModalHeader>
+        <CModal 
+          visible={modalVisible} 
+          onClose={() => setModalVisible(false)}
+          size={isMobile ? "lg" : "xl"}
+          fullscreen={isMobile}
+        >
+          <CModalHeader>
+            <CModalTitle>Invoice Preview</CModalTitle>
+          </CModalHeader>
           <CModalBody>
             <iframe
               src={pdfDoc?.output('datauristring')}
-              style={{ width: '100%', height: '400px', border: 'none' }}
+              style={{ 
+                width: '100%', 
+                height: isMobile ? '300px' : '400px', 
+                border: 'none',
+                minHeight: isMobile ? '250px' : '350px'
+              }}
               title="Invoice Preview"
             ></iframe>
-            <div className="mt-3 d-flex justify-content-between">
-              <CButton color="primary" onClick={handleDownload}>
+            <div className={`mt-3 d-flex ${isMobile ? 'flex-column gap-2' : 'justify-content-between'}`}>
+              <CButton 
+                color="primary" 
+                onClick={handleDownload}
+                className={isMobile ? 'w-100' : ''}
+                size={isMobile ? 'sm' : 'md'}
+              >
                 Download
               </CButton>
-              <CButton color="secondary" onClick={handlePrint}>
+              <CButton 
+                color="secondary" 
+                onClick={handlePrint}
+                className={isMobile ? 'w-100' : ''}
+                size={isMobile ? 'sm' : 'md'}
+              >
                 Print
               </CButton>
             </div>
@@ -488,19 +578,20 @@ const Transactions = () => {
           setDeleteTransactionId('')
           setDeletionRemark('')
         }}
-        size="md"
+        size={isMobile ? "sm" : "md"}
         backdrop="static"
+        fullscreen={isMobile}
       >
         <CModalHeader>
-          <CModalTitle className="d-flex align-items-center gap-2">
-            <CIcon icon={cilTrash} />
-            Add a deletion remark
+          <CModalTitle className={`d-flex align-items-center ${isMobile ? 'gap-1' : 'gap-2'}`}>
+            <CIcon icon={cilTrash} size={isMobile ? 'sm' : 'md'} />
+            {isMobile ? 'Delete Transaction' : 'Add a deletion remark'}
           </CModalTitle>
         </CModalHeader>
         <CModalBody>
           <CForm>
             <div className="mb-3">
-              <CFormLabel htmlFor="cashInAmount">Remark </CFormLabel>
+              <CFormLabel htmlFor="cashInAmount">Remark</CFormLabel>
               <CFormInput
                 type="string"
                 id="DeletionRemarkNote"
@@ -508,11 +599,12 @@ const Transactions = () => {
                 value={deletionRemark}
                 onChange={(e) => setDeletionRemark(e.target.value)}
                 disabled={loading}
+                size={isMobile ? 'sm' : 'md'}
               />
             </div>
           </CForm>
         </CModalBody>
-        <CModalFooter>
+        <CModalFooter className={isMobile ? 'd-flex flex-column gap-2' : ''}>
           <CButton
             color="secondary"
             onClick={() => {
@@ -521,12 +613,16 @@ const Transactions = () => {
               setDeleteTransactionId('')
             }}
             disabled={loading}
+            className={isMobile ? 'w-100' : ''}
+            size={isMobile ? 'sm' : 'md'}
           >
             Cancel
           </CButton>
           <CButton
             color="success"
             onClick={() => dispatch(deleteTransaction({ id:deleteTransactionId, deletionRemark }))}
+            className={isMobile ? 'w-100' : ''}
+            size={isMobile ? 'sm' : 'md'}
           >
             {loading ? (
               <>
@@ -541,9 +637,16 @@ const Transactions = () => {
       </CModal>
 
       {/* Modal for Customer Dues */}
-      <CModal visible={showCustomerDuesModal} onClose={() => setShowCustomerDuesModal(false)} size="lg">
+      <CModal 
+        visible={showCustomerDuesModal} 
+        onClose={() => setShowCustomerDuesModal(false)} 
+        size={isMobile ? "lg" : "lg"}
+        fullscreen={isMobile}
+      >
         <CModalHeader>
-          <CModalTitle>{selectedCustomer?.name || 'Customer'}'s Due Details</CModalTitle>
+          <CModalTitle className={isMobile ? 'h6' : ''}>
+            {selectedCustomer?.name || 'Customer'}'s Due Details
+          </CModalTitle>
         </CModalHeader>
         <CModalBody>
           {duesLoading ? (
@@ -554,31 +657,31 @@ const Transactions = () => {
           ) : customerDues && customerDues.length > 0 ? (
             <div>
               {/* Customer Information */}
-              <div className="mb-4 p-3 bg-light rounded">
-                <h6 className="mb-2 text-primary">Customer Information:</h6>
-                <p className="mb-1"><strong>Customer:</strong> {selectedCustomer?.name || 'N/A'}</p>
-                <p className="mb-1"><strong>Customer ID:</strong> {selectedCustomer?.id || 'N/A'}</p>
-                <p className="mb-0"><strong>Total Dues Found:</strong> {customerDues.length}</p>
+              <div className={`mb-4 p-3 bg-light rounded ${isMobile ? 'p-2' : ''}`}>
+                <h6 className={`mb-2 text-primary ${isMobile ? 'h6' : ''}`}>Customer Information:</h6>
+                <p className={`mb-1 ${isMobile ? 'small' : ''}`}><strong>Customer:</strong> {selectedCustomer?.name || 'N/A'}</p>
+                <p className={`mb-1 ${isMobile ? 'small' : ''}`}><strong>Customer ID:</strong> {selectedCustomer?.id || 'N/A'}</p>
+                <p className={`mb-0 ${isMobile ? 'small' : ''}`}><strong>Total Dues Found:</strong> {customerDues.length}</p>
               </div>
 
               {/* Summary */}
-              <div className="mb-4 p-3 bg-light rounded">
-                <h6 className="mb-3 text-primary">Summary:</h6>
-                <div className="row">
-                  <div className="col-md-6">
-                    <p className="mb-1"><strong>Total Amount Due:</strong>
+              <div className={`mb-4 p-3 bg-light rounded ${isMobile ? 'p-2' : ''}`}>
+                <h6 className={`mb-3 text-primary ${isMobile ? 'h6' : ''}`}>Summary:</h6>
+                <div className={isMobile ? 'd-flex flex-column gap-2' : 'row'}>
+                  <div className={isMobile ? '' : 'col-md-6'}>
+                    <p className={`mb-1 ${isMobile ? 'small' : ''}`}><strong>Total Amount Due:</strong>
                       <span className="text-danger ms-2">
                         Rs. {customerDues.reduce((sum, due) => sum + (parseFloat(due.total) || 0), 0).toFixed(2)}
                       </span>
                     </p>
                   </div>
-                  <div className="col-md-6">
-                    <p className="mb-1"><strong>Paid Dues:</strong>
+                  <div className={isMobile ? '' : 'col-md-6'}>
+                    <p className={`mb-1 ${isMobile ? 'small' : ''}`}><strong>Paid Dues:</strong>
                       <span className="text-success ms-2">
                         {customerDues.filter(due => due.status === 'paid').length}
                       </span>
                     </p>
-                    <p className="mb-0"><strong>Unpaid Dues:</strong>
+                    <p className={`mb-0 ${isMobile ? 'small' : ''}`}><strong>Unpaid Dues:</strong>
                       <span className="text-warning ms-2">
                         {customerDues.filter(due => due.status === 'unpaid').length}
                       </span>
@@ -589,24 +692,24 @@ const Transactions = () => {
 
               {/* Individual Dues List */}
               <div className="mb-3">
-                <h6 className="mb-3 text-primary">List of Individual Dues:</h6>
-                <div style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                <h6 className={`mb-3 text-primary ${isMobile ? 'h6' : ''}`}>List of Individual Dues:</h6>
+                <div style={{ maxHeight: isMobile ? '300px' : '400px', overflowY: 'auto' }}>
                   {customerDues.map((due, index) => (
-                    <div key={due._id || index} className="mb-3 p-3 border rounded">
-                      <div className="row">
-                        <div className="col-md-6">
-                          <p className="mb-1"><strong>Due ID:</strong> {due._id?.slice(-6) || 'N/A'}</p>
-                          <p className="mb-1"><strong>Created:</strong> {new Date(due.createdAt).toLocaleString()}</p>
-                          <p className="mb-0"><strong>Amount:</strong> Rs. {parseFloat(due.total || 0).toFixed(3)}</p>
+                    <div key={due._id || index} className={`mb-3 p-3 border rounded ${isMobile ? 'p-2' : ''}`}>
+                      <div className={isMobile ? 'd-flex flex-column gap-2' : 'row'}>
+                        <div className={isMobile ? '' : 'col-md-6'}>
+                          <p className={`mb-1 ${isMobile ? 'small' : ''}`}><strong>Due ID:</strong> {due._id?.slice(-6) || 'N/A'}</p>
+                          <p className={`mb-1 ${isMobile ? 'small' : ''}`}><strong>Created:</strong> {new Date(due.createdAt).toLocaleString()}</p>
+                          <p className={`mb-0 ${isMobile ? 'small' : ''}`}><strong>Amount:</strong> Rs. {parseFloat(due.total || 0).toFixed(3)}</p>
                         </div>
-                        <div className="col-md-6">
-                          <p className="mb-1">
+                        <div className={isMobile ? '' : 'col-md-6'}>
+                          <p className={`mb-1 ${isMobile ? 'small' : ''}`}>
                             <strong>Status:</strong>
                             <span className={`badge ms-2 ${due.status === 'paid' ? 'bg-success' : 'bg-warning'}`}>
                               {due.status?.toUpperCase() || 'UNPAID'}
                             </span>
                           </p>
-                          <p className="mb-0"><strong>Transaction ID:</strong> {due.transaction_id || 'N/A'}</p>
+                          <p className={`mb-0 ${isMobile ? 'small' : ''}`}><strong>Transaction ID:</strong> {due.transaction_id || 'N/A'}</p>
                         </div>
                       </div>
                     </div>
@@ -617,15 +720,20 @@ const Transactions = () => {
           ) : (
             <div className="text-center py-4">
               <div className="mb-3">
-                <CIcon icon={cilUser} size="3xl" className="text-muted" />
+                <CIcon icon={cilUser} size={isMobile ? '2xl' : '3xl'} className="text-muted" />
               </div>
-              <h5 className="text-muted">No dues found for {selectedCustomer?.name || 'this customer'}</h5>
-              <p className="text-muted">This customer has no outstanding dues.</p>
+              <h5 className={`text-muted ${isMobile ? 'h6' : ''}`}>No dues found for {selectedCustomer?.name || 'this customer'}</h5>
+              <p className={`text-muted ${isMobile ? 'small' : ''}`}>This customer has no outstanding dues.</p>
             </div>
           )}
         </CModalBody>
         <CModalFooter>
-          <CButton color="secondary" onClick={() => setShowCustomerDuesModal(false)}>
+          <CButton 
+            color="secondary" 
+            onClick={() => setShowCustomerDuesModal(false)}
+            className={isMobile ? 'w-100' : ''}
+            size={isMobile ? 'sm' : 'md'}
+          >
             Close
           </CButton>
         </CModalFooter>

@@ -156,57 +156,91 @@ export default function SubCategory() {
     )
   }
 
-  // ✅ Add Modal
+  // ✅ Mobile Responsive Add Modal
   const AddSubCategoryModal = () => (
-    <CModal visible={modalVisible} onClose={() => setModalVisible(false)}>
-      <CModalHeader>
-        <h5>Add New Subcategory</h5>
+    <CModal 
+      visible={modalVisible} 
+      onClose={() => setModalVisible(false)}
+      size="lg"
+      className="modal-fullscreen-sm-down"
+    >
+      <CModalHeader className="border-bottom">
+        <h5 className="mb-0">Add New Subcategory</h5>
       </CModalHeader>
-      <CModalBody>
-        <CFormInput
-          type="text"
-          placeholder="Subcategory Name"
-          name="sub_category_name"
-          value={subCategoryName}
-          onChange={(e) => setSubCategoryName(e.target.value)}
-          className="mb-3"
-        />
-        <CFormSelect
-          className="mb-3"
-          value={categoryId}
-          onChange={(e) => setCategoryId(e.target.value)}
-        >
-          <option value="" disabled hidden>
-            Select Category
-          </option>
-          {categories.map((cat) => (
-            <option key={cat._id} value={cat._id}>
-              {cat.categoryName}
+      <CModalBody className="p-4">
+        <div className="mb-3">
+          <label className="form-label fw-semibold">Subcategory Name</label>
+          <CFormInput
+            type="text"
+            placeholder="Enter subcategory name"
+            name="sub_category_name"
+            value={subCategoryName}
+            onChange={(e) => setSubCategoryName(e.target.value)}
+            size="lg"
+          />
+        </div>
+        <div className="mb-3">
+          <label className="form-label fw-semibold">Select Category</label>
+          <CFormSelect
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            size="lg"
+          >
+            <option value="" disabled hidden>
+              Choose a category
             </option>
-          ))}
-        </CFormSelect>
+            {categories.map((cat) => (
+              <option key={cat._id} value={cat._id}>
+                {cat.categoryName}
+              </option>
+            ))}
+          </CFormSelect>
+        </div>
       </CModalBody>
-      <CModalFooter>
-        <CButton color="secondary" onClick={() => setModalVisible(false)}>
-          Close
+      <CModalFooter className="border-top d-flex flex-column flex-sm-row gap-2">
+        <CButton 
+          color="secondary" 
+          onClick={() => setModalVisible(false)}
+          className="w-100 w-sm-auto"
+          size="lg"
+        >
+          Cancel
         </CButton>
-        <CButton color="primary" onClick={handleAddSubCategory} disabled={subCategoriesLoading}>
-          {subCategoriesLoading ? 'Saving...' : 'Save'}
+        <CButton 
+          color="primary" 
+          onClick={handleAddSubCategory} 
+          disabled={subCategoriesLoading}
+          className="w-100 w-sm-auto"
+          size="lg"
+        >
+          {subCategoriesLoading ? (
+            <>
+              <CSpinner as="span" size="sm" className="me-2" />
+              Saving...
+            </>
+          ) : (
+            'Save Subcategory'
+          )}
         </CButton>
       </CModalFooter>
     </CModal>
   )
 
-  // ✅ Edit Modal - FIX: Use cat._id instead of cat.categoryId
+  // ✅ Mobile Responsive Edit Modal
   const EditSubCategoryModal = () => (
-    <CModal visible={editModalVisible} onClose={() => setEditModalVisible(false)}>
-      <CModalHeader>
-        <h5>Edit Subcategory</h5>
+    <CModal 
+      visible={editModalVisible} 
+      onClose={() => setEditModalVisible(false)}
+      size="lg"
+      className="modal-fullscreen-sm-down"
+    >
+      <CModalHeader className="border-bottom">
+        <h5 className="mb-0">Edit Subcategory</h5>
       </CModalHeader>
-      <CModalBody>
+      <CModalBody className="p-4">
         <CForm>
           <div className="mb-3">
-            <label className="form-label">Subcategory Name</label>
+            <label className="form-label fw-semibold">Subcategory Name</label>
             <CFormInput
               type="text"
               name="sub_category_name"
@@ -214,16 +248,18 @@ export default function SubCategory() {
               onChange={(e) =>
                 setEditedSubCategory((prev) => ({ ...prev, sub_category_name: e.target.value }))
               }
+              size="lg"
             />
           </div>
           <div className="mb-3">
-            <label className="form-label">Category</label>
+            <label className="form-label fw-semibold">Category</label>
             <CFormSelect
               value={editedSubCategory.categoryId || ''}
               name="categoryId"
               onChange={(e) =>
                 setEditedSubCategory((prev) => ({ ...prev, categoryId: e.target.value }))
               }
+              size="lg"
             >
               <option value="">Select Category</option>
               {categories.map((cat) => (
@@ -235,35 +271,64 @@ export default function SubCategory() {
           </div>
         </CForm>
       </CModalBody>
-      <CModalFooter>
-        <CButton color="secondary" onClick={() => setEditModalVisible(false)}>
+      <CModalFooter className="border-top d-flex flex-column flex-sm-row gap-2">
+        <CButton 
+          color="secondary" 
+          onClick={() => setEditModalVisible(false)}
+          className="w-100 w-sm-auto"
+          size="lg"
+        >
           Cancel
         </CButton>
-        <CButton color="primary" onClick={handleUpdateSubCategory}>
-          {subCategoriesLoading ? <CSpinner as="span" size="sm" /> : 'Save Changes'}
+        <CButton 
+          color="primary" 
+          onClick={handleUpdateSubCategory}
+          className="w-100 w-sm-auto"
+          size="lg"
+        >
+          {subCategoriesLoading ? (
+            <>
+              <CSpinner as="span" size="sm" className="me-2" />
+              Updating...
+            </>
+          ) : (
+            'Save Changes'
+          )}
         </CButton>
       </CModalFooter>
     </CModal>
   )
 
   return (
-    <div className="p-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1 className="fs-4 fw-semibold">My Subcategories</h1>
-        <CButton color="primary" onClick={() => setModalVisible(true)}>
+    <div className="p-3 p-md-4">
+      {/* Mobile Responsive Header */}
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
+        <h1 className="fs-4 fw-semibold mb-3 mb-md-0">My Subcategories</h1>
+        <CButton 
+          color="primary" 
+          onClick={() => setModalVisible(true)}
+          className="w-100 w-md-auto"
+          size="sm"
+        >
           Add Subcategory
         </CButton>
       </div>
 
-      {/* Search & Filter */}
-      <div className="d-flex mb-4">
+      {/* Mobile Responsive Search & Filter */}
+      <div className="d-flex flex-column flex-md-row gap-3 mb-4">
         <CFormInput
           placeholder="Search subcategories..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="me-3"
+          className="flex-fill"
+          size="sm"
         />
-        <CFormSelect value={filter} onChange={(e) => setFilter(e.target.value)}>
+        <CFormSelect 
+          value={filter} 
+          onChange={(e) => setFilter(e.target.value)}
+          className="w-100 w-md-auto"
+          size="sm"
+        >
           <option value="All">All</option>
           <option value="This week">This Week</option>
           <option value="This month">This Month</option>
@@ -271,23 +336,25 @@ export default function SubCategory() {
         </CFormSelect>
       </div>
 
-      {/* Subcategories Grid */}
-      <CRow>
+      {/* Mobile Responsive Subcategories Grid */}
+      <CRow className="g-3">
         {filteredSubCategories.map((sub) => (
-          <CCol key={sub._id || sub.id} xs="12" sm="6" md="4" lg="3" className="mb-4 d-flex">
-            <CCard className="shadow-sm border rounded p-3 flex-fill">
-              <CCardBody className="d-flex flex-column justify-content-between h-100">
+          <CCol key={sub._id || sub.id} xs="12" sm="6" lg="4" xl="3" className="d-flex">
+            <CCard className="shadow-sm border rounded flex-fill w-100">
+              <CCardBody className="d-flex flex-column justify-content-between h-100 p-3">
                 <div>
-                  <h5 className="fw-bold mb-1">{sub.sub_category_name}</h5>
-                  <small className="text-muted">
+                  <h5 className="fw-bold mb-2 text-truncate" title={sub.sub_category_name}>
+                    {sub.sub_category_name}
+                  </h5>
+                  <small className="text-muted d-block text-truncate">
                     Category: {sub.categoryName || 'No category'}
                   </small>
                 </div>
                 <div className="position-relative mt-3 text-end">
                   <CButton
                     color="light"
-                    className="p-0 border-0"
-                    style={{ fontSize: '20px' }}
+                    className="p-1 border-0 rounded-circle"
+                    style={{ fontSize: '18px', width: '32px', height: '32px' }}
                     onClick={(e) => toggleDropdown(sub._id || sub.id, e)}
                   >
                     &#8942;
@@ -295,17 +362,20 @@ export default function SubCategory() {
                   {dropdownOpen[sub._id || sub.id] && (
                     <div
                       className="dropdown-menu show position-absolute"
-                      style={{ right: 0, zIndex: 1000 }}
+                      style={{ right: 0, zIndex: 1000, minWidth: '120px' }}
                       onClick={(e) => e.stopPropagation()}
                     >
-                      <button className="dropdown-item" onClick={() => handleEditSubCategory(sub)}>
-                        Edit
+                      <button 
+                        className="dropdown-item py-2" 
+                        onClick={() => handleEditSubCategory(sub)}
+                      >
+                        <i className="fas fa-edit me-2"></i>Edit
                       </button>
                       <button
-                        className="dropdown-item text-danger"
+                        className="dropdown-item text-danger py-2"
                         onClick={() => handleDeleteSubCategory(sub._id || sub.id)}
                       >
-                        Delete
+                        <i className="fas fa-trash me-2"></i>Delete
                       </button>
                     </div>
                   )}

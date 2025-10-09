@@ -155,19 +155,22 @@ export default function QRCode() {
   }
 
   return (
-    <div className="p-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1 className="fs-3 fw-bold">Generate QR for Tables</h1>
-        <div className="d-flex gap-2">
+    <div className="p-2 p-md-4">
+      {/* Mobile Responsive Header */}
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+        <h1 className="fs-4 fs-md-3 fw-bold mb-0">Generate QR for Tables</h1>
+        <div className="d-flex flex-column flex-sm-row gap-2 w-100 w-md-auto">
           {/* Create Floor Button */}
           <CButton
             color="success"
             variant="outline"
             onClick={() => setFloorModalVisible(true)}
-            className="d-flex align-items-center"
+            className="d-flex align-items-center justify-content-center w-100 w-sm-auto"
+            size="sm"
           >
             <CIcon icon={cilHome} className="me-2" />
-            Create Floor
+            <span className="d-none d-sm-inline">Create Floor</span>
+            <span className="d-sm-none">Floor</span>
           </CButton>
 
           {/* Add QR Code Button - Only show if floors exist and restaurantId is available */}
@@ -175,10 +178,12 @@ export default function QRCode() {
             <CButton
               color="primary"
               onClick={() => setModalVisible(true)}
-              className="d-flex align-items-center"
+              className="d-flex align-items-center justify-content-center w-100 w-sm-auto"
+              size="sm"
             >
               <CIcon icon={cilPlus} className="me-2" />
-              Add QR Code
+              <span className="d-none d-sm-inline">Add QR Code</span>
+              <span className="d-sm-none">Add QR</span>
             </CButton>
           )}
         </div>
@@ -241,7 +246,7 @@ export default function QRCode() {
                 </div>
 
                 {floorQrs.length > 0 ? (
-                  <CRow className="g-4">
+                  <CRow className="g-2 g-md-4">
                     {floorQrs.map((qr) => (
                       <CCol
                         key={qr._id}
@@ -249,6 +254,7 @@ export default function QRCode() {
                         sm={4}
                         md={3}
                         lg={2}
+                        xl={2}
                         className="d-flex justify-content-center"
                       >
                         <CContainer
@@ -256,23 +262,25 @@ export default function QRCode() {
                             }`}
                           style={{
                             width: '100%',
-                            maxWidth: '10rem',
-                            height: '10rem',
+                            maxWidth: '8rem',
+                            minWidth: '6rem',
+                            height: '8rem',
                             cursor: 'pointer',
                           }}
                           onClick={() => handleQrClick(qr)}
                         >
-                          <div className="fw-semibold mb-2 text-truncate">
+                          <div className="fw-semibold mb-1 mb-md-2 text-truncate fs-6 fs-md-5">
                             Table {qr.tableNumber}
                           </div>
                           <img
                             src={qr.qrImage}
                             alt={`QR Table ${qr.tableNumber}`}
-                            width={80}
+                            width={60}
                             className="img-fluid"
+                            style={{ maxWidth: '60px', height: 'auto' }}
                           />
-                          {/* Debug info for each QR */}
-                          <div style={{ fontSize: '8px', color: '#999' }}>
+                          {/* Debug info for each QR - Hide on mobile */}
+                          <div className="d-none d-md-block" style={{ fontSize: '8px', color: '#999' }}>
                             Floor ID: {getFloorIdFromQr(qr)}
                           </div>
                         </CContainer>
@@ -324,21 +332,27 @@ export default function QRCode() {
         </div>
       )}
 
-      {/* Modal for Creating Floor */}
-      <CModal visible={floorModalVisible} onClose={() => setFloorModalVisible(false)}>
-        <CModalHeader>
-          <h2 className="fs-5 fw-bold">Create New Floor</h2>
+      {/* Modal for Creating Floor - Mobile Responsive */}
+      <CModal 
+        visible={floorModalVisible} 
+        onClose={() => setFloorModalVisible(false)}
+        size="lg"
+        className="modal-fullscreen-sm-down"
+      >
+        <CModalHeader className="pb-2">
+          <h2 className="fs-5 fw-bold mb-0">Create New Floor</h2>
         </CModalHeader>
-        <CModalBody>
+        <CModalBody className="py-3">
           <CFormInput
             type="text"
             placeholder="Enter Floor Name (e.g., Ground Floor, First Floor, etc.)"
             value={name}
             onChange={(e) => setname(e.target.value)}
             className="mb-3"
+            size="lg"
           />
         </CModalBody>
-        <CModalFooter>
+        <CModalFooter className="pt-2 d-flex flex-column flex-sm-row gap-2">
           <CButton
             color="secondary"
             variant="outline"
@@ -346,25 +360,38 @@ export default function QRCode() {
               setFloorModalVisible(false)
               setname('')
             }}
+            className="w-100 w-sm-auto order-2 order-sm-1"
           >
             Cancel
           </CButton>
-          <CButton color="success" onClick={handleSaveFloor} disabled={savingFloor}>
+          <CButton 
+            color="success" 
+            onClick={handleSaveFloor} 
+            disabled={savingFloor}
+            className="w-100 w-sm-auto order-1 order-sm-2"
+          >
             {savingFloor ? <CSpinner size="sm" /> : 'Create Floor'}
           </CButton>
         </CModalFooter>
       </CModal>
 
-      {/* Modal for Adding QR */}
-      <CModal visible={modalVisible} backdrop="static" onClose={() => setModalVisible(false)}>
-        <CModalHeader>
-          <h2 className="fs-5 fw-bold">Generate QR Code for Table</h2>
+      {/* Modal for Adding QR - Mobile Responsive */}
+      <CModal 
+        visible={modalVisible} 
+        backdrop="static" 
+        onClose={() => setModalVisible(false)}
+        size="lg"
+        className="modal-fullscreen-sm-down"
+      >
+        <CModalHeader className="pb-2">
+          <h2 className="fs-5 fw-bold mb-0">Generate QR Code for Table</h2>
         </CModalHeader>
-        <CModalBody>
+        <CModalBody className="py-3">
           <CFormSelect
             className="mb-3"
             value={floorId}
             onChange={(e) => setFloorId(e.target.value)}
+            size="lg"
           >
             <option value="">Select Floor</option>
             {floors && floors.length > 0 && floors.map((floor) => (
@@ -377,7 +404,6 @@ export default function QRCode() {
             type="text"
             placeholder="Enter Table Number"
             value={tableNumber}
-            //onChange={(e) => setTableNumber(e.target.value)}
             onChange={(e) => {
               const val = e.target.value;
               if (/^\d*$/.test(val)) {
@@ -392,10 +418,11 @@ export default function QRCode() {
               }
             }}
             className={`mb-1 ${error ? 'is-invalid' : ''}`}
+            size="lg"
           />
           {error && <div style={{ color: 'red', fontSize: '12px' }}>{error}</div>}
         </CModalBody>
-        <CModalFooter>
+        <CModalFooter className="pt-2 d-flex flex-column flex-sm-row gap-2">
           <CButton
             color="secondary"
             variant="outline"
@@ -404,24 +431,35 @@ export default function QRCode() {
               setTableNumber('')
               setFloorId('')
             }}
+            className="w-100 w-sm-auto order-2 order-sm-1"
           >
             Cancel
           </CButton>
-          <CButton color="primary" onClick={handleSave} disabled={saving}>
+          <CButton 
+            color="primary" 
+            onClick={handleSave} 
+            disabled={saving}
+            className="w-100 w-sm-auto order-1 order-sm-2"
+          >
             {saving ? <CSpinner size="sm" /> : 'Generate QR Code'}
           </CButton>
         </CModalFooter>
       </CModal>
 
-      {/* Action Modal */}
-      <CModal visible={actionModalVisible} onClose={() => setActionModalVisible(false)}>
-        <CModalHeader>
-          <h2 className="fs-5 fw-bold">QR Code Actions</h2>
+      {/* Action Modal - Mobile Responsive */}
+      <CModal 
+        visible={actionModalVisible} 
+        onClose={() => setActionModalVisible(false)}
+        size="md"
+        className="modal-fullscreen-sm-down"
+      >
+        <CModalHeader className="pb-2">
+          <h2 className="fs-5 fw-bold mb-0">QR Code Actions</h2>
         </CModalHeader>
-        <CModalBody className="text-center">
-          Select an action for <strong>Table {selectedQr?.tableNumber}</strong>
+        <CModalBody className="text-center py-3">
+          <p className="mb-0">Select an action for <strong>Table {selectedQr?.tableNumber}</strong></p>
         </CModalBody>
-        <CModalFooter className="justify-content-between">
+        <CModalFooter className="pt-2 d-flex flex-column flex-sm-row gap-2 justify-content-between">
           <CButton
             color="danger"
             variant="outline"
@@ -429,36 +467,48 @@ export default function QRCode() {
               setConfirmDeleteModalVisible(true)
               setActionModalVisible(false)
             }}
+            className="w-100 w-sm-auto order-2 order-sm-1"
           >
             Delete
           </CButton>
-          <CButton color="primary" onClick={handleDownload}>
+          <CButton 
+            color="primary" 
+            onClick={handleDownload}
+            className="w-100 w-sm-auto order-1 order-sm-2"
+          >
             Download
           </CButton>
         </CModalFooter>
       </CModal>
 
-      {/* Confirm Delete Modal */}
+      {/* Confirm Delete Modal - Mobile Responsive */}
       <CModal
         visible={confirmDeleteModalVisible}
         onClose={() => setConfirmDeleteModalVisible(false)}
+        size="md"
+        className="modal-fullscreen-sm-down"
       >
-        <CModalHeader>
-          <h2 className="fs-5 fw-bold">Confirm Delete</h2>
+        <CModalHeader className="pb-2">
+          <h2 className="fs-5 fw-bold mb-0">Confirm Delete</h2>
         </CModalHeader>
-        <CModalBody className="text-center">
-          Are you sure you want to delete the QR Code for{' '}
-          <strong>Table {selectedQr?.tableNumber}</strong>?
+        <CModalBody className="text-center py-3">
+          <p className="mb-0">Are you sure you want to delete the QR Code for{' '}
+          <strong>Table {selectedQr?.tableNumber}</strong>?</p>
         </CModalBody>
-        <CModalFooter>
+        <CModalFooter className="pt-2 d-flex flex-column flex-sm-row gap-2">
           <CButton
             color="secondary"
             variant="outline"
             onClick={() => setConfirmDeleteModalVisible(false)}
+            className="w-100 w-sm-auto order-2 order-sm-1"
           >
             Cancel
           </CButton>
-          <CButton color="danger" onClick={handleDelete}>
+          <CButton 
+            color="danger" 
+            onClick={handleDelete}
+            className="w-100 w-sm-auto order-1 order-sm-2"
+          >
             Confirm Delete
           </CButton>
         </CModalFooter>

@@ -587,39 +587,42 @@ export default function PermissionManagement() {
 
   return (
     <div className="p-4">
-      {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h1 className="fs-4 fw-semibold d-flex align-items-center">
-            <CIcon icon={cilPeople} className="me-2" />
-            Permission Management
-          </h1>
-          <p className="text-muted mb-0">Manage user roles and permissions (Admin & Waiter)</p>
-        </div>
-        <div className="d-flex gap-2">
-          <CBadge color="info" className="fs-6 px-3 py-2">
-            Total Users: {stats.total}
-          </CBadge>
-          <CButton
-            color="primary"
-            variant="outline"
-            size="sm"
-            onClick={refreshUsers}
-            disabled={loading}
-          >
-            <CIcon icon={cilReload} className="me-1" />
-            Refresh
-          </CButton>
+      {/* Header - Mobile Responsive */}
+      <div className="mb-4">
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
+          <div className="mb-3 mb-md-0">
+            <h1 className="fs-4 fw-semibold d-flex align-items-center">
+              <CIcon icon={cilPeople} className="me-2" />
+              Permission Management
+            </h1>
+            <p className="text-muted mb-0">Manage user roles and permissions (Admin & Waiter)</p>
+          </div>
+          <div className="d-flex flex-column flex-sm-row gap-2 w-100 w-md-auto">
+            <CBadge color="info" className="fs-6 px-3 py-2 text-center">
+              Total Users: {stats.total}
+            </CBadge>
+            <CButton
+              color="primary"
+              variant="outline"
+              size="sm"
+              onClick={refreshUsers}
+              disabled={loading}
+              className="w-100 w-sm-auto"
+            >
+              <CIcon icon={cilReload} className="me-1" />
+              Refresh
+            </CButton>
+          </div>
         </div>
       </div>
 
-      {/* Statistics Cards - Updated for all four roles */}
-      <CRow className="mb-4">
-        <CCol md={3}>
-          <CCard className="text-center border-start border-danger border-3">
+      {/* Statistics Cards - Mobile Responsive */}
+      <CRow className="mb-4 g-3">
+        <CCol xs={6} sm={6} md={3}>
+          <CCard className="text-center border-start border-danger border-3 h-100">
             <CCardBody className="py-3">
-              <div className="d-flex align-items-center justify-content-center">
-                <div className="text-danger me-2" style={{ fontSize: '1.5rem' }}>👤</div>
+              <div className="d-flex flex-column flex-sm-row align-items-center justify-content-center">
+                <div className="text-danger me-0 me-sm-2 mb-2 mb-sm-0" style={{ fontSize: '1.5rem' }}>👤</div>
                 <div>
                   <h3 className="text-danger mb-0">{stats.roles.admin}</h3>
                   <p className="mb-0 small">Administrators</p>
@@ -628,11 +631,11 @@ export default function PermissionManagement() {
             </CCardBody>
           </CCard>
         </CCol>
-        <CCol md={3}>
-          <CCard className="text-center border-start border-warning border-3">
+        <CCol xs={6} sm={6} md={3}>
+          <CCard className="text-center border-start border-warning border-3 h-100">
             <CCardBody className="py-3">
-              <div className="d-flex align-items-center justify-content-center">
-                <div className="text-warning me-2" style={{ fontSize: '1.5rem' }}>👔</div>
+              <div className="d-flex flex-column flex-sm-row align-items-center justify-content-center">
+                <div className="text-warning me-0 me-sm-2 mb-2 mb-sm-0" style={{ fontSize: '1.5rem' }}>👔</div>
                 <div>
                   <h3 className="text-warning mb-0">{stats.roles.manager}</h3>
                   <p className="mb-0 small">Managers</p>
@@ -641,11 +644,11 @@ export default function PermissionManagement() {
             </CCardBody>
           </CCard>
         </CCol>
-        <CCol md={3}>
-          <CCard className="text-center border-start border-success border-3">
+        <CCol xs={6} sm={6} md={3}>
+          <CCard className="text-center border-start border-success border-3 h-100">
             <CCardBody className="py-3">
-              <div className="d-flex align-items-center justify-content-center">
-                <CIcon icon={cilUserFollow} className="text-success me-2" size="lg" />
+              <div className="d-flex flex-column flex-sm-row align-items-center justify-content-center">
+                <CIcon icon={cilUserFollow} className="text-success me-0 me-sm-2 mb-2 mb-sm-0" size="lg" />
                 <div>
                   <h3 className="text-success mb-0">{stats.roles.waiter}</h3>
                   <p className="mb-0 small">Waiters</p>
@@ -654,11 +657,11 @@ export default function PermissionManagement() {
             </CCardBody>
           </CCard>
         </CCol>
-        <CCol md={3}>
-          <CCard className="text-center border-start border-info border-3">
+        <CCol xs={6} sm={6} md={3}>
+          <CCard className="text-center border-start border-info border-3 h-100">
             <CCardBody className="py-3">
-              <div className="d-flex align-items-center justify-content-center">
-                <div className="text-info me-2" style={{ fontSize: '1.5rem' }}>💰</div>
+              <div className="d-flex flex-column flex-sm-row align-items-center justify-content-center">
+                <div className="text-info me-0 me-sm-2 mb-2 mb-sm-0" style={{ fontSize: '1.5rem' }}>💰</div>
                 <div>
                   <h3 className="text-info mb-0">{stats.roles.cashier}</h3>
                   <p className="mb-0 small">Cashiers</p>
@@ -686,18 +689,18 @@ export default function PermissionManagement() {
         </CCol>
       </CRow>
 
-      {/* Filters and Bulk Actions - Updated for two roles */}
+      {/* Filters and Bulk Actions - Mobile Responsive */}
       <CCard className="mb-4">
         <CCardHeader className="py-2">
-          <div className="d-flex justify-content-between align-items-center">
-            <h6 className="mb-0">Search & Filters</h6>
+          <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+            <h6 className="mb-2 mb-md-0">Search & Filters</h6>
             {selectedUsers.length > 0 && (
-              <div className="d-flex gap-2">
-                <small className="text-muted align-self-center">
+              <div className="d-flex flex-column flex-sm-row gap-2 w-100 w-md-auto">
+                <small className="text-muted align-self-center mb-2 mb-sm-0">
                   {selectedUsers.length} selected
                 </small>
-                <CDropdown>
-                  <CDropdownToggle color="primary" size="sm" disabled={bulkUpdating || updateLoading}>
+                <CDropdown className="w-100 w-sm-auto">
+                  <CDropdownToggle color="primary" size="sm" disabled={bulkUpdating || updateLoading} className="w-100 w-sm-auto">
                     {(bulkUpdating || updateLoading) ? <CSpinner size="sm" className="me-1" /> : null}
                     Bulk Actions
                   </CDropdownToggle>
@@ -722,7 +725,7 @@ export default function PermissionManagement() {
         </CCardHeader>
         <CCardBody>
           <CRow className="g-3">
-            <CCol md={4}>
+            <CCol xs={12} sm={6} md={4}>
               <div className="position-relative">
                 <CIcon icon={cilSearch} className="position-absolute top-50 start-0 translate-middle-y ms-3" />
                 <CFormInput
@@ -733,7 +736,7 @@ export default function PermissionManagement() {
                 />
               </div>
             </CCol>
-            <CCol md={2}>
+            <CCol xs={6} sm={3} md={2}>
               <CFormSelect
                 value={roleFilter}
                 onChange={(e) => setRoleFilter(e.target.value)}
@@ -745,7 +748,7 @@ export default function PermissionManagement() {
                 <option value="cashier">Cashier</option>
               </CFormSelect>
             </CCol>
-            <CCol md={2}>
+            <CCol xs={6} sm={3} md={2}>
               <CFormSelect
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
@@ -755,7 +758,7 @@ export default function PermissionManagement() {
                 <option value="inactive">Inactive</option>
               </CFormSelect>
             </CCol>
-            <CCol md={2}>
+            <CCol xs={6} sm={6} md={2}>
               <CFormSelect
                 value={itemsPerPage}
                 onChange={(e) => setItemsPerPage(Number(e.target.value))}
@@ -765,7 +768,7 @@ export default function PermissionManagement() {
                 ))}
               </CFormSelect>
             </CCol>
-            <CCol md={2}>
+            <CCol xs={6} sm={6} md={2}>
               <CFormSelect
                 value={`${sortBy}-${sortOrder}`}
                 onChange={(e) => {
@@ -788,237 +791,418 @@ export default function PermissionManagement() {
         </CCardBody>
       </CCard>
 
-      {/* Users Table */}
+      {/* Users Table - Mobile Responsive */}
       <CCard>
         <CCardBody className="p-0">
-          <CTable hover responsive className="mb-0">
-            <CTableHead>
-              <CTableRow>
-                <CTableHeaderCell style={{ width: '50px' }}>
-                  <input
-                    type="checkbox"
-                    onChange={(e) => handleSelectAll(e.target.checked)}
-                    checked={paginatedUsers.filter(u => u._id !== currentUserId).length > 0 &&
-                      paginatedUsers.filter(u => u._id !== currentUserId).every(u => selectedUsers.includes(u._id))}
-                  />
-                </CTableHeaderCell>
-                <CTableHeaderCell
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => handleSort('name')}
-                >
-                  User {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
-                </CTableHeaderCell>
-                <CTableHeaderCell
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => handleSort('email')}
-                >
-                  Email {sortBy === 'email' && (sortOrder === 'asc' ? '↑' : '↓')}
-                </CTableHeaderCell>
-                <CTableHeaderCell
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => handleSort('role')}
-                >
-                  Role {sortBy === 'role' && (sortOrder === 'asc' ? '↑' : '↓')}
-                </CTableHeaderCell>
-                <CTableHeaderCell
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => handleSort('status')}
-                >
-                  Status {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
-                </CTableHeaderCell>
-                <CTableHeaderCell
-                  style={{ cursor: 'pointer' }}
-                  onClick={() => handleSort('date')}
-                >
-                  Joined {sortBy === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
-                </CTableHeaderCell>
-                <CTableHeaderCell>Actions</CTableHeaderCell>
-              </CTableRow>
-            </CTableHead>
-            <CTableBody>
-              {paginatedUsers.length > 0 ? (
-                paginatedUsers.map((user) => {
+          {/* Desktop Table View */}
+          <div className="d-none d-lg-block">
+            <div className="table-responsive">
+              <CTable hover className="mb-0">
+                <CTableHead>
+                  <CTableRow>
+                    <CTableHeaderCell style={{ width: '50px' }}>
+                      <input
+                        type="checkbox"
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        checked={paginatedUsers.filter(u => u._id !== currentUserId).length > 0 &&
+                          paginatedUsers.filter(u => u._id !== currentUserId).every(u => selectedUsers.includes(u._id))}
+                      />
+                    </CTableHeaderCell>
+                    <CTableHeaderCell
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => handleSort('name')}
+                    >
+                      User {sortBy === 'name' && (sortOrder === 'asc' ? '↑' : '↓')}
+                    </CTableHeaderCell>
+                    <CTableHeaderCell
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => handleSort('email')}
+                    >
+                      Email {sortBy === 'email' && (sortOrder === 'asc' ? '↑' : '↓')}
+                    </CTableHeaderCell>
+                    <CTableHeaderCell
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => handleSort('role')}
+                    >
+                      Role {sortBy === 'role' && (sortOrder === 'asc' ? '↑' : '↓')}
+                    </CTableHeaderCell>
+                    <CTableHeaderCell
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => handleSort('status')}
+                    >
+                      Status {sortBy === 'status' && (sortOrder === 'asc' ? '↑' : '↓')}
+                    </CTableHeaderCell>
+                    <CTableHeaderCell
+                      style={{ cursor: 'pointer' }}
+                      onClick={() => handleSort('date')}
+                    >
+                      Joined {sortBy === 'date' && (sortOrder === 'asc' ? '↑' : '↓')}
+                    </CTableHeaderCell>
+                    <CTableHeaderCell>Actions</CTableHeaderCell>
+                  </CTableRow>
+                </CTableHead>
+                <CTableBody>
+                  {paginatedUsers.length > 0 ? (
+                    paginatedUsers.map((user) => {
+                      const displayRole = normalizeRole(user.role);
+                      const isUserUpdating = updating[user._id] || updateLoading;
+
+                      return (
+                        <CTableRow key={user._id}>
+                          <CTableDataCell>
+                            {user._id !== currentUserId && (
+                              <input
+                                type="checkbox"
+                                checked={selectedUsers.includes(user._id)}
+                                onChange={(e) => handleUserSelection(user._id, e.target.checked)}
+                              />
+                            )}
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            <div className="d-flex align-items-center">
+                              <div className="me-3 d-flex align-items-center justify-content-center rounded-circle bg-gradient text-white fw-semibold"
+                                style={{
+                                  width: '40px',
+                                  height: '40px',
+                                  background: 'linear-gradient(45deg, #667eea 0%, #764ba2 100%)'
+                                }}>
+                                {(user.username || user.name || 'U').charAt(0).toUpperCase()}
+                              </div>
+                              <div>
+                                <div className="fw-semibold">{user.username || user.name || 'Unknown User'}</div>
+                                {user._id === currentUserId && (
+                                  <small className="text-primary fw-bold">(You)</small>
+                                )}
+                              </div>
+                            </div>
+                          </CTableDataCell>
+                          <CTableDataCell>{user.email || 'No email'}</CTableDataCell>
+                          <CTableDataCell>
+                            <div className="d-flex align-items-center gap-2">
+                              <CBadge
+                                color={getRoleBadgeColor(displayRole)}
+                                className="text-capitalize"
+                              >
+                                {ROLE_CONFIG[displayRole]?.label || displayRole}
+                              </CBadge>
+                              <CButton
+                                color="light"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setRoleInfoModal({ visible: true, role: displayRole })}
+                              >
+                                <CIcon icon={cilSettings} size="sm" />
+                              </CButton>
+                            </div>
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            <CBadge color={getStatusBadgeColor(user.status)} className="text-capitalize">
+                              {user.status || 'inactive'}
+                            </CBadge>
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'}
+                          </CTableDataCell>
+                          <CTableDataCell>
+                            {user._id !== currentUserId ? (
+                              <CButtonGroup size="sm">
+                                {displayRole !== 'admin' && (
+                                  <CButton
+                                    color="danger"
+                                    variant="outline"
+                                    onClick={() => handleRoleChange(user, 'admin')}
+                                    disabled={isUserUpdating}
+                                  >
+                                    {isUserUpdating ? <CSpinner size="sm" /> : 'Admin'}
+                                  </CButton>
+                                )}
+                                {displayRole !== 'manager' && (
+                                  <CButton
+                                    color="warning"
+                                    variant="outline"
+                                    onClick={() => handleRoleChange(user, 'manager')}
+                                    disabled={isUserUpdating}
+                                  >
+                                    {isUserUpdating ? <CSpinner size="sm" /> : 'Manager'}
+                                  </CButton>
+                                )}
+                                {displayRole !== 'waiter' && (
+                                  <CButton
+                                    color="success"
+                                    variant="outline"
+                                    onClick={() => handleRoleChange(user, 'waiter')}
+                                    disabled={isUserUpdating}
+                                  >
+                                    {isUserUpdating ? <CSpinner size="sm" /> : 'Waiter'}
+                                  </CButton>
+                                )}
+                                {displayRole !== 'cashier' && (
+                                  <CButton
+                                    color="info"
+                                    variant="outline"
+                                    onClick={() => handleRoleChange(user, 'cashier')}
+                                    disabled={isUserUpdating}
+                                  >
+                                    {isUserUpdating ? <CSpinner size="sm" /> : 'Cashier'}
+                                  </CButton>
+                                )}
+                              </CButtonGroup>
+                            ) : (
+                              <span className="text-muted small">Current User</span>
+                            )}
+                          </CTableDataCell>
+                        </CTableRow>
+                      );
+                    })
+                  ) : (
+                    <CTableRow>
+                      <CTableDataCell colSpan="7" className="text-center py-5 text-muted">
+                        <div style={{ fontSize: '3rem' }} className="mb-3">👥</div>
+                        <h5>No users found</h5>
+                        <p>Try adjusting your search or filter criteria</p>
+                      </CTableDataCell>
+                    </CTableRow>
+                  )}
+                </CTableBody>
+              </CTable>
+            </div>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="d-lg-none">
+            {paginatedUsers.length > 0 ? (
+              <div className="p-3">
+                {paginatedUsers.map((user) => {
                   const displayRole = normalizeRole(user.role);
                   const isUserUpdating = updating[user._id] || updateLoading;
 
                   return (
-                    <CTableRow key={user._id}>
-                      <CTableDataCell>
+                    <CCard key={user._id} className="mb-3">
+                      <CCardBody className="p-3">
+                        <div className="d-flex justify-content-between align-items-start mb-3">
+                          <div className="d-flex align-items-center">
+                            <div className="me-3 d-flex align-items-center justify-content-center rounded-circle bg-gradient text-white fw-semibold"
+                              style={{
+                                width: '40px',
+                                height: '40px',
+                                background: 'linear-gradient(45deg, #667eea 0%, #764ba2 100%)'
+                              }}>
+                              {(user.username || user.name || 'U').charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="fw-semibold">{user.username || user.name || 'Unknown User'}</div>
+                              {user._id === currentUserId && (
+                                <small className="text-primary fw-bold">(You)</small>
+                              )}
+                            </div>
+                          </div>
+                          {user._id !== currentUserId && (
+                            <input
+                              type="checkbox"
+                              checked={selectedUsers.includes(user._id)}
+                              onChange={(e) => handleUserSelection(user._id, e.target.checked)}
+                              className="form-check-input"
+                            />
+                          )}
+                        </div>
+
+                        <div className="row g-2 mb-3">
+                          <div className="col-6">
+                            <small className="text-muted">Email</small>
+                            <div className="fw-medium">{user.email || 'No email'}</div>
+                          </div>
+                          <div className="col-6">
+                            <small className="text-muted">Status</small>
+                            <div>
+                              <CBadge color={getStatusBadgeColor(user.status)} className="text-capitalize">
+                                {user.status || 'inactive'}
+                              </CBadge>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="row g-2 mb-3">
+                          <div className="col-6">
+                            <small className="text-muted">Role</small>
+                            <div className="d-flex align-items-center gap-2">
+                              <CBadge
+                                color={getRoleBadgeColor(displayRole)}
+                                className="text-capitalize"
+                              >
+                                {ROLE_CONFIG[displayRole]?.label || displayRole}
+                              </CBadge>
+                              <CButton
+                                color="light"
+                                size="sm"
+                                variant="ghost"
+                                onClick={() => setRoleInfoModal({ visible: true, role: displayRole })}
+                              >
+                                <CIcon icon={cilSettings} size="sm" />
+                              </CButton>
+                            </div>
+                          </div>
+                          <div className="col-6">
+                            <small className="text-muted">Joined</small>
+                            <div className="fw-medium">
+                              {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'}
+                            </div>
+                          </div>
+                        </div>
+
                         {user._id !== currentUserId && (
-                          <input
-                            type="checkbox"
-                            checked={selectedUsers.includes(user._id)}
-                            onChange={(e) => handleUserSelection(user._id, e.target.checked)}
-                          />
-                        )}
-                      </CTableDataCell>
-                      <CTableDataCell>
-                        <div className="d-flex align-items-center">
-                          <div className="me-3 d-flex align-items-center justify-content-center rounded-circle bg-gradient text-white fw-semibold"
-                            style={{
-                              width: '40px',
-                              height: '40px',
-                              background: 'linear-gradient(45deg, #667eea 0%, #764ba2 100%)'
-                            }}>
-                            {(user.username || user.name || 'U').charAt(0).toUpperCase()}
+                          <div className="d-grid gap-2">
+                            <div className="d-flex flex-wrap gap-1">
+                              {displayRole !== 'admin' && (
+                                <CButton
+                                  color="danger"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleRoleChange(user, 'admin')}
+                                  disabled={isUserUpdating}
+                                  className="flex-fill"
+                                >
+                                  {isUserUpdating ? <CSpinner size="sm" /> : 'Admin'}
+                                </CButton>
+                              )}
+                              {displayRole !== 'manager' && (
+                                <CButton
+                                  color="warning"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleRoleChange(user, 'manager')}
+                                  disabled={isUserUpdating}
+                                  className="flex-fill"
+                                >
+                                  {isUserUpdating ? <CSpinner size="sm" /> : 'Manager'}
+                                </CButton>
+                              )}
+                              {displayRole !== 'waiter' && (
+                                <CButton
+                                  color="success"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleRoleChange(user, 'waiter')}
+                                  disabled={isUserUpdating}
+                                  className="flex-fill"
+                                >
+                                  {isUserUpdating ? <CSpinner size="sm" /> : 'Waiter'}
+                                </CButton>
+                              )}
+                              {displayRole !== 'cashier' && (
+                                <CButton
+                                  color="info"
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleRoleChange(user, 'cashier')}
+                                  disabled={isUserUpdating}
+                                  className="flex-fill"
+                                >
+                                  {isUserUpdating ? <CSpinner size="sm" /> : 'Cashier'}
+                                </CButton>
+                              )}
+                            </div>
                           </div>
-                          <div>
-                            <div className="fw-semibold">{user.username || user.name || 'Unknown User'}</div>
-                            {user._id === currentUserId && (
-                              <small className="text-primary fw-bold">(You)</small>
-                            )}
-                          </div>
-                        </div>
-                      </CTableDataCell>
-                      <CTableDataCell>{user.email || 'No email'}</CTableDataCell>
-                      <CTableDataCell>
-                        <div className="d-flex align-items-center gap-2">
-                          <CBadge
-                            color={getRoleBadgeColor(displayRole)}
-                            className="text-capitalize"
-                          >
-                            {ROLE_CONFIG[displayRole]?.label || displayRole}
-                          </CBadge>
-                          <CButton
-                            color="light"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setRoleInfoModal({ visible: true, role: displayRole })}
-                          >
-                            <CIcon icon={cilSettings} size="sm" />
-                          </CButton>
-                        </div>
-                      </CTableDataCell>
-                      <CTableDataCell>
-                        <CBadge color={getStatusBadgeColor(user.status)} className="text-capitalize">
-                          {user.status || 'inactive'}
-                        </CBadge>
-                      </CTableDataCell>
-                      <CTableDataCell>
-                        {user.createdAt ? new Date(user.createdAt).toLocaleDateString() : 'Unknown'}
-                      </CTableDataCell>
-                      <CTableDataCell>
-                        {user._id !== currentUserId ? (
-                          <CButtonGroup size="sm">
-                            {displayRole !== 'admin' && (
-                              <CButton
-                                color="danger"
-                                variant="outline"
-                                onClick={() => handleRoleChange(user, 'admin')}
-                                disabled={isUserUpdating}
-                              >
-                                {isUserUpdating ? <CSpinner size="sm" /> : 'Admin'}
-                              </CButton>
-                            )}
-                            {displayRole !== 'manager' && (
-                              <CButton
-                                color="warning"
-                                variant="outline"
-                                onClick={() => handleRoleChange(user, 'manager')}
-                                disabled={isUserUpdating}
-                              >
-                                {isUserUpdating ? <CSpinner size="sm" /> : 'Manager'}
-                              </CButton>
-                            )}
-                            {displayRole !== 'waiter' && (
-                              <CButton
-                                color="success"
-                                variant="outline"
-                                onClick={() => handleRoleChange(user, 'waiter')}
-                                disabled={isUserUpdating}
-                              >
-                                {isUserUpdating ? <CSpinner size="sm" /> : 'Waiter'}
-                              </CButton>
-                            )}
-                            {displayRole !== 'cashier' && (
-                              <CButton
-                                color="info"
-                                variant="outline"
-                                onClick={() => handleRoleChange(user, 'cashier')}
-                                disabled={isUserUpdating}
-                              >
-                                {isUserUpdating ? <CSpinner size="sm" /> : 'Cashier'}
-                              </CButton>
-                            )}
-                          </CButtonGroup>
-                        ) : (
-                          <span className="text-muted small">Current User</span>
                         )}
-                      </CTableDataCell>
-                    </CTableRow>
+                      </CCardBody>
+                    </CCard>
                   );
-                })
-              ) : (
-                <CTableRow>
-                  <CTableDataCell colSpan="7" className="text-center py-5 text-muted">
-                    <div style={{ fontSize: '3rem' }} className="mb-3">👥</div>
-                    <h5>No users found</h5>
-                    <p>Try adjusting your search or filter criteria</p>
-                  </CTableDataCell>
-                </CTableRow>
-              )}
-            </CTableBody>
-          </CTable>
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-5 text-muted">
+                <div style={{ fontSize: '3rem' }} className="mb-3">👥</div>
+                <h5>No users found</h5>
+                <p>Try adjusting your search or filter criteria</p>
+              </div>
+            )}
+          </div>
         </CCardBody>
       </CCard>
 
-      {/* Pagination */}
+      {/* Pagination - Mobile Responsive */}
       {totalPages > 1 && (
-        <div className="d-flex justify-content-between align-items-center mt-4">
-          <div className="text-muted small">
-            Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredAndSortedUsers.length)} of {filteredAndSortedUsers.length} users
-          </div>
-          <CPagination>
-            <CPaginationItem
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(1)}
-            >
-              First
-            </CPaginationItem>
-            <CPaginationItem
-              disabled={currentPage === 1}
-              onClick={() => setCurrentPage(currentPage - 1)}
-            >
-              Previous
-            </CPaginationItem>
-
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              const pageNum = Math.max(1, currentPage - 2) + i;
-              if (pageNum <= totalPages) {
-                return (
+        <div className="mt-4">
+          <div className="d-flex flex-column flex-md-row justify-content-between align-items-center gap-3">
+            <div className="text-muted small text-center text-md-start">
+              Showing {((currentPage - 1) * itemsPerPage) + 1} to {Math.min(currentPage * itemsPerPage, filteredAndSortedUsers.length)} of {filteredAndSortedUsers.length} users
+            </div>
+            <div className="d-flex justify-content-center">
+              <CPagination className="mb-0">
+                {/* Mobile: Show only prev/next and current page */}
+                <div className="d-md-none d-flex gap-1">
                   <CPaginationItem
-                    key={pageNum}
-                    active={pageNum === currentPage}
-                    onClick={() => setCurrentPage(pageNum)}
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(currentPage - 1)}
                   >
-                    {pageNum}
+                    ←
                   </CPaginationItem>
-                );
-              }
-              return null;
-            })}
+                  <CPaginationItem active>
+                    {currentPage} / {totalPages}
+                  </CPaginationItem>
+                  <CPaginationItem
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                  >
+                    →
+                  </CPaginationItem>
+                </div>
 
-            <CPaginationItem
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(currentPage + 1)}
-            >
-              Next
-            </CPaginationItem>
-            <CPaginationItem
-              disabled={currentPage === totalPages}
-              onClick={() => setCurrentPage(totalPages)}
-            >
-              Last
-            </CPaginationItem>
-          </CPagination>
+                {/* Desktop: Show full pagination */}
+                <div className="d-none d-md-flex">
+                  <CPaginationItem
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(1)}
+                  >
+                    First
+                  </CPaginationItem>
+                  <CPaginationItem
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(currentPage - 1)}
+                  >
+                    Previous
+                  </CPaginationItem>
+
+                  {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                    const pageNum = Math.max(1, currentPage - 2) + i;
+                    if (pageNum <= totalPages) {
+                      return (
+                        <CPaginationItem
+                          key={pageNum}
+                          active={pageNum === currentPage}
+                          onClick={() => setCurrentPage(pageNum)}
+                        >
+                          {pageNum}
+                        </CPaginationItem>
+                      );
+                    }
+                    return null;
+                  })}
+
+                  <CPaginationItem
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(currentPage + 1)}
+                  >
+                    Next
+                  </CPaginationItem>
+                  <CPaginationItem
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(totalPages)}
+                  >
+                    Last
+                  </CPaginationItem>
+                </div>
+              </CPagination>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Role Change Confirmation Modal */}
+      {/* Role Change Confirmation Modal - Mobile Responsive */}
       <CModal
         visible={confirmModal.visible}
         onClose={() => setConfirmModal({ visible: false, user: null, newRole: null, type: 'single' })}
         size="lg"
+        fullscreen="md-down"
       >
         <CModalHeader>
           <h5 className="d-flex align-items-center">
@@ -1044,9 +1228,9 @@ export default function PermissionManagement() {
                 </p>
               </div>
 
-              {/* Role Comparison */}
-              <CRow className="mb-4">
-                <CCol md={6}>
+              {/* Role Comparison - Mobile Responsive */}
+              <CRow className="mb-4 g-3">
+                <CCol xs={12} md={6}>
                   <CCard className="h-100">
                     <CCardHeader className="py-2">
                       <small className="text-muted">Current Role</small>
@@ -1062,16 +1246,16 @@ export default function PermissionManagement() {
                       </p>
                       <div>
                         <small className="text-muted d-block mb-1">Permissions:</small>
-                        {ROLE_CONFIG[normalizeRole(confirmModal.user.role)]?.permissions.map((permission, idx) => (
-                          <div key={idx} className="mb-1">
-                            <small>{permission}</small>
-                          </div>
-                        ))}
+                        <div className="d-flex flex-wrap gap-1">
+                          {ROLE_CONFIG[normalizeRole(confirmModal.user.role)]?.permissions.map((permission, idx) => (
+                            <small key={idx} className="badge bg-light text-dark me-1 mb-1">{permission}</small>
+                          ))}
+                        </div>
                       </div>
                     </CCardBody>
                   </CCard>
                 </CCol>
-                <CCol md={6}>
+                <CCol xs={12} md={6}>
                   <CCard className="h-100 border-primary">
                     <CCardHeader className="py-2 bg-primary text-white">
                       <small>New Role</small>
@@ -1094,18 +1278,20 @@ export default function PermissionManagement() {
                       </p>
                       <div>
                         <small className="text-muted d-block mb-1">Permissions:</small>
-                        {ROLE_CONFIG[confirmModal.newRole]?.permissions.map((permission, idx) => (
-                          <div key={idx} className="d-flex align-items-center mb-1">
-                            <input 
-                              type="checkbox" 
-                              className="form-check-input me-2" 
-                              checked={checkboxStates.newPermissions[permission] === true}
-                              onChange={() => toggleCheckbox('newPermission', permission)}
-                              style={{ transform: 'scale(0.9)' }}
-                            />
-                            <small className="text-primary">{permission}</small>
-                          </div>
-                        ))}
+                        <div className="d-flex flex-column gap-1">
+                          {ROLE_CONFIG[confirmModal.newRole]?.permissions.map((permission, idx) => (
+                            <div key={idx} className="d-flex align-items-center">
+                              <input 
+                                type="checkbox" 
+                                className="form-check-input me-2" 
+                                checked={checkboxStates.newPermissions[permission] === true}
+                                onChange={() => toggleCheckbox('newPermission', permission)}
+                                style={{ transform: 'scale(0.9)' }}
+                              />
+                              <small className="text-primary">{permission}</small>
+                            </div>
+                          ))}
+                        </div>
                       </div>
                     </CCardBody>
                   </CCard>
@@ -1199,10 +1385,11 @@ export default function PermissionManagement() {
             </div>
           )}
         </CModalBody>
-        <CModalFooter>
+        <CModalFooter className="d-flex flex-column flex-sm-row gap-2">
           <CButton
             color="secondary"
             onClick={() => setConfirmModal({ visible: false, user: null, newRole: null, type: 'single' })}
+            className="w-100 w-sm-auto"
           >
             Cancel
           </CButton>
@@ -1210,6 +1397,7 @@ export default function PermissionManagement() {
             color="primary"
             onClick={confirmRoleChange}
             disabled={updating[confirmModal.user?._id] || bulkUpdating || updateLoading || !canChangeRole()}
+            className="w-100 w-sm-auto"
           >
             {(updating[confirmModal.user?._id] || bulkUpdating || updateLoading) && (
               <CSpinner size="sm" className="me-2" />
@@ -1219,11 +1407,12 @@ export default function PermissionManagement() {
         </CModalFooter>
       </CModal>
 
-      {/* Role Information Modal */}
+      {/* Role Information Modal - Mobile Responsive */}
       <CModal
         visible={roleInfoModal.visible}
         onClose={() => setRoleInfoModal({ visible: false, role: null })}
         size="md"
+        fullscreen="sm-down"
       >
         <CModalHeader>
           <h5 className="d-flex align-items-center">
@@ -1279,6 +1468,7 @@ export default function PermissionManagement() {
           <CButton
             color="secondary"
             onClick={() => setRoleInfoModal({ visible: false, role: null })}
+            className="w-100 w-sm-auto"
           >
             Close
           </CButton>

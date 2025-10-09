@@ -176,12 +176,12 @@ const Restaurants = () => {
 
   // ---------------- UI ----------------
   return (
-    <div className="container-fluid px-4">
-      <div className="d-flex justify-content-between align-items-center my-4">
+    <div className="container-fluid px-2 px-md-4">
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center my-3 my-md-4 gap-3">
         <h2 className="fw-bold mb-0 text-black">🏪 Restaurants</h2>
         <CButton
           color="primary"
-          className="px-4 rounded-pill fw-semibold"
+          className="px-3 px-md-4 rounded-pill fw-semibold w-100 w-md-auto"
           onClick={() => setModalState({ type: 'add', visible: true })}
         >
           + Add Restaurant
@@ -262,7 +262,7 @@ const Restaurants = () => {
             {activeTab === 'basic' && (
               <div className="row">
                 {['restaurantId', 'restaurantName', 'ownerName', 'cuisine'].map((field) => (
-                  <div className="col-md-6 mb-3" key={field}>
+                  <div className="col-12 col-md-6 mb-3" key={field}>
                     <label className="form-label text-capitalize">
                       {field.replace(/([A-Z])/g, ' $1')}
                     </label>
@@ -296,12 +296,14 @@ const Restaurants = () => {
                     accept="image/*"
                   />
                   {previewImage && (
-                    <img
-                      src={previewImage}
-                      alt="Preview"
-                      className="img-thumbnail mt-2"
-                      style={{ width: '150px', height: '100px', objectFit: 'cover' }}
-                    />
+                    <div className="d-flex justify-content-center justify-content-md-start mt-2">
+                      <img
+                        src={previewImage}
+                        alt="Preview"
+                        className="img-thumbnail"
+                        style={{ width: '150px', height: '100px', objectFit: 'cover' }}
+                      />
+                    </div>
                   )}
                 </div>
               </div>
@@ -313,7 +315,7 @@ const Restaurants = () => {
                 {['email', 'phone', 'address', 'city', 'state', 'zipCode', 'country', 'website'].map(
                   (field) => (
                     <div
-                      className={`col-md-${field === 'address' || field === 'website' ? '12' : '6'} mb-3`}
+                      className={`col-12 col-md-${field === 'address' || field === 'website' ? '12' : '6'} mb-3`}
                       key={field}
                     >
                       <label className="form-label text-capitalize">
@@ -340,7 +342,7 @@ const Restaurants = () => {
                   <label className="form-label fw-bold">Restaurant Features</label>
                   <div className="row">
                     {availableFeatures.map((feature) => (
-                      <div key={feature} className="col-md-6 col-lg-4 mb-2">
+                      <div key={feature} className="col-12 col-sm-6 col-lg-4 mb-2">
                         <div className="form-check">
                           <input
                             className="form-check-input"
@@ -365,23 +367,26 @@ const Restaurants = () => {
                 <div className="mb-3">
                   <label className="form-label fw-bold">Operating Hours</label>
                   {Object.keys(formData.operatingHours).map((day) => (
-                    <div key={day} className="row align-items-center mb-2">
-                      <div className="col-md-2 text-capitalize">{day}</div>
-                      <div className="col-md-2">
-                        <input
-                          type="checkbox"
-                          className="form-check-input"
-                          checked={formData.operatingHours[day].isOpen}
-                          onChange={(e) =>
-                            handleOperatingHoursChange(day, 'isOpen', e.target.checked)
-                          }
-                        />
-                        <label className="form-check-label ms-2">Open</label>
+                    <div key={day} className="row align-items-center mb-3 p-2 border rounded">
+                      <div className="col-12 col-md-2 text-capitalize fw-semibold mb-2 mb-md-0">{day}</div>
+                      <div className="col-12 col-md-2 mb-2 mb-md-0">
+                        <div className="form-check">
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            checked={formData.operatingHours[day].isOpen}
+                            onChange={(e) =>
+                              handleOperatingHoursChange(day, 'isOpen', e.target.checked)
+                            }
+                          />
+                          <label className="form-check-label">Open</label>
+                        </div>
                       </div>
-                      <div className="col-md-4">
+                      <div className="col-6 col-md-4">
+                        <label className="form-label small">Open Time</label>
                         <input
                           type="time"
-                          className="form-control"
+                          className="form-control form-control-sm"
                           value={formData.operatingHours[day].open}
                           onChange={(e) =>
                             handleOperatingHoursChange(day, 'open', e.target.value)
@@ -389,10 +394,11 @@ const Restaurants = () => {
                           disabled={!formData.operatingHours[day].isOpen}
                         />
                       </div>
-                      <div className="col-md-4">
+                      <div className="col-6 col-md-4">
+                        <label className="form-label small">Close Time</label>
                         <input
                           type="time"
-                          className="form-control"
+                          className="form-control form-control-sm"
                           value={formData.operatingHours[day].close}
                           onChange={(e) =>
                             handleOperatingHoursChange(day, 'close', e.target.value)
@@ -411,46 +417,50 @@ const Restaurants = () => {
         {/* Details View */}
         {modalState.type === 'detail' && selectedRestaurant && (
           <div className="row">
-            <div className="col-md-5">
+            <div className="col-12 col-md-5 mb-3 mb-md-0">
               <img
                 src={selectedRestaurant.restaurantImage || '/api/placeholder/300/200'}
                 alt={selectedRestaurant.restaurantName}
-                className="img-fluid rounded-3 shadow-sm mb-3"
+                className="img-fluid rounded-3 shadow-sm"
                 style={{ width: '100%', height: '250px', objectFit: 'cover' }}
               />
             </div>
-            <div className="col-md-7">
+            <div className="col-12 col-md-7">
               <h4 className="fw-bold text-primary mb-3">{selectedRestaurant.restaurantName}</h4>
-              <div className="mb-2">
-                <strong>Owner:</strong> {selectedRestaurant.ownerName}
-              </div>
-              <div className="mb-2">
-                <strong>Email:</strong> {selectedRestaurant.email}
-              </div>
-              <div className="mb-2">
-                <strong>Phone:</strong> {selectedRestaurant.phone}
-              </div>
-              <div className="mb-2">
-                <strong>Cuisine:</strong> {selectedRestaurant.cuisine}
+              <div className="row">
+                <div className="col-12 col-sm-6 mb-2">
+                  <strong>Owner:</strong> {selectedRestaurant.ownerName}
+                </div>
+                <div className="col-12 col-sm-6 mb-2">
+                  <strong>Email:</strong> 
+                  <div className="small text-break">{selectedRestaurant.email}</div>
+                </div>
+                <div className="col-12 col-sm-6 mb-2">
+                  <strong>Phone:</strong> {selectedRestaurant.phone}
+                </div>
+                <div className="col-12 col-sm-6 mb-2">
+                  <strong>Cuisine:</strong> {selectedRestaurant.cuisine}
+                </div>
               </div>
               <div className="mb-3">
-                <strong>Address:</strong> {selectedRestaurant.address}, {selectedRestaurant.city},{' '}
-                {selectedRestaurant.state} {selectedRestaurant.zipCode}
+                <strong>Address:</strong> 
+                <div className="small">{selectedRestaurant.address}, {selectedRestaurant.city}, {selectedRestaurant.state} {selectedRestaurant.zipCode}</div>
               </div>
               <div className="mb-3">
                 <strong>Features:</strong>
                 <div className="mt-2">
                   {selectedRestaurant.features?.map((feature, i) => (
-                    <CBadge key={i} color="info" className="me-2 mb-1">
+                    <CBadge key={i} color="info" className="me-1 mb-1">
                       {feature}
                     </CBadge>
                   ))}
                 </div>
               </div>
-              <div className="d-flex gap-2 mt-4">
+              <div className="d-flex flex-column flex-sm-row gap-2 mt-4">
                 <CButton
                   color="primary"
                   size="sm"
+                  className="w-100 w-sm-auto"
                   onClick={() => setModalState({ type: 'edit', visible: true })}
                 >
                   Edit
@@ -458,6 +468,7 @@ const Restaurants = () => {
                 <CButton
                   color="danger"
                   size="sm"
+                  className="w-100 w-sm-auto"
                   onClick={() => setModalState({ type: 'delete', visible: true })}
                 >
                   Delete

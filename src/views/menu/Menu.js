@@ -332,13 +332,13 @@ const Menu = () => {
 
   // ------------------ UI ------------------
   return (
-    <div className="container-fluid px-4">
+    <div className="container-fluid px-2 px-md-4">
       {/* Header */}
-      <div className="d-flex justify-content-between align-items-center my-4">
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center my-4 gap-3">
         <h2 className="fw-bold mb-0 text-black">🍽️ Menu </h2>
         <CButton
           color="primary"
-          className="px-4 rounded-pill fw-semibold"
+          className="px-4 rounded-pill fw-semibold w-100 w-md-auto"
           onClick={() => {
             setFormData({
               menuId: "",
@@ -433,6 +433,9 @@ const Menu = () => {
                 onChange={handleInputChange}
                 required
               />
+            </div>
+            
+            <div className="mb-3">
               <label className="form-label">Item Name</label>
               <input
                 type="text"
@@ -508,11 +511,11 @@ const Menu = () => {
               <label className="form-label">Food Sizes & Prices</label>
 
               {formData.sizes.map((size, index) => (
-                <div key={index} className="d-flex align-items-center gap-2 mb-2">
+                <div key={index} className="d-flex flex-column flex-md-row align-items-center gap-2 mb-2">
                   {/* Size Name */}
                   <input
                     type="text"
-                    className="form-control w-25"
+                    className="form-control flex-fill"
                     placeholder="Size (e.g., Half Plate)"
                     value={size.name || ""}
                     onChange={(e) => {
@@ -525,7 +528,7 @@ const Menu = () => {
                   {/* Size Price */}
                   <input
                     type="number"
-                    className="form-control w-25"
+                    className="form-control flex-fill"
                     placeholder="Price"
                     value={size.price || ""}
                     onChange={(e) => {
@@ -538,7 +541,7 @@ const Menu = () => {
                   {/* Remove Button */}
                   <button
                     type="button"
-                    className="btn btn-danger btn-sm"
+                    className="btn btn-danger btn-sm w-100 w-md-auto"
                     onClick={() => {
                       const updatedSizes = formData.sizes.filter((_, i) => i !== index);
                       setFormData((prev) => ({ ...prev, sizes: updatedSizes }));
@@ -572,12 +575,19 @@ const Menu = () => {
                 onChange={handleImageChange}
               />
               {previewImage && (
-                <img
-                  src={previewImage}
-                  alt="Preview"
-                  className="img-thumbnail mt-2"
-                  style={{ width: "100px", height: "100px", objectFit: "cover" }}
-                />
+                <div className="d-flex justify-content-center mt-2">
+                  <img
+                    src={previewImage}
+                    alt="Preview"
+                    className="img-thumbnail"
+                    style={{ 
+                      width: "100px", 
+                      height: "100px", 
+                      objectFit: "cover",
+                      maxWidth: "100%"
+                    }}
+                  />
+                </div>
               )}
             </div>
           </div>
@@ -589,10 +599,10 @@ const Menu = () => {
             <label className="form-label">Stock Items</label>
 
             {formData.stockItems.map((stockItem, index) => (
-              <div key={index} className="d-flex gap-2 align-items-center mb-2">
+              <div key={index} className="d-flex flex-column flex-md-row gap-2 align-items-center mb-2">
                 {/* Inventory Select */}
                 <select
-                  className="form-select"
+                  className="form-select flex-fill"
                   value={stockItem.stockId || ""}
                   onChange={(e) => handleStockItemChange(index, 'stockId', e.target.value)}
                 >
@@ -607,7 +617,7 @@ const Menu = () => {
                 {/* Quantity Input */}
                 <input
                   type="number"
-                  className="form-control"
+                  className="form-control flex-fill"
                   placeholder="Quantity"
                   value={stockItem.quantity || ""}
                   onChange={(e) => handleStockItemChange(index, 'quantity', e.target.value)}
@@ -615,7 +625,7 @@ const Menu = () => {
 
                 {/* Unit Select */}
                 <select
-                  className="form-select"
+                  className="form-select flex-fill"
                   value={stockItem.unit || ""}
                   onChange={(e) => handleStockItemChange(index, 'unit', e.target.value)}
                 >
@@ -631,7 +641,7 @@ const Menu = () => {
                 {/* Remove Button */}
                 <button
                   type="button"
-                  className="btn btn-danger btn-sm"
+                  className="btn btn-danger btn-sm w-100 w-md-auto"
                   onClick={() => removeStockItem(index)}
                   disabled={formData.stockItems.length === 1}
                 >

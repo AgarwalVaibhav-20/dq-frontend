@@ -113,79 +113,80 @@ const DueReport = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <FileText className="w-8 h-8 text-blue-600" />
-            Customer Due Report
+        <div className="mb-4 sm:mb-6">
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-2">
+            <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
+            <span className="hidden sm:inline">Customer Due Report</span>
+            <span className="sm:hidden">Due Report</span>
           </h1>
-          <p className="text-gray-600 mt-1">Comprehensive tracking of customer dues and payments</p>
+          <p className="text-sm sm:text-base text-gray-600 mt-1">Comprehensive tracking of customer dues and payments</p>
         </div>
 
         {/* Statistics */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-blue-500">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6 border-l-4 border-blue-500">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Dues</p>
-                <p className="text-2xl font-bold text-gray-900">₹{totalDuesAmount.toFixed(2)}</p>
+              <div className="flex-1">
+                <p className="text-xs sm:text-sm text-gray-600">Total Dues</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">₹{totalDuesAmount.toFixed(2)}</p>
                 <p className="text-xs text-gray-500 mt-1">{customerSummary.length} customers</p>
               </div>
-              <DollarSign className="w-10 h-10 text-blue-500" />
+              <DollarSign className="w-8 h-8 sm:w-10 sm:h-10 text-blue-500 flex-shrink-0" />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-green-500">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6 border-l-4 border-green-500">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Total Paid</p>
-                <p className="text-2xl font-bold text-green-600">₹{totalPaidAmount.toFixed(2)}</p>
+              <div className="flex-1">
+                <p className="text-xs sm:text-sm text-gray-600">Total Paid</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">₹{totalPaidAmount.toFixed(2)}</p>
                 <p className="text-xs text-gray-500 mt-1">
                   {totalDuesAmount > 0 ? ((totalPaidAmount / totalDuesAmount) * 100).toFixed(1) : 0}% collected
                 </p>
               </div>
-              <TrendingUp className="w-10 h-10 text-green-500" />
+              <TrendingUp className="w-8 h-8 sm:w-10 sm:h-10 text-green-500 flex-shrink-0" />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-red-500">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6 border-l-4 border-red-500">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Outstanding</p>
-                <p className="text-2xl font-bold text-red-600">₹{totalRemainingAmount.toFixed(2)}</p>
+              <div className="flex-1">
+                <p className="text-xs sm:text-sm text-gray-600">Outstanding</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600">₹{totalRemainingAmount.toFixed(2)}</p>
                 <p className="text-xs text-gray-500 mt-1">{customersWithOutstanding} customers</p>
               </div>
-              <TrendingDown className="w-10 h-10 text-red-500" />
+              <TrendingDown className="w-8 h-8 sm:w-10 sm:h-10 text-red-500 flex-shrink-0" />
             </div>
           </div>
 
-          <div className="bg-white rounded-lg shadow p-6 border-l-4 border-orange-500">
+          <div className="bg-white rounded-lg shadow p-4 sm:p-6 border-l-4 border-orange-500">
             <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600">Collection Rate</p>
-                <p className="text-2xl font-bold text-orange-600">
+              <div className="flex-1">
+                <p className="text-xs sm:text-sm text-gray-600">Collection Rate</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-orange-600">
                   {totalDuesAmount > 0 ? ((totalPaidAmount / totalDuesAmount) * 100).toFixed(1) : 0}%
                 </p>
                 <p className="text-xs text-gray-500 mt-1">Payment efficiency</p>
               </div>
-              <Users className="w-10 h-10 text-orange-500" />
+              <Users className="w-8 h-8 sm:w-10 sm:h-10 text-orange-500 flex-shrink-0" />
             </div>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-4 mb-6">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+        <div className="bg-white rounded-lg shadow p-3 sm:p-4 mb-4 sm:mb-6">
+          <div className="flex flex-col gap-3 sm:gap-4">
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
               <input
                 type="text"
                 placeholder="Search by customer name or ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -198,7 +199,7 @@ const DueReport = () => {
                 <button
                   key={status.value}
                   onClick={() => setFilterStatus(status.value)}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                     filterStatus === status.value
                       ? `bg-${status.color}-600 text-white`
                       : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
@@ -222,21 +223,21 @@ const DueReport = () => {
         {/* Table */}
         <div className="bg-white rounded-lg shadow overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full">
+            <table className="w-full min-w-[800px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer Name</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Due</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount Paid</th>
-                  <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Remaining</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Progress</th>
-                  <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer Name</th>
+                  <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Due</th>
+                  <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount Paid</th>
+                  <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Remaining</th>
+                  <th className="px-3 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Progress</th>
+                  <th className="px-3 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-200">
                 {filteredCustomers.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-8 text-center text-gray-500">
+                    <td colSpan="6" className="px-3 sm:px-6 py-8 text-center text-gray-500">
                       No customers found
                     </td>
                   </tr>
@@ -252,24 +253,24 @@ const DueReport = () => {
                         className="hover:bg-gray-50 cursor-pointer transition-colors"
                         onClick={() => handleCustomerClick(customer)}
                       >
-                        <td className="px-6 py-4">
-                          <div className="font-medium text-gray-900">{customer.customerName}</div>
-                          <div className="text-sm text-gray-500">
+                        <td className="px-3 sm:px-6 py-4">
+                          <div className="font-medium text-gray-900 text-sm sm:text-base">{customer.customerName}</div>
+                          <div className="text-xs sm:text-sm text-gray-500">
                             {customer.dues.length} transaction{customer.dues.length !== 1 ? 's' : ''}
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-right font-medium text-gray-900">
+                        <td className="px-3 sm:px-6 py-4 text-right font-medium text-gray-900 text-sm sm:text-base">
                           ₹{customer.totalDue.toFixed(2)}
                         </td>
-                        <td className="px-6 py-4 text-right text-green-600 font-medium">
+                        <td className="px-3 sm:px-6 py-4 text-right text-green-600 font-medium text-sm sm:text-base">
                           ₹{customer.totalPaid.toFixed(2)}
                         </td>
-                        <td className="px-6 py-4 text-right">
-                          <span className={`font-bold ${customer.totalRemaining > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                        <td className="px-3 sm:px-6 py-4 text-right">
+                          <span className={`font-bold text-sm sm:text-base ${customer.totalRemaining > 0 ? 'text-red-600' : 'text-green-600'}`}>
                             ₹{customer.totalRemaining.toFixed(2)}
                           </span>
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-3 sm:px-6 py-4">
                           <div className="flex flex-col items-center">
                             <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
                               <div
@@ -284,17 +285,18 @@ const DueReport = () => {
                             <span className="text-xs text-gray-600 font-medium">{progressPercent}%</span>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-center">
+                        <td className="px-3 sm:px-6 py-4 text-center">
                           {customer.totalRemaining === 0 && customer.totalPaid > 0 ? (
-                            <span className="px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-green-100 text-green-800">
-                              Fully Paid
+                            <span className="px-2 sm:px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                              <span className="hidden sm:inline">Fully Paid</span>
+                              <span className="sm:hidden">Paid</span>
                             </span>
                           ) : customer.totalPaid > 0 && customer.totalRemaining > 0 ? (
-                            <span className="px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                            <span className="px-2 sm:px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
                               Partial
                             </span>
                           ) : (
-                            <span className="px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                            <span className="px-2 sm:px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-red-100 text-red-800">
                               Unpaid
                             </span>
                           )}
@@ -309,22 +311,22 @@ const DueReport = () => {
         </div>
 
         {/* Footer */}
-        <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-          <div className="flex flex-wrap justify-between items-center gap-4">
-            <p className="text-sm text-blue-700">
+        <div className="mt-4 sm:mt-6 bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
+            <p className="text-xs sm:text-sm text-blue-700 text-center sm:text-left">
               Showing <span className="font-semibold">{filteredCustomers.length}</span> of{' '}
               <span className="font-semibold">{customerSummary.length}</span> customers
             </p>
-            <div className="flex gap-6">
+            <div className="flex gap-4 sm:gap-6 justify-center sm:justify-end">
               <div className="text-center">
                 <p className="text-xs text-blue-600 mb-1">Avg Due per Customer</p>
-                <p className="text-lg font-bold text-blue-900">
+                <p className="text-sm sm:text-lg font-bold text-blue-900">
                   ₹{customerSummary.length > 0 ? (totalDuesAmount / customerSummary.length).toFixed(2) : 0}
                 </p>
               </div>
               <div className="text-center">
                 <p className="text-xs text-blue-600 mb-1">Avg Outstanding</p>
-                <p className="text-lg font-bold text-blue-900">
+                <p className="text-sm sm:text-lg font-bold text-blue-900">
                   ₹{customerSummary.length > 0 ? (totalRemainingAmount / customerSummary.length).toFixed(2) : 0}
                 </p>
               </div>
@@ -334,53 +336,53 @@ const DueReport = () => {
 
         {/* Modal for Customer Dues Details */}
         {isModalOpen && selectedCustomer && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-            <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
+            <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
               {/* Modal Header */}
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-6 py-4 flex justify-between items-center">
-                <div>
-                  <h2 className="text-2xl font-bold">{selectedCustomer.customerName}</h2>
-                  <p className="text-blue-100 text-sm mt-1">
+              <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center">
+                <div className="flex-1 min-w-0">
+                  <h2 className="text-lg sm:text-xl lg:text-2xl font-bold truncate">{selectedCustomer.customerName}</h2>
+                  <p className="text-blue-100 text-xs sm:text-sm mt-1">
                     Customer ID: {selectedCustomer.customerId?.toString().slice(0, 8).toUpperCase()}
                   </p>
                 </div>
                 <button
                   onClick={closeModal}
-                  className="text-white hover:bg-blue-800 rounded-full p-2 transition-colors"
+                  className="text-white hover:bg-blue-800 rounded-full p-2 transition-colors flex-shrink-0 ml-2"
                 >
-                  <X className="w-6 h-6" />
+                  <X className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               </div>
 
               {/* Modal Summary */}
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100 px-6 py-4 grid grid-cols-3 gap-4 border-b">
+              <div className="bg-gradient-to-r from-blue-50 to-blue-100 px-3 sm:px-6 py-3 sm:py-4 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 border-b">
                 <div className="text-center">
                   <p className="text-xs text-gray-600 uppercase mb-1">Total Due</p>
-                  <p className="text-2xl font-bold text-gray-900">₹{selectedCustomer.totalDue.toFixed(2)}</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">₹{selectedCustomer.totalDue.toFixed(2)}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-xs text-gray-600 uppercase mb-1">Amount Paid</p>
-                  <p className="text-2xl font-bold text-green-600">₹{selectedCustomer.totalPaid.toFixed(2)}</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">₹{selectedCustomer.totalPaid.toFixed(2)}</p>
                 </div>
                 <div className="text-center">
                   <p className="text-xs text-gray-600 uppercase mb-1">Remaining</p>
-                  <p className="text-2xl font-bold text-red-600">₹{selectedCustomer.totalRemaining.toFixed(2)}</p>
+                  <p className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600">₹{selectedCustomer.totalRemaining.toFixed(2)}</p>
                 </div>
               </div>
 
               {/* Progress Bar */}
-              <div className="px-6 py-3 bg-gray-50 border-b">
+              <div className="px-3 sm:px-6 py-3 bg-gray-50 border-b">
                 <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-700">Payment Progress</span>
-                  <span className="text-sm font-bold text-gray-900">
+                  <span className="text-xs sm:text-sm font-medium text-gray-700">Payment Progress</span>
+                  <span className="text-xs sm:text-sm font-bold text-gray-900">
                     {selectedCustomer.totalDue > 0 
                       ? ((selectedCustomer.totalPaid / selectedCustomer.totalDue) * 100).toFixed(1)
                       : 0}%
                   </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
+                <div className="w-full bg-gray-200 rounded-full h-2 sm:h-3">
                   <div
-                    className="bg-gradient-to-r from-green-500 to-green-600 h-3 rounded-full transition-all"
+                    className="bg-gradient-to-r from-green-500 to-green-600 h-2 sm:h-3 rounded-full transition-all"
                     style={{
                       width: `${Math.min(
                         (selectedCustomer.totalPaid / selectedCustomer.totalDue) * 100,
@@ -392,12 +394,12 @@ const DueReport = () => {
               </div>
 
               {/* Modal Body - Dues List */}
-              <div className="overflow-y-auto flex-1 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <Receipt className="w-5 h-5 text-blue-600" />
+              <div className="overflow-y-auto flex-1 p-3 sm:p-6">
+                <h3 className="text-base sm:text-lg font-semibold text-gray-900 mb-3 sm:mb-4 flex items-center gap-2">
+                  <Receipt className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
                   All Transactions ({selectedCustomer.dues.length})
                 </h3>
-                <div className="space-y-3">
+                <div className="space-y-2 sm:space-y-3">
                   {selectedCustomer.dues.map((due, index) => {
                     const total = parseFloat(due.total) || 0;
                     const paid = parseFloat(due.paidAmount) || 0;
@@ -407,51 +409,51 @@ const DueReport = () => {
                     return (
                       <div
                         key={due._id || due.id || index}
-                        className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow bg-white"
+                        className="border border-gray-200 rounded-lg p-3 sm:p-4 hover:shadow-md transition-shadow bg-white"
                       >
-                        <div className="flex justify-between items-start mb-3">
+                        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start mb-3 gap-2">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
-                              <span className="font-semibold text-gray-900">
+                            <div className="flex flex-col sm:flex-row sm:items-center gap-2 mb-2">
+                              <span className="font-semibold text-gray-900 text-sm sm:text-base">
                                 Due #{(due._id || due.id)?.toString().slice(0, 8).toUpperCase()}
                               </span>
                               {remaining <= 0 ? (
-                                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-green-100 text-green-800 w-fit">
                                   Paid
                                 </span>
                               ) : paid > 0 ? (
-                                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-orange-100 text-orange-800 w-fit">
                                   Partial
                                 </span>
                               ) : (
-                                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                                <span className="px-2 py-0.5 text-xs font-semibold rounded-full bg-red-100 text-red-800 w-fit">
                                   Unpaid
                                 </span>
                               )}
                             </div>
-                            <div className="flex items-center gap-2 text-sm text-gray-600 mb-2">
-                              <Calendar className="w-4 h-4" />
+                            <div className="flex items-center gap-2 text-xs sm:text-sm text-gray-600 mb-2">
+                              <Calendar className="w-3 h-3 sm:w-4 sm:h-4" />
                               <span>{formatDate(due.createdAt || due.created_at || due.date)}</span>
                             </div>
                           </div>
-                          <div className="text-right">
+                          <div className="text-left sm:text-right">
                             <p className="text-xs text-gray-500 mb-1">Total Amount</p>
-                            <p className="text-xl font-bold text-gray-900">₹{total.toFixed(2)}</p>
+                            <p className="text-lg sm:text-xl font-bold text-gray-900">₹{total.toFixed(2)}</p>
                           </div>
                         </div>
 
                         {/* Payment Details */}
-                        <div className="grid grid-cols-2 gap-4 mb-3 p-3 bg-gray-50 rounded">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 mb-3 p-2 sm:p-3 bg-gray-50 rounded">
                           <div>
                             <p className="text-xs text-gray-600 mb-1 flex items-center gap-1">
                               <CreditCard className="w-3 h-3" />
                               Paid Amount
                             </p>
-                            <p className="text-lg font-bold text-green-600">₹{paid.toFixed(2)}</p>
+                            <p className="text-base sm:text-lg font-bold text-green-600">₹{paid.toFixed(2)}</p>
                           </div>
                           <div>
                             <p className="text-xs text-gray-600 mb-1">Remaining</p>
-                            <p className={`text-lg font-bold ${remaining > 0 ? 'text-red-600' : 'text-green-600'}`}>
+                            <p className={`text-base sm:text-lg font-bold ${remaining > 0 ? 'text-red-600' : 'text-green-600'}`}>
                               ₹{remaining.toFixed(2)}
                             </p>
                           </div>
@@ -463,9 +465,9 @@ const DueReport = () => {
                             <span>Payment Progress</span>
                             <span className="font-semibold">{progress}%</span>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="w-full bg-gray-200 rounded-full h-1.5 sm:h-2">
                             <div
-                              className={`h-2 rounded-full ${
+                              className={`h-1.5 sm:h-2 rounded-full ${
                                 progress >= 100 ? 'bg-green-500' :
                                 progress >= 50 ? 'bg-orange-500' :
                                 'bg-red-500'
@@ -476,9 +478,9 @@ const DueReport = () => {
                         </div>
 
                         {due.notes && (
-                          <div className="mt-3 pt-3 border-t border-gray-100">
+                          <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-100">
                             <p className="text-xs text-gray-500 mb-1">Notes</p>
-                            <p className="text-sm text-gray-700">{due.notes}</p>
+                            <p className="text-xs sm:text-sm text-gray-700">{due.notes}</p>
                           </div>
                         )}
                       </div>
@@ -488,8 +490,8 @@ const DueReport = () => {
               </div>
 
               {/* Modal Footer */}
-              <div className="bg-gray-50 px-6 py-4 border-t flex justify-between items-center">
-                <div className="text-sm text-gray-600 flex gap-4">
+              <div className="bg-gray-50 px-3 sm:px-6 py-3 sm:py-4 border-t flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3">
+                <div className="text-xs sm:text-sm text-gray-600 flex flex-wrap gap-2 sm:gap-4">
                   {selectedCustomer.unpaidCount > 0 && (
                     <span>
                       <span className="font-semibold text-red-600">{selectedCustomer.unpaidCount}</span> Unpaid
@@ -497,7 +499,7 @@ const DueReport = () => {
                   )}
                   {selectedCustomer.partiallyPaidCount > 0 && (
                     <span>
-                      <span className="font-semibold text-orange-600">http://localhost:3000/{selectedCustomer.partiallyPaidCount}</span> Partial
+                      <span className="font-semibold text-orange-600">{selectedCustomer.partiallyPaidCount}</span> Partial
                     </span>
                   )}
                   {selectedCustomer.paidCount > 0 && (
@@ -508,7 +510,7 @@ const DueReport = () => {
                 </div>
                 <button
                   onClick={closeModal}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+                  className="px-4 sm:px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium text-sm sm:text-base w-full sm:w-auto"
                 >
                   Close
                 </button>

@@ -48,18 +48,31 @@ const ProductList = ({
     { id: 'full', label: 'Full', priceMultiplier: 1.3 }
   ];
 
-  // Handle product click - open modal
+  // Handle product click - only show modal, no direct add
   const handleProductClick = (product) => {
-    setSelectedProduct(product);
-    // setSelectedSize('medium'); // Default to medium
-    setShowSizeModal(true);
+    console.log('Product clicked:', product.itemName);
+    console.log('Opening size selection modal');
+    
+    try {
+      setSelectedProduct(product);
+      setSelectedSize('');
+      setShowSizeModal(true);
+      console.log('Modal opened for:', product.itemName);
+    } catch (error) {
+      console.error('Error opening modal:', error);
+    }
   };
 
   // Handle size selection and add to cart
   const handleAddToCart = () => {
+    console.log('Add to cart clicked');
+    console.log('Selected product:', selectedProduct?.itemName);
+    console.log('Selected size:', selectedSize);
+    
     if (selectedProduct && selectedSize) {
       const sizeData = selectedProduct.sizes.find(s => s._id === selectedSize);
-      console.log("size data :", sizeData);
+      console.log('Size data found:', sizeData);
+      
       const productWithSize = {
         ...selectedProduct,
         selectedSize: sizeData.label,
@@ -67,20 +80,44 @@ const ProductList = ({
         sizeId: sizeData._id,
       };
 
+      console.log('Adding product with size:', productWithSize);
       onMenuItemClick(productWithSize);
 
       setShowSizeModal(false);
       setSelectedProduct(null);
       setSelectedSize('');
+      console.log('Modal closed and product added');
+    } else {
+      console.log('Missing selectedProduct or selectedSize');
     }
   };
 
 
   // Close modal
   const handleCloseModal = () => {
-    setShowSizeModal(false);
-    setSelectedProduct(null);
-    setSelectedSize('');
+    try {
+      console.log('Closing modal');
+      setShowSizeModal(false);
+      setSelectedProduct(null);
+      setSelectedSize('');
+    } catch (error) {
+      console.error('Error closing modal:', error);
+    }
+  };
+
+  // Direct add to cart without modal
+  const handleDirectAdd = (product) => {
+    try {
+      const productToAdd = {
+        ...product,
+        adjustedPrice: product.price,
+        sizeId: null,
+      };
+      onMenuItemClick(productToAdd);
+      console.log('Added to cart directly:', product.itemName);
+    } catch (error) {
+      console.error('Error adding to cart:', error);
+    }
   };
 
   return (
@@ -88,24 +125,35 @@ const ProductList = ({
       <CContainer
         className={`rounded p-4 ${isDarkMode ? 'bg-dark text-light' : 'bg-white text-dark'} shadow-sm`}
       >
-        {/* Search & Table Info */}
-        <CInputGroup className="mb-4">
-          <CFormInput
-            placeholder="Search menu items..."
-            className={`me-3 py-2 px-3 rounded-pill ${isDarkMode ? 'bg-secondary text-light border-0' : 'border'}`}
-            value={searchProduct}
-            onChange={handleSearchProduct}
-          />
-          <CFormSelect
-            className={`rounded-pill px-3 py-2 ${isDarkMode ? 'bg-secondary text-light border-0' : 'border'}`}
-            disabled
-          >
-            <option>Table #{tableNumber}</option>
-          </CFormSelect>
-        </CInputGroup>
+        {/* Search & Table Info - Mobile Responsive */}
+        <div className="mb-4">
+          <CInputGroup className="mb-2 mb-md-0">
+            <CFormInput
+              placeholder="Search menu items..."
+              className={`me-2 me-md-3 py-2 px-3 rounded-pill ${isDarkMode ? 'bg-secondary text-light border-0' : 'border'}`}
+              value={searchProduct}
+              onChange={handleSearchProduct}
+              style={{
+                fontSize: '14px',
+                minHeight: '40px'
+              }}
+            />
+            <CFormSelect
+              className={`rounded-pill px-2 px-md-3 py-2 ${isDarkMode ? 'bg-secondary text-light border-0' : 'border'}`}
+              disabled
+              style={{
+                fontSize: '14px',
+                minHeight: '40px',
+                minWidth: '120px'
+              }}
+            >
+              <option>Table #{tableNumber}</option>
+            </CFormSelect>
+          </CInputGroup>
+        </div>
 
-        {/* Category Filter Bar */}
-        <h5 className="fw-semibold mb-3">Browse by Category</h5>
+        {/* Category Filter Bar - Mobile Responsive */}
+        <h5 className="fw-semibold mb-3" style={{ fontSize: '16px' }}>Browse by Category</h5>
         <div
           className="d-flex overflow-auto pb-2 mb-4 gap-2 flex-nowrap custom-scrollbar"
           style={{
@@ -113,7 +161,11 @@ const ProductList = ({
             scrollbarColor: isDarkMode
               ? '#6c757d #343a40'
               : '#adb5bd #f8f9fa',
-            minHeight: 56,
+            minHeight: '48px',
+            maxWidth: '100%',
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            paddingBottom: '8px'
           }}
         >
           <CButton
@@ -124,9 +176,13 @@ const ProductList = ({
               fontWeight: !selectedCategoryId ? 600 : 400,
               boxShadow: !selectedCategoryId ? '0 0 0 0.2rem rgba(0,123,255,.15)' : undefined,
               transition: 'all 0.2s',
+              flexShrink: 0,
+              fontSize: '0.8rem',
+              minHeight: '40px',
+              whiteSpace: 'nowrap'
             }}
           >
-            <i className="bi bi-grid me-2" /> All
+            <i className="bi bi-grid me-1" style={{ fontSize: '12px' }} /> All
           </CButton>
           {categories.map((cat) => {
             const categoryId = cat._id || cat.id; // Handle both _id and id fields
@@ -143,6 +199,9 @@ const ProductList = ({
                   display: 'flex',
                   alignItems: 'center',
                   whiteSpace: 'nowrap',
+                  flexShrink: 0,
+                  fontSize: '0.8rem',
+                  minHeight: '40px'
                 }}
               >
                 {cat.icon && (
@@ -150,10 +209,10 @@ const ProductList = ({
                     src={cat.icon}
                     alt=""
                     style={{
-                      width: 22,
-                      height: 22,
+                      width: '14px',
+                      height: '14px',
                       objectFit: 'contain',
-                      marginRight: 8,
+                      marginRight: '4px',
                       filter: isDarkMode ? 'invert(1)' : undefined,
                     }}
                   />
@@ -195,30 +254,33 @@ const ProductList = ({
           ))} */}
         </div>
 
-        <h5 className="fw-semibold mb-3">Available Items</h5>
+        <h5 className="fw-semibold mb-3" style={{ fontSize: '16px' }}>Available Items</h5>
         {menuItemsLoading ? (
           <div className="text-center py-5">
             <CSpinner color="primary" className="mb-3" />
-            <p>Fetching products...</p>
+            <p style={{ fontSize: '14px' }}>Fetching products...</p>
           </div>
         ) : filteredMenuItems.length === 0 ? (
-          <div className="text-center text-muted py-5 fs-6">
+          <div className="text-center text-muted py-5" style={{ fontSize: '14px' }}>
             {selectedCategoryId ? 'No products found in this category.' : 'No products match your selection.'}
           </div>
         ) : (
           <div className="product-grid overflow-auto px-2" style={{ maxHeight: '55vh' }}>
-            <CRow className="g-4">
+            <CRow className="g-2 g-md-4">
               {filteredMenuItems.map((product) => (
-                <CCol key={product.id} xs={12} sm={6} md={4} lg={3} xl={2} className="d-flex">
+                <CCol key={product.id} xs={6} sm={6} md={4} lg={3} xl={2} className="d-flex">
                   <CTooltip content={`Click to select size for ${product.itemName}`} placement="top">
                     <div
-                      onClick={() => handleProductClick(product)}
+                      onClick={() => {
+                        console.log('Product div clicked:', product.itemName);
+                        handleProductClick(product);
+                      }}
                       className={`p-2 d-flex flex-column align-items-center justify-content-between text-center border rounded-4 h-100 w-100 shadow-sm transition-all hover-scale ${isDarkMode ? 'bg-secondary text-light' : 'bg-white'
                         }`}
                       style={{
                         cursor: 'pointer',
                         aspectRatio: '1 / 1',
-                        minHeight: 180,
+                        minHeight: '140px',
                         boxShadow: '0 2px 12px rgba(0,0,0,0.06)',
                         transition: 'transform 0.15s ease',
                       }}
@@ -247,16 +309,17 @@ const ProductList = ({
                       <h6
                         className="mb-1 fw-semibold"
                         style={{
-                          fontSize: '15px',
+                          fontSize: '12px',
                           whiteSpace: 'nowrap',
                           overflow: 'hidden',
                           textOverflow: 'ellipsis',
-                          width: '100%'
+                          width: '100%',
+                          lineHeight: '1.2'
                         }}
                       >
                         {product.itemName}
                       </h6>
-                      <span className="text-primary fw-bold" style={{ fontSize: '15px' }}>
+                      <span className="text-primary fw-bold" style={{ fontSize: '12px' }}>
                         ₹{!product.sizes[0]?.price ? product.price : product.sizes[0].price}
                       </span>
                     </div>
@@ -268,44 +331,47 @@ const ProductList = ({
         )}
       </CContainer>
 
-      {/* Size Selection Modal */}
+      {/* Size Selection Modal - Simplified */}
       <CModal
         visible={showSizeModal}
         onClose={handleCloseModal}
-        size="md"
-        centered
-        className={isDarkMode ? 'modal-dark' : ''}
+        size="lg"
       >
         <CModalHeader className={isDarkMode ? 'bg-dark text-light border-secondary' : ''}>
-          <CModalTitle>Select Size</CModalTitle>
+          <CModalTitle style={{ fontSize: '16px' }}>Select Size</CModalTitle>
         </CModalHeader>
-        <CModalBody className={isDarkMode ? 'bg-dark text-light' : ''}>
+        <CModalBody className={isDarkMode ? 'bg-dark text-light' : ''} style={{ padding: '20px' }}>
           {selectedProduct && (
-            <div className="text-center mb-4">
-              
+            <div className="text-center mb-3">
+              {selectedProduct.itemImage && (
                 <img
                   src={selectedProduct.itemImage}
                   alt={selectedProduct.itemName}
                   style={{
-                    width: '120px',
-                    height: '120px',
+                    width: '80px',
+                    height: '80px',
                     objectFit: 'cover',
-                    borderRadius: '12px',
-                    margin: '0 auto 16px'
+                    borderRadius: '8px',
+                    margin: '0 auto 12px'
+                  }}
+                  onError={(e) => {
+                    e.target.style.display = 'none';
                   }}
                 />
-              <h4 className="mb-2">{selectedProduct.itemName}</h4>
-              <p className={`mb-3 ${isDarkMode ? 'text-light opacity-75' : 'text-muted'}`}>
+              )}
+              <h5 className="mb-2" style={{ fontSize: '16px' }}>{selectedProduct.itemName}</h5>
+              <p className={`mb-3 ${isDarkMode ? 'text-light opacity-75' : 'text-muted'}`} style={{ fontSize: '14px' }}>
                 {selectedProduct.description || 'Choose your preferred size'}
               </p>
             </div>
           )}
 
           <div className="size-options">
-            <h6 className="mb-3">Available Sizes:</h6>
-            <CRow className="g-3">
-              {selectedProduct?.sizes?.map((size) => (
-                <CCol key={size._id} xs={12} sm={4}>
+            <h6 className="mb-3" style={{ fontSize: '14px' }}>Available Sizes:</h6>
+            {selectedProduct?.sizes && selectedProduct.sizes.length > 0 ? (
+            <CRow className="g-2">
+              {selectedProduct.sizes.map((size) => (
+                <CCol key={size._id} xs={12} sm={6} md={4}>
                   <CCard
                     className={`size-option h-100 ${selectedSize === size._id
                       ? 'border-primary bg-primary bg-opacity-10'
@@ -317,13 +383,13 @@ const ProductList = ({
                     onClick={() => setSelectedSize(size._id)}
                   >
                     <CCardBody className="text-center p-3">
-                      <h6 className="mb-2">{size.label}</h6>
+                      <h6 className="mb-2" style={{ fontSize: '14px' }}>{size.label}</h6>
                       <div className="price-info">
-                        <span className="text-primary fw-bold">₹{size.price}</span>
+                        <span className="text-primary fw-bold" style={{ fontSize: '14px' }}>₹{size.price}</span>
                       </div>
                       {selectedSize === size._id && (
                         <div className="mt-2">
-                          <i className="bi bi-check-circle-fill text-primary"></i>
+                          <i className="bi bi-check-circle-fill text-primary" style={{ fontSize: '16px' }}></i>
                         </div>
                       )}
                     </CCardBody>
@@ -331,17 +397,45 @@ const ProductList = ({
                 </CCol>
               ))}
             </CRow>
+            ) : (
+              <div className="text-center text-muted">
+                <p>No sizes available for this item.</p>
+                <CButton 
+                  color="primary" 
+                  onClick={() => {
+                    // Add item without size selection
+                    const productWithoutSize = {
+                      ...selectedProduct,
+                      adjustedPrice: selectedProduct.price,
+                      sizeId: null,
+                    };
+                    onMenuItemClick(productWithoutSize);
+                    setShowSizeModal(false);
+                    setSelectedProduct(null);
+                    setSelectedSize('');
+                  }}
+                >
+                  Add to Cart (No Size)
+                </CButton>
+              </div>
+            )}
+            
           </div>
 
         </CModalBody>
-        <CModalFooter className={isDarkMode ? 'bg-dark border-secondary' : ''}>
-          <CButton color="secondary" onClick={handleCloseModal}>
+        <CModalFooter className={isDarkMode ? 'bg-dark border-secondary' : ''} style={{ padding: '16px 20px' }}>
+          <CButton 
+            color="secondary" 
+            onClick={handleCloseModal}
+            style={{ fontSize: '14px', minWidth: '80px' }}
+          >
             Cancel
           </CButton>
           <CButton
             color="primary"
             onClick={handleAddToCart}
             disabled={!selectedSize}
+            style={{ fontSize: '14px', minWidth: '100px' }}
           >
             Add to Cart
             {/* {selectedProduct && selectedSize && (
@@ -352,6 +446,7 @@ const ProductList = ({
           </CButton>
         </CModalFooter>
       </CModal>
+
     </>
   );
 };

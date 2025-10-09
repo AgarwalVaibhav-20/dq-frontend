@@ -2,7 +2,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
 import { DataGrid } from '@mui/x-data-grid'
 import { fetchOrders, updateOrderStatus } from '../../redux/slices/orderSlice'
-import { CButton, CSpinner } from '@coreui/react'
+import { CButton, CSpinner, CCard, CCardBody, CCardHeader, CCol, CRow, CFormSelect, CFormInput, CFormLabel } from '@coreui/react'
 import CustomToolbar from '../../utils/CustomToolbar'
 import { format } from 'date-fns'
 import { useMediaQuery } from '@mui/material'
@@ -33,6 +33,13 @@ const Order = () => {
   const isMobile = useMediaQuery('(max-width:600px)')
   const { restaurantProfile } = useSelector((state) => state.restaurantProfile)
   const token = localStorage.getItem("authToken")
+  
+  // Filter states
+  const [searchTerm, setSearchTerm] = useState('')
+  const [statusFilter, setStatusFilter] = useState('all')
+  const [dateFilter, setDateFilter] = useState('all')
+  const [sortBy, setSortBy] = useState('created_at')
+  const [sortOrder, setSortOrder] = useState('desc')
   
   // Refs for KOT and Invoice components
   const kotRef = useRef(null)
@@ -310,6 +317,137 @@ const Order = () => {
 
   const closeSidebar = () => setSelectedOrder(null)
 
+  // Filter and sort logic
+  const filteredAndSortedOrders = orders
+    ?.filter((order) => {
+      const matchesSearch = 
+        order.orderId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        order.tableNumber?.toString().includes(searchTerm) ||
+        order.items?.some(item => 
+          item.itemName?.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+
+      const matchesStatus = statusFilter === 'all' || order.status === statusFilter
+
+      const matchesDate = (() => {
+        if (dateFilter === 'all') return true
+        const orderDate = new Date(order.created_at)
+        const today = new Date()
+        const yesterday = new Date(today)
+        yesterday.setDate(yesterday.getDate() - 1)
+        const thisWeek = new Date(today)
+        thisWeek.setDate(thisWeek.getDate() - 7)
+
+        switch (dateFilter) {
+          case 'today':
+            return orderDate.toDateString() === today.toDateString()
+          case 'yesterday':
+            return orderDate.toDateString() === yesterday.toDateString()
+          case 'thisWeek':
+            return orderDate >= thisWeek
+          case 'thisMonth':
+            return orderDate.getMonth() === today.getMonth() && orderDate.getFullYear() === today.getFullYear()
+          default:
+            return true
+        }
+      })()
+
+      return matchesSearch && matchesStatus && matchesDate
+    })
+    ?.sort((a, b) => {
+      let aValue, bValue
+      
+      switch (sortBy) {
+        case 'orderId':
+          aValue = a.orderId || ''
+          bValue = b.orderId || ''
+          break
+        case 'customerName':
+          aValue = a.customerName || ''
+          bValue = b.customerName || ''
+          break
+        case 'subtotal':
+          aValue = parseFloat(a.subtotal) || 0
+          bValue = parseFloat(b.subtotal) || 0
+          break
+        case 'created_at':
+        default:
+          aValue = new Date(a.created_at)
+          bValue = new Date(b.created_at)
+          break
+      }
+
+      if (sortOrder === 'asc') {
+        return aValue > bValue ? 1 : -1
+      } else {
+        return aValue < bValue ? 1 : -1
+      }
+    })
+
+  // Mobile Card Component
+  const OrderCard = ({ order, index }) => (
+    <CCard className="mb-3 shadow-sm border-0" style={{ borderRadius: '12px' }}>
+      <CCardBody className="p-3">
+        <div className="d-flex justify-content-between align-items-start mb-2">
+          <div>
+            <h6 className="fw-bold mb-1 text-primary">#{order.orderId}</h6>
+            <small className="text-muted">
+              {format(new Date(order.created_at), 'dd/MM/yyyy HH:mm')}
+            </small>
+          </div>
+          <div style={getStatusStyle(order.status)} className="px-2 py-1 rounded-pill">
+            <small className="fw-bold">
+              {order.status.charAt(0).toUpperCase() + order.status.slice(1)}
+            </small>
+          </div>
+        </div>
+        
+        <div className="mb-2">
+          <div className="d-flex justify-content-between">
+            <span className="text-muted small">Customer:</span>
+            <span className="fw-semibold small">{order.customerName || 'N/A'}</span>
+          </div>
+          <div className="d-flex justify-content-between">
+            <span className="text-muted small">Table:</span>
+            <span className="fw-semibold small">{order.tableNumber || 'N/A'}</span>
+          </div>
+          <div className="d-flex justify-content-between">
+            <span className="text-muted small">Total:</span>
+            <span className="fw-bold text-success">₹{order.subtotal || 0}</span>
+          </div>
+        </div>
+
+        {order.items && order.items.length > 0 && (
+          <div className="mb-2">
+            <small className="text-muted">Items:</small>
+            <div className="mt-1">
+              {order.items.slice(0, 2).map((item, idx) => (
+                <div key={idx} className="small text-truncate">
+                  {item.itemName} (x{item.quantity})
+                </div>
+              ))}
+              {order.items.length > 2 && (
+                <small className="text-muted">+{order.items.length - 2} more items</small>
+              )}
+            </div>
+          </div>
+        )}
+
+        <div className="d-flex gap-2 mt-3">
+          <CButton
+            color="primary"
+            size="sm"
+            className="flex-fill"
+            onClick={() => setSelectedOrder(order)}
+          >
+            View Details
+          </CButton>
+        </div>
+      </CCardBody>
+    </CCard>
+  )
+
   // Style based on status
   const getStatusStyle = (status) => ({
     padding: '2px 10px',
@@ -324,15 +462,13 @@ const Order = () => {
     {
       field: 'orderId',
       headerName: 'Order Number',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 120 : undefined,
+      width: 150,
       headerClassName: 'header-style',
     },
     {
       field: 'items',
       headerName: 'Items',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
+      width: 200,
       headerClassName: 'header-style',
       valueGetter: (params) =>
         params.row.items?.length
@@ -342,23 +478,20 @@ const Order = () => {
     {
       field: 'customerName',
       headerName: 'Customer Name',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
+      width: 150,
       headerClassName: 'header-style',
       valueGetter: (params) => params.row.customerName || 'N/A',
     },
     {
       field: 'tableNumber',
       headerName: 'Table Number',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 120 : undefined,
+      width: 120,
       headerClassName: 'header-style',
     },
     {
       field: 'status',
       headerName: 'Status',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 120 : undefined,
+      width: 120,
       headerClassName: 'header-style',
       renderCell: (params) => (
         <div style={getStatusStyle(params.value)}>
@@ -369,16 +502,14 @@ const Order = () => {
     {
       field: 'created_at',
       headerName: 'Date',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
+      width: 180,
       headerClassName: 'header-style',
       valueGetter: (params) => format(new Date(params.row.createdAt), 'dd/MM/yyyy HH:mm'),
     },
     {
       field: 'subtotal',
       headerName: 'Total',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 100 : undefined,
+      width: 100,
       headerClassName: 'header-style',
       valueGetter: (params) => `₹${params.row.
         subtotal || 0}`,
@@ -386,16 +517,14 @@ const Order = () => {
     {
       field: 'actions',
       headerName: 'Actions',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 100 : undefined,
+      width: 120,
       headerClassName: 'header-style',
       sortable: false,
       filterable: false,
       renderCell: (params) => (
         <CButton
           color="primary"
-          size={isMobile ? 'sm' : 'md'} // Adjust button size for mobile
-          style={isMobile ? { padding: '5px 10px', fontSize: '0.8rem', marginRight: '1rem' } : {}}
+          size="sm"
           onClick={() => setSelectedOrder(params.row)}
         >
           View Details
@@ -406,43 +535,248 @@ const Order = () => {
 
   return (
     <div style={{ paddingLeft: '20px', paddingRight: '20px' }}>
+      <style>
+        {`
+          .mobile-orders-container {
+            padding: 0;
+          }
+          
+          @media (max-width: 768px) {
+            .mobile-orders-container .card {
+              margin-bottom: 1rem;
+              border-radius: 12px;
+              box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            }
+            
+            .mobile-orders-container .card-body {
+              padding: 1rem;
+            }
+            
+            .filter-section {
+              margin-bottom: 1rem;
+            }
+            
+            .filter-section .card-body {
+              padding: 1rem;
+            }
+            
+            .filter-section .row {
+              margin: 0;
+            }
+            
+            .filter-section .col {
+              padding: 0.25rem;
+            }
+            
+            .filter-section .form-label {
+              font-size: 0.875rem;
+              font-weight: 600;
+              margin-bottom: 0.25rem;
+            }
+            
+            .filter-section .form-control,
+            .filter-section .form-select {
+              font-size: 0.875rem;
+              padding: 0.5rem;
+            }
+            
+            .filter-section .btn {
+              font-size: 0.875rem;
+              padding: 0.5rem 1rem;
+            }
+          }
+          
+          @media (max-width: 576px) {
+            .mobile-orders-container .card-body {
+              padding: 0.75rem;
+            }
+            
+            .mobile-orders-container .fw-bold {
+              font-size: 0.9rem;
+            }
+            
+            .mobile-orders-container .small {
+              font-size: 0.75rem;
+            }
+            
+            .mobile-orders-container .btn {
+              font-size: 0.8rem;
+              padding: 0.4rem 0.8rem;
+            }
+          }
+        `}
+      </style>
       <h2 className="mb-4">Orders</h2>
+      
+      {/* Filter Section */}
+      <CCard className="mb-4 shadow-sm filter-section">
+        <CCardHeader>
+          <h5 className="mb-0">Filters & Search</h5>
+        </CCardHeader>
+        <CCardBody>
+          <CRow className="g-3">
+            <CCol xs={12} sm={6} md={3}>
+              <div className="mb-3">
+                <CFormLabel>Search</CFormLabel>
+                <CFormInput
+                  type="text"
+                  placeholder="Search orders..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+            </CCol>
+            <CCol xs={12} sm={6} md={2}>
+              <div className="mb-3">
+                <CFormLabel>Status</CFormLabel>
+                <CFormSelect
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                >
+                  <option value="all">All Status</option>
+                  <option value="pending">Pending</option>
+                  <option value="complete">Complete</option>
+                  <option value="reject">Rejected</option>
+                </CFormSelect>
+              </div>
+            </CCol>
+            <CCol xs={12} sm={6} md={2}>
+              <div className="mb-3">
+                <CFormLabel>Date Range</CFormLabel>
+                <CFormSelect
+                  value={dateFilter}
+                  onChange={(e) => setDateFilter(e.target.value)}
+                >
+                  <option value="all">All Time</option>
+                  <option value="today">Today</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="thisWeek">This Week</option>
+                  <option value="thisMonth">This Month</option>
+                </CFormSelect>
+              </div>
+            </CCol>
+            <CCol xs={12} sm={6} md={2}>
+              <div className="mb-3">
+                <CFormLabel>Sort By</CFormLabel>
+                <CFormSelect
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                >
+                  <option value="created_at">Date</option>
+                  <option value="orderId">Order ID</option>
+                  <option value="customerName">Customer</option>
+                  <option value="subtotal">Total Amount</option>
+                </CFormSelect>
+              </div>
+            </CCol>
+            <CCol xs={12} sm={6} md={2}>
+              <div className="mb-3">
+                <CFormLabel>Order</CFormLabel>
+                <CFormSelect
+                  value={sortOrder}
+                  onChange={(e) => setSortOrder(e.target.value)}
+                >
+                  <option value="desc">Newest First</option>
+                  <option value="asc">Oldest First</option>
+                </CFormSelect>
+              </div>
+            </CCol>
+            <CCol xs={12} md={1} className="d-flex align-items-end">
+              <CButton
+                color="secondary"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setSearchTerm('')
+                  setStatusFilter('all')
+                  setDateFilter('all')
+                  setSortBy('created_at')
+                  setSortOrder('desc')
+                }}
+                className="w-100"
+              >
+                Clear
+              </CButton>
+            </CCol>
+          </CRow>
+        </CCardBody>
+      </CCard>
+
       {loading ? (
-        <div className="d-flex justify-content-center">
+        <div className="d-flex justify-content-center py-5">
           <CSpinner color="primary" variant="grow" />
         </div>
       ) : (
-        <div style={{ overflowX: 'auto' }}>
-          <DataGrid
-            style={{ height: 'auto', width: '100%', backgroundColor: 'white' }}
-            rows={orders
-              ?.slice()
-              .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-              .map((order, index) => ({
-                ...order,
-                sno: index + 1,
-              }))}
-            getRowId={(row) => row.id || row.data?.id || Math.random()}
-            columns={columns}
-            pageSize={10}
-            rowsPerPageOptions={[10]}
-            slots={{ Toolbar: CustomToolbar }}
-            sx={{
-              '& .header-style': {
-                fontWeight: 'bold',
-                fontSize: '1.1rem',
-              },
-              '@media (max-width: 600px)': {
-                '& .MuiDataGrid-columnHeaderTitle': {
-                  fontSize: '0.9rem',
-                },
-                '& .MuiDataGrid-cell': {
-                  fontSize: '0.8rem',
-                },
-              },
-            }}
-          />
-        </div>
+        <>
+          {isMobile ? (
+            // Mobile Card View
+            <div className="mobile-orders-container">
+              {filteredAndSortedOrders?.length === 0 ? (
+                <CCard>
+                  <CCardBody className="text-center py-5">
+                    <div className="text-muted">
+                      <i className="cil-shopping-cart" style={{ fontSize: '3rem' }}></i>
+                      <p className="mt-3 mb-0">No orders found</p>
+                      <small>Try adjusting your filters</small>
+                    </div>
+                  </CCardBody>
+                </CCard>
+              ) : (
+                filteredAndSortedOrders?.map((order, index) => (
+                  <OrderCard key={order.id || order._id || index} order={order} index={index} />
+                ))
+              )}
+            </div>
+          ) : (
+            // Desktop Table View
+            <div style={{ overflowX: 'auto' }}>
+              <DataGrid
+                style={{ height: 'auto', width: '100%', backgroundColor: 'white' }}
+                rows={filteredAndSortedOrders?.map((order, index) => ({
+                  ...order,
+                  sno: index + 1,
+                })) || []}
+                getRowId={(row) => row.id || row.data?.id || Math.random()}
+                columns={columns}
+                pageSize={10}
+                rowsPerPageOptions={[10]}
+                slots={{ Toolbar: CustomToolbar }}
+                sx={{
+                  '& .header-style': {
+                    fontWeight: 'bold',
+                    fontSize: '1.1rem',
+                    whiteSpace: 'nowrap',
+                    overflow: 'visible',
+                    textOverflow: 'unset',
+                  },
+                  '& .MuiDataGrid-columnHeaderTitle': {
+                    fontWeight: 'bold',
+                    fontSize: '1.1rem',
+                    whiteSpace: 'nowrap',
+                    overflow: 'visible',
+                    textOverflow: 'unset',
+                  },
+                  '& .MuiDataGrid-columnHeader': {
+                    padding: '8px 16px',
+                    minHeight: '56px !important',
+                  },
+                  '& .MuiDataGrid-cell': {
+                    padding: '8px 16px',
+                    fontSize: '0.9rem',
+                  },
+                  '@media (max-width: 600px)': {
+                    '& .MuiDataGrid-columnHeaderTitle': {
+                      fontSize: '0.9rem',
+                    },
+                    '& .MuiDataGrid-cell': {
+                      fontSize: '0.8rem',
+                    },
+                  },
+                }}
+              />
+            </div>
+          )}
+        </>
       )}
 
       {/* KOT Modal */}

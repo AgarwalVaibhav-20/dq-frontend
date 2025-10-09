@@ -40,6 +40,7 @@ export default function Account() {
   const [imageUploading, setImageUploading] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [formData, setFormData] = useState({})
+  const [isMobile, setIsMobile] = useState(false)
 
   const { restaurantProfile, loading } = useSelector((state) => state.restaurantProfile)
   const restaurantId = localStorage.getItem('restaurantId')
@@ -52,6 +53,17 @@ export default function Account() {
       setFormData(payload || {})
     })
   }, [dispatch, restaurantId , token])
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 768)
+    }
+    
+    checkMobile()
+    window.addEventListener('resize', checkMobile)
+    
+    return () => window.removeEventListener('resize', checkMobile)
+  }, [])
 
   const handleShowModal = () => {
     setFormData({...profileData})
@@ -118,26 +130,27 @@ export default function Account() {
   }
 
   const InfoRow = ({ icon, label, value, className = "" }) => (
-    <div className={`d-flex align-items-center py-3 border-bottom ${className}`} style={{ borderColor: '#f1f3f4' }}>
-      <div style={{ minWidth: '40px' }}>
-        <span style={{ fontSize: '18px' }}>{icon}</span>
+    <div className={`d-flex flex-column flex-md-row align-items-start align-items-md-center py-2 py-md-3 border-bottom ${className}`} style={{ borderColor: '#f1f3f4' }}>
+      <div className="d-flex align-items-center mb-2 mb-md-0" style={{ minWidth: '40px' }}>
+        <span style={{ fontSize: '16px' }}>{icon}</span>
+        <div className="ms-2 ms-md-0" style={{ minWidth: '120px' }}>
+          <span className="small" style={{ 
+            fontSize: '12px', 
+            fontWeight: '600', 
+            color: '#5f6368',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px'
+          }}>
+            {label}
+          </span>
+        </div>
       </div>
-      <div style={{ minWidth: '140px' }}>
-        <span style={{ 
+      <div className="flex-grow-1 ms-0 ms-md-3">
+        <span className="small" style={{ 
           fontSize: '14px', 
-          fontWeight: '600', 
-          color: '#5f6368',
-          textTransform: 'uppercase',
-          letterSpacing: '0.5px'
-        }}>
-          {label}
-        </span>
-      </div>
-      <div className="flex-grow-1">
-        <span style={{ 
-          fontSize: '16px', 
           color: value ? '#202124' : '#9aa0a6',
-          fontWeight: '400'
+          fontWeight: '400',
+          wordBreak: 'break-word'
         }}>
           {value || `No ${label.toLowerCase()}`}
         </span>
@@ -158,22 +171,23 @@ export default function Account() {
 
   return (
     <>
-      <CContainer fluid className="py-4" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
+      <CContainer fluid className="py-2 py-md-4 px-2 px-md-4" style={{ backgroundColor: '#f8f9fa', minHeight: '100vh' }}>
         {updateSuccess && (
-          <CAlert color="success" className="mb-4 mx-auto" style={{ 
+          <CAlert color="success" className="mb-3 mb-md-4 mx-auto" style={{ 
             maxWidth: '900px',
             border: 'none',
             borderRadius: '8px',
             backgroundColor: '#e8f5e8',
             borderLeft: '4px solid #34a853',
-            color: '#137333'
+            color: '#137333',
+            fontSize: '14px'
           }}>
             <strong>Success!</strong> Profile updated successfully.
           </CAlert>
         )}
         
         {/* Main Profile Card */}
-        <CCard style={{ 
+        <CCard className="w-100" style={{ 
           maxWidth: '900px',
           margin: '0 auto',
           borderRadius: '12px',
@@ -182,22 +196,21 @@ export default function Account() {
           backgroundColor: '#ffffff'
         }}>
           {/* Header */}
-          <CCardHeader style={{ 
+          <CCardHeader className="px-3 px-md-4 py-3 py-md-4" style={{ 
             backgroundColor: '#ffffff',
-            borderBottom: '1px solid #dadce0',
-            padding: '24px 32px'
+            borderBottom: '1px solid #dadce0'
           }}>
-            <div className="d-flex justify-content-between align-items-center">
-              <div>
-                <CCardTitle style={{ 
+            <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
+              <div className="mb-3 mb-md-0">
+                <CCardTitle className="h4 h5-md" style={{ 
                   color: '#202124',
-                  fontSize: '24px',
+                  fontSize: '20px',
                   fontWeight: '500',
                   margin: 0
                 }}>
                   Restaurant Profile
                 </CCardTitle>
-                <p style={{ 
+                <p className="d-none d-md-block" style={{ 
                   color: '#5f6368',
                   margin: '4px 0 0 0',
                   fontSize: '14px'
@@ -207,14 +220,16 @@ export default function Account() {
               </div>
               <CButton
                 onClick={handleShowModal}
+                className="w-100 w-md-auto"
                 style={{
                   backgroundColor: '#1a73e8',
                   border: 'none',
                   borderRadius: '6px',
-                  padding: '8px 24px',
+                  padding: '8px 16px',
                   fontWeight: '500',
                   fontSize: '14px',
-                  color: '#ffffff'
+                  color: '#ffffff',
+                  minWidth: '120px'
                 }}
               >
                 Edit Profile
@@ -222,14 +237,13 @@ export default function Account() {
             </div>
           </CCardHeader>
           
-          <CCardBody style={{ padding: '32px' }}>
-            <CRow>
+          <CCardBody className="p-3 p-md-4">
+            <CRow className="g-3 g-md-4">
               {/* Profile Image Section */}
-              <CCol md={4} className="text-center mb-4">
-                <div style={{
+              <CCol xs={12} md={4} className="text-center">
+                <div className="p-3 p-md-4" style={{
                   backgroundColor: '#f8f9fa',
                   borderRadius: '12px',
-                  padding: '32px 24px',
                   border: '1px solid #e8eaed'
                 }}>
                   <div style={{ position: 'relative', display: 'inline-block' }}>
@@ -237,8 +251,8 @@ export default function Account() {
                       rounded
                       src={profileData?.profileImage }
                       alt="Restaurant Profile"
-                      width={140}
-                      height={140}
+                      width={isMobile ? 100 : 140}
+                      height={isMobile ? 100 : 140}
                       style={{
                         border: '4px solid #ffffff',
                         boxShadow: '0 2px 8px rgba(60,64,67,.15)'
@@ -258,18 +272,18 @@ export default function Account() {
                       </div>
                     )}
                   </div>
-                  <div className="mt-4">
-                    <h5 style={{ 
+                  <div className="mt-3 mt-md-4">
+                    <h5 className="h6 h5-md" style={{ 
                       color: '#202124',
-                      fontSize: '18px',
+                      fontSize: '16px',
                       fontWeight: '500',
                       margin: '0 0 4px 0'
                     }}>
                       {profileData?.restName || 'Restaurant Name'}
                     </h5>
-                    <p style={{ 
+                    <p className="small" style={{ 
                       color: '#5f6368',
-                      fontSize: '14px',
+                      fontSize: '12px',
                       margin: '0 0 16px 0'
                     }}>
                       ID: {profileData?.restaurantId?.toUpperCase() || 'Not assigned'}
@@ -325,28 +339,26 @@ export default function Account() {
               </CCol>
 
               {/* Profile Information */}
-              <CCol md={8}>
-                <div style={{
+              <CCol xs={12} md={8}>
+                <div className="mb-3 mb-md-4" style={{
                   backgroundColor: '#ffffff',
                   borderRadius: '12px',
                   border: '1px solid #e8eaed',
                   overflow: 'hidden'
                 }}>
-                  <div style={{ 
+                  <div className="px-3 px-md-4 py-2 py-md-3" style={{ 
                     backgroundColor: '#f8f9fa',
-                    padding: '16px 24px',
                     borderBottom: '1px solid #e8eaed'
                   }}>
-                    <h6 style={{ 
+                    <h6 className="h6 mb-0" style={{ 
                       color: '#202124',
-                      fontSize: '16px',
-                      fontWeight: '500',
-                      margin: 0
+                      fontSize: '14px',
+                      fontWeight: '500'
                     }}>
                       Personal Information
                     </h6>
                   </div>
-                  <div style={{ padding: '0 24px' }}>
+                  <div className="px-3 px-md-4">
                     <InfoRow icon="👤" label="First Name" value={profileData?.firstName} />
                     <InfoRow icon="👤" label="Last Name" value={profileData?.lastName} />
                     <InfoRow icon="⚧" label="Gender" value={profileData?.gender} />
@@ -359,24 +371,21 @@ export default function Account() {
                   backgroundColor: '#ffffff',
                   borderRadius: '12px',
                   border: '1px solid #e8eaed',
-                  overflow: 'hidden',
-                  marginTop: '24px'
+                  overflow: 'hidden'
                 }}>
-                  <div style={{ 
+                  <div className="px-3 px-md-4 py-2 py-md-3" style={{ 
                     backgroundColor: '#f8f9fa',
-                    padding: '16px 24px',
                     borderBottom: '1px solid #e8eaed'
                   }}>
-                    <h6 style={{ 
+                    <h6 className="h6 mb-0" style={{ 
                       color: '#202124',
-                      fontSize: '16px',
-                      fontWeight: '500',
-                      margin: 0
+                      fontSize: '14px',
+                      fontWeight: '500'
                     }}>
                       Business Information
                     </h6>
                   </div>
-                  <div style={{ padding: '0 24px' }}>
+                  <div className="px-3 px-md-4">
                     <InfoRow icon="🏪" label="Restaurant Name" value={profileData?.restName} />
                     <InfoRow icon="📍" label="Address" value={profileData?.address} />
                     <InfoRow icon="📮" label="Pin Code" value={profileData?.pinCode} />
@@ -391,21 +400,20 @@ export default function Account() {
       </CContainer>
 
       {/* Edit Profile Modal */}
-      <CModal size="lg" visible={showModal} onClose={handleCloseModal} backdrop="static">
-        <CModalHeader>
-          <CModalTitle style={{ color: '#202124', fontSize: '20px', fontWeight: '500' }}>
+      <CModal size="lg" visible={showModal} onClose={handleCloseModal} backdrop="static" className="modal-mobile">
+        <CModalHeader className="px-3 px-md-4 py-3">
+          <CModalTitle className="h5 h4-md" style={{ color: '#202124', fontSize: '18px', fontWeight: '500' }}>
             Edit Profile Information
           </CModalTitle>
         </CModalHeader>
-        <CModalBody style={{ padding: '24px' }}>
+        <CModalBody className="p-3 p-md-4" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
           <CForm>
-            <CRow>
-              <CCol md={6}>
-                <h6 style={{ 
+            <CRow className="g-3">
+              <CCol xs={12} md={6}>
+                <h6 className="h6 mb-3" style={{ 
                   color: '#202124',
-                  fontSize: '16px',
+                  fontSize: '14px',
                   fontWeight: '500',
-                  marginBottom: '16px',
                   paddingBottom: '8px',
                   borderBottom: '2px solid #e8eaed'
                 }}>
@@ -413,62 +421,62 @@ export default function Account() {
                 </h6>
                 
                 <div className="mb-3">
-                  <CFormLabel style={{ fontSize: '14px', fontWeight: '500', color: '#5f6368' }}>
+                  <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: '#5f6368' }}>
                     First Name
                   </CFormLabel>
-                  <CInputGroup>
-                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0' }}>
+                  <CInputGroup size="sm">
+                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0', fontSize: '12px' }}>
                       👤
                     </CInputGroupText>
                     <CFormInput
                       value={formData?.firstName || ''}
                       onChange={(e) => handleInputChange('firstName', e.target.value)}
                       placeholder="Enter first name"
-                      style={{ border: '1px solid #dadce0' }}
+                      style={{ border: '1px solid #dadce0', fontSize: '14px' }}
                     />
                   </CInputGroup>
                 </div>
 
                 <div className="mb-3">
-                  <CFormLabel style={{ fontSize: '14px', fontWeight: '500', color: '#5f6368' }}>
+                  <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: '#5f6368' }}>
                     Last Name
                   </CFormLabel>
-                  <CInputGroup>
-                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0' }}>
+                  <CInputGroup size="sm">
+                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0', fontSize: '12px' }}>
                       👤
                     </CInputGroupText>
                     <CFormInput
                       value={formData?.lastName || ''}
                       onChange={(e) => handleInputChange('lastName', e.target.value)}
                       placeholder="Enter last name"
-                      style={{ border: '1px solid #dadce0' }}
+                      style={{ border: '1px solid #dadce0', fontSize: '14px' }}
                     />
                   </CInputGroup>
                 </div>
 
                 <div className="mb-3">
-                  <CFormLabel style={{ fontSize: '14px', fontWeight: '500', color: '#5f6368' }}>
+                  <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: '#5f6368' }}>
                     Gender
                   </CFormLabel>
-                  <CInputGroup>
-                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0' }}>
+                  <CInputGroup size="sm">
+                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0', fontSize: '12px' }}>
                       ⚧
                     </CInputGroupText>
                     <CFormInput
                       value={formData?.gender || ''}
                       onChange={(e) => handleInputChange('gender', e.target.value)}
                       placeholder="Enter gender"
-                      style={{ border: '1px solid #dadce0' }}
+                      style={{ border: '1px solid #dadce0', fontSize: '14px' }}
                     />
                   </CInputGroup>
                 </div>
 
                 <div className="mb-3">
-                  <CFormLabel style={{ fontSize: '14px', fontWeight: '500', color: '#5f6368' }}>
+                  <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: '#5f6368' }}>
                     Email Address
                   </CFormLabel>
-                  <CInputGroup>
-                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0' }}>
+                  <CInputGroup size="sm">
+                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0', fontSize: '12px' }}>
                       📧
                     </CInputGroupText>
                     <CFormInput
@@ -476,35 +484,34 @@ export default function Account() {
                       value={formData?.email || ''}
                       onChange={(e) => handleInputChange('email', e.target.value)}
                       placeholder="Enter email address"
-                      style={{ border: '1px solid #dadce0' }}
+                      style={{ border: '1px solid #dadce0', fontSize: '14px' }}
                     />
                   </CInputGroup>
                 </div>
 
                 <div className="mb-3">
-                  <CFormLabel style={{ fontSize: '14px', fontWeight: '500', color: '#5f6368' }}>
+                  <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: '#5f6368' }}>
                     Phone Number
                   </CFormLabel>
-                  <CInputGroup>
-                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0' }}>
+                  <CInputGroup size="sm">
+                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0', fontSize: '12px' }}>
                       📞
                     </CInputGroupText>
                     <CFormInput
                       value={formData?.phoneNumber || ''}
                       onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
                       placeholder="Enter phone number"
-                      style={{ border: '1px solid #dadce0' }}
+                      style={{ border: '1px solid #dadce0', fontSize: '14px' }}
                     />
                   </CInputGroup>
                 </div>
               </CCol>
 
-              <CCol md={6}>
-                <h6 style={{ 
+              <CCol xs={12} md={6}>
+                <h6 className="h6 mb-3" style={{ 
                   color: '#202124',
-                  fontSize: '16px',
+                  fontSize: '14px',
                   fontWeight: '500',
-                  marginBottom: '16px',
                   paddingBottom: '8px',
                   borderBottom: '2px solid #e8eaed'
                 }}>
@@ -512,86 +519,86 @@ export default function Account() {
                 </h6>
 
                 <div className="mb-3">
-                  <CFormLabel style={{ fontSize: '14px', fontWeight: '500', color: '#5f6368' }}>
+                  <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: '#5f6368' }}>
                     Restaurant Name
                   </CFormLabel>
-                  <CInputGroup>
-                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0' }}>
+                  <CInputGroup size="sm">
+                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0', fontSize: '12px' }}>
                       🏪
                     </CInputGroupText>
                     <CFormInput
                       value={formData?.restName || ''}
                       onChange={(e) => handleInputChange('restName', e.target.value)}
                       placeholder="Enter restaurant name"
-                      style={{ border: '1px solid #dadce0' }}
+                      style={{ border: '1px solid #dadce0', fontSize: '14px' }}
                     />
                   </CInputGroup>
                 </div>
 
                 <div className="mb-3">
-                  <CFormLabel style={{ fontSize: '14px', fontWeight: '500', color: '#5f6368' }}>
+                  <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: '#5f6368' }}>
                     Address
                   </CFormLabel>
-                  <CInputGroup>
-                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0' }}>
+                  <CInputGroup size="sm">
+                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0', fontSize: '12px' }}>
                       📍
                     </CInputGroupText>
                     <CFormInput
                       value={formData?.address || ''}
                       onChange={(e) => handleInputChange('address', e.target.value)}
                       placeholder="Enter complete address"
-                      style={{ border: '1px solid #dadce0' }}
+                      style={{ border: '1px solid #dadce0', fontSize: '14px' }}
                     />
                   </CInputGroup>
                 </div>
 
                 <div className="mb-3">
-                  <CFormLabel style={{ fontSize: '14px', fontWeight: '500', color: '#5f6368' }}>
+                  <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: '#5f6368' }}>
                     Pin Code
                   </CFormLabel>
-                  <CInputGroup>
-                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0' }}>
+                  <CInputGroup size="sm">
+                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0', fontSize: '12px' }}>
                       📮
                     </CInputGroupText>
                     <CFormInput
                       value={formData?.pinCode || ''}
                       onChange={(e) => handleInputChange('pinCode', e.target.value)}
                       placeholder="Enter pin code"
-                      style={{ border: '1px solid #dadce0' }}
+                      style={{ border: '1px solid #dadce0', fontSize: '14px' }}
                     />
                   </CInputGroup>
                 </div>
 
                 <div className="mb-3">
-                  <CFormLabel style={{ fontSize: '14px', fontWeight: '500', color: '#5f6368' }}>
+                  <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: '#5f6368' }}>
                     Identity Type
                   </CFormLabel>
-                  <CInputGroup>
-                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0' }}>
+                  <CInputGroup size="sm">
+                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0', fontSize: '12px' }}>
                       🆔
                     </CInputGroupText>
                     <CFormInput
                       value={formData?.identity || ''}
                       onChange={(e) => handleInputChange('identity', e.target.value)}
                       placeholder="Enter identity type"
-                      style={{ border: '1px solid #dadce0' }}
+                      style={{ border: '1px solid #dadce0', fontSize: '14px' }}
                     />
                   </CInputGroup>
                 </div>
 
                 <div className="mb-3">
-                  <CFormLabel style={{ fontSize: '14px', fontWeight: '500', color: '#5f6368' }}>
+                  <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: '#5f6368' }}>
                     Identity Number
                   </CFormLabel>
-                  <CInputGroup>
-                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0' }}>
+                  <CInputGroup size="sm">
+                    <CInputGroupText style={{ backgroundColor: '#f8f9fa', border: '1px solid #dadce0', fontSize: '12px' }}>
                       📄
                     </CInputGroupText>
                     <CFormInput
                       value={formData?.identityNumber || ''}
                       onChange={(e) => handleInputChange('identityNumber', e.target.value)}
                       placeholder="Enter identity number"
-                      style={{ border: '1px solid #dadce0' }}
+                      style={{ border: '1px solid #dadce0', fontSize: '14px' }}
                     />
                   </CInputGroup>
                 </div>
@@ -599,36 +606,42 @@ export default function Account() {
             </CRow>
           </CForm>
         </CModalBody>
-        <CModalFooter style={{ padding: '16px 24px', backgroundColor: '#f8f9fa' }}>
-          <CButton
-            color="secondary"
-            variant="outline"
-            onClick={handleCloseModal}
-            style={{
-              borderColor: '#dadce0',
-              color: '#5f6368',
-              borderRadius: '6px',
-              padding: '8px 16px',
-              fontWeight: '500'
-            }}
-          >
-            Cancel
-          </CButton>
-          <CButton
-            onClick={handleUpdateProfile}
-            disabled={isUpdating}
-            style={{
-              backgroundColor: '#1a73e8',
-              border: 'none',
-              borderRadius: '6px',
-              padding: '8px 24px',
-              fontWeight: '500',
-              color: '#ffffff'
-            }}
-          >
-            {isUpdating ? <CSpinner size="sm" className="me-2" /> : null}
-            {isUpdating ? 'Updating...' : 'Save Changes'}
-          </CButton>
+        <CModalFooter className="px-3 px-md-4 py-3" style={{ backgroundColor: '#f8f9fa' }}>
+          <div className="d-flex flex-column flex-md-row gap-2 w-100">
+            <CButton
+              color="secondary"
+              variant="outline"
+              onClick={handleCloseModal}
+              className="w-100 w-md-auto"
+              style={{
+                borderColor: '#dadce0',
+                color: '#5f6368',
+                borderRadius: '6px',
+                padding: '8px 16px',
+                fontWeight: '500',
+                fontSize: '14px'
+              }}
+            >
+              Cancel
+            </CButton>
+            <CButton
+              onClick={handleUpdateProfile}
+              disabled={isUpdating}
+              className="w-100 w-md-auto"
+              style={{
+                backgroundColor: '#1a73e8',
+                border: 'none',
+                borderRadius: '6px',
+                padding: '8px 16px',
+                fontWeight: '500',
+                color: '#ffffff',
+                fontSize: '14px'
+              }}
+            >
+              {isUpdating ? <CSpinner size="sm" className="me-2" /> : null}
+              {isUpdating ? 'Updating...' : 'Save Changes'}
+            </CButton>
+          </div>
         </CModalFooter>
       </CModal>
     </>

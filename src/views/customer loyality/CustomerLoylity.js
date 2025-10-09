@@ -256,15 +256,32 @@ function CustomerLoyalty() {
   };
 
   return (
-    <Box sx={{ p: 3, maxWidth: 1400, mx: 'auto' }}>
-      <Typography variant="h4" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 3 }}>
+    <Box sx={{ 
+      p: { xs: 2, sm: 3 }, 
+      maxWidth: 1400, 
+      mx: 'auto',
+      width: '100%'
+    }}>
+      <Typography 
+        variant="h4" 
+        gutterBottom 
+        sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1, 
+          mb: 3,
+          fontSize: { xs: '1.5rem', sm: '2rem', md: '2.125rem' },
+          flexDirection: { xs: 'column', sm: 'row' },
+          textAlign: { xs: 'center', sm: 'left' }
+        }}
+      >
         <Heart size={32} color="#1976d2" />
         Customer Loyalty Program
       </Typography>
 
-      <Grid container spacing={3}>
+      <Grid container spacing={{ xs: 2, sm: 3 }}>
         {/* Coupon Form Section */}
-        <Grid item xs={12} lg={6}>
+        <Grid item xs={12} md={6} lg={6}>
           <Card elevation={3}>
             <CardContent>
               <Typography variant="h6" color="primary" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
@@ -273,7 +290,7 @@ function CustomerLoyalty() {
               </Typography>
               <Divider sx={{ mb: 3 }} />
 
-              <Grid container spacing={2}>
+              <Grid container spacing={{ xs: 2, sm: 2 }}>
                 {/* Coupon Code */}
                 <Grid item xs={12}>
                   <TextField
@@ -283,6 +300,7 @@ function CustomerLoyalty() {
                     onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
                     placeholder="Leave empty to auto-generate"
                     helperText="6-8 alphanumeric characters (auto-generated if empty)"
+                    size="small"
                   />
                 </Grid>
 
@@ -295,6 +313,7 @@ function CustomerLoyalty() {
                     value={discountType}
                     onChange={(e) => setDiscountType(e.target.value)}
                     SelectProps={{ native: true }}
+                    size="small"
                   >
                     <option value="percentage">Percentage (%)</option>
                     <option value="fixed">Fixed Amount (₹)</option>
@@ -314,6 +333,7 @@ function CustomerLoyalty() {
                       step: discountType === 'percentage' ? 1 : 0.01
                     }}
                     helperText={`${discountType === 'percentage' ? '1-100%' : 'Minimum ₹1'} (default: 10${discountType === 'percentage' ? '%' : ' ₹'})`}
+                    size="small"
                   />
                 </Grid>
 
@@ -327,6 +347,7 @@ function CustomerLoyalty() {
                     onChange={(e) => setExpiryDate(e.target.value)}
                     InputLabelProps={{ shrink: true }}
                     helperText="Default: 7 days from today"
+                    size="small"
                   />
                 </Grid>
 
@@ -340,6 +361,7 @@ function CustomerLoyalty() {
                     onChange={(e) => setMinOrderValue(e.target.value)}
                     inputProps={{ min: 0, step: 0.01 }}
                     helperText="Minimum cart value to apply coupon"
+                    size="small"
                   />
                 </Grid>
 
@@ -352,6 +374,7 @@ function CustomerLoyalty() {
                     onChange={(e) => setMaxUsage(e.target.value)}
                     inputProps={{ min: 1 }}
                     helperText="Leave empty for unlimited usage"
+                    size="small"
                   />
                 </Grid>
 
@@ -366,6 +389,7 @@ function CustomerLoyalty() {
                       onChange={(e) => setMaxDiscountAmount(e.target.value)}
                       inputProps={{ min: 0, step: 0.01 }}
                       helperText="Maximum discount cap for percentage coupons"
+                      size="small"
                     />
                   </Grid>
                 )}
@@ -382,6 +406,7 @@ function CustomerLoyalty() {
                     placeholder="Optional description for internal use"
                     inputProps={{ maxLength: 500 }}
                     helperText={`${description.length}/500 characters`}
+                    size="small"
                   />
                 </Grid>
 
@@ -401,7 +426,12 @@ function CustomerLoyalty() {
               </Grid>
 
               {/* Action Buttons */}
-              <Box sx={{ display: 'flex', gap: 2, mt: 3 }}>
+              <Box sx={{ 
+                display: 'flex', 
+                gap: { xs: 1, sm: 2 }, 
+                mt: 3,
+                flexDirection: { xs: 'column', sm: 'row' }
+              }}>
                 <Button
                   variant="contained"
                   color="primary"
@@ -411,6 +441,10 @@ function CustomerLoyalty() {
                   startIcon={loading ? <CircularProgress size={20} color="inherit" /> :
                     editingCoupon ? <Save size={20} /> : <Plus size={20} />}
                   disabled={loading}
+                  sx={{ 
+                    minHeight: { xs: 48, sm: 56 },
+                    fontSize: { xs: '0.875rem', sm: '1rem' }
+                  }}
                 >
                   {loading ? 'Processing...' : editingCoupon ? 'Update Coupon' : 'Create Coupon'}
                 </Button>
@@ -419,7 +453,10 @@ function CustomerLoyalty() {
                   variant="outlined"
                   onClick={resetForm}
                   disabled={loading}
-                  sx={{ minWidth: 100 }}
+                  sx={{ 
+                    minWidth: { xs: '100%', sm: 100 },
+                    minHeight: { xs: 48, sm: 56 }
+                  }}
                 >
                   {editingCoupon ? 'Cancel' : 'Reset'}
                 </Button>
@@ -429,11 +466,25 @@ function CustomerLoyalty() {
         </Grid>
 
         {/* Coupons List Section */}
-        <Grid item xs={12} lg={6}>
+        <Grid item xs={12} md={6} lg={6}>
           <Card elevation={3}>
             <CardContent>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
-                <Typography variant="h6" color="primary">
+              <Box sx={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                mb: 2,
+                flexDirection: { xs: 'column', sm: 'row' },
+                gap: { xs: 2, sm: 0 }
+              }}>
+                <Typography 
+                  variant="h6" 
+                  color="primary"
+                  sx={{ 
+                    fontSize: { xs: '1.1rem', sm: '1.25rem' },
+                    textAlign: { xs: 'center', sm: 'left' }
+                  }}
+                >
                   All Coupons ({coupons?.length || 0})
                 </Typography>
                 <Button
@@ -441,6 +492,10 @@ function CustomerLoyalty() {
                   onClick={() => dispatch(fetchCoupons())}
                   disabled={loading}
                   startIcon={loading ? <CircularProgress size={16} /> : <RefreshCw size={16} />}
+                  sx={{ 
+                    minWidth: { xs: '100%', sm: 'auto' },
+                    fontSize: { xs: '0.75rem', sm: '0.875rem' }
+                  }}
                 >
                   Refresh
                 </Button>
@@ -465,7 +520,11 @@ function CustomerLoyalty() {
                   </Typography>
                 </Box>
               ) : (
-                <Box sx={{ maxHeight: 500, overflowY: 'auto' }}>
+                <Box sx={{ 
+                  maxHeight: { xs: 400, sm: 500 }, 
+                  overflowY: 'auto',
+                  px: { xs: 0, sm: 1 }
+                }}>
                   {(coupons ?? []).map((coupon) => {
                     const { isExpired, isMaxUsageReached, isInactive } = getCouponStatus(coupon);
 
@@ -474,8 +533,8 @@ function CustomerLoyalty() {
                         key={coupon._id}
                         elevation={1}
                         sx={{
-                          p: 2,
-                          mb: 2,
+                          p: { xs: 1.5, sm: 2 },
+                          mb: { xs: 1.5, sm: 2 },
                           border: '1px solid',
                           borderColor: (isExpired || isMaxUsageReached || isInactive) ? 'error.main' : 'divider',
                           opacity: (isExpired || isMaxUsageReached || isInactive) ? 0.6 : 1,
@@ -487,23 +546,38 @@ function CustomerLoyalty() {
                         }}
                       >
                         {/* Coupon Header */}
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          justifyContent: 'space-between', 
+                          alignItems: 'center', 
+                          mb: 1,
+                          flexDirection: { xs: 'column', sm: 'row' },
+                          gap: { xs: 1, sm: 0 }
+                        }}>
                           <Typography
                             variant="h6"
                             sx={{
                               fontFamily: 'monospace',
                               fontWeight: 'bold',
-                              color: (isExpired || isMaxUsageReached || isInactive) ? 'text.secondary' : 'primary.main'
+                              color: (isExpired || isMaxUsageReached || isInactive) ? 'text.secondary' : 'primary.main',
+                              fontSize: { xs: '1rem', sm: '1.25rem' },
+                              textAlign: { xs: 'center', sm: 'left' }
                             }}
                           >
                             {coupon.code}
                           </Typography>
-                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Box sx={{ 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            gap: 1,
+                            justifyContent: { xs: 'center', sm: 'flex-end' }
+                          }}>
                             <Tooltip title="Copy Code">
                               <IconButton
                                 size="small"
                                 onClick={() => handleCopyCode(coupon.code)}
                                 color="primary"
+                                sx={{ minWidth: { xs: 40, sm: 32 } }}
                               >
                                 <Copy size={16} />
                               </IconButton>
@@ -511,6 +585,7 @@ function CustomerLoyalty() {
                             <IconButton
                               size="small"
                               onClick={(e) => handleMenuClick(e, coupon)}
+                              sx={{ minWidth: { xs: 40, sm: 32 } }}
                             >
                               <MoreVertical size={16} />
                             </IconButton>
@@ -518,7 +593,13 @@ function CustomerLoyalty() {
                         </Box>
 
                         {/* Status Chips */}
-                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1 }}>
+                        <Box sx={{ 
+                          display: 'flex', 
+                          flexWrap: 'wrap', 
+                          gap: { xs: 0.5, sm: 1 }, 
+                          mb: 1,
+                          justifyContent: { xs: 'center', sm: 'flex-start' }
+                        }}>
                           <Chip
                             icon={<Calendar size={12} />}
                             label={`Expires: ${formatDate(coupon.expiryDate)}`}
@@ -551,27 +632,59 @@ function CustomerLoyalty() {
                         </Box>
 
                         {/* Coupon Details */}
-                        {coupon.minOrderValue && coupon.minOrderValue > 0 && (
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            Min Order: ₹{coupon.minOrderValue}
-                          </Typography>
-                        )}
+                        <Box sx={{ 
+                          textAlign: { xs: 'center', sm: 'left' },
+                          mt: { xs: 1, sm: 0 }
+                        }}>
+                          {coupon.minOrderValue && coupon.minOrderValue > 0 && (
+                            <Typography 
+                              variant="caption" 
+                              color="text.secondary" 
+                              display="block"
+                              sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                            >
+                              Min Order: ₹{coupon.minOrderValue}
+                            </Typography>
+                          )}
 
-                        {coupon.maxDiscountAmount && (
-                          <Typography variant="caption" color="text.secondary" display="block">
-                            Max Discount: ₹{coupon.maxDiscountAmount}
-                          </Typography>
-                        )}
+                          {coupon.maxDiscountAmount && (
+                            <Typography 
+                              variant="caption" 
+                              color="text.secondary" 
+                              display="block"
+                              sx={{ fontSize: { xs: '0.7rem', sm: '0.75rem' } }}
+                            >
+                              Max Discount: ₹{coupon.maxDiscountAmount}
+                            </Typography>
+                          )}
 
-                        {coupon.description && (
-                          <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1, fontStyle: 'italic' }}>
-                            "{coupon.description}"
-                          </Typography>
-                        )}
+                          {coupon.description && (
+                            <Typography 
+                              variant="caption" 
+                              color="text.secondary" 
+                              display="block" 
+                              sx={{ 
+                                mt: 1, 
+                                fontStyle: 'italic',
+                                fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                              }}
+                            >
+                              "{coupon.description}"
+                            </Typography>
+                          )}
 
-                        <Typography variant="caption" color="text.secondary" display="block" sx={{ mt: 1 }}>
-                          Created: {formatDate(coupon.createdAt)}
-                        </Typography>
+                          <Typography 
+                            variant="caption" 
+                            color="text.secondary" 
+                            display="block" 
+                            sx={{ 
+                              mt: 1,
+                              fontSize: { xs: '0.7rem', sm: '0.75rem' }
+                            }}
+                          >
+                            Created: {formatDate(coupon.createdAt)}
+                          </Typography>
+                        </Box>
                       </Paper>
                     );
                   })}
@@ -613,23 +726,48 @@ function CustomerLoyalty() {
         onClose={() => setDeleteDialog({ open: false, coupon: null })}
         maxWidth="sm"
         fullWidth
+        sx={{
+          '& .MuiDialog-paper': {
+            margin: { xs: 2, sm: 3 },
+            width: { xs: 'calc(100% - 32px)', sm: 'auto' }
+          }
+        }}
       >
-        <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+        <DialogTitle sx={{ 
+          display: 'flex', 
+          alignItems: 'center', 
+          gap: 1,
+          fontSize: { xs: '1.1rem', sm: '1.25rem' }
+        }}>
           <AlertCircle size={24} color="#f44336" />
           Delete Coupon
         </DialogTitle>
         <DialogContent>
-          <Typography>
+          <Typography sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>
             Are you sure you want to delete the coupon <strong>"{deleteDialog.coupon?.code}"</strong>?
           </Typography>
-          <Typography color="text.secondary" sx={{ mt: 1 }}>
+          <Typography 
+            color="text.secondary" 
+            sx={{ 
+              mt: 1,
+              fontSize: { xs: '0.8rem', sm: '0.875rem' }
+            }}
+          >
             This action cannot be undone and will permanently remove the coupon from the system.
           </Typography>
         </DialogContent>
-        <DialogActions>
+        <DialogActions sx={{ 
+          flexDirection: { xs: 'column', sm: 'row' },
+          gap: { xs: 1, sm: 0 }
+        }}>
           <Button
             onClick={() => setDeleteDialog({ open: false, coupon: null })}
             disabled={loading}
+            fullWidth={false}
+            sx={{ 
+              minWidth: { xs: '100%', sm: 'auto' },
+              order: { xs: 2, sm: 1 }
+            }}
           >
             Cancel
           </Button>
@@ -639,6 +777,11 @@ function CustomerLoyalty() {
             variant="contained"
             disabled={loading}
             startIcon={loading ? <CircularProgress size={16} color="inherit" /> : <Trash2 size={16} />}
+            fullWidth={false}
+            sx={{ 
+              minWidth: { xs: '100%', sm: 'auto' },
+              order: { xs: 1, sm: 2 }
+            }}
           >
             {loading ? 'Deleting...' : 'Delete'}
           </Button>
@@ -650,13 +793,31 @@ function CustomerLoyalty() {
         open={snackbar.open}
         autoHideDuration={4000}
         onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        anchorOrigin={{ 
+          vertical: 'bottom', 
+          horizontal: 'right' 
+        }}
+        sx={{
+          '& .MuiSnackbarContent-root': {
+            width: { xs: '90%', sm: 'auto' },
+            maxWidth: { xs: '400px', sm: 'none' }
+          },
+          '& .MuiSnackbar-root': {
+            left: { xs: '50%', sm: 'auto' },
+            right: { xs: 'auto', sm: '24px' },
+            transform: { xs: 'translateX(-50%)', sm: 'none' }
+          }
+        }}
       >
         <Alert
           onClose={() => setSnackbar({ ...snackbar, open: false })}
           severity={snackbar.severity}
           variant="filled"
           icon={snackbar.severity === 'success' ? <CheckCircle size={20} /> : <AlertCircle size={20} />}
+          sx={{
+            fontSize: { xs: '0.875rem', sm: '1rem' },
+            width: '100%'
+          }}
         >
           {snackbar.message}
         </Alert>

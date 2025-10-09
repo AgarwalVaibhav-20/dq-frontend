@@ -93,10 +93,25 @@ const DeliveryTiming = () => {
   );
 
   return (
-    <div className="px-5">
-      <div className="flex justify-between items-center mb-3">
-        <h2 className="text-2xl font-semibold">Delivery Timings</h2>
-        <CButton color="primary" onClick={() => setModalVisible(true)} disabled={isLoading}>
+    <div className="px-2 sm:px-5">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-3">
+        <h2 className="text-xl sm:text-2xl font-semibold">Delivery Timings</h2>
+        <CButton 
+          color="primary" 
+          onClick={() => setModalVisible(true)} 
+          disabled={isLoading}
+          className="w-full sm:w-auto text-sm sm:text-base px-3 sm:px-4 py-2"
+          style={{
+            fontSize: '0.875rem',
+            padding: '8px 16px',
+            minWidth: '120px',
+            '@media (max-width: 640px)': {
+              fontSize: '0.8rem',
+              padding: '6px 12px',
+              minWidth: '100px',
+            }
+          }}
+        >
           Add Timing
         </CButton>
       </div>
@@ -111,28 +126,37 @@ const DeliveryTiming = () => {
             <table className="table-auto w-full border-collapse">
               <thead className="bg-gray-100 text-gray-700">
                 <tr>
-                  <th className="border px-4 py-2">Start Time</th>
-                  <th className="border px-4 py-2">End Time</th>
-                  <th className="border px-4 py-2">Status</th>
-                  <th className="border px-4 py-2">Actions</th>
+                  <th className="border px-2 sm:px-4 py-2 text-xs sm:text-sm">Start Time</th>
+                  <th className="border px-2 sm:px-4 py-2 text-xs sm:text-sm">End Time</th>
+                  <th className="border px-2 sm:px-4 py-2 text-xs sm:text-sm">Status</th>
+                  <th className="border px-2 sm:px-4 py-2 text-xs sm:text-sm">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedData?.map((timing) => (
                   <tr key={timing._id} className="hover:bg-gray-50">
-                    <td className="border px-4 py-2">{timing.start_time}</td>
-                    <td className="border px-4 py-2">{timing.end_time}</td>
-                    <td className="border px-4 py-2 text-center">
+                    <td className="border px-2 sm:px-4 py-2 text-xs sm:text-sm">{timing.start_time}</td>
+                    <td className="border px-2 sm:px-4 py-2 text-xs sm:text-sm">{timing.end_time}</td>
+                    <td className="border px-2 sm:px-4 py-2 text-center">
                       <CButton
                         color={timing.delivery_status ? 'success' : 'danger'}
                         onClick={() => handleStatusToggle(timing._id, timing.delivery_status)}
                         disabled={isLoading}
                         size="sm"
+                        className="text-xs sm:text-sm px-2 sm:px-3 py-1"
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '4px 8px',
+                          '@media (min-width: 640px)': {
+                            fontSize: '0.875rem',
+                            padding: '6px 12px',
+                          }
+                        }}
                       >
                         {timing.delivery_status ? 'Active' : 'Inactive'}
                       </CButton>
                     </td>
-                    <td className="border px-4 py-2 text-center">
+                    <td className="border px-2 sm:px-4 py-2 text-center">
                       <CButton
                         color="danger"
                         onClick={() => {
@@ -141,6 +165,15 @@ const DeliveryTiming = () => {
                         }}
                         disabled={isLoading}
                         size="sm"
+                        className="text-xs sm:text-sm px-2 sm:px-3 py-1"
+                        style={{
+                          fontSize: '0.75rem',
+                          padding: '4px 8px',
+                          '@media (min-width: 640px)': {
+                            fontSize: '0.875rem',
+                            padding: '6px 12px',
+                          }
+                        }}
                       >
                         Delete
                       </CButton>
@@ -159,6 +192,19 @@ const DeliveryTiming = () => {
                 page={page}
                 onChange={handleChangePage}
                 color="primary"
+                size="small"
+                sx={{
+                  '& .MuiPaginationItem-root': {
+                    fontSize: '0.75rem',
+                    minWidth: '32px',
+                    height: '32px',
+                    '@media (min-width: 640px)': {
+                      fontSize: '0.875rem',
+                      minWidth: '40px',
+                      height: '40px',
+                    }
+                  }
+                }}
               />
             </Stack>
           </div>

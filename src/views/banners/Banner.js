@@ -289,22 +289,35 @@ export default function Banner() {
   )
 
   return (
-    <div className="p-4">
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h1 className="fs-4 fw-semibold">Banners ({filteredBanners.length})</h1>
-        <CButton color="primary" onClick={() => setModalVisible(true)}>
+    <div className="p-2 p-md-4">
+      {/* Mobile Responsive Header */}
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
+        <h1 className="fs-4 fw-semibold mb-2 mb-md-0">Banners ({filteredBanners.length})</h1>
+        <CButton 
+          color="primary" 
+          onClick={() => setModalVisible(true)}
+          className="w-100 w-md-auto"
+          style={{ minWidth: '120px' }}
+        >
           Add Banner
         </CButton>
       </div>
 
-      <div className="d-flex mb-4">
+      {/* Mobile Responsive Search and Filter */}
+      <div className="d-flex flex-column flex-md-row mb-4 gap-2">
         <CFormInput
           placeholder="Search banners by image URL..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="me-3"
+          className="flex-grow-1"
+          style={{ minWidth: '200px' }}
         />
-        <CFormSelect value={filter} onChange={(e) => setFilter(e.target.value)}>
+        <CFormSelect 
+          value={filter} 
+          onChange={(e) => setFilter(e.target.value)}
+          className="w-100 w-md-auto"
+          style={{ minWidth: '150px' }}
+        >
           <option value="All">All</option>
           <option value="This week">This Week</option>
           <option value="This month">This Month</option>

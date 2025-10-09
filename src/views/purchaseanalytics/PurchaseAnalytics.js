@@ -785,23 +785,54 @@ export default function PurchaseAnalytics() {
 
       {/* View Mode Toggle */}
       <Paper sx={{ p: 2, mb: 3, borderRadius: 3, boxShadow: 3 }}>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <Typography variant="h6">View Mode:</Typography>
-          <Button
-            variant={viewMode === 'inventory' ? 'contained' : 'outlined'}
-            startIcon={<Inventory />}
-            onClick={() => setViewMode('inventory')}
-          >
-            Inventory Analytics
-          </Button>
-          <Button
-            variant={viewMode === 'menu' ? 'contained' : 'outlined'}
-            startIcon={<Restaurant />}
-            onClick={() => setViewMode('menu')}
-          >
-            Menu Item Costs
-          </Button>
-        </Stack>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} sm={12} md={3}>
+            <Typography variant="h6" sx={{ 
+              textAlign: { xs: 'center', sm: 'center', md: 'left' },
+              mb: { xs: 1, sm: 1, md: 0 }
+            }}>
+              View Mode:
+            </Typography>
+          </Grid>
+          <Grid item xs={12} sm={12} md={9}>
+            <Stack 
+              direction={{ xs: 'column', sm: 'row' }} 
+              spacing={2} 
+              alignItems="center"
+              sx={{ 
+                width: '100%',
+                justifyContent: { xs: 'center', sm: 'flex-start' }
+              }}
+            >
+              <Button
+                variant={viewMode === 'inventory' ? 'contained' : 'outlined'}
+                startIcon={<Inventory />}
+                onClick={() => setViewMode('inventory')}
+                fullWidth={{ xs: true, sm: false }}
+                sx={{ 
+                  minWidth: { xs: '100%', sm: 'auto' },
+                  fontSize: { xs: '0.875rem', sm: '0.875rem' },
+                  py: { xs: 1.5, sm: 1 }
+                }}
+              >
+                Inventory Analytics
+              </Button>
+              <Button
+                variant={viewMode === 'menu' ? 'contained' : 'outlined'}
+                startIcon={<Restaurant />}
+                onClick={() => setViewMode('menu')}
+                fullWidth={{ xs: true, sm: false }}
+                sx={{ 
+                  minWidth: { xs: '100%', sm: 'auto' },
+                  fontSize: { xs: '0.875rem', sm: '0.875rem' },
+                  py: { xs: 1.5, sm: 1 }
+                }}
+              >
+                Menu Item Costs
+              </Button>
+            </Stack>
+          </Grid>
+        </Grid>
       </Paper>
 
       {/* Summary Cards */}

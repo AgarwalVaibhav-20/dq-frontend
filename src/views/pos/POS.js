@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { getQrs } from '../../redux/slices/qrSlice'
@@ -605,64 +605,122 @@ const POS = () => {
   }
 
   return (
-    <CContainer className="py-2">
-      {/* Header with Title, Daily Transaction, and Buttons */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div className="d-flex align-items-center gap-3">
-          <h3 className="mb-0">Select Table To Generate Bill</h3>
-          {/* Daily Transaction Display - Now from database */}
-          {/* <CBadge color="info" size="lg" className="d-flex align-items-center gap-1">
+    <CContainer className="py-2 px-2 px-md-3">
+      {/* Mobile Responsive Header */}
+      <div className="mb-4">
+        {/* Title Section - Mobile Responsive */}
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
+          <div className="mb-2 mb-md-0">
+            <h3 className="mb-0 text-center text-md-start">Select Table To Generate Bill</h3>
+          </div>
+          
+          {/* Mobile Responsive Button Groups */}
+          <div className="w-100 d-md-none">
+            {/* Mobile: Stack buttons vertically */}
+            <div className="d-flex flex-column gap-2">
+              {/* Cash Management Row */}
+              <div className="d-flex gap-2 justify-content-center">
+                <CButton
+                  color="success"
+                  variant="outline"
+                  onClick={() => setShowCashInModal(true)}
+                  className="d-flex align-items-center gap-1 flex-fill"
+                  disabled={cashLoading}
+                  size="sm"
+                >
+                  <CIcon icon={cilPlus} size="sm" />
+                  <span className="d-none d-sm-inline">Cash In</span>
+                  <span className="d-sm-none">In</span>
+                </CButton>
+                <CButton
+                  color="danger"
+                  variant="outline"
+                  onClick={() => setShowCashOutModal(true)}
+                  className="d-flex align-items-center gap-1 flex-fill"
+                  disabled={cashLoading}
+                  size="sm"
+                >
+                  <CIcon icon={cilMinus} size="sm" />
+                  <span className="d-none d-sm-inline">Cash Out</span>
+                  <span className="d-sm-none">Out</span>
+                </CButton>
+              </div>
+              
+              {/* Action Buttons Row */}
+              <div className="d-flex gap-2">
+                <CButton 
+                  color="primary" 
+                  onClick={fetchActiveOrders}
+                  className="flex-fill"
+                  size="sm"
+                >
+                  <span className="d-none d-sm-inline">All Orders</span>
+                  <span className="d-sm-none">Orders</span>
+                </CButton>
+                <CButton
+                  color="success"
+                  onClick={handleMergeTablesClick}
+                  className="flex-fill"
+                  size="sm"
+                >
+                  <span className="d-none d-sm-inline">Merge Tables</span>
+                  <span className="d-sm-none">Merge</span>
+                </CButton>
+              </div>
+            </div>
+          </div>
+          
+          {/* Desktop: Original horizontal layout */}
+          <div className="d-none d-md-flex flex-column gap-2">
+            {/* Cash Management Buttons */}
+            <div className='d-flex gap-2'>
+              <CButton
+                color="success"
+                variant="outline"
+                onClick={() => setShowCashInModal(true)}
+                className="d-flex align-items-center gap-1"
+                disabled={cashLoading}
+              >
+                <CIcon icon={cilPlus} size="sm" />
+                Cash In
+              </CButton>
+              <CBadge color="info" size="lg" className="d-flex align-items-center gap-1">
+                <CIcon icon={cilCash} />
+                Daily Balance: ₹{formatBalance(dailyCashBalance)}
+                {cashLoading && <CSpinner size="sm" className="ms-1" />}
+              </CBadge>
+              <CButton
+                color="danger"
+                variant="outline"
+                onClick={() => setShowCashOutModal(true)}
+                className="d-flex align-items-center gap-1"
+                disabled={cashLoading}
+              >
+                <CIcon icon={cilMinus} size="sm" />
+                Cash Out
+              </CButton>
+            </div>
+            <div className='d-flex gap-2'>
+              <CButton color="primary" onClick={fetchActiveOrders}>
+                All Orders
+              </CButton>
+              <CButton
+                color="success"
+                onClick={handleMergeTablesClick}
+              >
+                Merge Tables
+              </CButton>
+            </div>
+          </div>
+        </div>
+        
+        {/* Mobile: Daily Balance Badge */}
+        <div className="d-md-none text-center mb-3">
+          <CBadge color="info" size="lg" className="d-flex align-items-center gap-1 justify-content-center">
             <CIcon icon={cilCash} />
             Daily Balance: ₹{formatBalance(dailyCashBalance)}
             {cashLoading && <CSpinner size="sm" className="ms-1" />}
-          </CBadge> */}
-
-          {/* NEW: Display for Daily Transaction Count */}
-          {/* <CBadge color="primary" size="lg" className="d-flex align-items-center gap-1">
-            <CIcon icon={cilNotes} />
-            Today's Orders: {dailyTransactionCount}
-          </CBadge>  */}
-        </div>
-        <div className="flex flex-col gap-2 items-center ">
-          {/* Cash Management Buttons */}
-          <div className='flex gap-2'>
-            <CButton
-              color="success"
-              variant="outline"
-              onClick={() => setShowCashInModal(true)}
-              className="d-flex align-items-center gap-1"
-              disabled={cashLoading}
-            >
-              <CIcon icon={cilPlus} size="sm" />
-              Cash In
-            </CButton>
-            <CBadge color="info" size="lg" className="d-flex align-items-center gap-1">
-              <CIcon icon={cilCash} />
-              Daily Balance: ₹{formatBalance(dailyCashBalance)}
-              {cashLoading && <CSpinner size="sm" className="ms-1" />}
-            </CBadge>
-            <CButton
-              color="danger"
-              variant="outline"
-              onClick={() => setShowCashOutModal(true)}
-              className="d-flex align-items-center gap-1"
-              disabled={cashLoading}
-            >
-              <CIcon icon={cilMinus} size="sm" />
-              Cash Out
-            </CButton>
-          </div>
-          <div className='flex gap-2'>
-            <CButton color="primary" onClick={fetchActiveOrders}>
-              All Orders
-            </CButton>
-            <CButton
-              color="success"
-              onClick={handleMergeTablesClick}
-            >
-              Merge Tables
-            </CButton>
-          </div>
+          </CBadge>
         </div>
       </div>
 
@@ -905,35 +963,46 @@ const POS = () => {
         // ADD THIS NEW LOGIC
         <>
 
-          {/* Merged Tables Section - Show all merged tables at the top */}
+          {/* Merged Tables Section - Mobile Responsive */}
           {mergedTables.length > 0 && (
             <div className="mb-5">
-              <h4 className="fw-bold mb-3 border-bottom pb-2">Merged Tables ({mergedTables.length})</h4>
-              <CRow className="justify-content-start">
+              <h4 className="fw-bold mb-3 border-bottom pb-2 text-center text-md-start">Merged Tables ({mergedTables.length})</h4>
+              <CRow className="justify-content-center justify-content-md-start">
                 {mergedTables.map((mergedTable) => (
                   <CCol
                     key={mergedTable.id}
                     xs="6" sm="4" md="3" lg="2" xl="2"
-                    className="mx-2 mb-4 d-flex justify-content-center"
+                    className="mb-3 mb-md-4 d-flex justify-content-center"
                   >
-                    <CContainer
-                      className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${
+                    <div
+                      className={`table-card d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-2 p-md-3 w-100 ${
                         theme === 'dark' ? 'bg-secondary text-white' : 'bg-white text-dark'
                       }`}
                       onClick={() => handleMergedTableClick(mergedTable)}
-                      style={{ height: '10rem', cursor: 'pointer', position: 'relative' }}
+                      style={{ 
+                        cursor: 'pointer', 
+                        position: 'relative',
+                        minHeight: '8rem'
+                      }}
                     >
-                      <CBadge color="info" className="position-absolute top-0 start-0 m-1" style={{ fontSize: '0.6rem' }}>
+                      <CBadge 
+                        color="info" 
+                        className="position-absolute top-0 start-0 m-1 badge-mobile"
+                      >
                         MERGED
                       </CBadge>
-                      <div className="fw-bold">{mergedTable.name}</div>
-                      <small className="text-center mt-1">
+                      <div className="fw-bold text-center table-title">
+                        {mergedTable.name}
+                      </div>
+                      <small className="text-center mt-1 table-subtitle">
                         ({mergedTable.originalTables || mergedTable.tables?.map(t => `T${t}`).join(', ')})
                       </small>
                       {mergedTable.combinedOrders?.length > 0 && (
-                        <small className="text-center mt-1">{mergedTable.combinedOrders.length} items</small>
+                        <small className="text-center mt-1 table-subtitle">
+                          {mergedTable.combinedOrders.length} items
+                        </small>
                       )}
-                    </CContainer>
+                    </div>
                   </CCol>
                 ))}
               </CRow>
@@ -952,23 +1021,22 @@ const POS = () => {
 
             return (
               <div key={floor._id} className="mb-5">
-                {/* Floor Header */}
-                <h4 className="fw-bold mb-3 border-bottom pb-2">Floor: {floor.name}</h4>
+                {/* Floor Header - Mobile Responsive */}
+                <h4 className="fw-bold mb-3 border-bottom pb-2 text-center text-md-start">Floor: {floor.name}</h4>
 
-                {/* Individual Tables for this Floor */}
+                {/* Individual Tables for this Floor - Mobile Responsive */}
                 <div>
-                  <CRow className="justify-content-start">
+                  <CRow className="justify-content-center justify-content-md-start">
                     {availableFloorTables.map((qr, index) => {
-                      // This is the same JSX you had before for individual tables
                       const floorName = getFloorNameFromQr(qr);
                       return (
                         <CCol
                           key={index}
                           xs="6" sm="4" md="3" lg="2" xl="2"
-                          className="mx-2 mb-4 d-flex justify-content-center"
+                          className="mb-3 mb-md-4 d-flex justify-content-center"
                         >
                           <div
-                            className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${
+                            className={`table-card d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-2 p-md-3 w-100 ${
                               shouldTableBeRed(qr)
                                 ? ' text-dark'
                                 : theme === 'dark'
@@ -976,14 +1044,27 @@ const POS = () => {
                                 : 'bg-white text-dark'
                             }`}
                             onClick={() => handleQrClick(qr)}
-                            style={{ height: '10rem', cursor: 'pointer', width: '100%', position: 'relative', backgroundColor:shouldTableBeRed(qr) ? tableOccupyColor : '' }}
+                            style={{ 
+                              cursor: 'pointer', 
+                              width: '100%', 
+                              position: 'relative', 
+                              backgroundColor: shouldTableBeRed(qr) ? tableOccupyColor : '',
+                              minHeight: '8rem'
+                            }}
                           >
-                            <CBadge color="secondary" className="position-absolute top-0 start-0 m-1" style={{ fontSize: '0.6rem' }}>
+                            <CBadge 
+                              color="secondary" 
+                              className="position-absolute top-0 start-0 m-1 badge-mobile"
+                            >
                               {floorName}
                             </CBadge>
-                            <div className="fw-bold">Table {qr.tableNumber}</div>
+                            <div className="fw-bold text-center table-title">
+                              Table {qr.tableNumber}
+                            </div>
                             {isItemInCart(qr) && (
-                              <small className="text-center mt-1">{cart[qr.tableNumber]?.length || 0} items</small>
+                              <small className="text-center mt-1 table-subtitle">
+                                {cart[qr.tableNumber]?.length || 0} items
+                              </small>
                             )}
                           </div>
                         </CCol>
@@ -995,27 +1076,33 @@ const POS = () => {
             );
           })}
 
-          {/* Takeaway Section - Placed after the floors loop */}
+          {/* Takeaway Section - Mobile Responsive */}
           <div className="mb-5">
-              <h4 className="fw-bold mb-3 border-bottom pb-2">Other Options</h4>
-              <CRow>
-                <CCol xs="6" sm="4" md="3" lg="2" xl="2" className="mx-2 mb-4 d-flex justify-content-center">
-                    <CContainer
-                      className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${
+              <h4 className="fw-bold mb-3 border-bottom pb-2 text-center text-md-start">Other Options</h4>
+              <CRow className="justify-content-center justify-content-md-start">
+                <CCol xs="6" sm="4" md="3" lg="2" xl="2" className="mb-3 mb-md-4 d-flex justify-content-center">
+                    <div
+                      className={`table-card d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-2 p-md-3 w-100 ${
                         theme === 'dark' ? 'bg-secondary text-white' : 'bg-white text-dark'
                       }`}
                       onClick={() => navigate('/pos/system/tableNumber/0')}
-                      style={{ height: '10rem', cursor: 'pointer', width: '100%' }}
+                      style={{ 
+                        cursor: 'pointer', 
+                        width: '100%',
+                        minHeight: '8rem'
+                      }}
                     >
-                      <div className="fw-bold">Takeaway</div>
-                    </CContainer>
+                      <div className="fw-bold text-center table-title">
+                        Takeaway
+                      </div>
+                    </div>
                 </CCol>
               </CRow>
           </div>
         </>
       )}
 
-      {/* Cash In Modal */}
+      {/* Cash In Modal - Mobile Responsive */}
       <CModal
         visible={showCashInModal}
         onClose={() => {
@@ -1025,6 +1112,7 @@ const POS = () => {
         }}
         size="md"
         backdrop="static"
+        className="modal-mobile-responsive"
       >
         <CModalHeader>
           <CModalTitle className="d-flex align-items-center gap-2">
@@ -1092,7 +1180,7 @@ const POS = () => {
         </CModalFooter>
       </CModal>
 
-      {/* Cash Out Modal */}
+      {/* Cash Out Modal - Mobile Responsive */}
       <CModal
         visible={showCashOutModal}
         onClose={() => {
@@ -1102,6 +1190,7 @@ const POS = () => {
         }}
         size="md"
         backdrop="static"
+        className="modal-mobile-responsive"
       >
         <CModalHeader>
           <CModalTitle className="d-flex align-items-center gap-2">
@@ -1173,11 +1262,12 @@ const POS = () => {
         </CModalFooter>
       </CModal>
 
-      {/* Combined Order Modal */}
+      {/* Combined Order Modal - Mobile Responsive */}
       <CModal
         visible={showCombinedModal}
         onClose={() => setShowCombinedModal(false)}
         size="lg"
+        className="modal-mobile-responsive"
       >
         <CModalHeader>
           <CModalTitle>Active Orders</CModalTitle>
@@ -1236,7 +1326,7 @@ const POS = () => {
         </CModalBody>
       </CModal>
 
-      {/* Merge Tables Modal */}
+      {/* Merge Tables Modal - Mobile Responsive */}
       <CModal
         visible={showMergeModal}
         onClose={() => {
@@ -1245,6 +1335,7 @@ const POS = () => {
         }}
         size="lg"
         backdrop="static"
+        className="modal-mobile-responsive"
       >
         <CModalHeader>
           <CModalTitle>Merge Tables</CModalTitle>

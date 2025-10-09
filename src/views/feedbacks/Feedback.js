@@ -98,11 +98,33 @@ export default function FeedbackPage() {
       </Typography>
 
       {/* Export Buttons */}
-      <Stack direction="row" spacing={2} sx={{ mb: 2 }}>
-        <Button variant="contained" color="primary" onClick={exportCSV}>
+      <Stack 
+        direction={{ xs: "column", sm: "row" }} 
+        spacing={{ xs: 1, sm: 2 }} 
+        sx={{ mb: 2 }}
+      >
+        <Button 
+          variant="contained" 
+          color="primary" 
+          onClick={exportCSV}
+          sx={{ 
+            width: { xs: "100%", sm: "auto" },
+            minWidth: { xs: "auto", sm: "120px" },
+            fontSize: { xs: "0.875rem", sm: "0.875rem" }
+          }}
+        >
           Export CSV
         </Button>
-        <Button variant="contained" color="secondary" onClick={exportPDF}>
+        <Button 
+          variant="contained" 
+          color="secondary" 
+          onClick={exportPDF}
+          sx={{ 
+            width: { xs: "100%", sm: "auto" },
+            minWidth: { xs: "auto", sm: "120px" },
+            fontSize: { xs: "0.875rem", sm: "0.875rem" }
+          }}
+        >
           Export PDF
         </Button>
       </Stack>

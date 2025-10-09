@@ -1,5 +1,5 @@
 import React from 'react'
-import { CButton, CFormSwitch, CSpinner } from '@coreui/react'
+import { CButton, CFormSwitch, CSpinner, CCard, CCardBody, CCardImage, CRow, CCol } from '@coreui/react'
 import { cilPencil, cilTrash } from '@coreui/icons'
 import CIcon from '@coreui/icons-react'
 import { DataGrid } from '@mui/x-data-grid'
@@ -46,12 +46,14 @@ const MenuItemList = ({
     }
   }
 
+  // Mobile responsive columns
   const columns = [
     {
       field: 'itemImage',
       headerName: 'Image',
       flex: 1,
       minWidth: 140,
+      hide: isMobile,
       renderCell: (params) =>
         params.value ? (
           <div
@@ -105,7 +107,8 @@ const MenuItemList = ({
       field: 'menuId',
       headerName: 'Menu Id',
       flex: 1.5,
-      minWidth: '150'
+      minWidth: '150',
+      hide: isMobile
     },
     {
       field: 'itemName',
@@ -125,6 +128,7 @@ const MenuItemList = ({
       headerName: 'Status',
       flex: 1,
       minWidth: 130,
+      hide: isMobile,
       renderCell: (params) => (
         <CFormSwitch
           color="primary"
@@ -142,11 +146,10 @@ const MenuItemList = ({
       minWidth: 160,
       sortable: false,
       renderCell: (params) => (
-        <div>
+        <div className="d-flex gap-1">
           <CButton
             color="info"
             size="sm"
-            className="me-1"
             onClick={() => {
               setSelectedMenu(params.row)
               setEditModalVisible(true)
@@ -169,36 +172,145 @@ const MenuItemList = ({
     },
   ]
 
+  // Mobile Card Layout Component
+  const MobileCardLayout = () => (
+    <div className="d-block d-lg-none">
+      {menuItemsLoading ? (
+        <div className="text-center py-4">
+          <CSpinner color="primary" />
+          <p className="mt-2">Loading menu items...</p>
+        </div>
+      ) : (
+        <CRow className="g-3">
+          {transformedMenuItems.map((item) => (
+            <CCol key={item.id} xs={12}>
+              <CCard className="h-100 shadow-sm">
+                <CCardBody className="p-3">
+                  <div className="d-flex align-items-start gap-3">
+                    {/* Image */}
+                    <div className="flex-shrink-0">
+                      {item.itemImage ? (
+                        <img
+                          src={item.itemImage}
+                          alt={item.itemName}
+                          className="rounded"
+                          style={{
+                            width: '70px',
+                            height: '70px',
+                            objectFit: 'cover',
+                          }}
+                        />
+                      ) : (
+                        <div
+                          className="rounded d-flex align-items-center justify-content-center text-muted"
+                          style={{
+                            width: '70px',
+                            height: '70px',
+                            backgroundColor: '#f8f9fa',
+                            border: '1px dashed #dee2e6',
+                            fontSize: '10px',
+                          }}
+                        >
+                          No Image
+                        </div>
+                      )}
+                    </div>
+                    
+                    {/* Content */}
+                    <div className="flex-grow-1" style={{ minWidth: 0 }}>
+                      <div className="d-flex justify-content-between align-items-start mb-2">
+                        <h6 className="mb-1 fw-bold text-truncate" style={{ maxWidth: '150px' }}>{item.itemName}</h6>
+                        <span className="text-success fw-bold flex-shrink-0">₹{item.price}</span>
+                      </div>
+                      
+                      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
+                        <div className="flex-grow-1">
+                          <small className="text-muted">ID: {item.menuId}</small>
+                          <div className="mt-1">
+                            <CFormSwitch
+                              color="primary"
+                              shape="rounded-pill"
+                              size="sm"
+                              checked={item.status === 1}
+                              onChange={() => handleToggleStatus(item)}
+                              label={item.status === 1 ? 'Active' : 'Inactive'}
+                            />
+                          </div>
+                        </div>
+                        
+                        {/* Actions */}
+                        <div className="d-flex gap-1 flex-shrink-0">
+                          <CButton
+                            color="info"
+                            size="sm"
+                            className="px-2"
+                            onClick={() => {
+                              setSelectedMenu(item)
+                              setEditModalVisible(true)
+                            }}
+                          >
+                            <CIcon icon={cilPencil} />
+                          </CButton>
+                          <CButton
+                            color="danger"
+                            size="sm"
+                            className="px-2"
+                            onClick={() => {
+                              setSelectedMenu(item)
+                              setDeleteModalVisible(true)
+                            }}
+                          >
+                            <CIcon icon={cilTrash} />
+                          </CButton>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </CCardBody>
+              </CCard>
+            </CCol>
+          ))}
+        </CRow>
+      )}
+    </div>
+  )
+
   return (
-    <div style={{ width: '100%', backgroundColor: 'white' }}>
-      <DataGrid
-        rows={transformedMenuItems}
-        columns={columns}
-        getRowId={(row) => row.id}
-        loading={menuItemsLoading}
-        disableRowSelectionOnClick
-        autoHeight
-        pagination
-        initialState={{
-          pagination: { paginationModel: { pageSize: 10 } },
-        }}
-        pageSizeOptions={[10, 20, 30]}
-        slots={{ Toolbar: CustomToolbar }}
-        sx={{
-          border: 'none',
-          '& .MuiDataGrid-cell': {
-            padding: '10px',
-          },
-          '& .MuiDataGrid-columnHeaders': {
-            backgroundColor: '#f8f9fa',
-            fontWeight: 'bold',
-          },
-          '& .MuiDataGrid-footerContainer': {
-            justifyContent: 'space-between',
-            padding: '0 10px',
-          },
-        }}
-      />
+    <div style={{ width: '100%', backgroundColor: 'white', minWidth: '600px' }}>
+      {/* Desktop Table View */}
+      <div className="d-none d-lg-block" style={{ width: '100%', minWidth: '600px' }}>
+        <DataGrid
+          rows={transformedMenuItems}
+          columns={columns}
+          getRowId={(row) => row.id}
+          loading={menuItemsLoading}
+          disableRowSelectionOnClick
+          autoHeight
+          pagination
+          initialState={{
+            pagination: { paginationModel: { pageSize: 10 } },
+          }}
+          pageSizeOptions={[10, 20, 30]}
+          slots={{ Toolbar: CustomToolbar }}
+          sx={{
+            border: 'none',
+            '& .MuiDataGrid-cell': {
+              padding: '10px',
+            },
+            '& .MuiDataGrid-columnHeaders': {
+              backgroundColor: '#f8f9fa',
+              fontWeight: 'bold',
+            },
+            '& .MuiDataGrid-footerContainer': {
+              justifyContent: 'space-between',
+              padding: '0 10px',
+            },
+          }}
+        />
+      </div>
+
+      {/* Mobile Card View */}
+      <MobileCardLayout />
     </div>
   )
 }

@@ -678,14 +678,67 @@ export default function SalesAnalytics() {
       </Typography>
 
       <Paper sx={{ p: 2, mb: 3, borderRadius: 3, boxShadow: 3 }}>
-        <Stack direction="row" spacing={2} alignItems="center">
-          <Typography variant="h6">View Mode:</Typography>
-          {/* Sales Overview button hidden */}
-          {/* <Button variant={viewMode === 'sales' ? 'contained' : 'outlined'} startIcon={<Receipt />} onClick={() => setViewMode('sales')}>Sales Overview</Button> */}
-          <Button variant={viewMode === 'menu' ? 'contained' : 'outlined'} startIcon={<BarChart3 />} onClick={() => setViewMode('menu')}>Menu Performance</Button>
-          {/* Customer Analytics button hidden */}
-          {/* <Button variant={viewMode === 'customers' ? 'contained' : 'outlined'} startIcon={<Users />} onClick={() => setViewMode('customers')}>Customer Analytics</Button> */}
-        </Stack>
+        <Grid container spacing={2} alignItems="center">
+          <Grid item xs={12} sm={12} md={3}>
+            <Typography variant="h6" sx={{ 
+              textAlign: { xs: 'center', sm: 'center', md: 'left' },
+              mb: { xs: 1, sm: 1, md: 0 }
+            }}>
+              View Mode:
+            </Typography>
+          </Grid>
+          <Grid item xs={12} sm={12} md={9}>
+            <Stack 
+              direction={{ xs: 'column', sm: 'row' }} 
+              spacing={2} 
+              alignItems="center"
+              sx={{ 
+                width: '100%',
+                justifyContent: { xs: 'center', sm: 'flex-start' }
+              }}
+            >
+              {/* Sales Overview button hidden */}
+              {/* <Button 
+                variant={viewMode === 'sales' ? 'contained' : 'outlined'} 
+                startIcon={<Receipt />} 
+                onClick={() => setViewMode('sales')}
+                fullWidth={{ xs: true, sm: false }}
+                sx={{ 
+                  minWidth: { xs: '100%', sm: 'auto' },
+                  fontSize: { xs: '0.875rem', sm: '0.875rem' }
+                }}
+              >
+                Sales Overview
+              </Button> */}
+              <Button 
+                variant={viewMode === 'menu' ? 'contained' : 'outlined'} 
+                startIcon={<BarChart3 />} 
+                onClick={() => setViewMode('menu')}
+                fullWidth={{ xs: true, sm: false }}
+                sx={{ 
+                  minWidth: { xs: '100%', sm: 'auto' },
+                  fontSize: { xs: '0.875rem', sm: '0.875rem' },
+                  py: { xs: 1.5, sm: 1 }
+                }}
+              >
+                Menu Performance
+              </Button>
+              {/* Customer Analytics button hidden */}
+              {/* <Button 
+                variant={viewMode === 'customers' ? 'contained' : 'outlined'} 
+                startIcon={<Users />} 
+                onClick={() => setViewMode('customers')}
+                fullWidth={{ xs: true, sm: false }}
+                sx={{ 
+                  minWidth: { xs: '100%', sm: 'auto' },
+                  fontSize: { xs: '0.875rem', sm: '0.875rem' }
+                }}
+              >
+                Customer Analytics
+              </Button> */}
+            </Stack>
+          </Grid>
+        </Grid>
       </Paper>
 
       <Grid container spacing={3} sx={{ mb: 3 }}>

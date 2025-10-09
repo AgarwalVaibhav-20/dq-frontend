@@ -44,17 +44,17 @@ const POSTableContent = () => {
   const theme = useSelector((state) => state.theme.theme)
   const token = localStorage.getItem('authToken')
 
-  // Debug: Log restaurantId to console
-  console.log('POSTableContent - restaurantId:', restaurantId)
-  console.log('POSTableContent - localStorage restaurantId:', localStorage.getItem('restaurantId'))
-  console.log('POSTableContent - authState:', authState)
+  // Debug: Log restaurantId to console (commented for production)
+  // console.log('POSTableContent - restaurantId:', restaurantId)
+  // console.log('POSTableContent - localStorage restaurantId:', localStorage.getItem('restaurantId'))
+  // console.log('POSTableContent - authState:', authState)
 
   // Fallback: If restaurantId is missing, try to get it from user profile or redirect
   useEffect(() => {
     if (!localStorage.getItem('restaurantId') && token && authState.restaurantId) {
       console.warn('RestaurantId is missing, restoring from auth state...')
       localStorage.setItem('restaurantId', authState.restaurantId)
-      console.log('RestaurantId restored from auth state:', authState.restaurantId)
+      // console.log('RestaurantId restored from auth state:', authState.restaurantId)
     } else if (!localStorage.getItem('restaurantId') && token) {
       console.warn('No restaurantId found in auth state or localStorage. Using fallback for testing.')
       localStorage.setItem('restaurantId', '68d23850f227fcf59cfacf80')
@@ -125,13 +125,13 @@ const POSTableContent = () => {
 
   useEffect(() => {
     if (token && restaurantId) {
-      console.log('Fetching data with restaurantId:', restaurantId)
+      // console.log('Fetching data with restaurantId:', restaurantId)
       dispatch(fetchMenuItems({ token }))
       dispatch(fetchCustomers({ token }))
       dispatch(fetchCategories({ token }))
       dispatch(fetchSubCategories({ token }))
     } else {
-      console.log('Missing token or restaurantId:', { token: !!token, restaurantId })
+      // console.log('Missing token or restaurantId:', { token: !!token, restaurantId })
     }
   }, [dispatch, token, restaurantId])
 
@@ -141,9 +141,9 @@ const POSTableContent = () => {
 
   // Check if system is selected when component mounts
   useEffect(() => {
-    console.log('POSTableContent - Checking selectedSystem:', selectedSystem)
+    // console.log('POSTableContent - Checking selectedSystem:', selectedSystem)
     if (!selectedSystem) {
-      console.log('POSTableContent - No system selected, opening modal')
+      // console.log('POSTableContent - No system selected, opening modal')
       // If no system is selected, open the system selection modal
       setShowSystemModal(true)
     }
@@ -151,12 +151,12 @@ const POSTableContent = () => {
 
   // Also check on component mount
   useEffect(() => {
-    console.log('POSTableContent - Component mounted, checking system for table:', tableId)
+    // console.log('POSTableContent - Component mounted, checking system for table:', tableId)
     const savedSystem = localStorage.getItem(`selectedSystem_${tableId}`)
-    console.log('POSTableContent - Saved system from localStorage:', savedSystem)
+    // console.log('POSTableContent - Saved system from localStorage:', savedSystem)
 
     if (!savedSystem) {
-      console.log('POSTableContent - No saved system found, opening modal')
+      // console.log('POSTableContent - No saved system found, opening modal')
       setShowSystemModal(true)
     }
   }, [tableId])
@@ -259,12 +259,15 @@ const POSTableContent = () => {
   }, [cart, startTime, tableNumber]);
 
   const handleMenuItemClick = useCallback((product) => {
-    const relevantSubcategoriesExist = subCategories.some(sub => sub.category_id === product.categoryId);
+    console.log('handleMenuItemClick called with:', product.itemName);
+    
+    // Skip subcategory check for now - direct add to cart
+    // const relevantSubcategoriesExist = subCategories.some(sub => sub.category_id === product.categoryId);
 
-    if (relevantSubcategoriesExist) {
-      setSelectedMenuItemForSubcategory(product);
-      setShowSubCategoryModal(true);
-    } else {
+    // if (relevantSubcategoriesExist) {
+    //   setSelectedMenuItemForSubcategory(product);
+    //   setShowSubCategoryModal(true);
+    // } else {
       // A product is considered unique based on its ID AND its size ID.
       const productId = product._id || product.id;
       const sizeId = product.sizeId || null; // sizeId comes from ProductList.js
@@ -315,8 +318,8 @@ const POSTableContent = () => {
         setStartTime(now);
         localStorage.setItem(`start_time_${tableNumber}`, now.toISOString());
       }
-    }
-  }, [cart, startTime, tableNumber, subCategories]);
+    // }
+  }, [cart, startTime, tableNumber]);
 
   const handleCustomerSelect = (customer) => {
     setSelectedCustomer(customer);
@@ -454,7 +457,7 @@ const POSTableContent = () => {
   };
 
   const handleDiscountSubmit = (discounts) => {
-    console.log('Received discounts:', discounts);
+    // console.log('Received discounts:', discounts);
 
     // Handle item-specific discounts
     if (discounts.selectedItemDiscount && discounts.selectedItemDiscount.ids && discounts.selectedItemDiscount.ids.length > 0) {
@@ -554,12 +557,12 @@ const POSTableContent = () => {
     const subtotal = calculateSubtotal();
     const totalTaxAmount = calculateTotalTaxAmount();
     const discountAmount = calculateDiscountAmount();
-    console.log("discount amount :", discountAmount)
+    // console.log("discount amount :", discountAmount)
     const systemCharge = selectedSystem ? Number(selectedSystem.chargeOfSystem || 0) : 0;
-    console.log("system amount :", systemCharge)
-    console.log("round off amount :", roundOff)
+    // console.log("system amount :", systemCharge)
+    // console.log("round off amount :", roundOff)
     const total = subtotal + totalTaxAmount + systemCharge - discountAmount - roundOff
-    console.log("total from calculate total: ", total)
+    // console.log("total from calculate total: ", total)
     return total;
   }, [calculateSubtotal, calculateTotalTaxAmount, calculateDiscountAmount, roundOff, selectedSystem]);
 
@@ -607,7 +610,7 @@ const POSTableContent = () => {
       // If no customer or no active membership, reset the discount
       setMembershipDiscount({ value: 0, type: 'percentage' });
     }
-  }, [selectedCustomer, cart, calculateSubtotal]); // Dependency array now includes cart
+  }, [selectedCustomer, cart]); // Dependency array now includes cart
   // --- END OF MODIFIED CODE BLOCK ---
 
   // FIXED: Quantity change handler with proper ID matching
@@ -698,7 +701,7 @@ const POSTableContent = () => {
 
     try {
       const result = await dispatch(createTransaction(payload)).unwrap();
-      console.log('Transaction created:', result);
+      // console.log('Transaction created:', result);
 
       // --- NEW UNMERGE LOGIC ON SUCCESSFUL PAYMENT ---
       if (tableId.startsWith('merged_')) {
@@ -712,7 +715,7 @@ const POSTableContent = () => {
         // 3. Clean up the merged table's specific localStorage
         localStorage.removeItem(`cart_${tableId}`)
         localStorage.removeItem(`start_time_${tableId}`)
-        console.log(`Unmerged table ${tableId} after payment.`);
+        // console.log(`Unmerged table ${tableId} after payment.`);
       }
       // --- END OF NEW LOGIC ---
 
@@ -919,7 +922,7 @@ const POSTableContent = () => {
       const kotTaxAmount = newItems.reduce((total, item) => total + (Number(item.taxAmount) || 0), 0);
       const kotDiscountAmount = (kotSubtotal * discount) / 100;
       const kotTotal = kotSubtotal + kotTaxAmount - kotDiscountAmount;
-      console.log("opprotypo", selectedCustomerName)
+      // console.log("opprotypo", selectedCustomerName)
       const orderData = {
         token: localStorage.getItem('authToken'),
         restaurantId: localStorage.getItem('restaurantId'),
@@ -947,7 +950,7 @@ const POSTableContent = () => {
       }
 
       const result = await dispatch(createOrder(orderData)).unwrap()
-      console.log('Order created successfully:', result)
+      // console.log('Order created successfully:', result)
       toast.success('Order saved successfully!', { autoClose: 3000 })
 
       setKotItems((prevKotItems) => [...prevKotItems, ...newItems])
@@ -1168,11 +1171,46 @@ const POSTableContent = () => {
               Total: ₹{calculateTotal().toFixed(2)}
             </h4>
           </CCol>
-          <CCol md={8} className="d-flex justify-content-end gap-2">
-            <CButton color="danger" variant="outline" size="lg" onClick={clearCart}>Cancel</CButton>
-            <CButton color="info" variant="outline" size="lg" onClick={generateKOT}>KOT</CButton>
-            <CButton color="warning" variant="outline" size="lg" onClick={generateInvoice}>Bill</CButton>
-            <CButton color="success" size="lg" onClick={() => setShowPaymentModal(true)}>Pay Now</CButton>
+          <CCol md={8} className="d-flex justify-content-end gap-2 flex-wrap">
+            <CButton 
+              color="danger" 
+              variant="outline" 
+              size="lg" 
+              onClick={clearCart}
+              className="btn-mobile-responsive"
+              style={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
+            >
+              Cancel
+            </CButton>
+            <CButton 
+              color="info" 
+              variant="outline" 
+              size="lg" 
+              onClick={generateKOT}
+              className="btn-mobile-responsive"
+              style={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
+            >
+              KOT
+            </CButton>
+            <CButton 
+              color="warning" 
+              variant="outline" 
+              size="lg" 
+              onClick={generateInvoice}
+              className="btn-mobile-responsive"
+              style={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
+            >
+              Bill
+            </CButton>
+            <CButton 
+              color="success" 
+              size="lg" 
+              onClick={() => setShowPaymentModal(true)}
+              className="btn-mobile-responsive"
+              style={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
+            >
+              Pay Now
+            </CButton>
           </CCol>
         </CRow>
       </CCardFooter>

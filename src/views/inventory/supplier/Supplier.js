@@ -17,11 +17,59 @@ import {
   CModalTitle,
   CFormInput,
   CSpinner,
+  CContainer,
+  CRow,
+  CCol,
 } from "@coreui/react";
 import CIcon from "@coreui/icons-react";
 import { cilPencil, cilTrash } from "@coreui/icons";
 import jsPDF from "jspdf";
 import "jspdf-autotable";
+
+// Mobile responsive styles
+const mobileStyles = `
+  @media (max-width: 768px) {
+    .modal-responsive .modal-dialog {
+      margin: 10px;
+      max-width: calc(100% - 20px);
+    }
+    
+    .mobile-header {
+      font-size: 12px !important;
+      padding: 4px !important;
+    }
+    
+    .mobile-cell {
+      font-size: 11px !important;
+      padding: 4px !important;
+    }
+    
+    .table-responsive {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
+    
+    .MuiDataGrid-root {
+      min-width: 600px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    .mobile-header {
+      font-size: 10px !important;
+      padding: 2px !important;
+    }
+    
+    .mobile-cell {
+      font-size: 9px !important;
+      padding: 2px !important;
+    }
+    
+    .MuiDataGrid-root {
+      min-width: 500px;
+    }
+  }
+`;
 
 const Supplier = () => {
   const dispatch = useDispatch();
@@ -119,45 +167,67 @@ const Supplier = () => {
   }));
 
   const renderAddSupplierModal = () => (
-    <CModal visible={modalVisible} onClose={() => setModalVisible(false)}>
+    <CModal 
+      visible={modalVisible} 
+      onClose={() => setModalVisible(false)}
+      size="lg"
+      className="modal-responsive"
+    >
       <CModalHeader>
         <CModalTitle>Add Supplier</CModalTitle>
       </CModalHeader>
       <CModalBody>
-        <CFormInput
-          className="mb-3"
-          placeholder="Supplier Name"
-          name="supplierName"
-          value={formData.supplierName}
-          onChange={handleChange}
-        />
-        <CFormInput
-          className="mb-3"
-          placeholder="Email"
-          name="email"
-          value={formData.email}
-          onChange={handleChange}
-        />
-        <CFormInput
-          className="mb-3"
-          placeholder="Phone Number"
-          name="phoneNumber"
-          value={formData.phoneNumber}
-          onChange={handleChange}
-        />
-        <CFormInput
-          className="mb-3"
-          placeholder="Raw Item"
-          name="rawItem"
-          value={formData.rawItem}
-          onChange={handleChange}
-        />
+        <CRow>
+          <CCol xs={12} sm={6} className="mb-3">
+            <CFormInput
+              placeholder="Supplier Name"
+              name="supplierName"
+              value={formData.supplierName}
+              onChange={handleChange}
+            />
+          </CCol>
+          <CCol xs={12} sm={6} className="mb-3">
+            <CFormInput
+              placeholder="Email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+            />
+          </CCol>
+        </CRow>
+        <CRow>
+          <CCol xs={12} sm={6} className="mb-3">
+            <CFormInput
+              placeholder="Phone Number"
+              name="phoneNumber"
+              value={formData.phoneNumber}
+              onChange={handleChange}
+            />
+          </CCol>
+          <CCol xs={12} sm={6} className="mb-3">
+            <CFormInput
+              placeholder="Raw Item"
+              name="rawItem"
+              value={formData.rawItem}
+              onChange={handleChange}
+            />
+          </CCol>
+        </CRow>
       </CModalBody>
-      <CModalFooter>
-        <CButton color="secondary" onClick={() => setModalVisible(false)}>
+      <CModalFooter className="d-flex flex-column flex-sm-row gap-2">
+        <CButton 
+          color="secondary" 
+          onClick={() => setModalVisible(false)}
+          className="w-100 w-sm-auto order-2 order-sm-1"
+        >
           Close
         </CButton>
-        <CButton color="primary" onClick={handleSaveSupplier} disabled={loading}>
+        <CButton 
+          color="primary" 
+          onClick={handleSaveSupplier} 
+          disabled={loading}
+          className="w-100 w-sm-auto order-1 order-sm-2"
+        >
           {loading ? 'Saving...' : 'Save'}
         </CButton>
       </CModalFooter>
@@ -165,45 +235,67 @@ const Supplier = () => {
   )
 
   const renderEditSupplierModal = () => (
-    <CModal visible={editModalVisible} onClose={() => setEditModalVisible(false)}>
+    <CModal 
+      visible={editModalVisible} 
+      onClose={() => setEditModalVisible(false)}
+      size="lg"
+      className="modal-responsive"
+    >
       <CModalHeader>
         <CModalTitle>Edit Supplier</CModalTitle>
       </CModalHeader>
       <CModalBody>
-        <CFormInput
-          className="mb-3"
-          placeholder="Supplier Name"
-          name="supplierName"
-          value={formData.supplierName}
-          onChange={handleChange}
-        />
-        <CFormInput
-          className="mb-3"
-          placeholder="Email"
-          name="email"
-          value={formData.email}
-          onChange={handleChange}
-        />
-        <CFormInput
-          className="mb-3"
-          placeholder="Phone Number"
-          name="phoneNumber"
-          value={formData.phoneNumber}
-          onChange={handleChange}
-        />
-        <CFormInput
-          className="mb-3"
-          placeholder="Raw Item"
-          name="rawItem"
-          value={formData.rawItem}
-          onChange={handleChange}
-        />
+        <CRow>
+          <CCol xs={12} sm={6} className="mb-3">
+            <CFormInput
+              placeholder="Supplier Name"
+              name="supplierName"
+              value={formData.supplierName}
+              onChange={handleChange}
+            />
+          </CCol>
+          <CCol xs={12} sm={6} className="mb-3">
+            <CFormInput
+              placeholder="Email"
+              name="email"
+              value={formData.email}
+              onChange={handleChange}
+            />
+          </CCol>
+        </CRow>
+        <CRow>
+          <CCol xs={12} sm={6} className="mb-3">
+            <CFormInput
+              placeholder="Phone Number"
+              name="phoneNumber"
+              value={formData.phoneNumber}
+              onChange={handleChange}
+            />
+          </CCol>
+          <CCol xs={12} sm={6} className="mb-3">
+            <CFormInput
+              placeholder="Raw Item"
+              name="rawItem"
+              value={formData.rawItem}
+              onChange={handleChange}
+            />
+          </CCol>
+        </CRow>
       </CModalBody>
-      <CModalFooter>
-        <CButton color="secondary" onClick={() => setEditModalVisible(false)}>
+      <CModalFooter className="d-flex flex-column flex-sm-row gap-2">
+        <CButton 
+          color="secondary" 
+          onClick={() => setEditModalVisible(false)}
+          className="w-100 w-sm-auto order-2 order-sm-1"
+        >
           Close
         </CButton>
-        <CButton color="primary" onClick={handleUpdateSupplier} disabled={loading}>
+        <CButton 
+          color="primary" 
+          onClick={handleUpdateSupplier} 
+          disabled={loading}
+          className="w-100 w-sm-auto order-1 order-sm-2"
+        >
           {loading ? 'Saving...' : 'Save Changes'}
         </CButton>
       </CModalFooter>
@@ -211,16 +303,28 @@ const Supplier = () => {
   )
 
   const renderDeleteSupplierModal = () => (
-    <CModal visible={deleteModalVisible} onClose={() => setDeleteModalVisible(false)}>
+    <CModal 
+      visible={deleteModalVisible} 
+      onClose={() => setDeleteModalVisible(false)}
+      className="modal-responsive"
+    >
       <CModalHeader>
         <CModalTitle>Delete Supplier</CModalTitle>
       </CModalHeader>
       <CModalBody>Are you sure you want to delete this supplier?</CModalBody>
-      <CModalFooter>
-        <CButton color="secondary" onClick={() => setDeleteModalVisible(false)}>
+      <CModalFooter className="d-flex flex-column flex-sm-row gap-2">
+        <CButton 
+          color="secondary" 
+          onClick={() => setDeleteModalVisible(false)}
+          className="w-100 w-sm-auto order-2 order-sm-1"
+        >
           Cancel
         </CButton>
-        <CButton color="danger" onClick={handleDeleteSupplier}>
+        <CButton 
+          color="danger" 
+          onClick={handleDeleteSupplier}
+          className="w-100 w-sm-auto order-1 order-sm-2"
+        >
           Delete
         </CButton>
       </CModalFooter>
@@ -228,19 +332,62 @@ const Supplier = () => {
   )
 
   const columns = [
-    { field: 'id', headerName: 'Supplier ID', flex: 1 },
-    { field: 'supplierName', headerName: 'Name', flex: 1 },
-    { field: 'email', headerName: 'Email', flex: 1 },
-    { field: 'phoneNumber', headerName: 'Phone Number', flex: 1 },
-    { field: 'rawItem', headerName: 'Raw Items', flex: 1 },
+    { 
+      field: 'id', 
+      headerName: 'ID', 
+      flex: 0.8,
+      minWidth: 60,
+      headerClassName: 'mobile-header',
+      cellClassName: 'mobile-cell'
+    },
+    { 
+      field: 'supplierName', 
+      headerName: 'Name', 
+      flex: 1.2,
+      minWidth: 120,
+      headerClassName: 'mobile-header',
+      cellClassName: 'mobile-cell'
+    },
+    { 
+      field: 'email', 
+      headerName: 'Email', 
+      flex: 1.5,
+      minWidth: 150,
+      headerClassName: 'mobile-header',
+      cellClassName: 'mobile-cell'
+    },
+    { 
+      field: 'phoneNumber', 
+      headerName: 'Phone', 
+      flex: 1,
+      minWidth: 100,
+      headerClassName: 'mobile-header',
+      cellClassName: 'mobile-cell'
+    },
+    { 
+      field: 'rawItem', 
+      headerName: 'Raw Items', 
+      flex: 1,
+      minWidth: 100,
+      headerClassName: 'mobile-header',
+      cellClassName: 'mobile-cell'
+    },
     {
       field: 'actions',
       headerName: 'Actions',
-      flex: 1,
+      flex: 0.8,
+      minWidth: 80,
       sortable: false,
       filterable: false,
+      headerClassName: 'mobile-header',
+      cellClassName: 'mobile-cell',
       renderCell: (params) => (
-        <div style={{ display: 'flex', gap: '10px' }}>
+        <div style={{ 
+          display: 'flex', 
+          gap: '5px',
+          flexWrap: 'wrap',
+          justifyContent: 'center'
+        }}>
           <CButton
             color="secondary"
             size="sm"
@@ -254,8 +401,9 @@ const Supplier = () => {
               })
               setEditModalVisible(true)
             }}
+            style={{ minWidth: '30px', padding: '4px' }}
           >
-            <CIcon icon={cilPencil} />
+            <CIcon icon={cilPencil} size="sm" />
           </CButton>
           <CButton
             color="danger"
@@ -264,8 +412,9 @@ const Supplier = () => {
               setSelectedSupplier(params.row)
               setDeleteModalVisible(true)
             }}
+            style={{ minWidth: '30px', padding: '4px' }}
           >
-            <CIcon icon={cilTrash} />
+            <CIcon icon={cilTrash} size="sm" />
           </CButton>
         </div>
       ),
@@ -273,60 +422,132 @@ const Supplier = () => {
   ]
 
   return (
-    <div style={{ paddingLeft: '20px', paddingRight: '20px' }}>
-      <div
-        style={{
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center',
-          marginBottom: '20px',
-        }}
-      >
-        <h2>Suppliers</h2>
-        <CButton color="primary" onClick={() => setModalVisible(true)}>
-          Add Supplier
-        </CButton>
-      </div>
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px' }}>
-        <CButton color="info" onClick={exportToCSV}>
-          Export to CSV
-        </CButton>
-        <CButton color="secondary" onClick={exportToPDF}>
-          Export to PDF
-        </CButton>
-      </div>
-      <div style={{ height: 'auto', width: '100%', backgroundColor: 'white' }}>
-        {loading ? (
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'center',
-              alignItems: 'center',
-              height: '300px',
-            }}
+    <>
+      <style>{mobileStyles}</style>
+      <CContainer fluid className="px-2 px-md-3">
+      {/* Header Section - Mobile Responsive */}
+      <CRow className="mb-3">
+        <CCol xs={12} sm={6} className="d-flex align-items-center mb-2 mb-sm-0">
+          <h2 className="mb-0">Suppliers</h2>
+        </CCol>
+        <CCol xs={12} sm={6} className="d-flex justify-content-sm-end">
+          <CButton 
+            color="primary" 
+            onClick={() => setModalVisible(true)}
+            className="w-100 w-sm-auto"
           >
-            <CSpinner />
-          </div>
-        ) : (
-          <DataGrid
-            rows={rows}
-            columns={columns}
-            pagination
-            pageSize={5}
-            rowsPerPageOptions={[5, 10, 20]}
-            slots={{
-              toolbar: CustomToolbar,
+            Add Supplier
+          </CButton>
+        </CCol>
+      </CRow>
+
+      {/* Export Buttons - Mobile Responsive */}
+      <CRow className="mb-3">
+        <CCol xs={12} sm={6} className="mb-2 mb-sm-0">
+          <CButton 
+            color="info" 
+            onClick={exportToCSV}
+            className="w-100"
+          >
+            Export to CSV
+          </CButton>
+        </CCol>
+        <CCol xs={12} sm={6}>
+          <CButton 
+            color="secondary" 
+            onClick={exportToPDF}
+            className="w-100"
+          >
+            Export to PDF
+          </CButton>
+        </CCol>
+      </CRow>
+
+      {/* Data Grid - Mobile Responsive */}
+      <CRow>
+        <CCol xs={12}>
+          <div 
+            style={{ 
+              height: 'auto', 
+              width: '100%', 
+              backgroundColor: 'white',
+              overflow: 'auto'
             }}
-            disableSelectionOnClick
-            autoHeight
-          />
-        )}
-      </div>
+            className="table-responsive"
+          >
+            {loading ? (
+              <div
+                style={{
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  height: '300px',
+                }}
+              >
+                <CSpinner />
+              </div>
+            ) : (
+              <DataGrid
+                rows={rows}
+                columns={columns}
+                pagination
+                pageSize={5}
+                rowsPerPageOptions={[5, 10, 20]}
+                slots={{
+                  toolbar: CustomToolbar,
+                }}
+                disableSelectionOnClick
+                autoHeight
+                sx={{
+                  '& .MuiDataGrid-root': {
+                    border: 'none',
+                  },
+                  '& .MuiDataGrid-cell': {
+                    borderBottom: '1px solid #f0f0f0',
+                  },
+                  '& .MuiDataGrid-columnHeaders': {
+                    backgroundColor: '#f8f9fa',
+                    borderBottom: '2px solid #dee2e6',
+                  },
+                  // Mobile responsive styles
+                  '@media (max-width: 768px)': {
+                    '& .MuiDataGrid-cell': {
+                      fontSize: '12px',
+                      padding: '4px',
+                    },
+                    '& .MuiDataGrid-columnHeader': {
+                      fontSize: '12px',
+                      padding: '4px',
+                    },
+                    '& .MuiDataGrid-row': {
+                      minHeight: '40px',
+                    },
+                  },
+                  '@media (max-width: 480px)': {
+                    '& .MuiDataGrid-cell': {
+                      fontSize: '10px',
+                      padding: '2px',
+                    },
+                    '& .MuiDataGrid-columnHeader': {
+                      fontSize: '10px',
+                      padding: '2px',
+                    },
+                    '& .MuiDataGrid-row': {
+                      minHeight: '35px',
+                    },
+                  },
+                }}
+              />
+            )}
+          </div>
+        </CCol>
+      </CRow>
 
       {renderAddSupplierModal()}
       {renderEditSupplierModal()}
       {renderDeleteSupplierModal()}
-    </div>
+      </CContainer>
+    </>
   )
 }
 

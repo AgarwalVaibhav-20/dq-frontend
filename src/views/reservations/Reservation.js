@@ -301,54 +301,67 @@ const Reservation = () => {
     return row[field] || 'N/A';
   };
 
-  // DataGrid column definitions
+  // Mobile responsive DataGrid column definitions
   const columns = [
     {
       field: 'id',
       headerName: 'ID',
       flex: isMobile ? undefined : 0.5,
-      minWidth: isMobile ? 150 : 200,
+      minWidth: isMobile ? 80 : 200,
+      hide: isMobile, // Hide ID on mobile to save space
       valueGetter: (params) => getReservationId(params.row),
       renderCell: (params) => (
-        <span title={params.value}>{params.value}</span>
+        <span title={params.value} className="text-truncate">{params.value}</span>
       ),
-    }
-    ,
+    },
     {
       field: 'customerName',
-      headerName: 'Customer Name',
+      headerName: 'Customer',
       flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
-      valueGetter: (params) => getCustomerInfo(params.row, 'customerName')
+      minWidth: isMobile ? 120 : undefined,
+      valueGetter: (params) => getCustomerInfo(params.row, 'customerName'),
+      renderCell: (params) => (
+        <div className="text-truncate" title={params.value}>
+          {params.value}
+        </div>
+      )
     },
     {
       field: 'customerPhoneNumber',
-      headerName: 'Mobile No.',
+      headerName: 'Mobile',
       flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 120 : undefined,
+      minWidth: isMobile ? 100 : undefined,
+      hide: isMobile, // Hide phone on mobile to save space
       valueGetter: (params) => getCustomerInfo(params.row, 'customerPhoneNumber')
     },
     {
       field: 'customerAddress',
       headerName: 'Address',
       flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
+      minWidth: isMobile ? 120 : undefined,
+      hide: isMobile, // Hide address on mobile to save space
       valueGetter: (params) => getCustomerInfo(params.row, 'customerAddress')
     },
     {
       field: 'startTime',
       headerName: 'Start Time',
       flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
+      minWidth: isMobile ? 120 : undefined,
       valueGetter: (params) => {
         return formatDateTime(params.row?.startTime);
-      }
+      },
+      renderCell: (params) => (
+        <div className="text-truncate" title={params.value}>
+          {params.value}
+        </div>
+      )
     },
     {
       field: 'endTime',
       headerName: 'End Time',
       flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
+      minWidth: isMobile ? 120 : undefined,
+      hide: isMobile, // Hide end time on mobile to save space
       valueGetter: (params) => {
         return formatDateTime(params.row?.endTime);
       }
@@ -357,7 +370,7 @@ const Reservation = () => {
       field: 'payment',
       headerName: 'Payment',
       flex: isMobile ? undefined : 0.5,
-      minWidth: isMobile ? 100 : undefined,
+      minWidth: isMobile ? 80 : undefined,
       valueGetter: (params) => {
         return params.row?.payment ? `₹${params.row.payment}` : 'N/A';
       }
@@ -366,16 +379,17 @@ const Reservation = () => {
       field: 'advance',
       headerName: 'Advance',
       flex: isMobile ? undefined : 0.5,
-      minWidth: isMobile ? 100 : undefined,
+      minWidth: isMobile ? 80 : undefined,
+      hide: isMobile, // Hide advance on mobile to save space
       valueGetter: (params) => {
         return params.row?.advance ? `₹${params.row.advance}` : 'N/A';
       }
     },
     {
       field: 'tableNumber',
-      headerName: 'Table No.',
+      headerName: 'Table',
       flex: isMobile ? undefined : 0.5,
-      minWidth: isMobile ? 80 : undefined,
+      minWidth: isMobile ? 60 : undefined,
       valueGetter: (params) => {
         return params.row?.tableNumber || 'N/A';
       }
@@ -384,7 +398,8 @@ const Reservation = () => {
       field: 'notes',
       headerName: 'Notes',
       flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 100 : undefined,
+      minWidth: isMobile ? 80 : undefined,
+      hide: isMobile, // Hide notes on mobile to save space
       valueGetter: (params) => {
         return params.row?.notes || 'N/A';
       }
@@ -393,14 +408,14 @@ const Reservation = () => {
       field: 'actions',
       headerName: 'Actions',
       flex: isMobile ? undefined : 0.8,
-      minWidth: isMobile ? 120 : undefined,
+      minWidth: isMobile ? 100 : undefined,
       sortable: false,
       filterable: false,
       renderCell: (params) => (
-        <div style={{ display: 'flex', gap: '8px' }}>
+        <div style={{ display: 'flex', gap: isMobile ? '4px' : '8px', flexWrap: 'nowrap' }}>
           <CButton
             color="info"
-            size="sm"
+            size={isMobile ? "sm" : "sm"}
             onClick={() => {
               const row = params.row;
               setSelectedReservation(row);
@@ -419,19 +434,21 @@ const Reservation = () => {
               setEditModalVisible(true);
             }}
             title="Edit Reservation"
+            className={isMobile ? "btn-sm" : ""}
           >
-            <CIcon icon={cilPencil} />
+            <CIcon icon={cilPencil} size={isMobile ? "sm" : "sm"} />
           </CButton>
           <CButton
             color="danger"
-            size="sm"
+            size={isMobile ? "sm" : "sm"}
             onClick={() => {
               setSelectedReservation(params.row);
               setDeleteModalVisible(true);
             }}
             title="Delete Reservation"
+            className={isMobile ? "btn-sm" : ""}
           >
-            <CIcon icon={cilTrash} />
+            <CIcon icon={cilTrash} size={isMobile ? "sm" : "sm"} />
           </CButton>
         </div>
       ),
@@ -486,7 +503,7 @@ const Reservation = () => {
     }));
   }, [customers]);
 
-  // Reusable form field component
+  // Mobile responsive reusable form field component
   const FormField = ({
     label,
     name,
@@ -496,7 +513,7 @@ const Reservation = () => {
     ...props
   }) => (
     <div className="mb-3">
-      <CFormLabel htmlFor={name}>
+      <CFormLabel htmlFor={name} className={isMobile ? "small" : ""}>
         {label} {required && <span className="text-danger">*</span>}
       </CFormLabel>
       <CFormInput
@@ -507,29 +524,37 @@ const Reservation = () => {
         onChange={handleChange}
         placeholder={placeholder}
         invalid={!!formErrors[name]}
+        size={isMobile ? "sm" : ""}
+        className={isMobile ? "form-control-sm" : ""}
+        style={isMobile ? { minHeight: '44px' } : {}}
         {...props}
       />
       {formErrors[name] && (
-        <div className="invalid-feedback d-block">
+        <div className="invalid-feedback d-block small">
           {formErrors[name]}
         </div>
       )}
     </div>
   );
 
-  // Add reservation modal component
+  // Mobile responsive Add reservation modal component
   const renderAddReservationModal = () => (
-    <CModal visible={modalVisible} onClose={() => {
-      setModalVisible(false);
-      resetForm();
-    }} size="lg">
-      <CModalHeader>
-        <CModalTitle>
+    <CModal 
+      visible={modalVisible} 
+      onClose={() => {
+        setModalVisible(false);
+        resetForm();
+      }} 
+      size={isMobile ? "fullscreen" : "lg"}
+      className={isMobile ? "modal-mobile-responsive" : ""}
+    >
+      <CModalHeader className={isMobile ? "pb-2" : ""}>
+        <CModalTitle className={isMobile ? "h5" : ""}>
           <CIcon icon={cilPlus} className="me-2" />
           Add New Reservation
         </CModalTitle>
       </CModalHeader>
-      <CModalBody>
+      <CModalBody className={isMobile ? "px-3 py-2" : ""}>
         {formErrors.general && (
           <CAlert color="danger" className="mb-3">
             {formErrors.general}
@@ -537,8 +562,8 @@ const Reservation = () => {
         )}
 
         <CForm onSubmit={handleSaveReservation}>
-          <div className="row">
-            <div className="col-md-6">
+          <div className="row g-2">
+            <div className="col-12 col-md-6">
               <FormField
                 label="Start Date & Time"
                 name="startTime"
@@ -546,7 +571,7 @@ const Reservation = () => {
                 required
               />
             </div>
-            <div className="col-md-6">
+            <div className="col-12 col-md-6">
               <FormField
                 label="End Date & Time"
                 name="endTime"
@@ -569,6 +594,17 @@ const Reservation = () => {
               classNamePrefix="select"
               isClearable
               isSearchable
+              styles={isMobile ? {
+                control: (base) => ({
+                  ...base,
+                  fontSize: '0.875rem',
+                  minHeight: '44px'
+                }),
+                menu: (base) => ({
+                  ...base,
+                  fontSize: '0.875rem'
+                })
+              } : {}}
             />
             {formErrors.customerId && (
               <div className="invalid-feedback d-block">
@@ -577,107 +613,110 @@ const Reservation = () => {
             )}
           </div>
 
-          <div className="row">
-            <div className="col-md-6">
-              <CFormInput
+          <div className="row g-2">
+            <div className="col-12 col-md-6">
+              <FormField
                 label="Total Payment"
                 name="payment"
                 type="number"
                 min="0"
                 step="0.01"
-                value={formData.payment}
-                onChange={handleChange}
                 placeholder="Enter total amount"
                 required
               />
             </div>
-            <div className="col-md-6">
-              <CFormInput
+            <div className="col-12 col-md-6">
+              <FormField
                 label="Advance Payment"
                 name="advance"
                 type="number"
                 min="0"
                 step="0.01"
-                value={formData.advance}
-                onChange={handleChange}
                 placeholder="Enter advance amount"
               />
             </div>
           </div>
 
-          <div className="row">
-            <div className="col-md-6">
-              <CFormInput
+          <div className="row g-2">
+            <div className="col-12 col-md-6">
+              <FormField
                 label="Table Number"
                 name="tableNumber"
                 placeholder="Enter table number"
-                value={formData.tableNumber}
-                onChange={handleChange}
               />
             </div>
-            <div className="col-md-6">
-              <CFormInput
+            <div className="col-12 col-md-6">
+              <FormField
                 label="Notes"
                 name="notes"
-                value={formData.notes}
-                onChange={handleChange}
                 placeholder="Additional notes"
               />
             </div>
           </div>
         </CForm>
       </CModalBody>
-      <CModalFooter>
-        <CButton
-          color="secondary"
-          onClick={() => {
-            setModalVisible(false);
-            resetForm();
-          }}
-          disabled={submitLoading}
-        >
-          Cancel
-        </CButton>
-        <CButton
-          color="primary"
-          onClick={handleSaveReservation}
-          disabled={submitLoading}
-        >
-          {submitLoading ? (
-            <>
-              <CSpinner size="sm" className="me-2" />
-              Saving...
-            </>
-          ) : (
-            'Save Reservation'
-          )}
-        </CButton>
+      <CModalFooter className={isMobile ? "px-3 py-2" : ""}>
+        <div className={isMobile ? "d-flex flex-column w-100 gap-2" : "d-flex gap-2"}>
+          <CButton
+            color="secondary"
+            onClick={() => {
+              setModalVisible(false);
+              resetForm();
+            }}
+            disabled={submitLoading}
+            className={isMobile ? "w-100" : ""}
+            size={isMobile ? "sm" : ""}
+          >
+            Cancel
+          </CButton>
+          <CButton
+            color="primary"
+            onClick={handleSaveReservation}
+            disabled={submitLoading}
+            className={isMobile ? "w-100" : ""}
+            size={isMobile ? "sm" : ""}
+          >
+            {submitLoading ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                Saving...
+              </>
+            ) : (
+              'Save Reservation'
+            )}
+          </CButton>
+        </div>
       </CModalFooter>
     </CModal>
   );
 
-  // Edit reservation modal component
+  // Mobile responsive Edit reservation modal component
   const renderEditReservationModal = () => (
-    <CModal visible={editModalVisible} onClose={() => {
-      setEditModalVisible(false);
-      resetForm();
-      setSelectedReservation(null);
-    }} size="lg">
-      <CModalHeader>
-        <CModalTitle>
+    <CModal 
+      visible={editModalVisible} 
+      onClose={() => {
+        setEditModalVisible(false);
+        resetForm();
+        setSelectedReservation(null);
+      }} 
+      size={isMobile ? "fullscreen" : "lg"}
+      className={isMobile ? "modal-mobile-responsive" : ""}
+    >
+      <CModalHeader className={isMobile ? "pb-2" : ""}>
+        <CModalTitle className={isMobile ? "h5" : ""}>
           <CIcon icon={cilPencil} className="me-2" />
           Edit Reservation
         </CModalTitle>
       </CModalHeader>
-      <CModalBody>
+      <CModalBody className={isMobile ? "px-3 py-2" : ""}>
         {formErrors.general && (
           <CAlert color="danger" className="mb-3">
             {formErrors.general}
           </CAlert>
         )}
 
-        <div className="row">
-          <div className="col-md-6">
+        <div className="row g-2">
+          <div className="col-12 col-md-6">
             <FormField
               label="Start Date & Time"
               name="startTime"
@@ -685,7 +724,7 @@ const Reservation = () => {
               required
             />
           </div>
-          <div className="col-md-6">
+          <div className="col-12 col-md-6">
             <FormField
               label="End Date & Time"
               name="endTime"
@@ -709,6 +748,17 @@ const Reservation = () => {
             classNamePrefix="select"
             isClearable
             isSearchable
+            styles={isMobile ? {
+              control: (base) => ({
+                ...base,
+                fontSize: '0.875rem',
+                minHeight: '44px'
+              }),
+              menu: (base) => ({
+                ...base,
+                fontSize: '0.875rem'
+              })
+            } : {}}
           />
           {formErrors.customerId && (
             <div className="invalid-feedback d-block">
@@ -717,8 +767,8 @@ const Reservation = () => {
           )}
         </div>
 
-        <div className="row">
-          <div className="col-md-6">
+        <div className="row g-2">
+          <div className="col-12 col-md-6">
             <FormField
               label="Total Payment"
               name="payment"
@@ -728,7 +778,7 @@ const Reservation = () => {
               required
             />
           </div>
-          <div className="col-md-6">
+          <div className="col-12 col-md-6">
             <FormField
               label="Advance Payment"
               name="advance"
@@ -739,15 +789,15 @@ const Reservation = () => {
           </div>
         </div>
 
-        <div className="row">
-          <div className="col-md-6">
+        <div className="row g-2">
+          <div className="col-12 col-md-6">
             <FormField
               label="Table Number"
               name="tableNumber"
               placeholder="Enter table number"
             />
           </div>
-          <div className="col-md-6">
+          <div className="col-12 col-md-6">
             <FormField
               label="Notes"
               name="notes"
@@ -757,142 +807,179 @@ const Reservation = () => {
         </div>
 
       </CModalBody>
-      <CModalFooter>
-        <CButton
-          color="secondary"
-          onClick={() => {
-            setEditModalVisible(false);
-            resetForm();
-            setSelectedReservation(null);
-          }}
-          disabled={submitLoading}
-        >
-          Cancel
-        </CButton>
-        <CButton
-          color="primary"
-          onClick={handleUpdateReservation}
-          disabled={submitLoading}
-        >
-          {submitLoading ? (
-            <>
-              <CSpinner size="sm" className="me-2" />
-              Updating...
-            </>
-          ) : (
-            'Update Reservation'
-          )}
-        </CButton>
+      <CModalFooter className={isMobile ? "px-3 py-2" : ""}>
+        <div className={isMobile ? "d-flex flex-column w-100 gap-2" : "d-flex gap-2"}>
+          <CButton
+            color="secondary"
+            onClick={() => {
+              setEditModalVisible(false);
+              resetForm();
+              setSelectedReservation(null);
+            }}
+            disabled={submitLoading}
+            className={isMobile ? "w-100" : ""}
+            size={isMobile ? "sm" : ""}
+          >
+            Cancel
+          </CButton>
+          <CButton
+            color="primary"
+            onClick={handleUpdateReservation}
+            disabled={submitLoading}
+            className={isMobile ? "w-100" : ""}
+            size={isMobile ? "sm" : ""}
+          >
+            {submitLoading ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                Updating...
+              </>
+            ) : (
+              'Update Reservation'
+            )}
+          </CButton>
+        </div>
       </CModalFooter>
     </CModal>
   );
 
-  // Delete confirmation modal component
+  // Mobile responsive Delete confirmation modal component
   const renderDeleteReservationModal = () => (
-    <CModal visible={deleteModalVisible} onClose={() => {
-      setDeleteModalVisible(false);
-      setSelectedReservation(null);
-    }}>
-      <CModalHeader>
-        <CModalTitle>
+    <CModal 
+      visible={deleteModalVisible} 
+      onClose={() => {
+        setDeleteModalVisible(false);
+        setSelectedReservation(null);
+      }}
+      size={isMobile ? "sm" : ""}
+      className={isMobile ? "modal-mobile-responsive" : ""}
+    >
+      <CModalHeader className={isMobile ? "pb-2" : ""}>
+        <CModalTitle className={isMobile ? "h6" : ""}>
           <CIcon icon={cilTrash} className="me-2" />
           Delete Reservation
         </CModalTitle>
       </CModalHeader>
-      <CModalBody>
-        <p>Are you sure you want to delete this reservation?</p>
+      <CModalBody className={isMobile ? "px-3 py-2" : ""}>
+        <p className={isMobile ? "mb-3" : ""}>Are you sure you want to delete this reservation?</p>
         {selectedReservation && (
           <div className="bg-light p-3 rounded">
-            <strong>Customer:</strong> {selectedReservation.customerName}<br />
-            <strong>Date:</strong> {formatDateTime(selectedReservation.startTime)}
+            <div className="mb-2">
+              <strong>Customer:</strong> {selectedReservation.customerName}
+            </div>
+            <div>
+              <strong>Date:</strong> {formatDateTime(selectedReservation.startTime)}
+            </div>
           </div>
         )}
       </CModalBody>
-      <CModalFooter>
-        <CButton
-          color="secondary"
-          onClick={() => {
-            setDeleteModalVisible(false);
-            setSelectedReservation(null);
-          }}
-          disabled={submitLoading}
-        >
-          Cancel
-        </CButton>
-        <CButton
-          color="danger"
-          onClick={handleDeleteReservation}
-          disabled={submitLoading}
-        >
-          {submitLoading ? (
-            <>
-              <CSpinner size="sm" className="me-2" />
-              Deleting...
-            </>
-          ) : (
-            'Delete'
-          )}
-        </CButton>
+      <CModalFooter className={isMobile ? "px-3 py-2" : ""}>
+        <div className={isMobile ? "d-flex flex-column w-100 gap-2" : "d-flex gap-2"}>
+          <CButton
+            color="secondary"
+            onClick={() => {
+              setDeleteModalVisible(false);
+              setSelectedReservation(null);
+            }}
+            disabled={submitLoading}
+            className={isMobile ? "w-100" : ""}
+            size={isMobile ? "sm" : ""}
+          >
+            Cancel
+          </CButton>
+          <CButton
+            color="danger"
+            onClick={handleDeleteReservation}
+            disabled={submitLoading}
+            className={isMobile ? "w-100" : ""}
+            size={isMobile ? "sm" : ""}
+          >
+            {submitLoading ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                Deleting...
+              </>
+            ) : (
+              'Delete'
+            )}
+          </CButton>
+        </div>
       </CModalFooter>
     </CModal>
   );
 
-  // Reservation History Modal
+  // Mobile responsive Reservation History Modal
   const renderHistoryModal = () => (
     <CModal
       visible={historyModalVisible}
       onClose={() => setHistoryModalVisible(false)}
-      size="xl"
+      size={isMobile ? "fullscreen" : "xl"}
       scrollable
+      className={isMobile ? "modal-mobile-responsive" : ""}
     >
-      <CModalHeader>
-        <CModalTitle>
+      <CModalHeader className={isMobile ? "pb-2" : ""}>
+        <CModalTitle className={isMobile ? "h5" : ""}>
           <CIcon icon={cilHistory} className="me-2" />
           Reservation History
         </CModalTitle>
       </CModalHeader>
-      <CModalBody>
+      <CModalBody className={isMobile ? "px-3 py-2" : ""}>
         {pastReservations.length === 0 ? (
           <div className="text-center py-5">
             <CIcon icon={cilHistory} size="3xl" className="text-muted mb-3" />
             <p className="text-muted">No past reservations found</p>
           </div>
         ) : (
-          <div style={{ height: '500px', width: '100%' }}>
+          <div style={{ 
+            height: isMobile ? '400px' : '500px', 
+            width: '100%',
+            overflow: isMobile ? 'auto' : 'visible'
+          }}>
             <DataGrid
               rows={pastReservations}
               columns={historyColumns}
               getRowId={(row) => getReservationId(row)}
               initialState={{
                 pagination: {
-                  paginationModel: { page: 0, pageSize: 10 },
+                  paginationModel: { page: 0, pageSize: isMobile ? 5 : 10 },
                 },
               }}
-              pageSizeOptions={[5, 10, 20, 50]}
+              pageSizeOptions={isMobile ? [5, 10] : [5, 10, 20, 50]}
               slots={{
                 toolbar: CustomToolbar,
               }}
               disableSelectionOnClick
+              autoHeight={!isMobile}
               sx={{
                 '& .MuiDataGrid-cell': {
                   borderBottom: '1px solid #f0f0f0',
+                  fontSize: isMobile ? '0.75rem' : '0.875rem',
+                  padding: isMobile ? '4px 8px' : '8px 16px',
                 },
                 '& .MuiDataGrid-columnHeaders': {
                   backgroundColor: '#f8f9fa',
                   borderBottom: '2px solid #dee2e6',
+                  fontSize: isMobile ? '0.75rem' : '0.875rem',
+                  padding: isMobile ? '4px 8px' : '8px 16px',
                 },
                 '& .MuiDataGrid-row': {
                   backgroundColor: '#f9f9f9',
+                  minHeight: isMobile ? '40px' : '52px',
+                },
+                '& .MuiDataGrid-footerContainer': {
+                  fontSize: isMobile ? '0.75rem' : '0.875rem',
                 },
               }}
             />
           </div>
         )}
       </CModalBody>
-      <CModalFooter>
+      <CModalFooter className={isMobile ? "px-3 py-2" : ""}>
         <CButton
           color="secondary"
           onClick={() => setHistoryModalVisible(false)}
+          className={isMobile ? "w-100" : ""}
+          size={isMobile ? "sm" : ""}
         >
           Close
         </CButton>
@@ -902,27 +989,61 @@ const Reservation = () => {
 
   // Main component render
   return (
-    <div style={{ padding: '20px' }}>
-      {/* Header Section */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="mb-0">Reservations Management</h2>
-        <div className="d-flex gap-2">
-          <CButton
-            color="secondary"
-            onClick={() => setHistoryModalVisible(true)}
-            disabled={!restaurantId}
-          >
-            <CIcon icon={cilHistory} className="me-2" />
-            View History ({pastReservations.length})
-          </CButton>
-          <CButton
-            color="primary"
-            onClick={() => setModalVisible(true)}
-            disabled={!restaurantId}
-          >
-            <CIcon icon={cilPlus} className="me-2" />
-            Add Reservation
-          </CButton>
+    <div className="container-fluid px-2 px-md-3 py-2">
+      {/* Mobile Responsive Header */}
+      <div className="mb-4">
+        {/* Title Section - Mobile Responsive */}
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
+          <div className="mb-2 mb-md-0">
+            <h2 className="mb-0 text-center text-md-start">Reservations Management</h2>
+          </div>
+          
+          {/* Mobile Responsive Button Groups */}
+          <div className="w-100 d-md-none">
+            {/* Mobile: Stack buttons vertically */}
+            <div className="d-flex flex-column gap-2">
+              <CButton
+                color="primary"
+                onClick={() => setModalVisible(true)}
+                disabled={!restaurantId}
+                className="w-100"
+                size="sm"
+              >
+                <CIcon icon={cilPlus} className="me-2" />
+                Add Reservation
+              </CButton>
+              <CButton
+                color="secondary"
+                onClick={() => setHistoryModalVisible(true)}
+                disabled={!restaurantId}
+                className="w-100"
+                size="sm"
+              >
+                <CIcon icon={cilHistory} className="me-2" />
+                View History ({pastReservations.length})
+              </CButton>
+            </div>
+          </div>
+          
+          {/* Desktop: Horizontal buttons */}
+          <div className="d-none d-md-flex gap-2">
+            <CButton
+              color="secondary"
+              onClick={() => setHistoryModalVisible(true)}
+              disabled={!restaurantId}
+            >
+              <CIcon icon={cilHistory} className="me-2" />
+              View History ({pastReservations.length})
+            </CButton>
+            <CButton
+              color="primary"
+              onClick={() => setModalVisible(true)}
+              disabled={!restaurantId}
+            >
+              <CIcon icon={cilPlus} className="me-2" />
+              Add Reservation
+            </CButton>
+          </div>
         </div>
       </div>
 
@@ -940,79 +1061,99 @@ const Reservation = () => {
         </CAlert>
       )}
 
-      {/* Stats Cards */}
-      <div className="row mb-4">
-        <div className="col-md-6">
-          <div className="card bg-primary text-white">
-            <div className="card-body">
-              <h5 className="card-title">Upcoming Reservations</h5>
+      {/* Mobile Responsive Stats Cards */}
+      <div className="row mb-4 g-2">
+        <div className="col-12 col-md-6">
+          <div className="card bg-primary text-white h-100">
+            <div className="card-body text-center text-md-start">
+              <h5 className="card-title mb-2">
+                <CIcon icon={cilPlus} className="me-2" />
+                Upcoming Reservations
+              </h5>
               <h2 className="mb-0">{futureReservations.length}</h2>
             </div>
           </div>
         </div>
-        <div className="col-md-6">
-          <div className="card bg-secondary text-white">
-            <div className="card-body">
-              <h5 className="card-title">Past Reservations</h5>
+        <div className="col-12 col-md-6">
+          <div className="card bg-secondary text-white h-100">
+            <div className="card-body text-center text-md-start">
+              <h5 className="card-title mb-2">
+                <CIcon icon={cilHistory} className="me-2" />
+                Past Reservations
+              </h5>
               <h2 className="mb-0">{pastReservations.length}</h2>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Data Grid Container - Future Reservations Only */}
-      <div style={{
-        height: 'auto',
-        width: '100%',
-        backgroundColor: 'white',
-        borderRadius: '8px',
-        boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
-      }}>
-        {loading ? (
-          <div className="d-flex justify-content-center align-items-center" style={{ height: '400px' }}>
-            <div className="text-center">
-              <CSpinner size="lg" className="mb-3" />
-              <p>Loading reservations...</p>
+      {/* Mobile Responsive Data Grid Container */}
+      <div className="card shadow-sm">
+        <div className="card-body p-0">
+          {loading ? (
+            <div className="d-flex justify-content-center align-items-center" style={{ height: '400px' }}>
+              <div className="text-center">
+                <CSpinner size="lg" className="mb-3" />
+                <p>Loading reservations...</p>
+              </div>
             </div>
-          </div>
-        ) : futureReservations.length === 0 ? (
-          <div className="text-center py-5">
-            <p className="text-muted">No upcoming reservations found</p>
-            <CButton
-              color="primary"
-              onClick={() => setModalVisible(true)}
-            >
-              <CIcon icon={cilPlus} className="me-2" />
-              Create Your First Reservation
-            </CButton>
-          </div>
-        ) : (
-          <DataGrid
-            rows={futureReservations}
-            columns={columns}
-            getRowId={(row) => getReservationId(row)}
-            initialState={{
-              pagination: {
-                paginationModel: { page: 0, pageSize: 10 },
-              },
-            }}
-            pageSizeOptions={[5, 10, 20, 50]}
-            slots={{
-              toolbar: CustomToolbar,
-            }}
-            disableSelectionOnClick
-            autoHeight
-            sx={{
-              '& .MuiDataGrid-cell': {
-                borderBottom: '1px solid #f0f0f0',
-              },
-              '& .MuiDataGrid-columnHeaders': {
-                backgroundColor: '#f8f9fa',
-                borderBottom: '2px solid #dee2e6',
-              },
-            }}
-          />
-        )}
+          ) : futureReservations.length === 0 ? (
+            <div className="text-center py-5 px-3">
+              <CIcon icon={cilPlus} size="3xl" className="text-muted mb-3" />
+              <p className="text-muted mb-3">No upcoming reservations found</p>
+              <CButton
+                color="primary"
+                onClick={() => setModalVisible(true)}
+                className="w-100 w-md-auto"
+              >
+                <CIcon icon={cilPlus} className="me-2" />
+                Create Your First Reservation
+              </CButton>
+            </div>
+          ) : (
+            <div style={{ 
+              height: isMobile ? '400px' : 'auto',
+              width: '100%',
+              overflow: isMobile ? 'auto' : 'visible'
+            }}>
+              <DataGrid
+                rows={futureReservations}
+                columns={columns}
+                getRowId={(row) => getReservationId(row)}
+                initialState={{
+                  pagination: {
+                    paginationModel: { page: 0, pageSize: isMobile ? 5 : 10 },
+                  },
+                }}
+                pageSizeOptions={isMobile ? [5, 10] : [5, 10, 20, 50]}
+                slots={{
+                  toolbar: CustomToolbar,
+                }}
+                disableSelectionOnClick
+                autoHeight={!isMobile}
+                sx={{
+                  '& .MuiDataGrid-cell': {
+                    borderBottom: '1px solid #f0f0f0',
+                    fontSize: isMobile ? '0.75rem' : '0.875rem',
+                    padding: isMobile ? '4px 8px' : '8px 16px',
+                  },
+                  '& .MuiDataGrid-columnHeaders': {
+                    backgroundColor: '#f8f9fa',
+                    borderBottom: '2px solid #dee2e6',
+                    fontSize: isMobile ? '0.75rem' : '0.875rem',
+                    padding: isMobile ? '4px 8px' : '8px 16px',
+                  },
+                  '& .MuiDataGrid-row': {
+                    minHeight: isMobile ? '40px' : '52px',
+                  },
+                  '& .MuiDataGrid-footerContainer': {
+                    fontSize: isMobile ? '0.75rem' : '0.875rem',
+                  },
+                }}
+              />
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Modal Components */}
