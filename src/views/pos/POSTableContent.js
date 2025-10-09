@@ -25,7 +25,7 @@ import DeleteModal from '../../components/DeleteModal'
 import RoundOffAmountModal from '../../components/RoundOffAmountModal'
 import SubCategorySelectionModal from '../../components/SubCategorySelectionModal'
 import SystemSelectionModal from '../../components/SystemSelectionModal'
-import { jwtDecode } from "jwt-decode";
+// import { jwtDecode } from "jwt-decode";
 
 const POSTableContent = () => {
   const { tableNumber: tableId } = useParams();
@@ -1174,6 +1174,7 @@ const POSTableContent = () => {
             setShowTaxModal={setShowTaxModal}
             membershipDiscount={membershipDiscount}
             membershipName={selectedCustomer?.membershipName}
+            isDiscountDisabled={membershipDiscount?.value > 0}
             setShowDiscountModal={setShowDiscountModal}
             setShowRoundOffModal={setShowRoundOffModal}
             selectedSystem={selectedSystem}

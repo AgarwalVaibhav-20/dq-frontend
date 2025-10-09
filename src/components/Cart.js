@@ -35,8 +35,8 @@ const Cart = ({
   setShowTaxModal,
   setShowDiscountModal,
   setShowRoundOffModal,
-  membershipDiscount,
-   membershipName,
+  isDiscountDisabled,
+  membershipName,
   selectedSystem,
   onSystemChange,
   // optional parent handlers (if parent passed them)
@@ -355,8 +355,8 @@ const Cart = ({
             </div>
             <div className="d-flex justify-content-between mb-2">
               <span>Discount ({getCartDiscountPercentage() || 0}%)
-                 {membershipName && ` (${membershipName})`}
-                </span>
+                {membershipName && ` (${membershipName})`}
+              </span>
               <span className="text-danger">- ₹{getDiscountAmount().toFixed(2)}</span>
             </div>
             {selectedSystem && (
@@ -398,11 +398,21 @@ const Cart = ({
                 <CButton
                   color="light"
                   className="w-100 shadow-sm"
-                  onClick={() => setShowDiscountModal ? setShowDiscountModal(true) : setLocalDiscountModal(true)}
-                  disabled={membershipDiscount > 0}
+                  onClick={() =>
+                    setShowDiscountModal
+                      ? setShowDiscountModal(true)
+                      : setLocalDiscountModal(true)
+                  }
+                  disabled={isDiscountDisabled}
+                  title={
+                    isDiscountDisabled
+                      ? "Membership discount already applied"
+                      : "Apply additional discount"
+                  }
                 >
                   Discount
                 </CButton>
+
               </CCol>
               <CCol>
                 <CButton
