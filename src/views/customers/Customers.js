@@ -15,7 +15,8 @@ import { Portal } from '@mui/material';
 const Customer = () => {
   const dispatch = useDispatch()
   const { customers, loading, selectedCustomerType } = useSelector((state) => state.customers)
-  const restaurantId = useSelector((state) => state.auth.restaurantId)
+  const restaurantId = localStorage.getItem('restaurantId')
+  const token = localStorage.getItem('authToken')
   const isMobile = useMediaQuery('(max-width:600px)')
 
   const [deleteModalVisible, setDeleteModalVisible] = useState(false)
@@ -53,15 +54,14 @@ const Customer = () => {
 
   const [formErrors, setFormErrors] = useState({})
   const { members } = useSelector((state) => state.members)
-  const token = localStorage.getItem('authToken')
 
   // CUSTOMER SETTINGS STATE - UPDATED WITH CORRECT FIELD NAMES
   const [customerSettings, setCustomerSettings] = useState({
-    lostCustomerDays: '',            
-    highSpenderAmount: '',        
-    regularCustomerVisits: ''         
+    lostCustomerDays: '',
+    highSpenderAmount: '',
+    regularCustomerVisits: ''
   })
-  
+
   const [customerLoading, setCustomerLoading] = useState(false)
   const [customerError, setCustomerError] = useState('')
 
@@ -78,7 +78,7 @@ const Customer = () => {
   // Calculate days since customer was created (for Lost Customer logic)
   const daysSinceCreation = (createdAt) => {
     if (!createdAt) return 0;
-    
+
     const today = new Date();
     const createdDate = new Date(createdAt);
     const diffTime = Math.abs(today - createdDate);
@@ -99,23 +99,23 @@ const Customer = () => {
     if (customer.corporate === true) {
       return 'Corporate';
     }
-    
+
     // 2. High Spender check - based on totalSpent
     if ((customer.totalSpent || 0) >= customerSettings.highSpenderAmount) {
       return 'High Spender';
     }
-    
+
     // 3. Regular Customer check - based on frequency (visit count)
     if ((customer.frequency || 0) >= customerSettings.regularCustomerVisits) {
       return 'Regular';
     }
-    
+
     // 4. Lost Customer check - based on days since creation
     const daysSinceCreated = daysSinceCreation(customer.createdAt);
     if (daysSinceCreated > customerSettings.lostCustomerDays) {
       return 'Lost Customer';
     }
- 
+
     return 'FirstTimer';
   };
 
@@ -149,8 +149,8 @@ const Customer = () => {
   // LOAD DATA ON COMPONENT MOUNT
 
   useEffect(() => {
-    if (restaurantId) {
-      dispatch(fetchCustomers({ restaurantId }))
+    if (restaurantId && token) {
+      dispatch(fetchCustomers({ token, restaurantId }))
       dispatch(fetchMembers(token))
       fetchCustomerSettings();
     }
@@ -167,12 +167,12 @@ const Customer = () => {
   // FILTER CUSTOMERS BASED ON CLASSIFICATION
   const getFilteredCustomers = () => {
     const classifiedCustomers = getClassifiedCustomers();
-    
+
     if (selectedCustomerType === 'All') {
       return classifiedCustomers;
     }
-    
-    return classifiedCustomers.filter(customer => 
+
+    return classifiedCustomers.filter(customer =>
       customer.dynamicCustomerType === selectedCustomerType
     );
   };
@@ -180,9 +180,9 @@ const Customer = () => {
   // GET COUNT FOR EACH CUSTOMER TYPE
   const getCustomerTypeCount = (type) => {
     if (type === 'All') return customers.length;
-    
+
     const classifiedCustomers = getClassifiedCustomers();
-    return classifiedCustomers.filter(customer => 
+    return classifiedCustomers.filter(customer =>
       customer.dynamicCustomerType === type
     ).length;
   };
@@ -301,7 +301,6 @@ const Customer = () => {
     if (!validateForm()) return
 
     try {
-      const token = localStorage.getItem('authToken')
       await dispatch(addCustomer({
         token,
         name: formData.name,
@@ -315,7 +314,7 @@ const Customer = () => {
         membershipName: formData.membershipName || null
       })).unwrap()
 
-      dispatch(fetchCustomers({ restaurantId })) // ✅ FIXED
+      dispatch(fetchCustomers({ restaurantId, token }))
 
       setFormData({
         name: '',
@@ -817,7 +816,7 @@ const Customer = () => {
       )}
 
       {/* ALL YOUR EXISTING MODALS REMAIN THE SAME */}
-      
+
       {/* Delete Confirmation Modal */}
       <CModal
         visible={deleteModalVisible}

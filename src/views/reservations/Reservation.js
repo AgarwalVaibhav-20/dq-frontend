@@ -32,6 +32,7 @@ const Reservation = () => {
   const { reservations, loading, error } = useSelector((state) => state.reservations);
   const { customers, loading: customerLoading } = useSelector((state) => state.customers);
   const restaurantId = localStorage.getItem('restaurantId');
+  const token = localStorage.getItem('authToken')
   const isMobile = useMediaQuery('(max-width:600px)');
 
   // Modal states
@@ -58,31 +59,17 @@ const Reservation = () => {
 
   // Initialize data on component mount
   useEffect(() => {
-    console.log("RestaurantId from localStorage:", restaurantId);
 
-    // Use the restaurantId from your MongoDB data - override localStorage for testing
-    const actualRestaurantId = "68c80294c2283cb53671cde9";
-
-    console.log("🔍 Using restaurantId for API call:", actualRestaurantId);
-    console.log("🔍 API URL will be:", `http://localhost:4000/AllByRestaurantId/${actualRestaurantId}`);
-
-    if (actualRestaurantId) {
-      console.log("📡 Fetching reservations with restaurantId:", actualRestaurantId);
-      dispatch(fetchReservations({ restaurantId: actualRestaurantId }));
-      // Fetch ALL customers for reservation dropdown (not filtered by restaurantId)
-      dispatch(fetchCustomers({}));
+    if (restaurantId && token) {
+      dispatch(fetchReservations({ restaurantId, token }));
+      dispatch(fetchCustomers({ restaurantId }));
     } else {
       console.error("No restaurantId found!");
     }
-  }, [dispatch, restaurantId]);
+  }, [dispatch, restaurantId, token]);
 
   // Debug logging for data changes
   useEffect(() => {
-    console.log("Reservations data:", reservations);
-    console.log("Loading state:", loading);
-    console.log("Customers data:", customers);
-    console.log("Error state:", error);
-
     if (reservations && reservations.length > 0) {
       console.log("First reservation structure:", reservations[0]);
       console.log("Available keys in first reservation:", Object.keys(reservations[0]));
@@ -179,10 +166,9 @@ const Reservation = () => {
     setSubmitLoading(true);
 
     try {
-      const actualRestaurantId = restaurantId || "68c80294c2283cb53671cde9";
       const payload = {
         ...formData,
-        restaurantId: actualRestaurantId,
+        restaurantId,
         startTime: new Date(formData.startTime).toISOString(),
         endTime: new Date(formData.endTime).toISOString(),
         payment: parseFloat(formData.payment),
@@ -190,7 +176,7 @@ const Reservation = () => {
       };
 
       await dispatch(addReservation(payload)).unwrap();
-      await dispatch(fetchReservations({ restaurantId: actualRestaurantId }));
+      await dispatch(fetchReservations({ restaurantId }));
 
       resetForm();
       setModalVisible(false);
@@ -203,6 +189,38 @@ const Reservation = () => {
   };
 
   // Update existing reservation
+  // const handleUpdateReservation = async () => {
+  //   if (!validateForm()) {
+  //     return;
+  //   }
+
+  //   setSubmitLoading(true);
+
+  //   try {
+  //     const restaurantId = restaurantId || "68c80294c2283cb53671cde9";
+  //     const payload = {
+  //       id: selectedReservation?._id,
+  //       ...formData,
+  //       restaurantId: restaurantId,
+  //       startTime: new Date(formData.startTime).toISOString(),
+  //       endTime: new Date(formData.endTime).toISOString(),
+  //       payment: parseFloat(formData.payment),
+  //       advance: parseFloat(formData.advance) || 0,
+  //     };
+
+  //     await dispatch(updateReservation(payload)).unwrap();
+  //     await dispatch(fetchReservations({ restaurantId: restaurantId }));
+
+  //     resetForm();
+  //     setEditModalVisible(false);
+  //     setSelectedReservation(null);
+  //   } catch (error) {
+  //     console.error('Error updating reservation:', error);
+  //     setFormErrors({ general: error.message || 'Failed to update reservation' });
+  //   } finally {
+  //     setSubmitLoading(false);
+  //   }
+  // };
   const handleUpdateReservation = async () => {
     if (!validateForm()) {
       return;
@@ -211,11 +229,10 @@ const Reservation = () => {
     setSubmitLoading(true);
 
     try {
-      const actualRestaurantId = restaurantId || "68c80294c2283cb53671cde9";
       const payload = {
         id: selectedReservation?._id,
         ...formData,
-        restaurantId: actualRestaurantId,
+        restaurantId: restaurantId,
         startTime: new Date(formData.startTime).toISOString(),
         endTime: new Date(formData.endTime).toISOString(),
         payment: parseFloat(formData.payment),
@@ -223,7 +240,7 @@ const Reservation = () => {
       };
 
       await dispatch(updateReservation(payload)).unwrap();
-      await dispatch(fetchReservations({ restaurantId: actualRestaurantId }));
+      await dispatch(fetchReservations({ restaurantId, token }));
 
       resetForm();
       setEditModalVisible(false);
@@ -241,10 +258,9 @@ const Reservation = () => {
     setSubmitLoading(true);
 
     try {
-      const actualRestaurantId = restaurantId || "68c80294c2283cb53671cde9";
       const id = selectedReservation?._id;
       await dispatch(deleteReservation({ id })).unwrap();
-      await dispatch(fetchReservations({ restaurantId: actualRestaurantId }));
+      await dispatch(fetchReservations({ restaurantId }));
 
       setDeleteModalVisible(false);
       setSelectedReservation(null);
@@ -740,6 +756,9 @@ const Reservation = () => {
                 label="Notes"
                 name="notes"
                 placeholder="Additional notes"
+                value={formData.notes}
+                onChange={handleChange}
+                // error={formErrors.notes}
               />
             </div>
           </div>

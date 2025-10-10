@@ -11,20 +11,29 @@ const configureHeaders = (token) => ({
 // Fetch customers
 export const fetchCustomers = createAsyncThunk(
   'customers/fetchCustomers',
-  async ({ restaurantId }, { rejectWithValue }) => {
+  async ({ token, restaurantId }, { rejectWithValue }) => {
     try {
-      // Always fetch all customers regardless of restaurantId
       const url = `${BASE_URL}/customer/all`;
 
-      console.log("🚀 Fetching all customers from:", url);
+      // ✅ send restaurantId as query param
+      const config = {
+        params: restaurantId ? { restaurantId } : {},
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      };
 
-      const response = await axios.get(url);
-      console.log("✅ Customers fetched:", response.data?.length || 0);
+      console.log("🚀 Fetching customers from:", url, "with restaurantId:", restaurantId);
 
-      return response.data;
+      const response = await axios.get(url, config);
+
+      console.log("✅ Customers fetched:", response.data?.data?.length || 0);
+
+      // ✅ backend returns { success, data: [...] }, so return data array
+      return response.data.data || response.data;
     } catch (error) {
       console.error("❌ Error fetching customers:", error);
-      return rejectWithValue(error.response?.data || error.message);
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch customers');
     }
   }
 );

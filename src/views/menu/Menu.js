@@ -64,7 +64,7 @@ const Menu = () => {
         await Promise.all([
           dispatch(fetchCategories({ restaurantId, token })),
           dispatch(fetchInventories({ token })),
-          dispatch(fetchMenuItems({ token })),
+          dispatch(fetchMenuItems({ restaurantId, token })),
         ]);
 
         const subCategoryResult = await dispatch(
@@ -215,7 +215,7 @@ const Menu = () => {
       };
 
       await dispatch(addMenuItem({ ...dataToSend, token })).unwrap();
-      await dispatch(fetchMenuItems({ token }));
+      await dispatch(fetchMenuItems({ token, restaurantId }));
       handleCancel();
       toast.success("Menu item added successfully!");
     } catch (error) {
@@ -305,7 +305,7 @@ const Menu = () => {
         deleteMenuItem({ id: selectedMenu._id, token })
       ).unwrap();
 
-      await dispatch(fetchMenuItems({ token }));
+      await dispatch(fetchMenuItems({ restaurantId , token }));
 
       setDeleteModalVisible(false);
       toast.success("Menu item deleted successfully!");

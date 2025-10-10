@@ -8,37 +8,20 @@ const configureHeaders = (token) => ({
     Authorization: `Bearer ${token}`,
   },
 })
-
-const getAuthHeaders = () => ({
-  headers: {
-    Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-  },
-})
 // Fetch reservations by restaurant ID
 export const fetchReservations = createAsyncThunk(
   "reservations/fetchReservations",
-  async ({ restaurantId }, { rejectWithValue }) => {
+  async ({ restaurantId, token }, { rejectWithValue }) => {
     try {
-      // Use the correct endpoint with /reservations prefix
-      const url = `${BASE_URL}/reservations/debug/all`;
-      console.log("🚀 Making API call to:", url);
-      console.log("🚀 Fetching ALL reservations for testing");
-      
-      const response = await axios.get(
-        url,
-        configureHeaders(localStorage.getItem("authToken"))
-      );
-      
-      console.log("✅ API Response Status:", response.status);
-      console.log("✅ API Response Data:", response.data);
-      console.log("✅ Total Count:", response.data?.totalCount);
-      console.log("✅ Reservations Length:", response.data?.reservations?.length);
-      
-      // Return just the reservations array
+      const response = await axios.get( `${BASE_URL}/reservations/debug/all`,
+        {
+          params: { restaurantId },
+          ...configureHeaders(token),
+        });
       return response.data.reservations;
     } catch (error) {
+      console.log(error)
       console.error("❌ API Error:", error);
-      console.error("❌ Error Response:", error.response?.data);
       return rejectWithValue(
         error.response?.data?.error || "Failed to fetch reservations"
       );
@@ -51,7 +34,7 @@ export const addReservation = createAsyncThunk(
   "reservations/addReservation",
   async ({ startTime, endTime, customerId, customerName, payment, advance, notes, tableNumber, restaurantId }, { rejectWithValue }) => {
     try {
-      console.log("the data is : ",{ startTime, endTime, customerId, customerName, payment, advance, notes, tableNumber, restaurantId })
+      console.log("the data is : ", { startTime, endTime, customerId, customerName, payment, advance, notes, tableNumber, restaurantId })
       const response = await axios.post(
         `${BASE_URL}/reservations/add`,
         { restaurantId, startTime, endTime, customerId, customerName, payment, advance, notes, tableNumber },
@@ -88,7 +71,7 @@ export const deleteReservation = createAsyncThunk(
   async ({ id }, { rejectWithValue }) => {
     try {
       const response = await axios.delete(
-        `${BASE_URL}/reservations/${id}`, 
+        `${BASE_URL}/reservations/${id}`,
         configureHeaders(localStorage.getItem('authToken'))
       );
       return { id, message: response.data.message };

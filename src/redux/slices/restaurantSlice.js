@@ -17,10 +17,12 @@ const configureHeaders = (token, isFormData = false) => ({
 //they are working
 export const fetchRestaurants = createAsyncThunk(
   'restaurants/fetchAll',
-  async ({ token }, { rejectWithValue }) => {
+  async ({ token, restaurantId }, { rejectWithValue }) => {
     try {
-        const token=localStorage.getItem('authToken');
-      const response = await axios.get(`${BASE_URL}/all/restaurants`, configureHeaders(token));
+      const response = await axios.get(`${BASE_URL}/all/restaurants`, {
+        params: restaurantId ? { restaurantId } : {},
+        ...configureHeaders(token),
+      });
       return response.data.restaurants;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch restaurants');
@@ -28,31 +30,50 @@ export const fetchRestaurants = createAsyncThunk(
   }
 );
 
+
 // Create restaurant
 export const createRestaurant = createAsyncThunk(
   'restaurants/create',
-  async ({ formData, token }, { rejectWithValue }) => {
+  async ({ formData, token, restaurantId }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(`${BASE_URL}/create/restaurants`, formData, configureHeaders(token, true));
+      if (restaurantId) {
+        formData.append('restaurantId', restaurantId);
+      }
+
+      const response = await axios.post(
+        `${BASE_URL}/create/restaurants`,
+        formData,
+        configureHeaders(token, true)
+      );
       return response.data.restaurant;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to create restaurant');
     }
   }
 );
+;
 
 // Update restaurant
 export const updateRestaurant = createAsyncThunk(
   'restaurants/update',
-  async ({ id, formData, token }, { rejectWithValue }) => {
+  async ({ id, formData, token, restaurantId }, { rejectWithValue }) => {
     try {
-      const response = await axios.put(`${BASE_URL}/restaurants/update/${id}`, formData, configureHeaders(token, true));
+      if (restaurantId) {
+        formData.append('restaurantId', restaurantId);
+      }
+
+      const response = await axios.put(
+        `${BASE_URL}/restaurants/update/${id}`,
+        formData,
+        configureHeaders(token, true)
+      );
       return response.data.restaurant;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to update restaurant');
     }
   }
 );
+
 
 // Delete restaurant
 export const deleteRestaurant = createAsyncThunk(
@@ -70,11 +91,11 @@ export const deleteRestaurant = createAsyncThunk(
 // Update restaurant status
 export const updateRestaurantStatus = createAsyncThunk(
   'restaurants/updateStatus',
-  async ({ id, status, token }, { rejectWithValue }) => {
+  async ({ id, status, token, restaurantId }, { rejectWithValue }) => {
     try {
       const response = await axios.patch(
         `${BASE_URL}/restaurants/${id}/status`,
-        { status },
+        { status, restaurantId },
         configureHeaders(token)
       );
       return response.data.restaurant;
@@ -83,6 +104,7 @@ export const updateRestaurantStatus = createAsyncThunk(
     }
   }
 );
+
 
 // -------------------- Slice -------------------- //
 const restaurantSlice = createSlice({

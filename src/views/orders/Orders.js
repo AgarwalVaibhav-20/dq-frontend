@@ -20,7 +20,7 @@ const Order = () => {
   const [pdfDoc, setPdfDoc] = useState(null)
   const dispatch = useDispatch()
   const { orders, loading } = useSelector((state) => state.orders)
-  const restaurantId = useSelector((state) => state.auth.restaurantId)
+  // const restaurantId = useSelector((state) => state.auth.restaurantId)
   const [showKOT, setShowKOT] = useState(false)
   const [showBill, setShowBill] = useState(false)
   const [showKOTModal, setShowKOTModal] = useState(false)
@@ -33,6 +33,7 @@ const Order = () => {
   const isMobile = useMediaQuery('(max-width:600px)')
   const { restaurantProfile } = useSelector((state) => state.restaurantProfile)
   const token = localStorage.getItem("authToken")
+  const restaurantId = localStorage.getItem('restaurantId');
   
   // Filter states
   const [searchTerm, setSearchTerm] = useState('')
@@ -46,10 +47,10 @@ const Order = () => {
   const invoiceRef = useRef(null)
 
   useEffect(() => {
-    if (token) {
-      dispatch(fetchOrders({ token }))
+    if (token && restaurantId) {
+      dispatch(fetchOrders({ token , restaurantId }))
     }
-  }, [dispatch, token])
+  }, [dispatch, token , restaurantId])
 
   useEffect(() => {
     if (restaurantId) {

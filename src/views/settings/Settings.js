@@ -192,7 +192,7 @@ const Settings = () => {
 
   // Fetch all systems and taxes on component mount
   useEffect(() => {
-    dispatch(fetchMembers(token));
+    dispatch(fetchMembers({ token, restaurantId }));
     fetchSystems()
     fetchTaxes()
     fetchCustomerSettings()
@@ -773,13 +773,13 @@ const Settings = () => {
     try {
       setCheckingLowStock(true)
       const restaurantId = localStorage.getItem('restaurantId')
-      
+
       // First check low stock items
       const itemsResponse = await axiosInstance.get(`/api/low-stock/items?restaurantId=${restaurantId}`)
-      
+
       if (itemsResponse.data.success) {
         setLowStockItems(itemsResponse.data.data.items || [])
-        
+
         // Then trigger auto email check
         try {
           const emailResponse = await axiosInstance.post(`/api/low-stock/auto-check?restaurantId=${restaurantId}`)
@@ -790,7 +790,7 @@ const Settings = () => {
           console.error('Auto email check failed:', emailError)
           // Don't show error to user, just log it
         }
-        
+
         if (itemsResponse.data.data.items.length > 0) {
           toast.warning(`Found ${itemsResponse.data.data.items.length} low stock items! Email sent if needed.`)
         } else {
@@ -1882,9 +1882,40 @@ const Settings = () => {
                     onChange={(e) => setMemberForm({ ...memberForm, discount: e.target.value })}
                     placeholder={`Enter discount ${memberForm.discountType === 'percentage' ? '%' : 'amount'}`}
                     required
-                    className="form-control-sm"
+                    label="Expiration Date"
+                    type="date"
+                    value={memberForm.expirationDate}
+                    onChange={(e) => setMemberForm({ ...memberForm, expirationDate: e.target.value })}
+                    InputLabelProps={{ shrink: true }}
                   />
                 </div>
+
+                <Grid item xs={12}>
+                  <FormControl fullWidth>
+                    <InputLabel>Status</InputLabel>
+                    <Select
+                      value={memberForm.status}
+                      label="Status"
+                      onChange={(e) => setMemberForm({ ...memberForm, status: e.target.value })}
+                      native
+                    >
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                      <option value="expired">Expired</option>
+                    </Select>
+                  </FormControl>
+                </Grid>
+
+                <Grid item xs={12}>
+                  <TextField
+                    fullWidth
+                    label="Notes"
+                    multiline
+                    rows={3}
+                    value={memberForm.notes}
+                    onChange={(e) => setMemberForm({ ...memberForm, notes: e.target.value })}
+                  />
+                </Grid> */}
               </div> 
             </DialogContent>
             <DialogActions className="px-2 px-md-3 py-2 py-md-3">
@@ -2045,7 +2076,7 @@ const Settings = () => {
                                 </>
                               )}
                             </CButton>
-                            
+  
                             <CButton
                               color="info"
                               onClick={checkLowStockItems}

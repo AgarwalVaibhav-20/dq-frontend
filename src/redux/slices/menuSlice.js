@@ -16,7 +16,7 @@ export const fetchMenuItems = createAsyncThunk(
   async ({ restaurantId, token }, { rejectWithValue }) => {
     try {
       console.log("🔍 fetchMenuItems called with:", { restaurantId, token: token ? "present" : "missing" });
-      
+
       const headers = {
         Authorization: `Bearer ${token}`,
       };
@@ -26,15 +26,15 @@ export const fetchMenuItems = createAsyncThunk(
         : `${BASE_URL}/menu/allmenues`;
 
       console.log("🔍 API URL:", url);
-      
+
       const response = await axios.get(url, { headers });
-      
+
       console.log("🔍 API Response:", {
         status: response.status,
         dataLength: response.data?.length || 0,
         data: response.data
       });
-      
+
       return response.data; // Array of menu items
     } catch (error) {
       console.error("❌ fetchMenuItems error:", error);

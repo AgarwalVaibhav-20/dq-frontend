@@ -12,25 +12,33 @@ const configureHeaders = (token) => ({
 // Async thunk to create a new category
 export const createCategory = createAsyncThunk(
   'category/createCategory',
-  async ({ categoryName, categoryImage, token, basePrice, size, description }, { rejectWithValue }) => {
+  async (
+    { categoryName, categoryImage, token, basePrice, size, description, restaurantId },
+    { rejectWithValue }
+  ) => {
     try {
       const formData = new FormData();
       formData.append('categoryName', categoryName);
       formData.append('categoryImage', categoryImage);
       if (basePrice !== undefined && basePrice !== null) {
-        formData.append("basePrice", basePrice);
+        formData.append('basePrice', basePrice);
+      }
+      if (size) {
+        formData.append('size', size);
+      }
+      if (description) {
+        formData.append('description', description);
+      }
+      if (restaurantId) {
+        formData.append('restaurantId', restaurantId);
       }
 
-      formData.append('size', size);
-      formData.append('description', description)
       const response = await axios.post(
         `${BASE_URL}/category`,
         formData,
         configureHeaders(token)
       );
-      console.log(response.data)
-      console.log(token + "this is token")
-      console.log(response.data);
+
       return response.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Category creation failed');
@@ -43,10 +51,12 @@ export const fetchCategories = createAsyncThunk(
   'category/fetchCategories',
   async ({ token }, { rejectWithValue }) => {
     try {
+      const restaurantId = localStorage.getItem('restaurantId')
       const response = await axios.get(
-        `${BASE_URL}/categories`,
-        configureHeaders(token)
-      );
+        `${BASE_URL}/categories`, {
+        params: { restaurantId },
+        ...configureHeaders(token)
+      });
       return response.data.data;
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch categories');

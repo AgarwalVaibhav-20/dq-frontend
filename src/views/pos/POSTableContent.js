@@ -41,7 +41,7 @@ const POSTableContent = () => {
   const { subCategories, loading: subCategoryLoading } = useSelector((state) => state.subCategory)
 
   const authState = useSelector((state) => state.auth)
-  const restaurantId = authState.restaurantId || localStorage.getItem('restaurantId') || '68d23850f227fcf59cfacf80' // Correct restaurantId from database
+  const restaurantId = localStorage.getItem('restaurantId')
   const theme = useSelector((state) => state.theme.theme)
   const token = localStorage.getItem('authToken')
 
@@ -133,10 +133,10 @@ const POSTableContent = () => {
   useEffect(() => {
     if (token && restaurantId) {
       // console.log('Fetching data with restaurantId:', restaurantId)
-      dispatch(fetchMenuItems({ token }))
-      dispatch(fetchCustomers({ token }))
-      dispatch(fetchCategories({ token }))
-      dispatch(fetchSubCategories({ token }))
+      dispatch(fetchMenuItems({ token, restaurantId }))
+      dispatch(fetchCustomers({ token, restaurantId }))
+      dispatch(fetchCategories({ token, restaurantId }))
+      dispatch(fetchSubCategories({ token, restaurantId }))
     } else {
       // console.log('Missing token or restaurantId:', { token: !!token, restaurantId })
     }
@@ -329,7 +329,7 @@ const POSTableContent = () => {
   }, [cart, startTime, tableNumber]);
 
   const handleCustomerSelect = (customer) => {
-    setSelectedCustomer( customer);
+    setSelectedCustomer(customer);
     setSelectedCustomerName(customer.name)
     setShowCustomerModal(false)
   }
@@ -417,17 +417,17 @@ const POSTableContent = () => {
       }
     }
 
-      // --- This is the original logic for non-merged tables ---
-      setCart([])
-      setRoundOff(0)
-      setStartTime(null)
-      setElapsedTime(0)
+    // --- This is the original logic for non-merged tables ---
+    setCart([])
+    setRoundOff(0)
+    setStartTime(null)
+    setElapsedTime(0)
     setSelectedCustomer(null);
     setSelectedCustomerName('');
-      localStorage.removeItem(`cart_${tableId}`)
-      localStorage.removeItem(`start_time_${tableId}`)
-      // toast.info('Order has been cancelled.')
-    }
+    localStorage.removeItem(`cart_${tableId}`)
+    localStorage.removeItem(`start_time_${tableId}`)
+    // toast.info('Order has been cancelled.')
+  }
 
   const handleTaxSubmit = (selectedItemIds, taxValue, taxType, taxName) => {
     setCart(prevCart =>
@@ -537,25 +537,40 @@ const POSTableContent = () => {
     return cart.reduce((total, item) => total + (Number(item.taxAmount) || 0), 0);
   }, [cart]);
 
+  // const calculateDiscountAmount = useCallback(() => {
+  //   const subtotal = calculateSubtotal();
+  //   let totalDiscount = 0;
+
+  //   // This logic correctly handles fixed vs percentage for memberships.
+  //   if (membershipDiscount && membershipDiscount.value > 0) {
+  //     if (membershipDiscount.type === 'fixed') {
+  //       totalDiscount = membershipDiscount.value;
+  //     } else { // 'percentage'
+  //       totalDiscount = (subtotal * membershipDiscount.value) / 100;
+  //     }
+  //   } else {
+  //     // Handles manual and item-specific discounts
+  //     totalDiscount = (subtotal * discount) / 100;
+  //     cart.forEach(item => {
+  //       if (item.discountAmount) totalDiscount += Number(item.discountAmount);
+  //     });
+  //   }
+
+  //   return totalDiscount;
+  // }, [calculateSubtotal, discount, cart, membershipDiscount]);
   const calculateDiscountAmount = useCallback(() => {
     const subtotal = calculateSubtotal();
     let totalDiscount = 0;
 
     // This logic correctly handles fixed vs percentage for memberships.
-    if (membershipDiscount && membershipDiscount.value > 0) {
+    if (membershipDiscount && membershipDiscount.value > 0) { // If value is 0, this block is skipped
       if (membershipDiscount.type === 'fixed') {
         totalDiscount = membershipDiscount.value;
       } else { // 'percentage'
         totalDiscount = (subtotal * membershipDiscount.value) / 100;
       }
-    } else {
-      // Handles manual and item-specific discounts
-      totalDiscount = (subtotal * discount) / 100;
-      cart.forEach(item => {
-        if (item.discountAmount) totalDiscount += Number(item.discountAmount);
-      });
     }
-
+    // ... more logic for other discount types
     return totalDiscount;
   }, [calculateSubtotal, discount, cart, membershipDiscount]);
 
@@ -581,11 +596,8 @@ const POSTableContent = () => {
     }
   }, [showRoundOffModal, calculateSubtotal, calculateTotalTaxAmount, calculateDiscountAmount]);
 
-  // --- MODIFIED CODE BLOCK ---
-  // This useEffect now depends on the cart to re-evaluate the discount
-  // if items are added or removed.
   useEffect(() => {
-    const subtotal = calculateSubtotal(); // Calculate subtotal first
+    const subtotal = calculateSubtotal();
 
     if (
       selectedCustomer &&
@@ -594,31 +606,111 @@ const POSTableContent = () => {
       selectedCustomer.membershipId.discount > 0
     ) {
       const membership = selectedCustomer.membershipId;
-      
-      // FIX 2: Check if subtotal meets the minimum spend requirement
+
       if (subtotal >= membership.minSpend) {
         const discountValue = Number(membership.discount);
-        const discountType = membership.discountType || 'percentage'; // Safely default to percentage
+        const discountType = membership.discountType || 'percentage';
 
         setMembershipDiscount({ value: discountValue, type: discountType });
-        setDiscount(0); // Reset any manual discount
-
-        // FIX 1 & 3: Display the correct discount type in the notification
         toast.info(
-          `Applied ${
-            discountType === 'fixed' ? `₹${discountValue}` : `${discountValue}%`
+          `Applied ${discountType === 'fixed' ? `₹${discountValue}` : `${discountValue}%`
           } membership discount for ${selectedCustomer.name}.`
         );
       } else {
         // If spend is not met, ensure no membership discount is applied
         setMembershipDiscount({ value: 0, type: 'percentage' });
+
+        // --- FIXED SECTION ---
+        // Provides feedback to the user when minimum spend is not met
+        if (subtotal > 0 && membership.minSpend > 0) {
+          toast.warn(
+            `Add items worth ₹${(membership.minSpend - subtotal).toFixed(2)} more to unlock the membership discount.`
+          );
+        }
+        // --- END FIXED SECTION ---
       }
     } else {
       // If no customer or no active membership, reset the discount
       setMembershipDiscount({ value: 0, type: 'percentage' });
     }
-  }, [selectedCustomer, cart]); // Dependency array now includes cart
-  // --- END OF MODIFIED CODE BLOCK ---
+  }, [selectedCustomer, cart, calculateSubtotal]);
+  // --- MODIFIED CODE BLOCK ---
+  // This useEffect now depends on the cart to re-evaluate the discount
+  // if items are added or removed.
+  // POSTableContent.js: lines 681-714
+  // POSTableContent.js: Modify the block starting around line 681
+
+  // useEffect(() => {
+  //   const subtotal = calculateSubtotal();
+
+  //   if (
+  //     selectedCustomer &&
+  //     selectedCustomer.membershipId &&
+  //     selectedCustomer.membershipId.status === 'active' &&
+  //     selectedCustomer.membershipId.discount > 0
+  //   ) {
+  //     const membership = selectedCustomer.membershipId;
+
+  //     if (subtotal >= membership.minSpend) {
+  //       const discountValue = Number(membership.discount);
+  //       const discountType = membership.discountType || 'percentage';
+
+  //       setMembershipDiscount({ value: discountValue, type: discountType });
+  //       toast.info(
+  //         `Applied ${discountType === 'fixed' ? `₹${discountValue}` : `${discountValue}%`
+  //         } membership discount for ${selectedCustomer.name}.`
+  //       );
+  //     } else {
+  //       // If spend is not met, ensure no membership discount is applied
+  //       setMembershipDiscount({ value: 0, type: 'percentage' });
+
+  //       // ✨ --- START: ADD THESE NEW LINES --- ✨
+  //       // This provides feedback to the user
+  //       if (subtotal > 0 && membership.minSpend > 0) {
+  //         toast.warn(
+  //           `Add items worth ₹${(membership.minSpend - subtotal).toFixed(2)} more to unlock the membership discount.`
+  //         );
+  //       }
+  //       // ✨ --- END: ADD THESE NEW LINES --- ✨
+  //     }
+  //   } else {
+  //     setMembershipDiscount({ value: 0, type: 'percentage' });
+  //   }
+  // }, [selectedCustomer, cart, calculateSubtotal]);
+  // useEffect(() => {
+  //   const subtotal = calculateSubtotal(); // Calculate subtotal first
+
+  //   if (
+  //     selectedCustomer &&
+  //     selectedCustomer.membershipId &&
+  //     selectedCustomer.membershipId.status === 'active' &&
+  //     selectedCustomer.membershipId.discount > 0
+  //   ) {
+  //     const membership = selectedCustomer.membershipId;
+
+  //     // FIX 2: Check if subtotal meets the minimum spend requirement
+  //     if (subtotal >= membership.minSpend) {
+  //       const discountValue = Number(membership.discount);
+  //       const discountType = membership.discountType || 'percentage'; // Safely default to percentage
+
+  //       setMembershipDiscount({ value: discountValue, type: discountType });
+  //       setDiscount(0); // Reset any manual discount
+
+  //       // FIX 1 & 3: Display the correct discount type in the notification
+  //       toast.info(
+  //         `Applied ${discountType === 'fixed' ? `₹${discountValue}` : `${discountValue}%`
+  //         } membership discount for ${selectedCustomer.name}.`
+  //       );
+  //     } else {
+  //       // If spend is not met, ensure no membership discount is applied
+  //       setMembershipDiscount({ value: 0, type: 'percentage' });
+  //     }
+  //   } else {
+  //     // If no customer or no active membership, reset the discount
+  //     setMembershipDiscount({ value: 0, type: 'percentage' });
+  //   }
+  // }, [selectedCustomer, cart, calculateSubtotal]); // Dependency array now includes cart
+  // // --- END OF MODIFIED CODE BLOCK ---
 
   // FIXED: Quantity change handler with proper ID matching
   const handleQuantityChange = (itemId, newQty) => {
@@ -667,8 +759,8 @@ const POSTableContent = () => {
 
     const customerInfo = JSON.parse(localStorage.getItem('customer'));
 
-      const { _id, frequency, totalSpent } = customerInfo;
-      console.log("postTable",_id, frequency, totalSpent);
+    const { _id, frequency, totalSpent } = customerInfo;
+    console.log("postTable", _id, frequency, totalSpent);
 
 
     let freq = frequency + 1;
@@ -696,13 +788,13 @@ const POSTableContent = () => {
         taxAmount: item.taxAmount || 0
       })),
       tax: calculateTotalTaxAmount(),
-      discount:  calculateDiscountAmount(),
+      discount: calculateDiscountAmount(),
       // discountAmount:  calculateDiscountAmount(),
       // discount: membershipDiscount > 0 ? membershipDiscount : discount,
       discountAmount: calculateDiscountAmount(),
       customerId: selectedCustomer ? selectedCustomer._id : null,
-      roundOff:  roundOff,
-      systemCharge:  selectedSystem ? Number(selectedSystem.chargeOfSystem) : 0,
+      roundOff: roundOff,
+      systemCharge: selectedSystem ? Number(selectedSystem.chargeOfSystem) : 0,
       sub_total: calculateSubtotal(),
       total: calculateTotal(),
       type: paymentType,

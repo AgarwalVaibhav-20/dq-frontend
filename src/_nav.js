@@ -50,12 +50,12 @@ const _nav = [
     icon: <CIcon icon={cilCreditCard} customClassName="nav-icon" />,
     roles: ['admin'], // Only admin can see
   },
-  {
-    component: CNavItem,
-    name: 'Customer Menu',
-    icon: <CIcon icon={cilFastfood} customClassName='nav-icon' />,
-    to: '/customer-menu'
-  },
+  // {
+  //   component: CNavItem,
+  //   name: 'Customer Menu',
+  //   icon: <CIcon icon={cilFastfood} customClassName='nav-icon' />,
+  //   to: '/customer-menu'
+  // },
   {
     component: CNavItem,
     name: 'Category',

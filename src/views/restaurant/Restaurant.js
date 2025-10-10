@@ -78,12 +78,14 @@ const Restaurants = () => {
   const [formData, setFormData] = useState(defaultFormData)
   const [previewImage, setPreviewImage] = useState(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const restaurantId = localStorage.getItem('restaurantId');
 
   // ---------------- Fetch Restaurants ----------------
   useEffect(() => {
-    if (!token) return
-    dispatch(fetchRestaurants({ token })).catch(() => toast.error('Failed to fetch restaurants'))
-  }, [dispatch, token])
+    if (restaurantId && token) {
+      dispatch(fetchRestaurants({ token, restaurantId })).catch(() => toast.error('Failed to fetch restaurants'))
+    }
+  }, [dispatch, restaurantId, token])
 
   // ---------------- Update Form for Edit ----------------
   useEffect(() => {
@@ -208,20 +210,20 @@ const Restaurants = () => {
           modalState.type === 'add'
             ? 'Add Restaurant'
             : modalState.type === 'edit'
-            ? 'Edit Restaurant'
-            : modalState.type === 'delete'
-            ? 'Delete Restaurant'
-            : 'Restaurant Details'
+              ? 'Edit Restaurant'
+              : modalState.type === 'delete'
+                ? 'Delete Restaurant'
+                : 'Restaurant Details'
         }
         onConfirm={modalState.type !== 'detail' ? handleSubmit : undefined}
         confirmButtonText={
           modalState.type === 'add'
             ? 'Add Restaurant'
             : modalState.type === 'edit'
-            ? 'Update'
-            : modalState.type === 'delete'
-            ? 'Delete'
-            : ''  //binduu confirm button text to empty for detail view
+              ? 'Update'
+              : modalState.type === 'delete'
+                ? 'Delete'
+                : ''  //binduu confirm button text to empty for detail view
         }
         confirmButtonColor={modalState.type === 'delete' ? 'danger' : 'primary'}
         isLoading={isSubmitting}
@@ -250,8 +252,8 @@ const Restaurants = () => {
                     {tab === 'basic'
                       ? 'Basic Info'
                       : tab === 'contact'
-                      ? 'Contact & Address'
-                      : 'Features & Hours'}
+                        ? 'Contact & Address'
+                        : 'Features & Hours'}
                   </button>
                 </li>
               ))}

@@ -12,6 +12,7 @@ export default function Category() {
   const dispatch = useDispatch();
   const { categories, loading } = useSelector(state => state.category);
   const token = useSelector(state => state.auth.token);
+  const restaurantId = localStorage.getItem('restaurantId')
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -26,10 +27,12 @@ export default function Category() {
   const [filter, setFilter] = useState('All');
   const [dropdownOpen, setDropdownOpen] = useState({});
   const dropdownRef = useRef();
-
   useEffect(() => {
-    if (token) dispatch(fetchCategories({ token }));
-  }, [dispatch, token]);
+    if (restaurantId && token) {
+      dispatch(fetchCategories({ token, restaurantId }));
+    }
+  }, [dispatch, restaurantId, token]);
+
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -57,7 +60,7 @@ export default function Category() {
     setSaving(true);
 
     // Pass plain data, let thunk build FormData
-    dispatch(createCategory({ categoryName, categoryImage, token }))
+    dispatch(createCategory({ categoryName, categoryImage, token , restaurantId }))
       .unwrap()
       .then(() => {
         toast.success('Category added!');
@@ -94,7 +97,7 @@ export default function Category() {
       formData.append("restaurantId", editedCategory.restaurantId);
     }
 
-    dispatch(updateCategory({ id: editedCategory._id, formData, token }))
+    dispatch(updateCategory({ id: editedCategory._id, formData, token , restaurantId }))
       .unwrap()
       .then(() => {
         toast.success("Category updated!");

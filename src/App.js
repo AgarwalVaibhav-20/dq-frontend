@@ -352,6 +352,7 @@ const App = () => {
               <Route path="/forgotpassword" element={<ForgotPassword />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path='/check-otp' element={<CheckOtp />} />
+              <Route path='/customer-menu' element={<CustomerMenu />} />
 
               {/* Private Routes */}
               <Route
@@ -463,7 +464,7 @@ const App = () => {
                       </PermissionGuard>
                     } />
                     
-                    {/* Permission-based routes */}
+                    {/* Permission-based routes 
                     <Route path="dashboard" element={
                       <PermissionGuard requiredPermissions={['Overview']}>
                         <Dashboard />
@@ -478,7 +479,7 @@ const App = () => {
                       <PermissionGuard requiredPermissions={['Customer Menu']}>
                         <CustomerMenu />
                       </PermissionGuard>
-                    } />
+                    } /> */}
                     <Route path="restaurants" element={
                       <PermissionGuard requiredPermissions={['Restaurants']}>
                         <Restaurants />

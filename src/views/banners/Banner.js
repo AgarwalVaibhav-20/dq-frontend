@@ -43,12 +43,34 @@ export default function Banner() {
   const dispatch = useDispatch()
   const { banners, loading, loadingUpdate } = useSelector((state) => state.banner)
   const token = localStorage.getItem('authToken')
+  const restaurantId = localStorage.getItem('restaurantId');
 
   useEffect(() => {
-    if (token) {
-      dispatch(fetchBanners({ token }))
+    if (token && restaurantId) {
+      dispatch(fetchBanners({ token, restaurantId }))
     }
-  }, [dispatch, token])
+  }, [dispatch, token, restaurantId])
+
+  // NEW: Effect to close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      // Check if the click target is outside of any element with the 'dropdown-container' class
+      if (!event.target.closest('.dropdown-container')) {
+        setDropdownOpen({}) // Close all dropdowns
+      }
+    }
+
+    // Add listener only if a dropdown is open
+    if (Object.values(dropdownOpen).some(Boolean)) {
+      document.addEventListener('mousedown', handleClickOutside)
+    }
+
+    // Cleanup listener
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [dropdownOpen])
+
 
   const filteredBanners = (banners || [])
     .filter((banner) => banner && typeof banner === 'object')
@@ -73,12 +95,23 @@ export default function Banner() {
           return true
       }
     })
+    // UPDATED: Enhanced search filter logic
     .filter((banner) => {
       if (!searchTerm) return true
+      const lowerCaseSearchTerm = searchTerm.toLowerCase()
+
+      // Check URLs
       const urls = [banner.banner_1, banner.banner_2, banner.banner_3].filter(Boolean)
-      return urls.some((url) =>
-        url && url.toLowerCase().includes(searchTerm.toLowerCase())
+      const urlMatch = urls.some((url) =>
+        url && url.toLowerCase().includes(lowerCaseSearchTerm)
       )
+      if (urlMatch) return true
+
+      // Check Restaurant ID
+      const restaurantIdStr = banner.restaurantId || ''
+      const restaurantIdMatch = restaurantIdStr.toString().toLowerCase().includes(lowerCaseSearchTerm)
+      
+      return restaurantIdMatch
     })
 
   const handleAddBanner = async () => {
@@ -93,15 +126,16 @@ export default function Banner() {
         banner_2: bannerData.banner_2,
         banner_3: bannerData.banner_3,
         token,
+        restaurantId
       }))
 
       if (createBanner.fulfilled.match(resultAction)) {
         setBannerData({ banner_1: null, banner_2: null, banner_3: null })
         setModalVisible(false)
-        // Refresh banners list
-        dispatch(fetchBanners({ token }))
+        dispatch(fetchBanners({ token, restaurantId }))
       }
     } catch (error) {
+      console.log(error, "banner creation error")
       console.error('Error creating banner:', error)
     }
   }
@@ -124,10 +158,11 @@ export default function Banner() {
     try {
       const payload = {
         id: editedBanner._id || editedBanner.id,
-        banner_1: editedBanner.banner_1 instanceof File ? editedBanner.banner_1 : editedBanner.banner_1,
-        banner_2: editedBanner.banner_2 instanceof File ? editedBanner.banner_2 : editedBanner.banner_2,
-        banner_3: editedBanner.banner_3 instanceof File ? editedBanner.banner_3 : editedBanner.banner_3,
+        banner_1: editedBanner.banner_1,
+        banner_2: editedBanner.banner_2,
+        banner_3: editedBanner.banner_3,
         token,
+        restaurantId
       }
 
       const resultAction = await dispatch(updateBanner(payload))
@@ -135,8 +170,7 @@ export default function Banner() {
       if (updateBanner.fulfilled.match(resultAction)) {
         setEditModalVisible(false)
         setEditedBanner({})
-        // Refresh banners list
-        dispatch(fetchBanners({ token }))
+        dispatch(fetchBanners({ token, restaurantId }))
       }
     } catch (error) {
       console.error('Error updating banner:', error)
@@ -146,10 +180,9 @@ export default function Banner() {
   const handleDeleteBanner = async (id) => {
     if (window.confirm('Are you sure you want to delete this banner?')) {
       try {
-        const resultAction = await dispatch(deleteBanner({ id, token }))
+        const resultAction = await dispatch(deleteBanner({ id, token, restaurantId }))
         if (deleteBanner.fulfilled.match(resultAction)) {
-          // Refresh banners list
-          dispatch(fetchBanners({ token }))
+          dispatch(fetchBanners({ token, restaurantId }))
         }
       } catch (error) {
         console.error('Error deleting banner:', error)
@@ -157,25 +190,23 @@ export default function Banner() {
     }
   }
 
+  // UPDATED: Toggle function now ensures only one dropdown is open at a time
   const toggleDropdown = (id) => {
-    setDropdownOpen((prev) => ({
-      ...prev,
-      [id]: !prev[id],
-    }))
-  }
+    setDropdownOpen(prev => ({
+      [id]: !prev[id]
+    }));
+  };
 
   const handleFileChange = (e, bannerKey, isEdit = false) => {
     const file = e.target.files[0]
     if (!file) return
 
-    // Validate file type
     const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp']
     if (!allowedTypes.includes(file.type)) {
       toast.error('Only JPEG, JPG, PNG, and WebP files are allowed.')
       return
     }
 
-    // Validate file size (5MB max)
     if (file.size > 5 * 1024 * 1024) {
       toast.error('File size should not exceed 5MB.')
       return
@@ -305,8 +336,9 @@ export default function Banner() {
 
       {/* Mobile Responsive Search and Filter */}
       <div className="d-flex flex-column flex-md-row mb-4 gap-2">
+        {/* UPDATED: Search input placeholder */}
         <CFormInput
-          placeholder="Search banners by image URL..."
+          placeholder="Search by URL or Restaurant ID..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
           className="flex-grow-1"
@@ -352,10 +384,6 @@ export default function Banner() {
                         alt="Banner"
                         className="img-fluid"
                         style={{ height: '150px', objectFit: 'cover' }}
-                        onError={(e) => {
-                          e.target.style.display = 'none'
-                          e.target.nextSibling.style.display = 'flex'
-                        }}
                       />
                     )
                   }
@@ -381,13 +409,14 @@ export default function Banner() {
                 <CCardBody className="d-flex justify-content-between align-items-center">
                   <div>
                     <p className="mb-1">
-                      <strong>Restaurant ID:</strong> {banner.restaurantId || 'N/A'}
+                      <strong>ID:</strong> {banner.restaurantId || 'N/A'}
                     </p>
                     <p className="mb-0 text-muted small">
                       Created: {new Date(banner.createdAt || banner.created_at).toLocaleDateString()}
                     </p>
                   </div>
-                  <div className="position-relative">
+                  {/* UPDATED: Added a wrapper div with a class for the click-outside logic */}
+                  <div className="position-relative dropdown-container">
                     <CButton
                       color="light"
                       className="p-0 border-0"

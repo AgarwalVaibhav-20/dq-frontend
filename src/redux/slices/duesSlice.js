@@ -15,7 +15,11 @@ export const fetchDues = createAsyncThunk(
   'dues/fetchDues',
   async ({ token }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${BASE_URL}/alldue/due`, configureHeaders(token))
+      const restaurantId = localStorage.getItem('restaurantId');
+      const response = await axios.get(`${BASE_URL}/alldue/due`, {
+        params: { restaurantId },
+        ...configureHeaders(token)
+      })
       console.log(response.data, 'due data ')
       return response.data
     } catch (error) {
@@ -23,6 +27,7 @@ export const fetchDues = createAsyncThunk(
     }
   },
 )
+
 
 // Fetch dues by customer
 export const fetchDuesByCustomer = createAsyncThunk(

@@ -69,10 +69,11 @@ const Cart = ({
     if (subtotal === 0) return 0;
 
     const totalDiscount = cart.reduce((acc, item) => {
-      const itemPrice = getItemPrice(item);
       if (item.discountPercentage) {
+        // This only looks at item-specific percentage discounts
         acc += (itemPrice * item.quantity * item.discountPercentage) / 100;
       } else if (item.fixedDiscountAmount) {
+        // This only looks at item-specific fixed discounts
         acc += item.fixedDiscountAmount * item.quantity;
       }
       return acc;
@@ -114,6 +115,7 @@ const Cart = ({
     if (calculateDiscountAmount) return calculateDiscountAmount();
     return (getSubtotal() * (discount || 0)) / 100;
   };
+  console.log(getDiscountAmount , "get discount amount")
 
   const getTotal = () => {
     if (calculateTotal) return calculateTotal();

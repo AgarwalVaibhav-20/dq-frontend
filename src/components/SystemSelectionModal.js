@@ -36,14 +36,14 @@ const SystemSelectionModal = ({
       setError('')
       const restaurantId = localStorage.getItem('restaurantId')
       const token = localStorage.getItem('authToken')
-      
+
       if (!restaurantId || !token) {
         setError('Authentication required')
         return
       }
 
       console.log('Fetching settings for restaurantId:', restaurantId)
-      
+
       // Fetch settings from your backend API
       const response = await axios.get(`${BASE_URL}/api/settings?restaurantId=${restaurantId}`, {
         headers: {
@@ -60,11 +60,11 @@ const SystemSelectionModal = ({
           systemName: setting.systemName,
           chargeOfSystem: parseInt(setting.chargeOfSystem) || 0,
           willOccupy: setting.willOccupy,
-          color:setting.color
+          color: setting.color
         }))
-        
+
         setSystems(transformedSystems)
-        
+
         // If there's only one system, auto-select it
         if (!selectedSystem && transformedSystems.length === 1) {
           onSystemSelect(transformedSystems[0])
@@ -121,7 +121,7 @@ const SystemSelectionModal = ({
                 </option>
               ))}
             </CFormSelect>
-            
+
             {selectedSystem && (
               <div className="mt-3 p-3 bg-light rounded">
                 <h6>Selected System Details:</h6>
@@ -137,8 +137,8 @@ const SystemSelectionModal = ({
         <CButton color="secondary" onClick={() => setShowSystemModal(false)}>
           Cancel
         </CButton>
-        <CButton 
-          color="primary" 
+        <CButton
+          color="primary"
           onClick={handleConfirm}
           disabled={!selectedSystem}
         >

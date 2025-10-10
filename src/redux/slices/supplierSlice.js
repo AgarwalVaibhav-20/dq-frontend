@@ -14,30 +14,39 @@ export const fetchSuppliers = createAsyncThunk(
   "suppliers/fetchSuppliers",
   async ({ token }, { rejectWithValue }) => {
     try {
+      const restaurantId = localStorage.getItem('restaurantId');
 
       const response = await axios.get(
         `${BASE_URL}/suppliers`,
-        configureHeaders(token)
+        {
+          params: { restaurantId },
+          ...configureHeaders(token)
+        }
       );
+
       return response.data.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || "Failed to fetch suppliers");
+      console.error(error);
+      return rejectWithValue(
+        error.response?.data?.error || "Failed to fetch suppliers"
+      );
     }
   }
 );
 
 
+
 // Add a new supplier
 export const addSupplier = createAsyncThunk(
   'suppliers/addSupplier',
-  async ({ supplierName, email, phoneNumber, rawItem, token ,  inventoryId }, { rejectWithValue }) => {
+  async ({ supplierName, email, phoneNumber, rawItem, token, inventoryId }, { rejectWithValue }) => {
     try {
       // ✅ Get restaurantId directly from localStorage
       const restaurantId = localStorage.getItem("restaurantId");
 
       const response = await axios.post(
-        `${BASE_URL}/create/suppliers`, 
-        { supplierName, email, phoneNumber, rawItem, restaurantId , inventoryId },
+        `${BASE_URL}/create/suppliers`,
+        { supplierName, email, phoneNumber, rawItem, restaurantId, inventoryId },
         configureHeaders(token)
       );
 
@@ -113,7 +122,7 @@ const supplierSlice = createSlice({
       .addCase(fetchSuppliers.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-        toast.error("Failed to fetch suppliers.");
+        // toast.error("Failed to fetch suppliers.");
       });
 
     // Add supplier

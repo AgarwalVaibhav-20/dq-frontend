@@ -26,17 +26,17 @@ const RestaurantOrderingApp = () => {
     const { categories } = useSelector(state => state.category);
     // --> Get customers from the Redux store
     const { customers } = useSelector((state) => state.customers);
-
+    const restaurantId = localStorage.getItem('restaurantId');
     useEffect(() => {
-        const restaurantId = localStorage.getItem('restaurantId');
+
         if (token && restaurantId) {
-            dispatch(fetchBanners({ token }));
-            dispatch(fetchMenuItems(token));
+            dispatch(fetchBanners({ token, restaurantId }));
+            dispatch(fetchMenuItems({ token, restaurantId }));
             // --> Fetch customers when the component loads
-            dispatch(fetchCustomers({ restaurantId }));
+            dispatch(fetchCustomers({ token, restaurantId }));
             dispatch(fetchCategories(token));
         }
-    }, [dispatch, token]);
+    }, [dispatch, token, restaurantId]);
 
     const [cart, setCart] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState('All');

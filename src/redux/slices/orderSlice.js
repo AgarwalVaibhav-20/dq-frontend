@@ -3,6 +3,13 @@ import axios from 'axios'
 import { toast } from 'react-toastify'
 import { BASE_URL } from '../../utils/constants'
 
+
+const configureHeaders = (token, isFormData = false) => ({
+  headers: {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': isFormData ? 'multipart/form-data' : 'application/json',
+  },
+});
 // Create a new order
 export const createOrder = createAsyncThunk(
   'orders/createOrder',
@@ -61,14 +68,10 @@ export const fetchOrders = createAsyncThunk(
   'orders/fetchOrders',
   async (_, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('authToken')
-      const headers = {
-        Authorization: `Bearer ${token}`,
-      }
+      const restaurantId = localStorage.getItem('restaurantId')
+      const token = localStorage.getItem("authToken");
 
-      const response = await axios.get(`${BASE_URL}/all/order`, {
-        headers,
-      })
+      const response = await axios.get(`${BASE_URL}/all/order`, { params: restaurantId ? { restaurantId } : {}, ...configureHeaders(token) })
       return response.data
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || 'Failed to fetch orders')

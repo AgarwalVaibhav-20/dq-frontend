@@ -18,17 +18,23 @@ export const fetchInventories = createAsyncThunk(
   'inventories/fetchInventories',
   async ({ token }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(
-        `${BASE_URL}/stock/inventories`,
-        configureHeaders(token)
-      )
-      console.log(response.data)
-      return response.data
+      const restaurantId = localStorage.getItem('restaurantId');
+
+      const response = await axios.get(`${BASE_URL}/stock/inventories`, {
+        params: { restaurantId },
+        ...configureHeaders(token),
+      });
+
+      console.log(response.data, 'Inventory data');
+      return response.data;
     } catch (err) {
-      return rejectWithValue(err.response?.data || err.message)
+      console.error('Error fetching inventories:', err);
+      return rejectWithValue(
+        err.response?.data?.message || 'Failed to fetch inventories'
+      );
     }
   }
-)
+);
 
 // Add inventory
 export const addInventory = createAsyncThunk(

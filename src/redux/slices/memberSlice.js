@@ -4,18 +4,24 @@ import axios from "axios";
 import { toast } from "react-toastify";
 import { BASE_URL } from "../../utils/constants";
 
-
+const configureHeaders = (token, isFormData = false) => ({
+  headers: {
+    Authorization: `Bearer ${token}`,
+    'Content-Type': isFormData ? 'multipart/form-data' : 'application/json',
+  },
+});
 export const fetchMembers = createAsyncThunk(
   "members/fetchMembers",
   async ({ _ }, { rejectWithValue }) => {
     try {
+      const restaurantId = localStorage.getItem('restaurantId')
       const token = localStorage.getItem("authToken");
       const headers = {
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       };
 
-      const response = await axios.get(`${BASE_URL}/all/members`, { headers });
+      const response = await axios.get(`${BASE_URL}/all/members`, { params: restaurantId ? { restaurantId } : {}, ...configureHeaders(token) });
       console.log("fetch member", response.data)
 
       return response.data;
@@ -43,6 +49,7 @@ export const addMember = createAsyncThunk(
       });
       return response.data;
     } catch (error) {
+      console.log(error, "error is here")
       return rejectWithValue(
         error.response?.data?.message || "Failed to add member"
       );
