@@ -29,6 +29,7 @@ import {
   Collapse,
   IconButton,
   Tooltip,
+  Divider,
 } from "@mui/material";
 import {
   Search as SearchIcon,
@@ -305,21 +306,38 @@ export default function SalesAnalytics() {
         }
 
         // Calculate cost from menu item's stockItems (ingredients) using actual inventory data
+        // Using the same detailed calculation as PurchaseAnalytics.js
         let itemCost = 0;
         if (menuItem.stockItems && menuItem.stockItems.length > 0) {
-          // Calculate cost based on actual inventory data
+          // Calculate cost based on actual inventory data with unit conversion
           itemCost = menuItem.stockItems.reduce((totalCost, stockItem) => {
             // Find the inventory item
             const inventoryItem = inventories.find(inv => String(inv._id) === String(stockItem.stockId));
             
             if (inventoryItem && inventoryItem.stock) {
-              // Calculate cost per unit from inventory
-              const inventoryAmount = inventoryItem.stock.amount || 0;
-              const inventoryQuantity = inventoryItem.stock.quantity || 0;
-              const costPerUnit = inventoryQuantity > 0 ? inventoryAmount / inventoryQuantity : 0;
-              
-              // Calculate total cost for this ingredient
-              const ingredientCost = costPerUnit * stockItem.quantity;
+              // === Inventory values ===
+              const inventoryRate = inventoryItem.stock.amount;       // rate per unit (e.g. 25/kg, 60/litre, etc.)
+              const inventoryQuantity = inventoryItem.stock.quantity; // total quantity purchased
+              const unit = stockItem.unit?.toLowerCase() || inventoryItem.unit?.toLowerCase() || "unit";
+
+              // === Convert rate into smallest unit ===
+              let currentRate = 0;
+              if (unit === "kg") {
+                currentRate = inventoryRate;
+              } else if (unit === "gm") {
+                currentRate = inventoryRate / 1000;
+              } else if (unit === "litre") {
+                currentRate = inventoryRate / 1000; // per ml
+              } else if (unit === "ml") {
+                currentRate = inventoryRate; // already per ml
+              } else if (unit === "pcs") {
+                currentRate = inventoryRate; // per piece
+              } else {
+                currentRate = inventoryRate; // fallback
+              }
+
+              // === Calculate total cost for this ingredient ===
+              const ingredientCost = currentRate * stockItem.quantity;
               return totalCost + ingredientCost;
             } else {
               // Fallback: use 40% of selling price as cost
@@ -571,7 +589,7 @@ export default function SalesAnalytics() {
             item.itemName, 
             item.menuId || '',
             item.sizeName || item.sizes?.join(', ') || 'Regular',
-            item.averageCostPrice || (item.totalCost / item.totalQuantity).toFixed(2), 
+            item.averageCostPrice || item.totalCost.toFixed(2), 
             item.averagePrice, 
             item.profit, 
             item.profitMargin,
@@ -620,7 +638,7 @@ export default function SalesAnalytics() {
         body: filteredData.slice(0, 50).map(item => [
           item.itemName, 
           item.sizeName || item.sizes?.join(', ') || 'Regular',
-          `₹${item.averageCostPrice || (item.totalCost / item.totalQuantity).toFixed(2)}`, 
+          `₹${item.averageCostPrice || item.totalCost.toFixed(2)}`, 
           `₹${item.averagePrice}`, 
           `₹${item.profit}`, 
           `${item.profitMargin}%`
@@ -702,10 +720,10 @@ export default function SalesAnalytics() {
                 variant={viewMode === 'sales' ? 'contained' : 'outlined'} 
                 startIcon={<Receipt />} 
                 onClick={() => setViewMode('sales')}
-                fullWidth={{ xs: true, sm: false }}
                 sx={{ 
                   minWidth: { xs: '100%', sm: 'auto' },
-                  fontSize: { xs: '0.875rem', sm: '0.875rem' }
+                  fontSize: { xs: '0.875rem', sm: '0.875rem' },
+                  width: { xs: '100%', sm: 'auto' }
                 }}
               >
                 Sales Overview
@@ -714,11 +732,11 @@ export default function SalesAnalytics() {
                 variant={viewMode === 'menu' ? 'contained' : 'outlined'} 
                 startIcon={<BarChart3 />} 
                 onClick={() => setViewMode('menu')}
-                fullWidth={{ xs: true, sm: false }}
                 sx={{ 
                   minWidth: { xs: '100%', sm: 'auto' },
                   fontSize: { xs: '0.875rem', sm: '0.875rem' },
-                  py: { xs: 1.5, sm: 1 }
+                  py: { xs: 1.5, sm: 1 },
+                  width: { xs: '100%', sm: 'auto' }
                 }}
               >
                 Menu Performance
@@ -728,10 +746,10 @@ export default function SalesAnalytics() {
                 variant={viewMode === 'customers' ? 'contained' : 'outlined'} 
                 startIcon={<Users />} 
                 onClick={() => setViewMode('customers')}
-                fullWidth={{ xs: true, sm: false }}
                 sx={{ 
                   minWidth: { xs: '100%', sm: 'auto' },
-                  fontSize: { xs: '0.875rem', sm: '0.875rem' }
+                  fontSize: { xs: '0.875rem', sm: '0.875rem' },
+                  width: { xs: '100%', sm: 'auto' }
                 }}
               >
                 Customer Analytics
@@ -873,7 +891,7 @@ export default function SalesAnalytics() {
                             size="small" 
                           />
                         </TableCell>
-                        <TableCell>₹{item.averageCostPrice || (item.totalCost / item.totalQuantity).toFixed(2)}</TableCell>
+                        <TableCell>₹{item.averageCostPrice || item.totalCost.toFixed(2)}</TableCell>
                         <TableCell>₹{item.averagePrice}</TableCell>
                         <TableCell color="success.main">₹{item.profit}</TableCell>
                         <TableCell><Typography color={parseFloat(item.profitMargin) >= 20 ? "success.main" : "warning.main"}>{item.profitMargin}%</Typography></TableCell>
@@ -955,19 +973,139 @@ export default function SalesAnalytics() {
           </>
         )}
         {viewMode === 'menu' && (
-          <Grid item xs={12} md={12}>
-            <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 3 }}>
-              <Typography variant="h6" gutterBottom>Top 10 Menu Items by Revenue</Typography>
-              {filteredData.length > 0 ? (
-                <BarChart
-                  dataset={filteredData.slice(0, 10)}
-                  xAxis={[{ dataKey: 'itemName', scaleType: 'band' }]}
-                  series={[{ dataKey: 'totalRevenue', label: 'Revenue (₹)' }]}
-                  height={400}
-                />
-              ) : (<Alert severity="info">No data for chart</Alert>)}
-            </Paper>
-          </Grid>
+          <>
+            <Grid item xs={12} md={8}>
+              <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 3 }}>
+                <Typography variant="h6" gutterBottom>Cost Price vs Sold Price Analysis</Typography>
+                {filteredData.length > 0 ? (
+                  <BarChart
+                    dataset={filteredData.map(item => ({
+                      id: item.id,
+                      itemName: item.itemName,
+                      costPrice: parseFloat(item.averageCostPrice || item.totalCost) || 0,
+                      soldPrice: parseFloat(item.averagePrice) || 0,
+                      profit: parseFloat(item.profit) || 0,
+                      profitMargin: parseFloat(item.profitMargin) || 0
+                    }))}
+                    xAxis={[{ 
+                      dataKey: 'itemName', 
+                      label: 'Menu Items',
+                      scaleType: 'band'
+                    }]}
+                    yAxis={[
+                      { 
+                        dataKey: 'costPrice', 
+                        label: 'Cost Price (₹)',
+                        scaleType: 'linear'
+                      },
+                      { 
+                        dataKey: 'soldPrice', 
+                        label: 'Sold Price (₹)',
+                        scaleType: 'linear'
+                      }
+                    ]}
+                    series={[
+                      { 
+                        dataKey: 'costPrice', 
+                        label: 'Cost Price (₹)', 
+                        color: '#ff9800',
+                        yAxisKey: 'costPrice'
+                      },
+                      { 
+                        dataKey: 'soldPrice', 
+                        label: 'Sold Price (₹)', 
+                        color: '#2196f3',
+                        yAxisKey: 'soldPrice'
+                      }
+                    ]}
+                    height={400}
+                    grid={{ vertical: true, horizontal: true }}
+                  />
+                ) : (<Alert severity="info">No data for chart</Alert>)}
+              </Paper>
+            </Grid>
+            <Grid item xs={12} md={4}>
+              <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 3 }}>
+                <Typography variant="h6" gutterBottom>Menu Items Summary</Typography>
+                {filteredData.length > 0 ? (
+                  <Box sx={{ p: 2, backgroundColor: theme.palette.mode === 'dark' ? theme.palette.grey[800] : theme.palette.grey[50], borderRadius: 2 }}>
+                    <Stack spacing={2}>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">Total Menu Items</Typography>
+                        <Typography variant="h4" fontWeight="bold" color="primary.main">
+                          {filteredData.length}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">Average Cost Price</Typography>
+                        <Typography variant="h5" fontWeight="medium" color="warning.main">
+                          ₹{filteredData.length > 0 
+                            ? (filteredData.reduce((sum, item) => sum + (parseFloat(item.averageCostPrice || item.totalCost) || 0), 0) / filteredData.length).toFixed(2)
+                            : 0}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">Average Sold Price</Typography>
+                        <Typography variant="h5" fontWeight="medium" color="success.main">
+                          ₹{filteredData.length > 0 
+                            ? (filteredData.reduce((sum, item) => sum + (parseFloat(item.averagePrice) || 0), 0) / filteredData.length).toFixed(2)
+                            : 0}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">Average Profit Margin</Typography>
+                        <Typography variant="h5" fontWeight="medium" color="info.main">
+                          {filteredData.length > 0 
+                            ? (filteredData.reduce((sum, item) => sum + (parseFloat(item.profitMargin) || 0), 0) / filteredData.length).toFixed(1)
+                            : 0}%
+                        </Typography>
+                      </Box>
+                      <Divider />
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                          Profit Distribution
+                        </Typography>
+                        <Stack spacing={1}>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#4caf50' }} />
+                              <Typography variant="body2">High Profit (&gt;50%)</Typography>
+                            </Box>
+                            <Typography variant="body2" fontWeight="medium">
+                              {filteredData.filter(item => parseFloat(item.profitMargin) > 50).length}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#ff9800' }} />
+                              <Typography variant="body2">Medium Profit (20-50%)</Typography>
+                            </Box>
+                            <Typography variant="body2" fontWeight="medium">
+                              {filteredData.filter(item => {
+                                const profit = parseFloat(item.profitMargin);
+                                return profit > 20 && profit <= 50;
+                              }).length}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#f44336' }} />
+                              <Typography variant="body2">Low Profit (&le;20%)</Typography>
+                            </Box>
+                            <Typography variant="body2" fontWeight="medium">
+                              {filteredData.filter(item => parseFloat(item.profitMargin) <= 20).length}
+                            </Typography>
+                          </Box>
+                        </Stack>
+                      </Box>
+                    </Stack>
+                  </Box>
+                ) : (
+                  <Alert severity="info">No data available</Alert>
+                )}
+              </Paper>
+            </Grid>
+          </>
         )}
         {viewMode === 'customers' && (
           <Grid item xs={12} md={12}>

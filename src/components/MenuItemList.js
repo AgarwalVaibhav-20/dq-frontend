@@ -107,7 +107,7 @@ const MenuItemList = ({
       field: 'menuId',
       headerName: 'Menu Id',
       flex: 1.5,
-      minWidth: '150',
+      minWidth: 150,
       hide: isMobile
     },
     {
@@ -183,8 +183,8 @@ const MenuItemList = ({
       ) : (
         <CRow className="g-3">
           {transformedMenuItems.map((item) => (
-            <CCol key={item.id} xs={12}>
-              <CCard className="h-100 shadow-sm">
+            <CCol key={item.id} xs={12} sm={6} md={6}>
+              <CCard className="h-100 shadow-sm border-0" style={{ borderRadius: '12px' }}>
                 <CCardBody className="p-3">
                   <div className="d-flex align-items-start gap-3">
                     {/* Image */}
@@ -195,20 +195,23 @@ const MenuItemList = ({
                           alt={item.itemName}
                           className="rounded"
                           style={{
-                            width: '70px',
-                            height: '70px',
+                            width: '80px',
+                            height: '80px',
                             objectFit: 'cover',
+                            borderRadius: '8px',
+                            boxShadow: '0 2px 8px rgba(0,0,0,0.1)'
                           }}
                         />
                       ) : (
                         <div
                           className="rounded d-flex align-items-center justify-content-center text-muted"
                           style={{
-                            width: '70px',
-                            height: '70px',
+                            width: '80px',
+                            height: '80px',
                             backgroundColor: '#f8f9fa',
                             border: '1px dashed #dee2e6',
                             fontSize: '10px',
+                            borderRadius: '8px'
                           }}
                         >
                           No Image
@@ -219,48 +222,66 @@ const MenuItemList = ({
                     {/* Content */}
                     <div className="flex-grow-1" style={{ minWidth: 0 }}>
                       <div className="d-flex justify-content-between align-items-start mb-2">
-                        <h6 className="mb-1 fw-bold text-truncate" style={{ maxWidth: '150px' }}>{item.itemName}</h6>
-                        <span className="text-success fw-bold flex-shrink-0">₹{item.price}</span>
+                        <h6 className="mb-1 fw-bold text-dark" style={{ 
+                          maxWidth: '150px',
+                          fontSize: '14px',
+                          lineHeight: '1.3'
+                        }}>
+                          {item.itemName}
+                        </h6>
+                        <span className="text-success fw-bold flex-shrink-0" style={{ fontSize: '16px' }}>
+                          ₹{item.price}
+                        </span>
                       </div>
                       
-                      <div className="d-flex flex-column flex-sm-row justify-content-between align-items-start align-items-sm-center gap-2">
-                        <div className="flex-grow-1">
-                          <small className="text-muted">ID: {item.menuId}</small>
-                          <div className="mt-1">
-                            <CFormSwitch
-                              color="primary"
-                              shape="rounded-pill"
-                              size="sm"
-                              checked={item.status === 1}
-                              onChange={() => handleToggleStatus(item)}
-                              label={item.status === 1 ? 'Active' : 'Inactive'}
-                            />
-                          </div>
+                      <div className="mb-2">
+                        <small className="text-muted d-block" style={{ fontSize: '11px' }}>
+                          Menu ID: {item.menuId}
+                        </small>
+                      </div>
+                      
+                      <div className="d-flex flex-column gap-2">
+                        {/* Status Toggle */}
+                        <div className="d-flex align-items-center justify-content-between">
+                          <span className="text-muted" style={{ fontSize: '12px' }}>
+                            Status:
+                          </span>
+                          <CFormSwitch
+                            color="primary"
+                            shape="rounded-pill"
+                            checked={item.status === 1}
+                            onChange={() => handleToggleStatus(item)}
+                            label={item.status === 1 ? 'Active' : 'Inactive'}
+                          />
                         </div>
                         
                         {/* Actions */}
-                        <div className="d-flex gap-1 flex-shrink-0">
+                        <div className="d-flex gap-2 justify-content-end">
                           <CButton
                             color="info"
                             size="sm"
-                            className="px-2"
+                            className="px-3 py-1"
+                            style={{ fontSize: '12px', borderRadius: '6px' }}
                             onClick={() => {
                               setSelectedMenu(item)
                               setEditModalVisible(true)
                             }}
                           >
-                            <CIcon icon={cilPencil} />
+                            <CIcon icon={cilPencil} className="me-1" />
+                            Edit
                           </CButton>
                           <CButton
                             color="danger"
                             size="sm"
-                            className="px-2"
+                            className="px-3 py-1"
+                            style={{ fontSize: '12px', borderRadius: '6px' }}
                             onClick={() => {
                               setSelectedMenu(item)
                               setDeleteModalVisible(true)
                             }}
                           >
-                            <CIcon icon={cilTrash} />
+                            <CIcon icon={cilTrash} className="me-1" />
+                            Delete
                           </CButton>
                         </div>
                       </div>
@@ -276,7 +297,7 @@ const MenuItemList = ({
   )
 
   return (
-    <div style={{ width: '100%', backgroundColor: 'white', minWidth: '600px' }}>
+    <div style={{ width: '100%', backgroundColor: 'white' }}>
       {/* Desktop Table View */}
       <div className="d-none d-lg-block" style={{ width: '100%', minWidth: '600px' }}>
         <DataGrid
@@ -294,6 +315,8 @@ const MenuItemList = ({
           slots={{ Toolbar: CustomToolbar }}
           sx={{
             border: 'none',
+            width: '100%',
+            minHeight: '400px',
             '& .MuiDataGrid-cell': {
               padding: '10px',
             },

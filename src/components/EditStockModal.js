@@ -52,7 +52,7 @@ const EditStockModal = ({
               >
                 <option value="">Select Inventory</option>
                 {inventories?.map((inventory) => (
-                  <option key={inventory.id} value={inventory.id}>
+                  <option key={inventory._id || inventory.id} value={inventory._id || inventory.id}>
                     {inventory.itemName}
                   </option>
                 ))}

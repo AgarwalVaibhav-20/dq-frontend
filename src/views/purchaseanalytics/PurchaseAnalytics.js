@@ -102,6 +102,7 @@ export default function PurchaseAnalytics() {
   const [selectedItemSuppliers, setSelectedItemSuppliers] = useState([]);
   const [selectedItemName, setSelectedItemName] = useState('');
   const [selectedItemUnit, setSelectedItemUnit] = useState('');
+  const [selectedGraphItem, setSelectedGraphItem] = useState(null);
 
   // Fetch data
   useEffect(() => {
@@ -115,16 +116,35 @@ export default function PurchaseAnalytics() {
   useEffect(() => {
     if (inventories.length > 0 && suppliers.length > 0) {
       console.log("Starting inventory data transformation...");
+      console.log("Current Restaurant ID:", restaurantId);
+      console.log("All Inventories:", inventories);
 
-      // Sort inventories by purchasedAt date to get chronological order
-      const sortedInventories = [...inventories].sort((a, b) => {
+      // Filter inventories by restaurant ID first
+      const filteredInventories = inventories.filter(inventory => {
+        const inventoryRestaurantId = inventory.restaurantId || inventory.restaurant;
+        console.log("Inventory Restaurant ID:", inventoryRestaurantId, "Matches:", String(inventoryRestaurantId) === String(restaurantId));
+        return String(inventoryRestaurantId) === String(restaurantId);
+      });
+
+      console.log("Filtered Inventories for Restaurant:", filteredInventories);
+
+      // Filter suppliers by restaurant ID
+      const filteredSuppliers = suppliers.filter(supplier => {
+        const supplierRestaurantId = supplier.restaurantId || supplier.restaurant;
+        return String(supplierRestaurantId) === String(restaurantId);
+      });
+
+      console.log("Filtered Suppliers for Restaurant:", filteredSuppliers);
+
+      // Sort filtered inventories by purchasedAt date to get chronological order
+      const sortedInventories = [...filteredInventories].sort((a, b) => {
         const dateA = new Date(a.stock?.purchasedAt || a.createdAt);
         const dateB = new Date(b.stock?.purchasedAt || b.createdAt);
         return dateA - dateB;
       });
 
       const transformedData = sortedInventories.map((inventory, index) => {
-        const supplier = suppliers.find(s => String(s._id) === String(inventory.supplierId));
+        const supplier = filteredSuppliers.find(s => String(s._id) === String(inventory.supplierId));
 
         // FIXED: Access amount and quantity from stock object
         const currentAmount = inventory.stock?.amount || 0;
@@ -193,17 +213,40 @@ export default function PurchaseAnalytics() {
   useEffect(() => {
     if (menuItems.length > 0 && inventories.length > 0 && suppliers.length > 0) {
       console.log("Starting menu items with ingredients transformation...");
+      console.log("Current Restaurant ID:", restaurantId);
+      console.log("All Menu Items:", menuItems);
 
-      // Sort inventories by purchasedAt date for historical comparison
-      const sortedInventories = [...inventories].sort((a, b) => {
+      // Filter menu items by restaurant ID first
+      const filteredMenuItems = menuItems.filter(menuItem => {
+        const menuRestaurantId = menuItem.restaurantId || menuItem.restaurant;
+        console.log("Menu Restaurant ID:", menuRestaurantId, "Matches:", String(menuRestaurantId) === String(restaurantId));
+        return String(menuRestaurantId) === String(restaurantId);
+      });
+
+      console.log("Filtered Menu Items for Restaurant:", filteredMenuItems);
+
+      // Filter inventories by restaurant ID
+      const filteredInventories = inventories.filter(inventory => {
+        const inventoryRestaurantId = inventory.restaurantId || inventory.restaurant;
+        return String(inventoryRestaurantId) === String(restaurantId);
+      });
+
+      // Filter suppliers by restaurant ID
+      const filteredSuppliers = suppliers.filter(supplier => {
+        const supplierRestaurantId = supplier.restaurantId || supplier.restaurant;
+        return String(supplierRestaurantId) === String(restaurantId);
+      });
+
+      // Sort filtered inventories by purchasedAt date for historical comparison
+      const sortedInventories = [...filteredInventories].sort((a, b) => {
         const dateA = new Date(a.stock?.purchasedAt || a.createdAt);
         const dateB = new Date(b.stock?.purchasedAt || b.createdAt);
         return dateA - dateB;
       });
 
-      const menuItemsWithCosts = menuItems.map(menuItem => {
+      const menuItemsWithCosts = filteredMenuItems.map(menuItem => {
         const ingredients = menuItem.stockItems?.map(stockItem => {
-          const inventory = inventories.find(
+          const inventory = filteredInventories.find(
             inv => String(inv._id) === String(stockItem.stockId)
           );
 
@@ -221,7 +264,7 @@ export default function PurchaseAnalytics() {
             };
           }
 
-          const supplier = suppliers.find(
+          const supplier = filteredSuppliers.find(
             s => String(s._id) === String(inventory.supplierId)
           );
 
@@ -578,7 +621,14 @@ export default function PurchaseAnalytics() {
 
   // Get unique categories based on view mode
   const availableCategories = [...new Set(currentData.map(item => item.category))];
-  const availableSuppliers = suppliers.map(supplier => ({
+  
+  // Filter suppliers by restaurant ID for dropdown
+  const filteredSuppliersForDropdown = suppliers.filter(supplier => {
+    const supplierRestaurantId = supplier.restaurantId || supplier.restaurant;
+    return String(supplierRestaurantId) === String(restaurantId);
+  });
+  
+  const availableSuppliers = filteredSuppliersForDropdown.map(supplier => ({
     id: supplier._id,
     name: supplier.supplierName
   }));
@@ -808,11 +858,11 @@ export default function PurchaseAnalytics() {
                 variant={viewMode === 'inventory' ? 'contained' : 'outlined'}
                 startIcon={<Inventory />}
                 onClick={() => setViewMode('inventory')}
-                fullWidth={{ xs: true, sm: false }}
                 sx={{ 
                   minWidth: { xs: '100%', sm: 'auto' },
                   fontSize: { xs: '0.875rem', sm: '0.875rem' },
-                  py: { xs: 1.5, sm: 1 }
+                  py: { xs: 1.5, sm: 1 },
+                  width: { xs: '100%', sm: 'auto' }
                 }}
               >
                 Inventory Analytics
@@ -821,11 +871,11 @@ export default function PurchaseAnalytics() {
                 variant={viewMode === 'menu' ? 'contained' : 'outlined'}
                 startIcon={<Restaurant />}
                 onClick={() => setViewMode('menu')}
-                fullWidth={{ xs: true, sm: false }}
                 sx={{ 
                   minWidth: { xs: '100%', sm: 'auto' },
                   fontSize: { xs: '0.875rem', sm: '0.875rem' },
-                  py: { xs: 1.5, sm: 1 }
+                  py: { xs: 1.5, sm: 1 },
+                  width: { xs: '100%', sm: 'auto' }
                 }}
               >
                 Menu Item Costs
@@ -838,18 +888,38 @@ export default function PurchaseAnalytics() {
       {/* Summary Cards */}
       <Grid container spacing={3} sx={{ mb: 3 }}>
         <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                {viewMode === 'inventory' ? <ShoppingCart color="primary" /> : <Restaurant color="primary" />}
-                <Box>
-                  <Typography variant="h4">
+          <Card sx={{ 
+            borderRadius: 3, 
+            boxShadow: 3, 
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <CardContent sx={{ 
+              flex: 1, 
+              display: 'flex', 
+              flexDirection: 'column',
+              justifyContent: 'center',
+              minHeight: '120px'
+            }}>
+              <Stack direction="row" alignItems="center" spacing={2} sx={{ height: '100%' }}>
+                {viewMode === 'inventory' ? <ShoppingCart color="primary" size={32} /> : <Restaurant color="primary" size={32} />}
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="h4" sx={{ 
+                    fontWeight: 'bold',
+                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
+                    lineHeight: 1.2
+                  }}>
                     {viewMode === 'inventory'
                       ? `₹${filteredData.reduce((sum, item) => sum + item.amount, 0).toLocaleString()}`
                       : `₹${filteredData.reduce((sum, item) => sum + item.totalIngredientCost, 0).toLocaleString()}`
                     }
                   </Typography>
-                  <Typography color="text.secondary">
+                  <Typography color="text.secondary" sx={{ 
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    mt: 0.5
+                  }}>
                     {viewMode === 'inventory' ? 'Total Purchases' : 'Total Ingredient Cost'}
                   </Typography>
                 </Box>
@@ -858,18 +928,38 @@ export default function PurchaseAnalytics() {
           </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <Inventory color="secondary" />
-                <Box>
-                  <Typography variant="h4">
+          <Card sx={{ 
+            borderRadius: 3, 
+            boxShadow: 3, 
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <CardContent sx={{ 
+              flex: 1, 
+              display: 'flex', 
+              flexDirection: 'column',
+              justifyContent: 'center',
+              minHeight: '120px'
+            }}>
+              <Stack direction="row" alignItems="center" spacing={2} sx={{ height: '100%' }}>
+                <Inventory color="secondary" size={32} />
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="h4" sx={{ 
+                    fontWeight: 'bold',
+                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
+                    lineHeight: 1.2
+                  }}>
                     {viewMode === 'inventory'
                       ? filteredData.reduce((sum, item) => sum + item.quantity, 0)
                       : filteredData.length
                     }
                   </Typography>
-                  <Typography color="text.secondary">
+                  <Typography color="text.secondary" sx={{ 
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    mt: 0.5
+                  }}>
                     {viewMode === 'inventory' ? 'Total Quantity' : 'Menu Items'}
                   </Typography>
                 </Box>
@@ -878,18 +968,38 @@ export default function PurchaseAnalytics() {
           </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <Kitchen color="success" />
-                <Box>
-                  <Typography variant="h4">
+          <Card sx={{ 
+            borderRadius: 3, 
+            boxShadow: 3, 
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <CardContent sx={{ 
+              flex: 1, 
+              display: 'flex', 
+              flexDirection: 'column',
+              justifyContent: 'center',
+              minHeight: '120px'
+            }}>
+              <Stack direction="row" alignItems="center" spacing={2} sx={{ height: '100%' }}>
+                <Kitchen color="success" size={32} />
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="h4" sx={{ 
+                    fontWeight: 'bold',
+                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
+                    lineHeight: 1.2
+                  }}>
                     {viewMode === 'inventory'
                       ? availableCategories.length
                       : `₹${filteredData.reduce((sum, item) => sum + parseFloat(item.totalIngredientCost || 0), 0).toFixed(0)}`
                     }
                   </Typography>
-                  <Typography color="text.secondary">
+                  <Typography color="text.secondary" sx={{ 
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    mt: 0.5
+                  }}>
                     {viewMode === 'inventory' ? 'Categories' : 'Total Ingredient Cost'}
                   </Typography>
                 </Box>
@@ -898,18 +1008,38 @@ export default function PurchaseAnalytics() {
           </Card>
         </Grid>
         <Grid item xs={12} sm={6} md={3}>
-          <Card sx={{ borderRadius: 3, boxShadow: 3 }}>
-            <CardContent>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <TrendingUp color="error" />
-                <Box>
-                  <Typography variant="h4">
+          <Card sx={{ 
+            borderRadius: 3, 
+            boxShadow: 3, 
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column'
+          }}>
+            <CardContent sx={{ 
+              flex: 1, 
+              display: 'flex', 
+              flexDirection: 'column',
+              justifyContent: 'center',
+              minHeight: '120px'
+            }}>
+              <Stack direction="row" alignItems="center" spacing={2} sx={{ height: '100%' }}>
+                <TrendingUp color="error" size={32} />
+                <Box sx={{ flex: 1 }}>
+                  <Typography variant="h4" sx={{ 
+                    fontWeight: 'bold',
+                    fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
+                    lineHeight: 1.2
+                  }}>
                     {viewMode === 'inventory'
                       ? filteredData.filter(item => parseFloat(item.rateChange) > 0).length
                       : filteredData.filter(item => parseFloat(item.profitPercentage) > 20).length
                     }
                   </Typography>
-                  <Typography color="text.secondary">
+                  <Typography color="text.secondary" sx={{ 
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    mt: 0.5
+                  }}>
                     {viewMode === 'inventory' ? 'Price Increases' : 'Profitable Items'}
                   </Typography>
                 </Box>
@@ -1091,14 +1221,40 @@ export default function PurchaseAnalytics() {
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                 .map((item, idx) => (
                   <React.Fragment key={item.id}>
-                    <TableRow sx={{
-                      backgroundColor: isDark ? (idx % 2 === 0 ? theme.palette.grey[900] : theme.palette.grey[800]) : (idx % 2 === 0 ? "#f9f9f9" : "white"),
-                      "&:hover": { backgroundColor: isDark ? theme.palette.action.hover : "#e3f2fd" },
-                    }}>
+                    <TableRow 
+                      sx={{
+                        backgroundColor: isDark ? (idx % 2 === 0 ? theme.palette.grey[900] : theme.palette.grey[800]) : (idx % 2 === 0 ? "#f9f9f9" : "white"),
+                        cursor: 'pointer',
+                        border: selectedGraphItem?.id === item.id ? `2px solid ${theme.palette.primary.main}` : 'none',
+                        '&:hover': {
+                          backgroundColor: isDark ? theme.palette.action.hover : "#e3f2fd",
+                          transform: 'scale(1.01)',
+                          transition: 'all 0.2s ease-in-out'
+                        }
+                      }}
+                      onClick={() => {
+                        if (viewMode === 'inventory') {
+                          setSelectedGraphItem({
+                            id: item.id,
+                            name: item.inventoryName,
+                            amount: item.amount,
+                            quantity: item.quantity,
+                            currentRate: item.currentRate,
+                            previousRate: item.previousRate,
+                            rateChange: item.rateChange
+                          });
+                        }
+                      }}
+                    >
                       {viewMode === 'inventory' ? (
                         <>
                           <TableCell>
-                            <Typography variant="body2" fontWeight="medium">{item.inventoryName}</Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Typography variant="body2" fontWeight="medium">{item.inventoryName}</Typography>
+                              {selectedGraphItem?.id === item.id && (
+                                <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#ff5722' }} />
+                              )}
+                            </Box>
                           </TableCell>
                           <TableCell>
                             <Typography variant="body2" color="text.secondary">{item.inventoryId}</Typography>
@@ -1314,27 +1470,100 @@ export default function PurchaseAnalytics() {
       {/* Charts Section - Only for inventory view */}
       {viewMode === 'inventory' && (
         <Grid container spacing={3} sx={{ mt: 3 }}>
-          {/* Price Comparison Chart */}
+          {/* Interactive Amount vs Quantity Chart */}
           <Grid item xs={12} md={8}>
             <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Price Trend Comparison (Previous vs Current Rates)
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography variant="h6">
+                  Inventory Analytics - Amount vs Quantity
+                </Typography>
+                {selectedGraphItem && (
+                  <Stack direction="row" spacing={1} alignItems="center">
+                    <Chip 
+                      label={`Selected: ${selectedGraphItem.name}`} 
+                      color="primary" 
+                      variant="filled"
+                      sx={{ fontWeight: 600 }}
+                    />
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={() => setSelectedGraphItem(null)}
+                      sx={{ minWidth: 'auto', px: 1 }}
+                    >
+                      Clear
+                    </Button>
+                  </Stack>
+                )}
+              </Box>
               {filteredData.length > 0 ? (
-                <LineChart
-                  dataset={filteredData.map((item, index) => ({
-                    x: index + 1,
-                    previousRate: parseFloat(item.previousRate),
-                    currentRate: parseFloat(item.currentRate),
-                    label: item.inventoryName
-                  }))}
-                  xAxis={[{ dataKey: "x", label: "Purchase No." }]}
+                <BarChart
+                  dataset={filteredData.map((item, index) => {
+                    const dataPoint = {
+                      id: item.id,
+                      amount: parseFloat(item.amount) || 0,
+                      quantity: parseFloat(item.quantity) || 0,
+                      name: item.inventoryName,
+                      currentRate: parseFloat(item.currentRate) || 0,
+                      previousRate: parseFloat(item.previousRate) || 0,
+                      rateChange: parseFloat(item.rateChange) || 0,
+                      isSelected: selectedGraphItem?.id === item.id
+                    };
+                    console.log('Graph Data Point:', dataPoint);
+                    return dataPoint;
+                  })}
+                  xAxis={[{ 
+                    dataKey: "name", 
+                    label: "Items",
+                    scaleType: 'band'
+                  }]}
+                  yAxis={[{ 
+                    dataKey: "amount", 
+                    label: "Amount (₹)",
+                    scaleType: 'linear'
+                  }]}
                   series={[
-                    { dataKey: "previousRate", label: "Previous Rate (₹)", color: "#ff9800" },
-                    { dataKey: "currentRate", label: "Current Rate (₹)", color: "#2196f3" }
+                    { 
+                      dataKey: "amount", 
+                      label: "Amount (₹)", 
+                      color: "#2196f3",
+                      highlightScope: { faded: 'global', highlighted: 'item' }
+                    },
+                    { 
+                      dataKey: "quantity", 
+                      label: "Quantity", 
+                      color: "#ff9800",
+                      highlightScope: { faded: 'global', highlighted: 'item' }
+                    }
                   ]}
+                  colors={filteredData.map((item, index) => {
+                    if (selectedGraphItem?.id === item.id) {
+                      return '#ff5722'; // Orange for selected
+                    }
+                    // Colorful palette for bars
+                    const colors = [
+                      '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3',
+                      '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a',
+                      '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722',
+                      '#795548', '#607d8b', '#9e9e9e'
+                    ];
+                    return colors[index % colors.length];
+                  })}
                   height={400}
                   grid={{ vertical: true, horizontal: true }}
+                  onItemClick={(event, itemData) => {
+                    if (itemData) {
+                      setSelectedGraphItem({
+                        id: itemData.id,
+                        name: itemData.name,
+                        amount: itemData.amount,
+                        quantity: itemData.quantity,
+                        currentRate: itemData.currentRate,
+                        previousRate: itemData.previousRate,
+                        rateChange: itemData.rateChange
+                      });
+                    }
+                  }}
                 />
               ) : (
                 <Alert severity="info">No data available for the selected filters</Alert>
@@ -1342,34 +1571,114 @@ export default function PurchaseAnalytics() {
             </Paper>
           </Grid>
 
-          {/* Category Distribution */}
+          {/* Selected Item Details or Category Distribution */}
           <Grid item xs={12} md={4}>
             <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Purchases by Category
-              </Typography>
-              {filteredData.length > 0 ? (
-                <PieChart
-                  series={[
-                    {
-                      data: Object.entries(
-                        filteredData.reduce((acc, item) => {
-                          acc[item.category] = (acc[item.category] || 0) + item.amount;
-                          return acc;
-                        }, {})
-                      ).map(([category, amount]) => ({
-                        id: category,
-                        value: amount,
-                        label: category,
-                      })),
-                      highlightScope: { faded: 'global', highlighted: 'item' },
-                      faded: { additionalRadius: -30, color: 'gray' },
-                    },
-                  ]}
-                  height={400}
-                />
+              {selectedGraphItem ? (
+                <>
+                  <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#ff5722' }} />
+                    Selected Item Details
+                  </Typography>
+                  <Box sx={{ p: 2, backgroundColor: isDark ? theme.palette.grey[800] : theme.palette.grey[50], borderRadius: 2 }}>
+                    <Stack spacing={2}>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">Item Name</Typography>
+                        <Typography variant="body1" fontWeight="medium">{selectedGraphItem.name}</Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">Amount</Typography>
+                        <Typography variant="body1" fontWeight="medium" color="primary.main">
+                          ₹{selectedGraphItem.amount}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">Quantity</Typography>
+                        <Typography variant="body1" fontWeight="medium" color="secondary.main">
+                          {selectedGraphItem.quantity}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">Current Rate</Typography>
+                        <Typography variant="body1" fontWeight="medium" color="success.main">
+                          ₹{selectedGraphItem.currentRate}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">Previous Rate</Typography>
+                        <Typography variant="body1" fontWeight="medium">
+                          ₹{selectedGraphItem.previousRate}
+                        </Typography>
+                      </Box>
+                      <Box>
+                        <Typography variant="subtitle2" color="text.secondary">Rate Change</Typography>
+                        <Chip
+                          label={`${selectedGraphItem.rateChange > 0 ? '+' : ''}${selectedGraphItem.rateChange}%`}
+                          color={getRateChangeColor(selectedGraphItem.rateChange)}
+                          variant="filled"
+                          size="small"
+                          icon={selectedGraphItem.rateChange > 0 ? <TrendingUp /> : <TrendingDown />}
+                          sx={{ fontWeight: 600 }}
+                        />
+                      </Box>
+                    </Stack>
+                  </Box>
+                </>
               ) : (
-                <Alert severity="info">No data available</Alert>
+                <>
+                  <Typography variant="h6" gutterBottom>
+                    Items by Quantity
+                  </Typography>
+                  {filteredData.length > 0 ? (
+                    <PieChart
+                      series={[
+                        {
+                          data: filteredData.map((item, index) => {
+                            const dataPoint = {
+                              id: item.id,
+                              value: parseFloat(item.quantity) || 0,
+                              label: item.inventoryName,
+                            };
+                            console.log('Pie Chart Data Point:', dataPoint);
+                            return dataPoint;
+                          }),
+                          highlightScope: { faded: 'global', highlighted: 'item' },
+                          faded: { additionalRadius: -30, color: 'gray' },
+                        },
+                      ]}
+                      colors={[
+                        '#e91e63', '#9c27b0', '#673ab7', '#3f51b5', '#2196f3',
+                        '#03a9f4', '#00bcd4', '#009688', '#4caf50', '#8bc34a',
+                        '#cddc39', '#ffeb3b', '#ffc107', '#ff9800', '#ff5722',
+                        '#795548', '#607d8b', '#9e9e9e'
+                      ]}
+                      sx={{
+                        '& .MuiPieArc-root': {
+                          fill: '#2196f3 !important'
+                        }
+                      }}
+                      height={400}
+                      onItemClick={(event, itemData) => {
+                        if (itemData) {
+                          const selectedItem = filteredData.find(item => item.id === itemData.id);
+                          if (selectedItem) {
+                            setSelectedGraphItem({
+                              id: selectedItem.id,
+                              name: selectedItem.inventoryName,
+                              amount: selectedItem.amount,
+                              quantity: selectedItem.quantity,
+                              currentRate: selectedItem.currentRate,
+                              previousRate: selectedItem.previousRate,
+                              rateChange: selectedItem.rateChange
+                            });
+                          }
+                        }
+                      }}
+                    />
+                  ) : (
+                    <Alert severity="info">No data available</Alert>
+                  )}
+                </>
               )}
             </Paper>
           </Grid>
@@ -1379,27 +1688,69 @@ export default function PurchaseAnalytics() {
       {/* Charts Section - Only for menu view */}
       {viewMode === 'menu' && (
         <Grid container spacing={3} sx={{ mt: 3 }}>
-          {/* Profit Margin Chart */}
+          {/* Stock vs Ingredient Cost Bar Chart */}
           <Grid item xs={12} md={8}>
             <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Menu Items Profit Analysis
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <BarChart3 size={24} />
+                Menu Items: Stock vs Ingredient Cost Analysis
               </Typography>
               {filteredData.length > 0 ? (
-                <LineChart
+                <BarChart
                   dataset={filteredData.map((item, index) => ({
+                    id: item.id,
                     menuItem: item.itemName,
-                    ingredientCost: parseFloat(item.totalIngredientCost),
-                    profit: parseFloat(item.profitMargin),
+                    stock: parseFloat(item.stock) || 0,
+                    ingredientCost: parseFloat(item.totalIngredientCost) || 0,
+                    profitMargin: parseFloat(item.profitMargin) || 0,
+                    profitPercentage: parseFloat(item.profitPercentage) || 0,
                     index: index + 1
                   }))}
-                  xAxis={[{ dataKey: "index", label: "Menu Item No." }]}
-                  series={[
-                    { dataKey: "ingredientCost", label: "Ingredient Cost (₹)", color: "#f44336" },
-                    { dataKey: "profit", label: "Profit Margin (₹)", color: "#2196f3" }
+                  xAxis={[{ 
+                    dataKey: "menuItem", 
+                    label: "Menu Items",
+                    scaleType: 'band'
+                  }]}
+                  yAxis={[
+                    { 
+                      dataKey: "stock", 
+                      label: "Stock Quantity",
+                      scaleType: 'linear'
+                    },
+                    { 
+                      dataKey: "ingredientCost", 
+                      label: "Ingredient Cost (₹)",
+                      scaleType: 'linear'
+                    }
                   ]}
+                  series={[
+                    { 
+                      dataKey: "stock", 
+                      label: "Stock Quantity", 
+                      color: "#4caf50",
+                      yAxisKey: "stock"
+                    },
+                    { 
+                      dataKey: "ingredientCost", 
+                      label: "Ingredient Cost (₹)", 
+                      color: "#ff9800",
+                      yAxisKey: "ingredientCost"
+                    }
+                  ]}
+                  colors={filteredData.map((item, index) => {
+                    // Color based on profit percentage
+                    const profit = parseFloat(item.profitPercentage) || 0;
+                    if (profit > 50) return '#4caf50'; // Green for high profit
+                    if (profit > 20) return '#ff9800'; // Orange for medium profit
+                    return '#f44336'; // Red for low profit
+                  })}
                   height={400}
                   grid={{ vertical: true, horizontal: true }}
+                  onItemClick={(event, itemData) => {
+                    if (itemData) {
+                      console.log('Clicked menu item:', itemData);
+                    }
+                  }}
                 />
               ) : (
                 <Alert severity="info">No data available for the selected filters</Alert>
@@ -1407,45 +1758,82 @@ export default function PurchaseAnalytics() {
             </Paper>
           </Grid>
 
-          {/* Profit Distribution */}
+          {/* Menu Item Details Summary */}
           <Grid item xs={12} md={4}>
             <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 3 }}>
-              <Typography variant="h6" gutterBottom>
-                Profit Distribution
+              <Typography variant="h6" gutterBottom sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <UtensilsCrossed size={20} />
+                Menu Items Summary
               </Typography>
               {filteredData.length > 0 ? (
-                <PieChart
-                  series={[
-                    {
-                      data: [
-                        {
-                          id: 'high_profit',
-                          value: filteredData.filter(item => parseFloat(item.profitPercentage) > 50).length,
-                          label: 'High Profit (>50%)',
-                          color: '#4caf50'
-                        },
-                        {
-                          id: 'medium_profit',
-                          value: filteredData.filter(item => {
-                            const profit = parseFloat(item.profitPercentage);
-                            return profit > 20 && profit <= 50;
-                          }).length,
-                          label: 'Medium Profit (20-50%)',
-                          color: '#ff9800'
-                        },
-                        {
-                          id: 'low_profit',
-                          value: filteredData.filter(item => parseFloat(item.profitPercentage) <= 20).length,
-                          label: 'Low Profit (≤20%)',
-                          color: '#f44336'
-                        }
-                      ],
-                      highlightScope: { faded: 'global', highlighted: 'item' },
-                      faded: { additionalRadius: -30, color: 'gray' },
-                    },
-                  ]}
-                  height={400}
-                />
+                <Box sx={{ p: 2, backgroundColor: isDark ? theme.palette.grey[800] : theme.palette.grey[50], borderRadius: 2 }}>
+                  <Stack spacing={2}>
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary">Total Menu Items</Typography>
+                      <Typography variant="h4" fontWeight="bold" color="primary.main">
+                        {filteredData.length}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary">Total Stock</Typography>
+                      <Typography variant="h5" fontWeight="medium" color="success.main">
+                        {filteredData.reduce((sum, item) => sum + (parseFloat(item.stock) || 0), 0)}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary">Total Ingredient Cost</Typography>
+                      <Typography variant="h5" fontWeight="medium" color="warning.main">
+                        ₹{filteredData.reduce((sum, item) => sum + (parseFloat(item.totalIngredientCost) || 0), 0).toFixed(2)}
+                      </Typography>
+                    </Box>
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary">Average Profit %</Typography>
+                      <Typography variant="h5" fontWeight="medium" color="info.main">
+                        {filteredData.length > 0 
+                          ? (filteredData.reduce((sum, item) => sum + (parseFloat(item.profitPercentage) || 0), 0) / filteredData.length).toFixed(1)
+                          : 0}%
+                      </Typography>
+                    </Box>
+                    <Divider />
+                    <Box>
+                      <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                        Profit Distribution
+                      </Typography>
+                      <Stack spacing={1}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#4caf50' }} />
+                              <Typography variant="body2">High Profit (&gt;50%)</Typography>
+                          </Box>
+                          <Typography variant="body2" fontWeight="medium">
+                            {filteredData.filter(item => parseFloat(item.profitPercentage) > 50).length}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#ff9800' }} />
+                            <Typography variant="body2">Medium Profit (20-50%)</Typography>
+                          </Box>
+                          <Typography variant="body2" fontWeight="medium">
+                            {filteredData.filter(item => {
+                              const profit = parseFloat(item.profitPercentage);
+                              return profit > 20 && profit <= 50;
+                            }).length}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{ width: 12, height: 12, borderRadius: '50%', backgroundColor: '#f44336' }} />
+                            <Typography variant="body2">Low Profit (&le;20%)</Typography>
+                          </Box>
+                          <Typography variant="body2" fontWeight="medium">
+                            {filteredData.filter(item => parseFloat(item.profitPercentage) <= 20).length}
+                          </Typography>
+                        </Box>
+                      </Stack>
+                    </Box>
+                  </Stack>
+                </Box>
               ) : (
                 <Alert severity="info">No data available</Alert>
               )}

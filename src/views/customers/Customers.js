@@ -4,7 +4,7 @@ import { DataGrid } from '@mui/x-data-grid'
 import { fetchCustomers, deleteCustomer, addCustomer, updateCustomer, setSelectedCustomerType, updateCustomerFrequency } from '../../redux/slices/customerSlice'
 import { CButton, CSpinner, CModal, CModalHeader, CModalBody, CModalFooter, CForm, CFormInput, CFormTextarea, CFormLabel, CAlert, CFormSelect, CDropdown, CDropdownToggle, CDropdownMenu, CDropdownItem, CFormCheck } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilEnvelopeOpen, cilChatBubble, cilTrash, cilPlus, cilFilter, cilPencil, cilOptions } from '@coreui/icons'
+import { cilEnvelopeOpen, cilChatBubble, cilTrash, cilPlus, cilFilter, cilPencil, cilOptions, cilPeople } from '@coreui/icons'
 import CustomToolbar from '../../utils/CustomToolbar'
 import { sendBulkEmail, resetBulkEmailStatus } from '../../redux/slices/SendBulkEmailSlice'
 import { useMediaQuery } from '@mui/material'
@@ -426,58 +426,54 @@ const Customer = () => {
     {
       field: 'sno',
       headerName: 'S.No.',
-      flex: isMobile ? undefined : 0.5,
-      minWidth: isMobile ? 80 : undefined,
-      headerClassName: 'header-style',
-      valueGetter: (params) => params.row.sno,
+      width: isMobile ? 80 : 100,
+      headerAlign: 'center',
+      align: 'center',
+      sortable: false,
+      filterable: false,
     },
     {
       field: 'name',
-      headerName: 'Name',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
-      headerClassName: 'header-style',
-      valueGetter: (params) => params.row.name || 'N/A',
+      headerName: 'Customer Name',
+      width: isMobile ? 150 : 200,
+      headerAlign: 'left',
+      align: 'left',
     },
     {
       field: 'email',
-      headerName: 'Email',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
-      headerClassName: 'header-style',
-      valueGetter: (params) => params.row.email || 'N/A',
+      headerName: 'Email Address',
+      width: isMobile ? 180 : 250,
+      headerAlign: 'left',
+      align: 'left',
     },
     {
       field: 'phoneNumber',
       headerName: 'Phone Number',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
-      headerClassName: 'header-style',
-      valueGetter: (params) => params.row.phoneNumber || 'N/A',
+      width: isMobile ? 140 : 180,
+      headerAlign: 'center',
+      align: 'center',
     },
     {
       field: 'address',
       headerName: 'Address',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 150 : undefined,
-      headerClassName: 'header-style',
-      valueGetter: (params) => params.row.address || 'N/A',
+      width: isMobile ? 150 : 200,
+      headerAlign: 'left',
+      align: 'left',
     },
     {
       field: 'frequency',
-      headerName: 'Frequency',
-      flex: isMobile ? undefined : 0.8,
-      minWidth: isMobile ? 100 : undefined,
-      headerClassName: 'header-style',
-      valueGetter: (params) => params.row.frequency || 0,
+      headerName: 'Visit Count',
+      width: isMobile ? 100 : 120,
+      headerAlign: 'center',
+      align: 'center',
+      type: 'number',
     },
     {
       field: 'dynamicCustomerType',
       headerName: 'Customer Type',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 120 : undefined,
-      headerClassName: 'header-style',
-      valueGetter: (params) => params.row.dynamicCustomerType || 'FirstTimer',
+      width: isMobile ? 120 : 150,
+      headerAlign: 'center',
+      align: 'center',
       renderCell: (params) => {
         const type = params.row.dynamicCustomerType || 'FirstTimer'
         const getTypeColor = (type) => {
@@ -498,7 +494,10 @@ const Customer = () => {
               padding: '4px 8px',
               borderRadius: '12px',
               fontSize: '0.75rem',
-              fontWeight: '500'
+              fontWeight: '500',
+              display: 'inline-block',
+              minWidth: '80px',
+              textAlign: 'center'
             }}
           >
             {type}
@@ -508,40 +507,45 @@ const Customer = () => {
     },
     {
       field: 'totalSpent',
-      headerName: 'Total Spent',
-      flex: isMobile ? undefined : 0.8,
-      minWidth: isMobile ? 100 : undefined,
-      headerClassName: 'header-style',
-      valueGetter: (params) => `₹${params.row.totalSpent || 0}`,
+      headerName: 'Total Spent (₹)',
+      width: isMobile ? 120 : 150,
+      headerAlign: 'right',
+      align: 'right',
+      type: 'number',
+      renderCell: (params) => {
+        const amount = params.row.totalSpent || 0;
+        return (
+          <span style={{ fontWeight: 'bold', color: '#198754' }}>
+            ₹{amount.toLocaleString()}
+          </span>
+        );
+      },
     },
     {
       field: 'actions',
       headerName: 'Actions',
-      flex: isMobile ? undefined : 2,
-      minWidth: isMobile ? 280 : 300,
-      headerClassName: 'header-style',
+      width: isMobile ? 280 : 350,
+      headerAlign: 'center',
+      align: 'center',
       sortable: false,
       filterable: false,
       renderCell: (params) => {
         const { email, phoneNumber, _id } = params.row;
 
         return (
-          <div className='relative'
+          <div className='d-flex gap-2 justify-content-center align-items-center'
             style={{
-              display: 'flex',
-              gap: '4px',
               flexWrap: 'nowrap',
-              alignItems: 'center',
               overflow: 'visible',
               zIndex: 9999,
             }}
           >
             <CButton color="primary" size="sm" onClick={() => sendEmail(email)}>
-              <CIcon icon={cilEnvelopeOpen} /> Email
+              <CIcon icon={cilEnvelopeOpen} className="me-1" /> Email
             </CButton>
 
             <CButton color="success" size="sm" onClick={() => sendWhatsApp(phoneNumber)}>
-              <CIcon icon={cilChatBubble} /> WhatsApp
+              <CIcon icon={cilChatBubble} className="me-1" /> WhatsApp
             </CButton>
 
             <CDropdown variant="btn-group">
@@ -563,7 +567,6 @@ const Customer = () => {
               </Portal>
             </CDropdown>
           </div>
-
         )
       },
     }
@@ -611,40 +614,206 @@ const Customer = () => {
           <CSpinner color="primary" variant="grow" />
         </div>
       ) : (
-        <div className="bg-white rounded-xl shadow-sm p-2 sm:p-4">
-          <DataGrid
-            autoHeight
-            rows={filteredCustomers?.map((customer, index) => ({
-              ...customer,
-              sno: index + 1,
-              membership: customer.membership || '',
-            }))}
-            columns={columns}
-            getRowId={(row) => row.id || row._id || Math.random()}
-            pageSize={10}
-            rowsPerPageOptions={[10]}
-            slots={{ Toolbar: CustomToolbar }}
-            sx={{
-              '& .MuiDataGrid-columnHeaders': {
-                backgroundColor: '#f9fafb',
-                fontWeight: 'bold',
-                fontSize: '1rem',
-              },
-              '& .MuiDataGrid-cell': {
-                fontSize: '0.95rem',
-                padding: '10px',
-              },
-              '@media (max-width: 640px)': {
-                '& .MuiDataGrid-columnHeaderTitle': {
-                  fontSize: '0.8rem',
+        <>
+          {/* Desktop View - DataGrid */}
+          <div className="bg-white rounded-xl shadow-sm p-2 sm:p-4 hidden sm:block">
+            <DataGrid
+              autoHeight
+              rows={filteredCustomers?.map((customer, index) => ({
+                ...customer,
+                sno: index + 1,
+                membership: customer.membership || '',
+              }))}
+              columns={columns}
+              getRowId={(row) => row.id || row._id || Math.random()}
+              pageSize={10}
+              rowsPerPageOptions={[10, 25, 50]}
+              slots={{ Toolbar: CustomToolbar }}
+              disableColumnMenu={false}
+              disableColumnFilter={false}
+              disableColumnSelector={false}
+              disableDensitySelector={false}
+              columnHeaderHeight={60}
+              rowHeight={60}
+              headerHeight={60}
+              sx={{
+                '& .MuiDataGrid-columnHeaders': {
+                  backgroundColor: '#f8f9fa',
+                  fontWeight: 'bold',
+                  fontSize: '0.95rem',
+                  borderBottom: '2px solid #dee2e6',
+                  '& .MuiDataGrid-columnHeaderTitle': {
+                    fontWeight: 'bold',
+                    fontSize: '0.95rem',
+                    color: '#495057',
+                    textOverflow: 'unset',
+                    whiteSpace: 'normal',
+                    lineHeight: 1.2,
+                  },
+                  '& .MuiDataGrid-columnHeaderTitleContainer': {
+                    justifyContent: 'center',
+                  }
                 },
                 '& .MuiDataGrid-cell': {
-                  fontSize: '0.75rem',
+                  fontSize: '0.9rem',
+                  padding: '12px 8px',
+                  borderBottom: '1px solid #e9ecef',
+                  '&:focus': {
+                    outline: 'none',
+                  }
                 },
-              },
-            }}
-          />
-        </div>
+                '& .MuiDataGrid-row': {
+                  '&:hover': {
+                    backgroundColor: '#f8f9fa',
+                  },
+                  '&:nth-of-type(even)': {
+                    backgroundColor: '#fafafa',
+                  }
+                },
+                '& .MuiDataGrid-columnHeader': {
+                  '&:focus': {
+                    outline: 'none',
+                  }
+                },
+              }}
+            />
+          </div>
+
+          {/* Mobile View - Cards */}
+          <div className="block sm:hidden space-y-3">
+            {filteredCustomers?.map((customer, index) => {
+              const customerType = customer.dynamicCustomerType || 'FirstTimer';
+              const getTypeColor = (type) => {
+                switch (type) {
+                  case 'FirstTimer': return '#6c757d'
+                  case 'Corporate': return '#0d6efd'
+                  case 'Regular': return '#198754'
+                  case 'Lost Customer': return '#dc3545'
+                  case 'High Spender': return '#fd7e14'
+                  default: return '#6c757d'
+                }
+              }
+
+              return (
+                <div key={customer._id || customer.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+                  {/* Header with Customer Name and Type */}
+                  <div className="flex justify-between items-start mb-3">
+                    <div className="flex-1">
+                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
+                        {customer.name || 'N/A'}
+                      </h3>
+                      <span
+                        className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
+                        style={{ backgroundColor: getTypeColor(customerType) }}
+                      >
+                        {customerType}
+                      </span>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-sm text-gray-500">#{index + 1}</span>
+                    </div>
+                  </div>
+
+                  {/* Customer Details */}
+                  <div className="space-y-2 mb-4">
+                    {customer.email && (
+                      <div className="flex items-center">
+                        <CIcon icon={cilEnvelopeOpen} className="text-gray-400 me-2" size="sm" />
+                        <span className="text-sm text-gray-600">{customer.email}</span>
+                      </div>
+                    )}
+                    
+                    {customer.phoneNumber && (
+                      <div className="flex items-center">
+                        <CIcon icon={cilChatBubble} className="text-gray-400 me-2" size="sm" />
+                        <span className="text-sm text-gray-600">{customer.phoneNumber}</span>
+                      </div>
+                    )}
+                    
+                    {customer.address && (
+                      <div className="flex items-start">
+                        <span className="text-sm text-gray-600 flex-1">{customer.address}</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Stats Row */}
+                  <div className="flex justify-between items-center mb-4 text-sm">
+                    <div className="text-center">
+                      <div className="font-semibold text-gray-900">{customer.frequency || 0}</div>
+                      <div className="text-gray-500">Visits</div>
+                    </div>
+                    <div className="text-center">
+                      <div className="font-semibold text-green-600">₹{customer.totalSpent || 0}</div>
+                      <div className="text-gray-500">Total Spent</div>
+                    </div>
+                    {customer.membership?.membershipName && (
+                      <div className="text-center">
+                        <div className="font-semibold text-blue-600">{customer.membership.membershipName}</div>
+                        <div className="text-gray-500">Membership</div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Action Buttons */}
+                  <div className="flex gap-2 flex-wrap">
+                    {customer.email && (
+                      <CButton 
+                        color="primary" 
+                        size="sm" 
+                        onClick={() => sendEmail(customer.email)}
+                        className="flex-1 min-w-0"
+                      >
+                        <CIcon icon={cilEnvelopeOpen} className="me-1" />
+                        Email
+                      </CButton>
+                    )}
+                    
+                    {customer.phoneNumber && (
+                      <CButton 
+                        color="success" 
+                        size="sm" 
+                        onClick={() => sendWhatsApp(customer.phoneNumber)}
+                        className="flex-1 min-w-0"
+                      >
+                        <CIcon icon={cilChatBubble} className="me-1" />
+                        WhatsApp
+                      </CButton>
+                    )}
+
+                    <CDropdown variant="btn-group" className="flex-1 min-w-0">
+                      <CDropdownToggle color="secondary" size="sm" caret={false} className="w-100">
+                        <CIcon icon={cilOptions} />
+                      </CDropdownToggle>
+                      <CDropdownMenu placement="bottom-end">
+                        <CDropdownItem onClick={() => openUpdateModal(customer)}>
+                          <CIcon icon={cilPencil} className="me-2" /> Update
+                        </CDropdownItem>
+                        <CDropdownItem
+                          onClick={() => openDeleteModal(customer._id)}
+                          className="text-danger"
+                        >
+                          <CIcon icon={cilTrash} className="me-2" /> Delete
+                        </CDropdownItem>
+                      </CDropdownMenu>
+                    </CDropdown>
+                  </div>
+                </div>
+              );
+            })}
+
+            {/* No customers message for mobile */}
+            {filteredCustomers?.length === 0 && (
+              <div className="text-center py-8">
+                <div className="text-gray-500 mb-2">
+                  <CIcon icon={cilPeople} size="3xl" />
+                </div>
+                <h3 className="text-lg font-medium text-gray-900 mb-1">No customers found</h3>
+                <p className="text-gray-500">Try adjusting your filters or add new customers.</p>
+              </div>
+            )}
+          </div>
+        </>
       )}
 
       {/* ALL YOUR EXISTING MODALS REMAIN THE SAME */}

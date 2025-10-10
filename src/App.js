@@ -12,6 +12,59 @@ import './scss/style.scss'
 import './scss/examples.scss'
 import PrivateRoute from './components/PrivateRoute'
 import SessionGuard from './components/SessionGuard'
+import PermissionGuard from './components/PermissionGuard'
+import PermissionDebug from './components/PermissionDebug'
+
+// Permission mapping helper - Updated to match exact permission names from the list
+const getPermissionForRoute = (routePath) => {
+  const permissionMap = {
+    'orders': 'Orders',
+    'pos': 'POS',
+    'dashboard': 'Overview',
+    'delivery': 'Delivery',
+    'customer-menu': 'Customer Menu',
+    'restaurants': 'Restaurants',
+    'purchaseanalytics': 'Purchase Analytics',
+    'delivery-timing': 'Delivery Timing',
+    'supplier': 'Inventory',
+    'permission': 'Permission',
+    'customerloyality': 'Customer Loyality',
+    'salesanalytics': 'Sales Analytics',
+    'qr-code': 'QR Code',
+    'category': 'Category',
+    'subCategory': 'SubCategory',
+    'stock': 'Inventory',
+    'menu': 'Menu',
+    'banners': 'Banners',
+    'customers': 'Customers',
+    'transactions': 'Transactions',
+    'account': 'Settings',
+    'daily-report': 'Reports',
+    'payment-report': 'Reports',
+    'customer-report': 'Reports',
+    'table-report': 'Reports',
+    'payment-type-report': 'Reports',
+    'dashboard-statistics-report': 'Reports',
+    'due-report': 'Reports',
+    'transactionByDate-report': 'Reports',
+    'tax-collection-report': 'Reports',
+    'table-usage-report': 'Reports',
+    'discount-usage-report': 'Reports',
+    'average-order-report': 'Reports',
+    'payment-type-transaction-report': 'Reports',
+    'total-revenue-report': 'Reports',
+    'yearly-chart-report': 'Reports',
+    'weekly-chart-report': 'Reports',
+    'feedback': 'Feedbacks',
+    'reservations': 'Reservations',
+    'dues': 'Dues',
+    'help': 'Help',
+    'license': 'License',
+    'downloads': 'Downloads'
+  };
+  
+  return permissionMap[routePath] || null;
+};
 import './global.css'
 import Reservation from './views/reservations/Reservation'
 import Dues from './views/dues/Dues'
@@ -82,35 +135,6 @@ const PaymentReport = React.lazy(() => import('./views/reports/PaymentReport'))
 const Feedback = React.lazy(() => import('./views/feedbacks/Feedback'))
 const Page404 = React.lazy(() => import('./views/pages/page404/Page404'))
 
-const PermissionRestrictedRoute = ({ children, permission }) => {
-  if (permission === 0) {
-    return (
-      <div style={{ filter: 'blur(5px)', pointerEvents: 'none', position: 'relative' }}>
-        {children}
-        <div
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            display: 'flex',
-            justifyContent: 'center',
-            alignItems: 'center',
-            backgroundColor: 'rgba(0,0,0,0.5)',
-            zIndex: 1000,
-            color: 'white',
-            fontSize: '24px',
-          }}
-        >
-          Access restricted. Please contact support.
-        </div>
-      </div>
-    )
-  }
-
-  return children
-}
 
 const App = () => {
   const dispatch = useDispatch()
@@ -125,12 +149,12 @@ const App = () => {
     window.debugProfile = function () {
       try {
         const state = store.getState()
-        console.log('=== PROFILE DEBUG INFO ===')
-        console.log('Current profile state:', state.restaurantProfile.restaurantProfile)
-        console.log('localStorage profile:', localStorage.getItem('restaurantProfile'))
-        console.log('Profile state keys:', state.restaurantProfile.restaurantProfile ? Object.keys(state.restaurantProfile.restaurantProfile) : 'No profile')
-        console.log('localStorage keys:', localStorage.getItem('restaurantProfile') ? Object.keys(JSON.parse(localStorage.getItem('restaurantProfile'))) : 'No localStorage data')
-        console.log('========================')
+        // console.log('=== PROFILE DEBUG INFO ===')
+        // console.log('Current profile state:', state.restaurantProfile.restaurantProfile)
+        // console.log('localStorage profile:', localStorage.getItem('restaurantProfile'))
+        // console.log('Profile state keys:', state.restaurantProfile.restaurantProfile ? Object.keys(state.restaurantProfile.restaurantProfile) : 'No profile')
+        // console.log('localStorage keys:', localStorage.getItem('restaurantProfile') ? Object.keys(JSON.parse(localStorage.getItem('restaurantProfile'))) : 'No localStorage data')
+        // console.log('========================')
         return 'Debug completed - check console logs'
       } catch (error) {
         console.error('Debug error:', error)
@@ -140,7 +164,7 @@ const App = () => {
     window.forceLoadProfile = function () {
       try {
         store.dispatch(forceLoadProfile())
-        console.log('Profile loaded from localStorage')
+        // console.log('Profile loaded from localStorage')
         return 'Profile loaded successfully'
       } catch (error) {
         console.error('Force load error:', error)
@@ -150,28 +174,40 @@ const App = () => {
     window.checkLocalStorage = function () {
       try {
         const profile = localStorage.getItem('restaurantProfile')
-        console.log('=== LOCALSTORAGE CHECK ===')
-        console.log('Raw localStorage data:', profile)
+        // console.log('=== LOCALSTORAGE CHECK ===')
+        // console.log('Raw localStorage data:', profile)
         if (profile) {
           const parsed = JSON.parse(profile)
-          console.log('Parsed profile data:', parsed)
-          console.log('Profile keys:', Object.keys(parsed))
+          // console.log('Parsed profile data:', parsed)
+          // console.log('Profile keys:', Object.keys(parsed))
         } else {
-          console.log('No profile data in localStorage')
+          // console.log('No profile data in localStorage')
         }
-        console.log('========================')
+        // console.log('========================')
         return profile ? 'Profile found in localStorage' : 'No profile in localStorage'
       } catch (error) {
-        console.error('localStorage check error:', error)
+        // console.error('localStorage check error:', error)
         return 'localStorage check failed'
       }
     }
-    console.log('Debug functions available: window.debugProfile(), window.forceLoadProfile(), window.checkLocalStorage()')
+    // console.log('Debug functions available: window.debugProfile(), window.forceLoadProfile(), window.checkLocalStorage()')
   }, [])
 
   const { restaurantPermission } = useSelector((state) => ({
     restaurantPermission: state.restaurantProfile.restaurantPermission,
   }))
+
+  const { role, user } = useSelector((state) => ({
+    role: state.auth.role,
+    user: state.auth.user
+  }))
+
+  // Debug logging
+  console.log('🔍 App.js Debug:', {
+    role,
+    user,
+    userPermissions: user?.permissions
+  })
 
   const { restaurantId } = useSelector(
     (state) => ({
@@ -238,7 +274,7 @@ const App = () => {
           setPermissionCheckAttempted(true)
         })
         .catch((error) => {
-          console.error('User profile fetch failed:', error)
+          // console.error('User profile fetch failed:', error)
           setPermissionCheckAttempted(true)
         })
     }
@@ -253,7 +289,7 @@ const App = () => {
   useEffect(() => {
     if (restaurantId && userId && token && permissionCheckAttempted) {
       // Only re-check if restaurantId changes after initial check
-      console.log('Restaurant ID changed, re-checking permissions')
+      // console.log('Restaurant ID changed, re-checking permissions')
       dispatch(fetchUserProfile({ userId, token }))
     }
   }, [dispatch, restaurantId, userId, token, permissionCheckAttempted])
@@ -329,372 +365,323 @@ const App = () => {
                 }
               >
                 {/* Nested Authenticated Routes */}
-                {restaurantPermission?.permission === 0 ? (
-                  // Only show orders route if permission is 0
-                  <>
-                    <Route index element={<Orders />} />
-                    <Route path="orders" element={<Orders />} />
-                    <Route path="*" element={<Navigate to="/orders" replace />} />
-                  </>
-                ) : (
-                  // Show all routes if permission is 1
+                {role === 'admin' ? (
+                  // Admin के लिए सभी routes allowed हैं
                   <>
                     <Route index element={<LoginActivity />} />
                     <Route path="dashboard" element={<Dashboard />} />
                     <Route path="orders" element={<Orders />} />
                     <Route
                       path="delivery"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <WooOrders />
-                        </PermissionRestrictedRoute>
-                      }
+                      element={<WooOrders />}
                     />
-                    <Route path='customer-menu' element={
-                      <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                        <CustomerMenu />
-                      </PermissionRestrictedRoute>
-                    } />
-                    <Route path="restaurants" element={
-                      <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                        <Restaurants />
-                      </PermissionRestrictedRoute>
-                    } />
-                    <Route
-                      path="purchaseanalytics"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <PurchaseAnalytics />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="delivery-timing"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <DeliveryTiming />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="supplier"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <Supplier />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route path="permission" element={
-                      <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                        <Waiter />
-                      </PermissionRestrictedRoute>
-                    } />
+                    <Route path='customer-menu' element={<CustomerMenu />} />
+                    <Route path="restaurants" element={<Restaurants />} />
+                    <Route path="purchaseanalytics" element={<PurchaseAnalytics />} />
+                    <Route path="delivery-timing" element={<DeliveryTiming />} />
+                    <Route path="supplier" element={<Supplier />} />
+                    <Route path="permission" element={<Waiter />} />
                     <Route path="login-activity" element={<LoginActivity />} />
 
-                    <Route
-                      path="customerloyality"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <CustomerLoyality />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="salesanalytics"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <SalesAnalytics />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="qr-code"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <QRCode />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="category"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <Category restaurantId={restaurantId} />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="subCategory"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <SubCategory restaurantId={restaurantId} />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="stock"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <Stock />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="menu"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <Menu />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="banners"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <Banner />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="customers"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <Customers />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="transactions"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <Transactions />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="pos"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <POS />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="pos/system/:tableNumber"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <SystemSelection />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="table/:restaurantId/:floorId/:tableNumber"
-                      element={<PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                    <Route path="customerloyality" element={<CustomerLoyality />} />
+                    <Route path="salesanalytics" element={<SalesAnalytics />} />
+                    <Route path="qr-code" element={<QRCode />} />
+                    <Route path="category" element={<Category restaurantId={restaurantId} />} />
+                    <Route path="subCategory" element={<SubCategory restaurantId={restaurantId} />} />
+                    <Route path="stock" element={<Stock />} />
+                    <Route path="menu" element={<Menu />} />
+                    <Route path="banners" element={<Banner />} />
+                    <Route path="customers" element={<Customers />} />
+                    <Route path="transactions" element={<Transactions />} />
+                    <Route path="pos" element={<POS />} />
+                    <Route path="pos/system/:tableNumber" element={<SystemSelection />} />
+                    <Route path="table/:restaurantId/:floorId/:tableNumber" element={<TableRedirect />} />
+                    <Route path="pos/system/tableNumber/:tableNumber" element={<POSTableContent />} />
+                    <Route path="pos/tableNumber/:tableNumber" element={<POSTableContent />} />
+                    <Route path="account/:userId" element={<Account />} />
+                    <Route path="setting" element={<Settings />} />
+                    <Route path="daily-report" element={<DailyReport />} />
+                    <Route path="payment-report" element={<PaymentReport />} />
+                    <Route path="customer-report" element={<CustomerReport />} />
+                    <Route path="table-report" element={<TableReport />} />
+                    <Route path="payment-type-report" element={<PaymentTypeReport />} />
+                    <Route path="dashboard-statistics-report" element={<DashboardStatisticsReport />} />
+                    <Route path="due-report" element={<DueReport />} />
+                    <Route path="transactionByDate-report" element={<TransactionCountReport />} />
+                    <Route path="tax-collection-report" element={<TaxCollectedReport />} />
+                    <Route path="table-usage-report" element={<TableUsageReport />} />
+                    <Route path="discount-usage-report" element={<DiscountUsageReport />} />
+                    <Route path="average-order-report" element={<AverageOrderValueReport />} />
+                    <Route path="payment-type-transaction-report" element={<TransactionsByPaymentTypeReport />} />
+                    <Route path="total-revenue-report" element={<TotalRevenueReport />} />
+                    <Route path="yearly-chart-report" element={<YearlyChartReport />} />
+                    <Route path="weekly-chart-report" element={<WeeklyChartReport />} />
+                    <Route path="feedback" element={<Feedback />} />
+                    <Route path="reservations" element={<Reservation />} />
+                    <Route path="dues" element={<Dues />} />
+                    <Route path="help" element={<Help />} />
+                    <Route path="license" element={<License />} />
+                    <Route path="downloads" element={<Downloads />} />
+                    <Route path="*" element={<Page404 />} />
+                  </>
+                ) : (
+                  // Non-admin users के लिए permission-based routing
+                  <>
+                    <Route index element={
+                      <PermissionGuard requiredPermissions={['Orders']}>
+                        <Orders />
+                      </PermissionGuard>
+                    } />
+                    <Route path="orders" element={
+                      <PermissionGuard requiredPermissions={['Orders']}>
+                        <Orders />
+                      </PermissionGuard>
+                    } />
+                    <Route path="pos" element={
+                      <PermissionGuard requiredPermissions={['POS']}>
+                        <POS />
+                      </PermissionGuard>
+                    } />
+                    <Route path="pos/system/:tableNumber" element={
+                      <PermissionGuard requiredPermissions={['pos']}>
+                        <SystemSelection />
+                      </PermissionGuard>
+                    } />
+                    <Route path="table/:restaurantId/:floorId/:tableNumber" element={
+                      <PermissionGuard requiredPermissions={['pos']}>
                         <TableRedirect />
-                      </PermissionRestrictedRoute>}
-                    />
-
-                    <Route
-                      path="pos/system/tableNumber/:tableNumber"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <POSTableContent />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="pos/tableNumber/:tableNumber"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <POSTableContent />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="account/:userId"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
-                          <Account />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="setting"
-                      element={<Settings />}
-                    />
-                    <Route
-                      path="daily-report"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="pos/system/tableNumber/:tableNumber" element={
+                      <PermissionGuard requiredPermissions={['pos']}>
+                        <POSTableContent />
+                      </PermissionGuard>
+                    } />
+                    <Route path="pos/tableNumber/:tableNumber" element={
+                      <PermissionGuard requiredPermissions={['pos']}>
+                        <POSTableContent />
+                      </PermissionGuard>
+                    } />
+                    
+                    {/* Permission-based routes */}
+                    <Route path="dashboard" element={
+                      <PermissionGuard requiredPermissions={['Overview']}>
+                        <Dashboard />
+                      </PermissionGuard>
+                    } />
+                    <Route path="delivery" element={
+                      <PermissionGuard requiredPermissions={['Delivery']}>
+                        <WooOrders />
+                      </PermissionGuard>
+                    } />
+                    <Route path="customer-menu" element={
+                      <PermissionGuard requiredPermissions={['Customer Menu']}>
+                        <CustomerMenu />
+                      </PermissionGuard>
+                    } />
+                    <Route path="restaurants" element={
+                      <PermissionGuard requiredPermissions={['Restaurants']}>
+                        <Restaurants />
+                      </PermissionGuard>
+                    } />
+                    <Route path="purchaseanalytics" element={
+                      <PermissionGuard requiredPermissions={['Purchase Analytics']}>
+                          <PurchaseAnalytics />
+                      </PermissionGuard>
+                    } />
+                    <Route path="delivery-timing" element={
+                      <PermissionGuard requiredPermissions={['Delivery Timing']}>
+                          <DeliveryTiming />
+                      </PermissionGuard>
+                    } />
+                    <Route path="supplier" element={
+                      <PermissionGuard requiredPermissions={['Inventory']}>
+                          <Supplier />
+                      </PermissionGuard>
+                    } />
+                    <Route path="permission" element={
+                      <PermissionGuard requiredPermissions={['Permission']}>
+                        <Waiter />
+                      </PermissionGuard>
+                    } />
+                    <Route path="login-activity" element={<LoginActivity />} />
+                    <Route path="customerloyality" element={
+                      <PermissionGuard requiredPermissions={['Customer Loyality']}>
+                          <CustomerLoyality />
+                      </PermissionGuard>
+                    } />
+                    <Route path="salesanalytics" element={
+                      <PermissionGuard requiredPermissions={['Sales Analytics']}>
+                          <SalesAnalytics />
+                      </PermissionGuard>
+                    } />
+                    <Route path="qr-code" element={
+                      <PermissionGuard requiredPermissions={['QR Code']}>
+                          <QRCode />
+                      </PermissionGuard>
+                    } />
+                    <Route path="category" element={
+                      <PermissionGuard requiredPermissions={['Category']}>
+                          <Category restaurantId={restaurantId} />
+                      </PermissionGuard>
+                    } />
+                    <Route path="subCategory" element={
+                      <PermissionGuard requiredPermissions={['SubCategory']}>
+                          <SubCategory restaurantId={restaurantId} />
+                      </PermissionGuard>
+                    } />
+                    <Route path="stock" element={
+                      <PermissionGuard requiredPermissions={['Inventory']}>
+                          <Stock />
+                      </PermissionGuard>
+                    } />
+                    <Route path="menu" element={
+                      <PermissionGuard requiredPermissions={['Menu']}>
+                          <Menu />
+                      </PermissionGuard>
+                    } />
+                    <Route path="banners" element={
+                      <PermissionGuard requiredPermissions={['Banners']}>
+                          <Banner />
+                      </PermissionGuard>
+                    } />
+                    <Route path="customers" element={
+                      <PermissionGuard requiredPermissions={['Customers']}>
+                          <Customers />
+                      </PermissionGuard>
+                    } />
+                    <Route path="transactions" element={
+                      <PermissionGuard requiredPermissions={['Transactions']}>
+                          <Transactions />
+                      </PermissionGuard>
+                    } />
+                    <Route path="account/:userId" element={<Account />} />
+                    <Route path="setting" element={
+                      <PermissionGuard requiredPermissions={['Settings']}>
+                        <Settings />
+                      </PermissionGuard>
+                    } />
+                    
+                    {/* Report routes with permissions */}
+                    <Route path="daily-report" element={
+                      <PermissionGuard requiredPermissions={['Reports']}>
                           <DailyReport />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="payment-report"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="payment-report" element={
+                      <PermissionGuard requiredPermissions={['Reports']}>
                           <PaymentReport />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="customer-report"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="customer-report" element={
+                      <PermissionGuard requiredPermissions={['Reports']}>
                           <CustomerReport />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="table-report"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="table-report" element={
+                      <PermissionGuard requiredPermissions={['Reports']}>
                           <TableReport />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="payment-type-report"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="payment-type-report" element={
+                      <PermissionGuard requiredPermissions={['Reports']}>
                           <PaymentTypeReport />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="dashboard-statistics-report"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="dashboard-statistics-report" element={
+                      <PermissionGuard requiredPermissions={['Reports']}>
                           <DashboardStatisticsReport />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route path="due-report" element={<PermissionRestrictedRoute permission={restaurantPermission?.permission} >
+                      </PermissionGuard>
+                    } />
+                    <Route path="due-report" element={
+                      <PermissionGuard requiredPermissions={['Reports']}>
                       <DueReport />
-                    </PermissionRestrictedRoute>
-                    }
-                    />
-                    <Route
-                      path="transactionByDate-report"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="transactionByDate-report" element={
+                      <PermissionGuard requiredPermissions={['Reports']}>
                           <TransactionCountReport />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="tax-collection-report"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="tax-collection-report" element={
+                      <PermissionGuard requiredPermissions={['Reports']}>
                           <TaxCollectedReport />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="table-usage-report"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="table-usage-report" element={
+                      <PermissionGuard requiredPermissions={['Reports']}>
                           <TableUsageReport />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="discount-usage-report"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="discount-usage-report" element={
+                      <PermissionGuard requiredPermissions={['Reports']}>
                           <DiscountUsageReport />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="average-order-report"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="average-order-report" element={
+                      <PermissionGuard requiredPermissions={['Reports']}>
                           <AverageOrderValueReport />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="payment-type-transaction-report"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="payment-type-transaction-report" element={
+                      <PermissionGuard requiredPermissions={['Reports']}>
                           <TransactionsByPaymentTypeReport />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="total-revenue-report"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="total-revenue-report" element={
+                      <PermissionGuard requiredPermissions={['Reports']}>
                           <TotalRevenueReport />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="yearly-chart-report"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="yearly-chart-report" element={
+                      <PermissionGuard requiredPermissions={['Reports']}>
                           <YearlyChartReport />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="weekly-chart-report"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="weekly-chart-report" element={
+                      <PermissionGuard requiredPermissions={['Reports']}>
                           <WeeklyChartReport />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="feedback"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="feedback" element={
+                      <PermissionGuard requiredPermissions={['Feedbacks']}>
                           <Feedback />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="reservations"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="reservations" element={
+                      <PermissionGuard requiredPermissions={['Reservations']}>
                           <Reservation />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="dues"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="dues" element={
+                      <PermissionGuard requiredPermissions={['Dues']}>
                           <Dues />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="help"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="help" element={
+                      <PermissionGuard requiredPermissions={['Help']}>
                           <Help />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="license"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="license" element={
+                      <PermissionGuard requiredPermissions={['License']}>
                           <License />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
-                    <Route
-                      path="downloads"
-                      element={
-                        <PermissionRestrictedRoute permission={restaurantPermission?.permission}>
+                      </PermissionGuard>
+                    } />
+                    <Route path="downloads" element={
+                      <PermissionGuard requiredPermissions={['Downloads']}>
                           <Downloads />
-                        </PermissionRestrictedRoute>
-                      }
-                    />
+                      </PermissionGuard>
+                    } />
+                    <Route path="debug-permissions" element={<PermissionDebug />} />
+                    <Route path="test-access" element={
+                      <div style={{ padding: '20px' }}>
+                        <h2>✅ Test Access - This page should be accessible</h2>
+                        <p>If you can see this, the routing is working!</p>
+                        <p>Current role: {role}</p>
+                        <p>User permissions: {JSON.stringify(user?.permissions || [])}</p>
+                      </div>
+                    } />
                     <Route path="*" element={<Page404 />} />
                   </>
                 )}

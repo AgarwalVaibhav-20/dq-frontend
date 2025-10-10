@@ -8,10 +8,10 @@ import {
   fetchPOSTransactions,
 } from '../../redux/slices/transactionSlice'
 import { fetchDuesByCustomer } from '../../redux/slices/duesSlice'
-import { CSpinner, CModal, CModalBody, CModalHeader, CModalTitle, CModalFooter, CButton, CForm, CFormLabel, CFormInput } from '@coreui/react'
+import { CSpinner, CModal, CModalBody, CModalHeader, CModalTitle, CModalFooter, CButton, CForm, CFormLabel, CFormInput, CCard, CCardBody, CCardHeader, CCardTitle, CRow, CCol, CBadge, CFormSelect, CInputGroup, CInputGroupText, CFormRange, CAccordion, CAccordionItem, CAccordionHeader, CAccordionBody, CFormCheck } from '@coreui/react'
 
 import CIcon from '@coreui/icons-react'
-import { cilFile, cilTrash, cilUser } from '@coreui/icons'
+import { cilFile, cilTrash, cilUser, cilFilter, cilCalendar, cilMoney, cilX } from '@coreui/icons'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
 import CustomToolbar from '../../utils/CustomToolbar'
@@ -37,6 +37,17 @@ const Transactions = () => {
   const [pdfDoc, setPdfDoc] = useState(null)
   const [showCustomerDuesModal, setShowCustomerDuesModal] = useState(false)
   const [selectedCustomer, setSelectedCustomer] = useState(null)
+
+  // Filter states
+  const [showFilters, setShowFilters] = useState(false)
+  const [filters, setFilters] = useState({
+    paymentType: 'all',
+    dateRange: 'all',
+    minAmount: '',
+    maxAmount: '',
+    startDate: '',
+    endDate: ''
+  })
 
   const isMobile = useMediaQuery('(max-width:600px)')
   const token = localStorage.getItem('authToken')
@@ -406,6 +417,53 @@ const Transactions = () => {
     },
   ]
 
+  // Filter functions
+  const applyFilters = (transactions) => {
+    return transactions.filter(transaction => {
+      // Payment type filter
+      if (filters.paymentType !== 'all' && transaction.type !== filters.paymentType) {
+        return false;
+      }
+
+      // Date range filter
+      if (filters.dateRange !== 'all') {
+        const transactionDate = new Date(transaction.createdAt);
+        const now = new Date();
+        
+        switch (filters.dateRange) {
+          case 'today':
+            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+            if (transactionDate < today) return false;
+            break;
+          case 'yesterday':
+            const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1);
+            const dayBeforeYesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 2);
+            if (transactionDate < dayBeforeYesterday || transactionDate >= yesterday) return false;
+            break;
+          case 'week':
+            const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            if (transactionDate < weekAgo) return false;
+            break;
+          case 'month':
+            const monthAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+            if (transactionDate < monthAgo) return false;
+            break;
+          case 'custom':
+            if (filters.startDate && transactionDate < new Date(filters.startDate)) return false;
+            if (filters.endDate && transactionDate > new Date(filters.endDate)) return false;
+            break;
+        }
+      }
+
+      // Amount range filter
+      const total = parseFloat(transaction.total) || 0;
+      if (filters.minAmount && total < parseFloat(filters.minAmount)) return false;
+      if (filters.maxAmount && total > parseFloat(filters.maxAmount)) return false;
+
+      return true;
+    });
+  };
+
   // Transform data to ensure each row has an id
   const transformedTransactions = React.useMemo(() => {
     if (!transactions || !Array.isArray(transactions)) {
@@ -422,9 +480,284 @@ const Transactions = () => {
       id: transaction._id || transaction.id || `temp-${index}`, // Ensure unique ID
     }));
     
-    console.log('Transformed transactions:', transformed.length, 'items');
-    return transformed;
-  }, [transactions]);
+    // Apply filters
+    const filtered = applyFilters(transformed);
+    
+    console.log('Transformed transactions:', filtered.length, 'items');
+    return filtered;
+  }, [transactions, filters]);
+
+  // Clear all filters
+  const clearFilters = () => {
+    setFilters({
+      paymentType: 'all',
+      dateRange: 'all',
+      minAmount: '',
+      maxAmount: '',
+      startDate: '',
+      endDate: ''
+    });
+  };
+
+  // Filter Component
+  const FilterComponent = () => {
+    return (
+      <CAccordion activeItemKey={showFilters ? "filters" : ""} className="mb-3">
+        <CAccordionItem itemKey="filters">
+          <CAccordionHeader 
+            onClick={() => setShowFilters(!showFilters)}
+            style={{ 
+              backgroundColor: theme === 'dark' ? '#333333' : '#f8f9fa',
+              cursor: 'pointer'
+            }}
+          >
+            <div className="d-flex align-items-center w-100">
+              <CIcon icon={cilFilter} className="me-2" />
+              <span className="fw-bold">Filters</span>
+              <div className="ms-auto">
+                {Object.values(filters).some(value => value !== 'all' && value !== '') && (
+                  <CBadge color="primary" className="ms-2">Active</CBadge>
+                )}
+              </div>
+            </div>
+          </CAccordionHeader>
+          <CAccordionBody style={{ 
+            backgroundColor: theme === 'dark' ? '#2A2A2A' : '#ffffff',
+            border: theme === 'dark' ? '1px solid #404040' : '1px solid #e0e0e0'
+          }}>
+            <CRow className="g-3">
+              {/* Payment Type Filter */}
+              <CCol xs={12} md={6}>
+                <CFormLabel className="fw-bold">
+                  <CIcon icon={cilMoney} className="me-1" />
+                  Payment Type
+                </CFormLabel>
+                <CFormSelect
+                  value={filters.paymentType}
+                  onChange={(e) => setFilters(prev => ({ ...prev, paymentType: e.target.value }))}
+                  size={isMobile ? 'sm' : 'md'}
+                >
+                  <option value="all">All Payment Types</option>
+                  <option value="cash">Cash</option>
+                  <option value="card">Card</option>
+                  <option value="upi">UPI</option>
+                  <option value="online">Online</option>
+                </CFormSelect>
+              </CCol>
+
+              {/* Date Range Filter */}
+              <CCol xs={12} md={6}>
+                <CFormLabel className="fw-bold">
+                  <CIcon icon={cilCalendar} className="me-1" />
+                  Date Range
+                </CFormLabel>
+                <CFormSelect
+                  value={filters.dateRange}
+                  onChange={(e) => setFilters(prev => ({ ...prev, dateRange: e.target.value }))}
+                  size={isMobile ? 'sm' : 'md'}
+                >
+                  <option value="all">All Dates</option>
+                  <option value="today">Today</option>
+                  <option value="yesterday">Yesterday</option>
+                  <option value="week">Last 7 Days</option>
+                  <option value="month">Last 30 Days</option>
+                  <option value="custom">Custom Range</option>
+                </CFormSelect>
+              </CCol>
+
+              {/* Custom Date Range */}
+              {filters.dateRange === 'custom' && (
+                <>
+                  <CCol xs={6}>
+                    <CFormLabel>Start Date</CFormLabel>
+                    <CFormInput
+                      type="date"
+                      value={filters.startDate}
+                      onChange={(e) => setFilters(prev => ({ ...prev, startDate: e.target.value }))}
+                      size={isMobile ? 'sm' : 'md'}
+                    />
+                  </CCol>
+                  <CCol xs={6}>
+                    <CFormLabel>End Date</CFormLabel>
+                    <CFormInput
+                      type="date"
+                      value={filters.endDate}
+                      onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
+                      size={isMobile ? 'sm' : 'md'}
+                    />
+                  </CCol>
+                </>
+              )}
+
+              {/* Amount Range Filter */}
+              <CCol xs={6}>
+                <CFormLabel className="fw-bold">Min Amount (₹)</CFormLabel>
+                <CFormInput
+                  type="number"
+                  placeholder="0"
+                  value={filters.minAmount}
+                  onChange={(e) => setFilters(prev => ({ ...prev, minAmount: e.target.value }))}
+                  size={isMobile ? 'sm' : 'md'}
+                />
+              </CCol>
+              <CCol xs={6}>
+                <CFormLabel className="fw-bold">Max Amount (₹)</CFormLabel>
+                <CFormInput
+                  type="number"
+                  placeholder="No limit"
+                  value={filters.maxAmount}
+                  onChange={(e) => setFilters(prev => ({ ...prev, maxAmount: e.target.value }))}
+                  size={isMobile ? 'sm' : 'md'}
+                />
+              </CCol>
+
+              {/* Filter Actions */}
+              <CCol xs={12}>
+                <div className="d-flex gap-2 justify-content-end">
+                  <CButton
+                    color="secondary"
+                    variant="outline"
+                    onClick={clearFilters}
+                    size={isMobile ? 'sm' : 'md'}
+                  >
+                    <CIcon icon={cilX} className="me-1" />
+                    Clear All
+                  </CButton>
+                  <CButton
+                    color="primary"
+                    onClick={() => setShowFilters(false)}
+                    size={isMobile ? 'sm' : 'md'}
+                  >
+                    Apply Filters
+                  </CButton>
+                </div>
+              </CCol>
+            </CRow>
+          </CAccordionBody>
+        </CAccordionItem>
+      </CAccordion>
+    );
+  };
+
+  // Mobile Card Component
+  const MobileTransactionCard = ({ transaction }) => {
+    const formatAmount = (amount) => `₹${(amount || 0).toFixed(2)}`;
+    const formatDate = (dateString) => {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-IN', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+
+    return (
+      <CCard className="mb-3 shadow-sm" style={{ 
+        backgroundColor: theme === 'dark' ? '#2A2A2A' : '#ffffff',
+        border: theme === 'dark' ? '1px solid #404040' : '1px solid #e0e0e0'
+      }}>
+        <CCardHeader className="pb-2">
+          <div className="d-flex justify-content-between align-items-start">
+            <div>
+              <CCardTitle className="h6 mb-1" style={{ 
+                color: theme === 'dark' ? '#ffffff' : '#000000',
+                fontSize: '0.9rem'
+              }}>
+                {transaction.username || 'Walk-in Customer'}
+              </CCardTitle>
+              <small className="text-muted" style={{ fontSize: '0.75rem' }}>
+                {formatDate(transaction.createdAt)}
+              </small>
+            </div>
+            <CBadge 
+              color={transaction.type === 'cash' ? 'success' : transaction.type === 'card' ? 'info' : 'warning'}
+              className="text-uppercase"
+              style={{ fontSize: '0.7rem' }}
+            >
+              {transaction.type || 'N/A'}
+            </CBadge>
+          </div>
+        </CCardHeader>
+        <CCardBody className="pt-2">
+          <CRow className="mb-2">
+            <CCol xs={6}>
+              <small className="text-muted d-block" style={{ fontSize: '0.75rem' }}>Sub Total</small>
+              <span className="fw-bold" style={{ 
+                color: theme === 'dark' ? '#ffffff' : '#000000',
+                fontSize: '0.85rem'
+              }}>
+                {formatAmount(transaction.sub_total)}
+              </span>
+            </CCol>
+            <CCol xs={6}>
+              <small className="text-muted d-block" style={{ fontSize: '0.75rem' }}>Total</small>
+              <span className="fw-bold text-primary" style={{ fontSize: '0.85rem' }}>
+                {formatAmount(transaction.total)}
+              </span>
+            </CCol>
+          </CRow>
+          
+          <CRow className="mb-3">
+            <CCol xs={6}>
+              <small className="text-muted d-block" style={{ fontSize: '0.75rem' }}>Tax</small>
+              <span style={{ 
+                color: theme === 'dark' ? '#ffffff' : '#000000',
+                fontSize: '0.8rem'
+              }}>
+                {formatAmount(transaction.tax)}
+              </span>
+            </CCol>
+            <CCol xs={6}>
+              <small className="text-muted d-block" style={{ fontSize: '0.75rem' }}>Discount</small>
+              <span style={{ 
+                color: theme === 'dark' ? '#ffffff' : '#000000',
+                fontSize: '0.8rem'
+              }}>
+                {formatAmount(transaction.discount)}
+              </span>
+            </CCol>
+          </CRow>
+
+          {/* Action Buttons */}
+          <div className="d-flex justify-content-between align-items-center pt-2" style={{ borderTop: '1px solid #e0e0e0' }}>
+            <div className="d-flex gap-2">
+              <CButton
+                size="sm"
+                color="primary"
+                variant="outline"
+                onClick={() => handleGenerateInvoice(transaction.transactionId || transaction._id)}
+                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+              >
+                <CIcon icon={cilFile} size="sm" className="me-1" />
+                Invoice
+              </CButton>
+              <CButton
+                size="sm"
+                color="success"
+                variant="outline"
+                onClick={() => handleCustomerDues(transaction)}
+                style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+              >
+                <CIcon icon={cilUser} size="sm" className="me-1" />
+                Dues
+              </CButton>
+            </div>
+            <CButton
+              size="sm"
+              color="danger"
+              variant="outline"
+              onClick={() => handleDeleteTransaction(transaction.id)}
+              style={{ padding: '0.25rem 0.5rem', fontSize: '0.75rem' }}
+            >
+              <CIcon icon={cilTrash} size="sm" />
+            </CButton>
+          </div>
+        </CCardBody>
+      </CCard>
+    );
+  };
 
   return (
     <div style={{ 
@@ -443,6 +776,9 @@ const Transactions = () => {
           {isMobile ? 'Fetch POS' : 'Fetch POS Transactions'}
         </CButton>
       </div>
+
+      {/* Filter Component */}
+      <FilterComponent />
       {loading ? (
         <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '200px' }}>
           <div className="text-center">
@@ -451,64 +787,76 @@ const Transactions = () => {
           </div>
         </div>
       ) : transformedTransactions.length > 0 ? (
-        <div style={{ width: '100%', minWidth: '600px' }}>
-          <DataGrid
-            autoHeight
-            rows={transformedTransactions}
-            columns={columns}
-            pageSize={isMobile ? 5 : 10}
-            rowsPerPageOptions={isMobile ? [5, 10] : [10, 25, 50]}
-            slots={{
-              toolbar: CustomToolbar,
-            }}
-            getRowId={(row) => row._id || row.id}
-            disableColumnMenu={isMobile}
-            disableColumnFilter={isMobile}
-            disableColumnSelector={isMobile}
-            sx={{
-              backgroundColor: theme === 'dark' ? '#2A2A2A' : '#ffffff',
-              color: theme === 'dark' ? '#ffffff' : '#000000',
-              '& .MuiDataGrid-cell': {
-                color: theme === 'dark' ? '#ffffff' : '#000000',
-                fontSize: isMobile ? '0.75rem' : '0.875rem',
-                padding: isMobile ? '4px 8px' : '8px 16px',
-                borderRight: '1px solid rgba(224, 224, 224, 1)',
-                whiteSpace: 'nowrap',
-                overflow: 'hidden',
-                textOverflow: 'ellipsis',
-              },
-              '& .MuiDataGrid-columnHeaders': {
-                backgroundColor: theme === 'dark' ? '#333333' : '#f5f5f5',
-                color: theme === 'dark' ? '#ffffff' : '#000000',
-                fontSize: isMobile ? '0.75rem' : '0.875rem',
-                padding: isMobile ? '4px 8px' : '8px 16px',
-                fontWeight: 'bold',
-                borderBottom: '2px solid rgba(224, 224, 224, 1)',
-              },
-              '& .MuiDataGrid-footerContainer': {
-                fontSize: isMobile ? '0.75rem' : '0.875rem',
-                borderTop: '1px solid rgba(224, 224, 224, 1)',
-              },
-              '& .MuiTablePagination-root': {
-                fontSize: isMobile ? '0.75rem' : '0.875rem',
-              },
-              '& .MuiDataGrid-toolbarContainer': {
-                flexDirection: isMobile ? 'column' : 'row',
-                gap: isMobile ? '8px' : '16px',
-                padding: isMobile ? '8px' : '16px',
-                borderBottom: '1px solid rgba(224, 224, 224, 1)',
-              },
-              '& .MuiDataGrid-row': {
-                '&:hover': {
-                  backgroundColor: theme === 'dark' ? '#404040' : '#f5f5f5',
-                },
-              },
-              '& .MuiDataGrid-row:nth-of-type(even)': {
-                backgroundColor: theme === 'dark' ? '#2A2A2A' : '#fafafa',
-              },
-            }}
-          />
-        </div>
+        <>
+          {isMobile ? (
+            // Mobile View - Cards
+            <div className="mobile-transactions-container">
+              {transformedTransactions.map((transaction) => (
+                <MobileTransactionCard 
+                  key={transaction.id} 
+                  transaction={transaction} 
+                />
+              ))}
+            </div>
+          ) : (
+            // Desktop View - DataGrid
+            <div style={{ width: '100%', minWidth: '600px' }}>
+              <DataGrid
+                autoHeight
+                rows={transformedTransactions}
+                columns={columns}
+                pageSize={10}
+                rowsPerPageOptions={[10, 25, 50]}
+                slots={{
+                  toolbar: CustomToolbar,
+                }}
+                getRowId={(row) => row._id || row.id}
+                sx={{
+                  backgroundColor: theme === 'dark' ? '#2A2A2A' : '#ffffff',
+                  color: theme === 'dark' ? '#ffffff' : '#000000',
+                  '& .MuiDataGrid-cell': {
+                    color: theme === 'dark' ? '#ffffff' : '#000000',
+                    fontSize: '0.875rem',
+                    padding: '8px 16px',
+                    borderRight: '1px solid rgba(224, 224, 224, 1)',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  },
+                  '& .MuiDataGrid-columnHeaders': {
+                    backgroundColor: theme === 'dark' ? '#333333' : '#f5f5f5',
+                    color: theme === 'dark' ? '#ffffff' : '#000000',
+                    fontSize: '0.875rem',
+                    padding: '8px 16px',
+                    fontWeight: 'bold',
+                    borderBottom: '2px solid rgba(224, 224, 224, 1)',
+                  },
+                  '& .MuiDataGrid-footerContainer': {
+                    fontSize: '0.875rem',
+                    borderTop: '1px solid rgba(224, 224, 224, 1)',
+                  },
+                  '& .MuiTablePagination-root': {
+                    fontSize: '0.875rem',
+                  },
+                  '& .MuiDataGrid-toolbarContainer': {
+                    flexDirection: 'row',
+                    gap: '16px',
+                    padding: '16px',
+                    borderBottom: '1px solid rgba(224, 224, 224, 1)',
+                  },
+                  '& .MuiDataGrid-row': {
+                    '&:hover': {
+                      backgroundColor: theme === 'dark' ? '#404040' : '#f5f5f5',
+                    },
+                  },
+                  '& .MuiDataGrid-row:nth-of-type(even)': {
+                    backgroundColor: theme === 'dark' ? '#2A2A2A' : '#fafafa',
+                  },
+                }}
+              />
+            </div>
+          )}
+        </>
       ) : (
         <div className="text-center py-5">
           <div className="mb-3">

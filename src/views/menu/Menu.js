@@ -338,11 +338,12 @@ const Menu = () => {
   return (
     <div className="container-fluid px-2 px-md-4">
       {/* Header */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center my-4 gap-3">
-        <h2 className="fw-bold mb-0 text-black">🍽️ Menu </h2>
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center my-3 my-md-4 gap-3">
+        <h2 className="fw-bold mb-0 text-black" style={{ fontSize: '1.5rem' }}>🍽️ Menu </h2>
         <CButton
           color="primary"
           className="px-4 rounded-pill fw-semibold w-100 w-md-auto"
+          style={{ fontSize: '14px' }}
           onClick={() => {
             setFormData({
               menuId: "",
@@ -368,8 +369,8 @@ const Menu = () => {
       </div>
 
       {/* Menu List */}
-      <CCard className="border-0 shadow-sm rounded-4">
-        <CCardBody className="h-100">
+      <CCard className="border-0 shadow-sm rounded-4" style={{ overflow: 'hidden' }}>
+        <CCardBody className="h-100 p-2 p-md-3">
           <MenuItemList
             menuItems={menuItems}
             menuItemsLoading={menuItemsLoading}
@@ -404,11 +405,12 @@ const Menu = () => {
         isLoading={isSubmitting}
       >
         {/* Tabs */}
-        <ul className="nav nav-tabs mb-3">
+        <ul className="nav nav-tabs mb-3" style={{ fontSize: '14px' }}>
           <li className="nav-item">
             <button
               className={`nav-link ${activeTab === "basic" ? "active" : ""}`}
               onClick={() => setActiveTab("basic")}
+              style={{ fontSize: '14px', padding: '8px 16px' }}
             >
               Basic Info
             </button>
@@ -417,6 +419,7 @@ const Menu = () => {
             <button
               className={`nav-link ${activeTab === "inventory" ? "active" : ""}`}
               onClick={() => setActiveTab("inventory")}
+              style={{ fontSize: '14px', padding: '8px 16px' }}
             >
               Inventory
             </button>
@@ -428,7 +431,7 @@ const Menu = () => {
           <div>
             {/* Item Name */}
             <div className="mb-3">
-              <label className="form-label">Menu Id</label>
+              <label className="form-label fw-semibold">Menu Id</label>
               <input
                 type="text"
                 className="form-control"
@@ -436,11 +439,12 @@ const Menu = () => {
                 value={formData.menuId}
                 onChange={handleInputChange}
                 required
+                style={{ fontSize: '14px' }}
               />
             </div>
             
             <div className="mb-3">
-              <label className="form-label">Item Name</label>
+              <label className="form-label fw-semibold">Item Name</label>
               <input
                 type="text"
                 className="form-control"
@@ -448,18 +452,20 @@ const Menu = () => {
                 value={formData.itemName}
                 onChange={handleInputChange}
                 required
+                style={{ fontSize: '14px' }}
               />
             </div>
 
             {/* Category */}
             <div className="mb-3">
-              <label className="form-label">Category</label>
+              <label className="form-label fw-semibold">Category</label>
               <select
                 name="categoryId"
                 className="form-select"
                 value={formData.categoryId}
                 onChange={handleInputChange}
                 required
+                style={{ fontSize: '14px' }}
               >
                 <option value="">Select Category</option>
                 {categories?.map((cat) => (
@@ -472,9 +478,10 @@ const Menu = () => {
 
             {/* Sub Category */}
             <div className="mb-3">
-              <label className="form-label">Sub Category</label>
+              <label className="form-label fw-semibold">Sub Category</label>
               <select name="sub_category" className="form-select"
-                value={formData.sub_category} onChange={handleInputChange} disabled={!formData.categoryId} >
+                value={formData.sub_category} onChange={handleInputChange} disabled={!formData.categoryId}
+                style={{ fontSize: '14px' }} >
                 <option value="">Select Sub Category</option>
                 {subCategories?.filter((sub) => sub.categoryId === formData.categoryId).map((sub) =>
                   (<option key={sub._id} value={sub._id}> {sub.sub_category_name} </option>))}
@@ -483,7 +490,7 @@ const Menu = () => {
 
             {/* Base Price */}
             <div className="mb-3">
-              <label className="form-label">Base Price</label>
+              <label className="form-label fw-semibold">Base Price</label>
               <input
                 type="number"
                 className="form-control"
@@ -491,12 +498,13 @@ const Menu = () => {
                 value={formData.price}
                 onChange={handleInputChange}
                 required
+                style={{ fontSize: '14px' }}
               />
             </div>
 
             {/* Reward System */}
             <div className="mb-3">
-              <label className="form-label">Reward Points</label>
+              <label className="form-label fw-semibold">Reward Points</label>
               <input
                 type="number"
                 className="form-control"
@@ -505,18 +513,18 @@ const Menu = () => {
                 onChange={handleInputChange}
                 min="0"
                 placeholder="Enter reward points for this item"
+                style={{ fontSize: '14px' }}
               />
-              <small className="form-text text-muted">
+              <small className="form-text text-muted" style={{ fontSize: '12px' }}>
                 Points earned by customer when purchasing this item
               </small>
             </div>
 
             <div className="mb-3">
-              <label className="form-label">Food Sizes & Prices</label>
+              <label className="form-label fw-semibold">Food Sizes & Prices</label>
 
               {formData.sizes.map((size, index) => (
                 <div key={index} className="d-flex flex-column flex-md-row align-items-center gap-2 mb-2">
-                  {/* Size Name */}
                   {/* Size Name */}
                   <input
                     type="text"
@@ -528,6 +536,7 @@ const Menu = () => {
                       updatedSizes[index].name = e.target.value;
                       setFormData((prev) => ({ ...prev, sizes: updatedSizes }));
                     }}
+                    style={{ fontSize: '14px' }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -550,6 +559,7 @@ const Menu = () => {
                       updatedSizes[index].price = e.target.value;
                       setFormData((prev) => ({ ...prev, sizes: updatedSizes }));
                     }}
+                    style={{ fontSize: '14px' }}
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
@@ -561,11 +571,11 @@ const Menu = () => {
                     }}
                   />
 
-
                   {/* Remove Button */}
                   <button
                     type="button"
                     className="btn btn-danger btn-sm w-100 w-md-auto"
+                    style={{ fontSize: '12px' }}
                     onClick={() => {
                       const updatedSizes = formData.sizes.filter((_, i) => i !== index);
                       setFormData((prev) => ({ ...prev, sizes: updatedSizes }));
@@ -580,6 +590,7 @@ const Menu = () => {
               <button
                 type="button"
                 className="btn btn-primary btn-sm mt-2"
+                style={{ fontSize: '12px' }}
                 onClick={() =>
                   setFormData((prev) => ({
                     ...prev,
@@ -592,11 +603,12 @@ const Menu = () => {
             </div>
 
             <div className="mb-3">
-              <label className="form-label">Item Image</label>
+              <label className="form-label fw-semibold">Item Image</label>
               <input
                 type="file"
                 className="form-control"
                 onChange={handleImageChange}
+                style={{ fontSize: '14px' }}
               />
               {previewImage && (
                 <div className="d-flex justify-content-center mt-2">
@@ -608,7 +620,8 @@ const Menu = () => {
                       width: "100px", 
                       height: "100px", 
                       objectFit: "cover",
-                      maxWidth: "100%"
+                      maxWidth: "100%",
+                      borderRadius: "8px"
                     }}
                   />
                 </div>
@@ -620,7 +633,7 @@ const Menu = () => {
         {/* ✅ FIXED: Inventory Tab with Multiple Stock Items */}
         {activeTab === "inventory" && (
           <div className="mb-3">
-            <label className="form-label">Stock Items</label>
+            <label className="form-label fw-semibold">Stock Items</label>
 
             {formData.stockItems.map((stockItem, index) => (
               <div key={index} className="d-flex flex-column flex-md-row gap-2 align-items-center mb-2">
@@ -629,6 +642,7 @@ const Menu = () => {
                   className="form-select flex-fill"
                   value={stockItem.stockId || ""}
                   onChange={(e) => handleStockItemChange(index, 'stockId', e.target.value)}
+                  style={{ fontSize: '14px' }}
                 >
                   <option value="">Select Inventory</option>
                   {inventories?.map((inv) => (
@@ -645,6 +659,7 @@ const Menu = () => {
                   placeholder="Quantity"
                   value={stockItem.quantity || ""}
                   onChange={(e) => handleStockItemChange(index, 'quantity', e.target.value)}
+                  style={{ fontSize: '14px' }}
                 />
 
                 {/* Unit Select */}
@@ -652,6 +667,7 @@ const Menu = () => {
                   className="form-select flex-fill"
                   value={stockItem.unit || ""}
                   onChange={(e) => handleStockItemChange(index, 'unit', e.target.value)}
+                  style={{ fontSize: '14px' }}
                 >
                   <option value="">Select Unit</option>
                   <option value="kg">kg</option>
@@ -666,6 +682,7 @@ const Menu = () => {
                 <button
                   type="button"
                   className="btn btn-danger btn-sm w-100 w-md-auto"
+                  style={{ fontSize: '12px' }}
                   onClick={() => removeStockItem(index)}
                   disabled={formData.stockItems.length === 1}
                 >
@@ -678,6 +695,7 @@ const Menu = () => {
             <button
               type="button"
               className="btn btn-success btn-sm mt-2"
+              style={{ fontSize: '12px' }}
               onClick={addStockItem}
             >
               ➕ Add Stock Item

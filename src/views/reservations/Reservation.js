@@ -301,14 +301,13 @@ const Reservation = () => {
     return row[field] || 'N/A';
   };
 
-  // Mobile responsive DataGrid column definitions
+  // Desktop DataGrid column definitions with full headers
   const columns = [
     {
       field: 'id',
-      headerName: 'ID',
-      flex: isMobile ? undefined : 0.5,
-      minWidth: isMobile ? 80 : 200,
-      hide: isMobile, // Hide ID on mobile to save space
+      headerName: 'Reservation ID',
+      flex: 0.5,
+      minWidth: 120,
       valueGetter: (params) => getReservationId(params.row),
       renderCell: (params) => (
         <span title={params.value} className="text-truncate">{params.value}</span>
@@ -316,9 +315,9 @@ const Reservation = () => {
     },
     {
       field: 'customerName',
-      headerName: 'Customer',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 120 : undefined,
+      headerName: 'Customer Name',
+      flex: 1,
+      minWidth: 150,
       valueGetter: (params) => getCustomerInfo(params.row, 'customerName'),
       renderCell: (params) => (
         <div className="text-truncate" title={params.value}>
@@ -328,25 +327,23 @@ const Reservation = () => {
     },
     {
       field: 'customerPhoneNumber',
-      headerName: 'Mobile',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 100 : undefined,
-      hide: isMobile, // Hide phone on mobile to save space
+      headerName: 'Mobile Number',
+      flex: 1,
+      minWidth: 120,
       valueGetter: (params) => getCustomerInfo(params.row, 'customerPhoneNumber')
     },
     {
       field: 'customerAddress',
-      headerName: 'Address',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 120 : undefined,
-      hide: isMobile, // Hide address on mobile to save space
+      headerName: 'Customer Address',
+      flex: 1,
+      minWidth: 150,
       valueGetter: (params) => getCustomerInfo(params.row, 'customerAddress')
     },
     {
       field: 'startTime',
-      headerName: 'Start Time',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 120 : undefined,
+      headerName: 'Start Date & Time',
+      flex: 1,
+      minWidth: 150,
       valueGetter: (params) => {
         return formatDateTime(params.row?.startTime);
       },
@@ -358,48 +355,45 @@ const Reservation = () => {
     },
     {
       field: 'endTime',
-      headerName: 'End Time',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 120 : undefined,
-      hide: isMobile, // Hide end time on mobile to save space
+      headerName: 'End Date & Time',
+      flex: 1,
+      minWidth: 150,
       valueGetter: (params) => {
         return formatDateTime(params.row?.endTime);
       }
     },
     {
       field: 'payment',
-      headerName: 'Payment',
-      flex: isMobile ? undefined : 0.5,
-      minWidth: isMobile ? 80 : undefined,
+      headerName: 'Total Payment',
+      flex: 0.5,
+      minWidth: 100,
       valueGetter: (params) => {
         return params.row?.payment ? `₹${params.row.payment}` : 'N/A';
       }
     },
     {
       field: 'advance',
-      headerName: 'Advance',
-      flex: isMobile ? undefined : 0.5,
-      minWidth: isMobile ? 80 : undefined,
-      hide: isMobile, // Hide advance on mobile to save space
+      headerName: 'Advance Payment',
+      flex: 0.5,
+      minWidth: 100,
       valueGetter: (params) => {
         return params.row?.advance ? `₹${params.row.advance}` : 'N/A';
       }
     },
     {
       field: 'tableNumber',
-      headerName: 'Table',
-      flex: isMobile ? undefined : 0.5,
-      minWidth: isMobile ? 60 : undefined,
+      headerName: 'Table Number',
+      flex: 0.5,
+      minWidth: 80,
       valueGetter: (params) => {
         return params.row?.tableNumber || 'N/A';
       }
     },
     {
       field: 'notes',
-      headerName: 'Notes',
-      flex: isMobile ? undefined : 1,
-      minWidth: isMobile ? 80 : undefined,
-      hide: isMobile, // Hide notes on mobile to save space
+      headerName: 'Special Notes',
+      flex: 1,
+      minWidth: 120,
       valueGetter: (params) => {
         return params.row?.notes || 'N/A';
       }
@@ -407,15 +401,15 @@ const Reservation = () => {
     {
       field: 'actions',
       headerName: 'Actions',
-      flex: isMobile ? undefined : 0.8,
-      minWidth: isMobile ? 100 : undefined,
+      flex: 0.8,
+      minWidth: 120,
       sortable: false,
       filterable: false,
       renderCell: (params) => (
-        <div style={{ display: 'flex', gap: isMobile ? '4px' : '8px', flexWrap: 'nowrap' }}>
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'nowrap' }}>
           <CButton
             color="info"
-            size={isMobile ? "sm" : "sm"}
+            size="sm"
             onClick={() => {
               const row = params.row;
               setSelectedReservation(row);
@@ -434,21 +428,19 @@ const Reservation = () => {
               setEditModalVisible(true);
             }}
             title="Edit Reservation"
-            className={isMobile ? "btn-sm" : ""}
           >
-            <CIcon icon={cilPencil} size={isMobile ? "sm" : "sm"} />
+            <CIcon icon={cilPencil} size="sm" />
           </CButton>
           <CButton
             color="danger"
-            size={isMobile ? "sm" : "sm"}
+            size="sm"
             onClick={() => {
               setSelectedReservation(params.row);
               setDeleteModalVisible(true);
             }}
             title="Delete Reservation"
-            className={isMobile ? "btn-sm" : ""}
           >
-            <CIcon icon={cilTrash} size={isMobile ? "sm" : "sm"} />
+            <CIcon icon={cilTrash} size="sm" />
           </CButton>
         </div>
       ),
@@ -457,6 +449,104 @@ const Reservation = () => {
 
   // History columns (read-only, no actions)
   const historyColumns = columns.filter(col => col.field !== 'actions');
+
+  // Mobile Card Component for reservations
+  const ReservationCard = ({ reservation }) => (
+    <div className="card mb-3 shadow-sm">
+      <div className="card-body p-3">
+        <div className="d-flex justify-content-between align-items-start mb-2">
+          <h6 className="card-title mb-0 text-primary">
+            {getCustomerInfo(reservation, 'customerName')}
+          </h6>
+          <div className="d-flex gap-1">
+            <CButton
+              color="info"
+              size="sm"
+              onClick={() => {
+                setSelectedReservation(reservation);
+                setFormData({
+                  startTime: formatDateTimeForInput(reservation.startTime),
+                  endTime: formatDateTimeForInput(reservation.endTime),
+                  customerId: reservation.customerId || "",
+                  customerName: reservation.customerName || "",
+                  payment: reservation.payment || "",
+                  advance: reservation.advance || "",
+                  notes: reservation.notes || "",
+                  tableNumber: reservation.tableNumber || "",
+                });
+                setEditModalVisible(true);
+              }}
+              title="Edit Reservation"
+            >
+              <CIcon icon={cilPencil} size="sm" />
+            </CButton>
+            <CButton
+              color="danger"
+              size="sm"
+              onClick={() => {
+                setSelectedReservation(reservation);
+                setDeleteModalVisible(true);
+              }}
+              title="Delete Reservation"
+            >
+              <CIcon icon={cilTrash} size="sm" />
+            </CButton>
+          </div>
+        </div>
+        
+        <div className="row g-2">
+          <div className="col-6">
+            <small className="text-muted">Mobile:</small>
+            <div className="fw-medium">{getCustomerInfo(reservation, 'customerPhoneNumber')}</div>
+          </div>
+          <div className="col-6">
+            <small className="text-muted">Table:</small>
+            <div className="fw-medium">{reservation.tableNumber || 'N/A'}</div>
+          </div>
+        </div>
+        
+        <div className="row g-2 mt-2">
+          <div className="col-6">
+            <small className="text-muted">Start Time:</small>
+            <div className="fw-medium">{formatDateTime(reservation.startTime)}</div>
+          </div>
+          <div className="col-6">
+            <small className="text-muted">End Time:</small>
+            <div className="fw-medium">{formatDateTime(reservation.endTime)}</div>
+          </div>
+        </div>
+        
+        <div className="row g-2 mt-2">
+          <div className="col-6">
+            <small className="text-muted">Total Payment:</small>
+            <div className="fw-medium text-success">
+              {reservation.payment ? `₹${reservation.payment}` : 'N/A'}
+            </div>
+          </div>
+          <div className="col-6">
+            <small className="text-muted">Advance:</small>
+            <div className="fw-medium text-warning">
+              {reservation.advance ? `₹${reservation.advance}` : 'N/A'}
+            </div>
+          </div>
+        </div>
+        
+        {reservation.notes && (
+          <div className="mt-2">
+            <small className="text-muted">Notes:</small>
+            <div className="fw-medium">{reservation.notes}</div>
+          </div>
+        )}
+        
+        {getCustomerInfo(reservation, 'customerAddress') !== 'N/A' && (
+          <div className="mt-2">
+            <small className="text-muted">Address:</small>
+            <div className="fw-medium">{getCustomerInfo(reservation, 'customerAddress')}</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   // Process reservations data - split into future and past
   const { futureReservations, pastReservations } = React.useMemo(() => {
@@ -930,48 +1020,64 @@ const Reservation = () => {
             <p className="text-muted">No past reservations found</p>
           </div>
         ) : (
-          <div style={{ 
-            height: isMobile ? '400px' : '500px', 
-            width: '100%',
-            overflow: isMobile ? 'auto' : 'visible'
-          }}>
-            <DataGrid
-              rows={pastReservations}
-              columns={historyColumns}
-              getRowId={(row) => getReservationId(row)}
-              initialState={{
-                pagination: {
-                  paginationModel: { page: 0, pageSize: isMobile ? 5 : 10 },
-                },
-              }}
-              pageSizeOptions={isMobile ? [5, 10] : [5, 10, 20, 50]}
-              slots={{
-                toolbar: CustomToolbar,
-              }}
-              disableSelectionOnClick
-              autoHeight={!isMobile}
-              sx={{
-                '& .MuiDataGrid-cell': {
-                  borderBottom: '1px solid #f0f0f0',
-                  fontSize: isMobile ? '0.75rem' : '0.875rem',
-                  padding: isMobile ? '4px 8px' : '8px 16px',
-                },
-                '& .MuiDataGrid-columnHeaders': {
-                  backgroundColor: '#f8f9fa',
-                  borderBottom: '2px solid #dee2e6',
-                  fontSize: isMobile ? '0.75rem' : '0.875rem',
-                  padding: isMobile ? '4px 8px' : '8px 16px',
-                },
-                '& .MuiDataGrid-row': {
-                  backgroundColor: '#f9f9f9',
-                  minHeight: isMobile ? '40px' : '52px',
-                },
-                '& .MuiDataGrid-footerContainer': {
-                  fontSize: isMobile ? '0.75rem' : '0.875rem',
-                },
-              }}
-            />
-          </div>
+          <>
+            {/* Mobile View - Cards for History */}
+            {isMobile ? (
+              <div className="p-3">
+                {pastReservations.map((reservation) => (
+                  <ReservationCard 
+                    key={getReservationId(reservation)} 
+                    reservation={reservation} 
+                  />
+                ))}
+              </div>
+            ) : (
+              /* Desktop View - DataGrid with full headers for History */
+              <div style={{ 
+                height: '500px', 
+                width: '100%',
+                overflow: 'visible'
+              }}>
+                <DataGrid
+                  rows={pastReservations}
+                  columns={historyColumns}
+                  getRowId={(row) => getReservationId(row)}
+                  initialState={{
+                    pagination: {
+                      paginationModel: { page: 0, pageSize: 10 },
+                    },
+                  }}
+                  pageSizeOptions={[5, 10, 20, 50]}
+                  slots={{
+                    toolbar: CustomToolbar,
+                  }}
+                  disableSelectionOnClick
+                  autoHeight
+                  sx={{
+                    '& .MuiDataGrid-cell': {
+                      borderBottom: '1px solid #f0f0f0',
+                      fontSize: '0.875rem',
+                      padding: '8px 16px',
+                    },
+                    '& .MuiDataGrid-columnHeaders': {
+                      backgroundColor: '#f8f9fa',
+                      borderBottom: '2px solid #dee2e6',
+                      fontSize: '0.875rem',
+                      padding: '8px 16px',
+                      fontWeight: 'bold',
+                    },
+                    '& .MuiDataGrid-row': {
+                      backgroundColor: '#f9f9f9',
+                      minHeight: '52px',
+                    },
+                    '& .MuiDataGrid-footerContainer': {
+                      fontSize: '0.875rem',
+                    },
+                  }}
+                />
+              </div>
+            )}
+          </>
         )}
       </CModalBody>
       <CModalFooter className={isMobile ? "px-3 py-2" : ""}>
@@ -1111,47 +1217,63 @@ const Reservation = () => {
               </CButton>
             </div>
           ) : (
-            <div style={{ 
-              height: isMobile ? '400px' : 'auto',
-              width: '100%',
-              overflow: isMobile ? 'auto' : 'visible'
-            }}>
-              <DataGrid
-                rows={futureReservations}
-                columns={columns}
-                getRowId={(row) => getReservationId(row)}
-                initialState={{
-                  pagination: {
-                    paginationModel: { page: 0, pageSize: isMobile ? 5 : 10 },
-                  },
-                }}
-                pageSizeOptions={isMobile ? [5, 10] : [5, 10, 20, 50]}
-                slots={{
-                  toolbar: CustomToolbar,
-                }}
-                disableSelectionOnClick
-                autoHeight={!isMobile}
-                sx={{
-                  '& .MuiDataGrid-cell': {
-                    borderBottom: '1px solid #f0f0f0',
-                    fontSize: isMobile ? '0.75rem' : '0.875rem',
-                    padding: isMobile ? '4px 8px' : '8px 16px',
-                  },
-                  '& .MuiDataGrid-columnHeaders': {
-                    backgroundColor: '#f8f9fa',
-                    borderBottom: '2px solid #dee2e6',
-                    fontSize: isMobile ? '0.75rem' : '0.875rem',
-                    padding: isMobile ? '4px 8px' : '8px 16px',
-                  },
-                  '& .MuiDataGrid-row': {
-                    minHeight: isMobile ? '40px' : '52px',
-                  },
-                  '& .MuiDataGrid-footerContainer': {
-                    fontSize: isMobile ? '0.75rem' : '0.875rem',
-                  },
-                }}
-              />
-            </div>
+            <>
+              {/* Mobile View - Cards */}
+              {isMobile ? (
+                <div className="p-3">
+                  {futureReservations.map((reservation) => (
+                    <ReservationCard 
+                      key={getReservationId(reservation)} 
+                      reservation={reservation} 
+                    />
+                  ))}
+                </div>
+              ) : (
+                /* Desktop View - DataGrid with full headers */
+                <div style={{ 
+                  height: 'auto',
+                  width: '100%',
+                  overflow: 'visible'
+                }}>
+                  <DataGrid
+                    rows={futureReservations}
+                    columns={columns}
+                    getRowId={(row) => getReservationId(row)}
+                    initialState={{
+                      pagination: {
+                        paginationModel: { page: 0, pageSize: 10 },
+                      },
+                    }}
+                    pageSizeOptions={[5, 10, 20, 50]}
+                    slots={{
+                      toolbar: CustomToolbar,
+                    }}
+                    disableSelectionOnClick
+                    autoHeight
+                    sx={{
+                      '& .MuiDataGrid-cell': {
+                        borderBottom: '1px solid #f0f0f0',
+                        fontSize: '0.875rem',
+                        padding: '8px 16px',
+                      },
+                      '& .MuiDataGrid-columnHeaders': {
+                        backgroundColor: '#f8f9fa',
+                        borderBottom: '2px solid #dee2e6',
+                        fontSize: '0.875rem',
+                        padding: '8px 16px',
+                        fontWeight: 'bold',
+                      },
+                      '& .MuiDataGrid-row': {
+                        minHeight: '52px',
+                      },
+                      '& .MuiDataGrid-footerContainer': {
+                        fontSize: '0.875rem',
+                      },
+                    }}
+                  />
+                </div>
+              )}
+            </>
           )}
         </div>
       </div>

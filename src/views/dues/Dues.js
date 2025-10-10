@@ -24,7 +24,7 @@ import {
   CBadge
 } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
-import { cilPencil, cilTrash, cilReload, cilPlus, cilCheckCircle, cilWarning, cilMoney } from '@coreui/icons';
+import { cilPencil, cilTrash, cilReload, cilPlus, cilCheckCircle, cilWarning, cilMoney, cilSearch, cilX } from '@coreui/icons';
 import { useMediaQuery } from '@mui/material';
 import Select from 'react-select';
 
@@ -34,7 +34,7 @@ const Dues = () => {
   const { customers, loading: customersLoading, error: customersError } = useSelector((state) => state.customers);
   const restaurantId = useSelector((state) => state.auth.restaurantId);
 
-  const isMobile = useMediaQuery('(max-width:600px)');
+  const isMobile = useMediaQuery('(max-width:768px)');
 
   // Modal states
   const [modalVisible, setModalVisible] = useState(false);
@@ -53,6 +53,7 @@ const Dues = () => {
   const [paymentAmount, setPaymentAmount] = useState('');
   const [selectedDue, setSelectedDue] = useState(null);
   const [formLoading, setFormLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Utility functions
   const getCustomerId = useCallback((customer) => customer?.id || customer?._id, []);
@@ -832,21 +833,32 @@ const Dues = () => {
     },
   ];
 
-  // Process dues data
+  // Process dues data with search filter
   const validatedDues = React.useMemo(() => {
     if (!dues || !Array.isArray(dues)) return [];
 
-    return dues
-      .filter((due) => {
-        const id = getDueId(due);
-        return id && due;
-      })
-      .sort((a, b) => {
-        const dateA = new Date(a.createdAt || 0).getTime();
-        const dateB = new Date(b.createdAt || 0).getTime();
-        return dateB - dateA;
+    let filteredDues = dues.filter((due) => {
+      const id = getDueId(due);
+      return id && due;
+    });
+
+    // Apply search filter
+    if (searchTerm.trim()) {
+      const searchLower = searchTerm.toLowerCase();
+      filteredDues = filteredDues.filter((due) => {
+        const customerName = (due.customerName || '').toLowerCase();
+        const dueId = getDueId(due);
+        const shortId = dueId ? dueId.slice(0, 8).toUpperCase() : '';
+        return customerName.includes(searchLower) || shortId.includes(searchLower.toUpperCase());
       });
-  }, [dues, getDueId]);
+    }
+
+    return filteredDues.sort((a, b) => {
+      const dateA = new Date(a.createdAt || 0).getTime();
+      const dateB = new Date(b.createdAt || 0).getTime();
+      return dateB - dateA;
+    });
+  }, [dues, getDueId, searchTerm]);
 
   const isLoading = loading || customersLoading;
 
@@ -861,6 +873,112 @@ const Dues = () => {
 
     return { totalDues, paidDues, unpaidDues, totalAmount, paidAmount, remainingAmount };
   }, [validatedDues]);
+
+  // Mobile Card Component
+  const DueCard = ({ due }) => {
+    const dueId = getDueId(due);
+    const shortId = dueId ? dueId.slice(0, 8).toUpperCase() : 'N/A';
+    const hasRemaining = (due.remainingAmount || 0) > 0;
+    
+    return (
+      <div className="card mb-3 shadow-sm border-0" style={{ borderRadius: '12px' }}>
+        <div className="card-body p-3">
+          {/* Header with Due ID and Status */}
+          <div className="d-flex justify-content-between align-items-start mb-3">
+            <div>
+              <CBadge color="secondary" className="px-2 py-1 mb-1">
+                DUE-{shortId}
+              </CBadge>
+              <h6 className="mb-1 fw-bold text-dark">{due.customerName || 'Unknown Customer'}</h6>
+              {due.createdAt && (
+                <small className="text-muted">
+                  Created: {new Date(due.createdAt).toLocaleDateString()}
+                </small>
+              )}
+            </div>
+            <CBadge 
+              color={due.status === 'paid' ? 'success' : 'warning'} 
+              className="px-3 py-2 d-flex align-items-center gap-1"
+            >
+              <CIcon icon={due.status === 'paid' ? cilCheckCircle : cilWarning} size="sm" />
+              {due.status ? due.status.charAt(0).toUpperCase() + due.status.slice(1) : 'Unknown'}
+            </CBadge>
+          </div>
+
+          {/* Amount Details */}
+          <div className="row g-2 mb-3">
+            <div className="col-6">
+              <div className="text-center p-2 bg-light rounded">
+                <small className="text-muted d-block">Total Amount</small>
+                <strong className="text-success">₹{parseFloat(due.total || 0).toFixed(2)}</strong>
+              </div>
+            </div>
+            <div className="col-6">
+              <div className="text-center p-2 bg-light rounded">
+                <small className="text-muted d-block">Paid Amount</small>
+                <strong className="text-primary">₹{parseFloat(due.paidAmount || 0).toFixed(2)}</strong>
+              </div>
+            </div>
+          </div>
+
+          {/* Remaining Amount */}
+          <div className="text-center mb-3">
+            <div className="p-2 rounded" style={{ 
+              backgroundColor: (due.remainingAmount || 0) > 0 ? '#fff3cd' : '#d1edff',
+              border: `1px solid ${(due.remainingAmount || 0) > 0 ? '#ffeaa7' : '#bee5eb'}`
+            }}>
+              <small className="text-muted d-block">Remaining Balance</small>
+              <strong 
+                className={`${(due.remainingAmount || 0) > 0 ? 'text-danger' : 'text-success'}`}
+                style={{ fontSize: '1.1rem' }}
+              >
+                ₹{parseFloat(due.remainingAmount || 0).toFixed(2)}
+              </strong>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="d-flex gap-2 justify-content-center">
+            {hasRemaining && (
+              <CButton
+                color="success"
+                variant="outline"
+                size="sm"
+                onClick={() => handlePayment(due)}
+                disabled={loading || formLoading}
+                className="flex-fill"
+              >
+                <CIcon icon={cilMoney} size="sm" className="me-1" />
+                Payment
+              </CButton>
+            )}
+            <CButton
+              color="info"
+              variant="outline"
+              size="sm"
+              onClick={() => handleEdit(due)}
+              disabled={loading || formLoading}
+              className="flex-fill"
+            >
+              <CIcon icon={cilPencil} size="sm" className="me-1" />
+              Edit
+            </CButton>
+            <CButton
+              color="danger"
+              variant="outline"
+              size="sm"
+              onClick={() => handleDelete(due)}
+              disabled={loading || formLoading}
+              className="flex-fill"
+            >
+              <CIcon icon={cilTrash} size="sm" className="me-1" />
+              Delete
+            </CButton>
+          </div>
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div style={{ padding: '20px', minHeight: '100vh' }}>
@@ -956,7 +1074,7 @@ const Dues = () => {
         </CAlert>
       )}
 
-      {/* Data Grid */}
+      {/* Data Grid / Mobile Cards */}
       <div className="card border-0 shadow-sm">
         <div className="card-body p-0">
           {isLoading && validatedDues.length === 0 ? (
@@ -973,7 +1091,73 @@ const Dues = () => {
               <CSpinner color="primary" />
               <p className="text-muted">Loading dues data...</p>
             </div>
+          ) : isMobile ? (
+            // Mobile Cards View
+            <div className="p-3">
+              {/* Mobile Search Bar */}
+              <div className="mb-3">
+                <div className="input-group">
+                  <span className="input-group-text bg-light">
+                    <CIcon icon={cilSearch} size="sm" />
+                  </span>
+                  <CFormInput
+                    type="text"
+                    placeholder="Search by customer name or due ID..."
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    className="form-control"
+                  />
+                  {searchTerm && (
+                    <CButton
+                      color="secondary"
+                      variant="outline"
+                      onClick={() => setSearchTerm('')}
+                      title="Clear search"
+                    >
+                      <CIcon icon={cilX} size="sm" />
+                    </CButton>
+                  )}
+                </div>
+                {searchTerm && (
+                  <small className="text-muted">
+                    Found {validatedDues.length} result(s) for "{searchTerm}"
+                  </small>
+                )}
+              </div>
+
+              {validatedDues.length === 0 ? (
+                <div className="text-center py-5">
+                  <div style={{ fontSize: '48px', marginBottom: '16px' }}>
+                    {searchTerm ? '🔍' : '📋'}
+                  </div>
+                  <h5 className="text-muted">
+                    {searchTerm ? 'No dues found' : 'No dues found'}
+                  </h5>
+                  <p className="text-muted">
+                    {searchTerm 
+                      ? `No dues match "${searchTerm}". Try a different search term.`
+                      : 'Start by adding your first due record'
+                    }
+                  </p>
+                  {!searchTerm && (
+                    <CButton
+                      color="primary"
+                      onClick={() => setModalVisible(true)}
+                      className="mt-2"
+                    >
+                      <CIcon icon={cilPlus} className="me-2" />
+                      Add Your First Due
+                    </CButton>
+                  )}
+                </div>
+              ) : (
+                validatedDues.map((due) => (
+                  <DueCard key={getDueId(due)} due={due} />
+                ))
+              )}
+            </div>
           ) : (
+            // Desktop DataGrid View
             <DataGrid
               rows={validatedDues}
               columns={columns}
@@ -1014,8 +1198,8 @@ const Dues = () => {
         </div>
       </div>
 
-      {/* Empty State */}
-      {validatedDues.length === 0 && !isLoading && (
+      {/* Empty State - Only show on desktop when not in mobile cards view */}
+      {validatedDues.length === 0 && !isLoading && !isMobile && (
         <div className="card border-0 shadow-sm mt-4">
           <div className="card-body text-center p-5">
             <div style={{ fontSize: '64px', marginBottom: '16px' }}>📋</div>
@@ -1082,7 +1266,7 @@ export default Dues;
 //   const { customers, loading: customersLoading, error: customersError } = useSelector((state) => state.customers);
 //   const restaurantId = useSelector((state) => state.auth.restaurantId);
 
-//   const isMobile = useMediaQuery('(max-width:600px)');
+//   const isMobile = useMediaQuery('(max-width:768px)');
 
 //   // Modal states
 //   const [modalVisible, setModalVisible] = useState(false);
