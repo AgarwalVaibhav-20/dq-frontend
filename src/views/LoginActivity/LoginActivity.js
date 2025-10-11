@@ -323,15 +323,22 @@ const LoginActivity = () => {
             <CCardHeader className="py-3">
               <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
                 <CCardTitle className="h5 mb-2 mb-md-0">Login Activities History</CCardTitle>
-                <CButton 
-                  color="primary" 
-                  size="sm" 
-                  onClick={loadActivities}
-                  disabled={loading}
-                  className="w-100 w-md-auto"
-                >
-                  {loading ? <CSpinner size="sm" /> : 'Refresh'}
-                </CButton>
+                <div className="d-flex justify-content-end">
+                  <CButton 
+                    color="primary" 
+                    size="sm" 
+                    onClick={loadActivities}
+                    disabled={loading}
+                    className="w-100 w-md-auto"
+                    style={{ 
+                      fontSize: '0.875rem', 
+                      padding: '0.375rem 0.75rem',
+                      minWidth: 'auto'
+                    }}
+                  >
+                    {loading ? <CSpinner size="sm" /> : 'Refresh'}
+                  </CButton>
+                </div>
               </div>
             </CCardHeader>
             <CCardBody className="p-0">

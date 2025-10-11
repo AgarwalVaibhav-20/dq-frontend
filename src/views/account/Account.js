@@ -220,7 +220,7 @@ export default function Account() {
               </div>
               <CButton
                 onClick={handleShowModal}
-                className="w-100 w-md-auto"
+                className="w-20 w-md-auto"
                 style={{
                   backgroundColor: '#1a73e8',
                   border: 'none',

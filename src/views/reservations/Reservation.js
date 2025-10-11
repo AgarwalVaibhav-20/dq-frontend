@@ -1229,7 +1229,12 @@ const Reservation = () => {
               <CButton
                 color="primary"
                 onClick={() => setModalVisible(true)}
-                className="w-100 w-md-auto"
+                className="w-auto"
+                style={{ 
+                  fontSize: '0.875rem', 
+                  padding: '0.5rem 1.5rem',
+                  minWidth: 'auto'
+                }}
               >
                 <CIcon icon={cilPlus} className="me-2" />
                 Create Your First Reservation

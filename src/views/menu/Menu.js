@@ -340,32 +340,39 @@ const Menu = () => {
       {/* Header */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center my-3 my-md-4 gap-3">
         <h2 className="fw-bold mb-0 text-black" style={{ fontSize: '1.5rem' }}>🍽️ Menu </h2>
-        <CButton
-          color="primary"
-          className="px-4 rounded-pill fw-semibold w-100 w-md-auto"
-          style={{ fontSize: '14px' }}
-          onClick={() => {
-            setFormData({
-              menuId: "",
-              itemName: "",
-              categoryId: "",
-              restaurantId: "",
-              itemImage: "",
-              sub_category: "",
-              stock: 0,
-              sizes: [{ name: "", price: "", enabled: true }],
-              stockItems: [{ stockId: "", quantity: "", unit: "" }],
-              description: "",
-              preparationTime: "",
-              rewardPoints: 0
-            });
-            setPreviewImage(null);
-            setActiveTab("basic");
-            setModalVisible(true);
-          }}
-        >
-          + Add Menu
-        </CButton>
+        <div className="d-flex justify-content-end">
+          <CButton
+            color="primary"
+            className="w-100 w-md-auto"
+            size="sm"
+            style={{ 
+              fontSize: '0.875rem', 
+              padding: '0.375rem 0.75rem',
+              minWidth: 'auto'
+            }}
+            onClick={() => {
+              setFormData({
+                menuId: "",
+                itemName: "",
+                categoryId: "",
+                restaurantId: "",
+                itemImage: "",
+                sub_category: "",
+                stock: 0,
+                sizes: [{ name: "", price: "", enabled: true }],
+                stockItems: [{ stockId: "", quantity: "", unit: "" }],
+                description: "",
+                preparationTime: "",
+                rewardPoints: 0
+              });
+              setPreviewImage(null);
+              setActiveTab("basic");
+              setModalVisible(true);
+            }}
+          >
+            + Add Menu
+          </CButton>
+        </div>
       </div>
 
       {/* Menu List */}

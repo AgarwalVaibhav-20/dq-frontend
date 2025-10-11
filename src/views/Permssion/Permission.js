@@ -601,17 +601,24 @@ export default function PermissionManagement() {
             <CBadge color="info" className="fs-6 px-3 py-2 text-center">
               Total Users: {stats.total}
             </CBadge>
-            <CButton
-              color="primary"
-              variant="outline"
-              size="sm"
-              onClick={refreshUsers}
-              disabled={loading}
-              className="w-100 w-sm-auto"
-            >
-              <CIcon icon={cilReload} className="me-1" />
-              Refresh
-            </CButton>
+            <div className="d-flex justify-content-end">
+              <CButton
+                color="primary"
+                variant="outline"
+                size="sm"
+                onClick={refreshUsers}
+                disabled={loading}
+                className="w-100 w-sm-auto"
+                style={{ 
+                  fontSize: '0.875rem', 
+                  padding: '0.375rem 0.75rem',
+                  minWidth: 'auto'
+                }}
+              >
+                <CIcon icon={cilReload} className="me-1" />
+                Refresh
+              </CButton>
+            </div>
           </div>
         </div>
       </div>

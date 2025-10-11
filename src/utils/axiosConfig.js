@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { BASE_URL } from './constants';
+import { getValidToken, clearAuthData } from './tokenUtils';
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -8,8 +9,7 @@ const axiosInstance = axios.create({
 // Request Interceptor: Adds the auth token to every request
 axiosInstance.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('authToken');
-    // console.log('Token from localStorage:', token)
+    const token = getValidToken();
     if (token) {
       config.headers['Authorization'] = `Bearer ${token}`;
     }
@@ -25,15 +25,8 @@ axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Clear localStorage and redirect to login
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('restaurantId');
-      localStorage.removeItem('userId');
-      localStorage.removeItem('categoryId');
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('userName');
-      localStorage.removeItem('userEmail');
-      localStorage.removeItem('username');
+      // Clear all authentication data
+      clearAuthData();
       
       // Redirect to login page
       window.location.href = '/login';

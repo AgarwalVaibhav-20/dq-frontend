@@ -75,7 +75,7 @@ import Downloads from './views/downloads/Downloads'
 // import CustomerLoyality from './views/customer loyality/CustomerLoylity.js'
 import Delivery from './views/delivery/Delivery'
 import { checkRestaurantPermission, debugProfile, forceLoadProfile } from './redux/slices/restaurantProfileSlice'
-import { fetchUserProfile } from './redux/slices/authSlice'
+import { fetchUserProfile, syncLocalStorage } from './redux/slices/authSlice'
 import store from './redux/store'
 
 import TableRedirect from './views/tableredirect/TableRedirect.js'
@@ -309,6 +309,9 @@ const App = () => {
   useEffect(() => {
     const sessionStarted = localStorage.getItem('sessionStarted') === 'true';
     dispatch({ type: 'auth/setSessionStarted', payload: sessionStarted });
+    
+    // Sync localStorage with Redux state on app initialization
+    dispatch(syncLocalStorage());
   }, [dispatch]);
 
   // ✅ Better loading state handling

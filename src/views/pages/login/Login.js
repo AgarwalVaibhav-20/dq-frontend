@@ -36,6 +36,10 @@ const Login = () => {
       console.log("Login response:", data)
 
       if (data.message === 'Login successful') {
+        // Navigate to OTP page for verification
+        navigate('/otp', { state: { email } })
+      } else if (data.message === 'OTP sent to your email') {
+        // Navigate to OTP page for verification
         navigate('/otp', { state: { email } })
       }
     } catch (err) {

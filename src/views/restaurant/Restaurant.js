@@ -179,11 +179,13 @@ const Restaurants = () => {
   // ---------------- UI ----------------
   return (
     <div className="container-fluid px-2 px-md-4">
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center my-3 my-md-4 gap-3">
+      <div className="d-flex justify-content-between align-items-center my-3 my-md-4">
         <h2 className="fw-bold mb-0 text-black">🏪 Restaurants</h2>
         <CButton
           color="primary"
-          className="px-3 px-md-4 rounded-pill fw-semibold w-100 w-md-auto"
+          className="fw-semibold"
+          size="sm"
+          style={{ fontSize: '0.85rem', padding: '6px 16px', minHeight: '32px' }}
           onClick={() => setModalState({ type: 'add', visible: true })}
         >
           + Add Restaurant

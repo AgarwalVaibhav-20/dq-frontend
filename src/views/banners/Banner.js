@@ -324,14 +324,21 @@ export default function Banner() {
       {/* Mobile Responsive Header */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
         <h1 className="fs-4 fw-semibold mb-2 mb-md-0">Banners ({filteredBanners.length})</h1>
-        <CButton 
-          color="primary" 
-          onClick={() => setModalVisible(true)}
-          className="w-100 w-md-auto"
-          style={{ minWidth: '120px' }}
-        >
-          Add Banner
-        </CButton>
+        <div className="d-flex justify-content-end">
+          <CButton 
+            color="primary" 
+            onClick={() => setModalVisible(true)}
+            className="w-100 w-md-auto"
+            size="sm"
+            style={{ 
+              fontSize: '0.875rem', 
+              padding: '0.375rem 0.75rem',
+              minWidth: 'auto'
+            }}
+          >
+            Add Banner
+          </CButton>
+        </div>
       </div>
 
       {/* Mobile Responsive Search and Filter */}

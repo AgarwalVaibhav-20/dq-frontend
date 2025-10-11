@@ -86,39 +86,82 @@ const Order = () => {
     }
   }
 
-  // const generateKOT = (order) => {
-  //   setSelectedOrder(order)
-    
-  //   const cartItems = order.order_details?.map(item => ({
-  //     id: item._id || item.id,
-  //     itemName: item.item_name,
-  //     price: item.price,
-  //     quantity: item.quantity,
-  //     notes: item.notes || ''
-  //   })) || []
+  const generateKOT = (order) => {
+    try {
+      setSelectedOrder(order)
+      
+      // Get cart items from either items or order_details
+      const cartItems = order.items?.map(item => ({
+        id: item._id || item.id || item.itemId,
+        itemName: item.itemName || item.item_name,
+        price: item.price || item.subtotal,
+        quantity: item.quantity,
+        notes: item.notes || ''
+      })) || order.order_details?.map(item => ({
+        id: item._id || item.id,
+        itemName: item.item_name,
+        price: item.price,
+        quantity: item.quantity,
+        notes: item.notes || ''
+      })) || []
 
-  //   const kotElement = kotRef.current
-  //   if (!kotElement) {
-  //     toast.error('KOT component not found', { autoClose: 3000 })
-  //     return
-  //   }
+      console.log('KOT Order:', order)
+      console.log('KOT Cart Items:', cartItems)
+      console.log('KOT Order Items:', order.items)
+      console.log('KOT Order Details:', order.order_details)
 
-  //   kotElement.style.display = 'block'
+      if (cartItems.length === 0) {
+        toast.error('No items found in this order', { autoClose: 3000 })
+        return
+      }
 
-  //   html2canvas(kotElement, { scale: 2 })
-  //     .then((canvas) => {
-  //       const imgData = canvas.toDataURL('image/png')
-  //       setKOTImage(imgData)
-  //       setShowKOTModal(true)
-  //     })
-  //     .catch((error) => {
-  //       toast.error(`Error generating KOT preview: ${error}`, { autoClose: 3000 })
-  //     })
-  //     .finally(() => {
-  //       kotElement.style.display = 'none'
-  //     })
-  // }
-  
+      const kotElement = kotRef.current
+      if (!kotElement) {
+        toast.error('KOT component not found', { autoClose: 3000 })
+        return
+      }
+
+      // Make the element visible temporarily for html2canvas
+      kotElement.style.position = 'absolute'
+      kotElement.style.left = '0'
+      kotElement.style.top = '0'
+      kotElement.style.visibility = 'visible'
+      kotElement.style.zIndex = '9999'
+
+      // Wait a bit for the component to render
+      setTimeout(() => {
+        html2canvas(kotElement, { 
+          scale: 2,
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          width: kotElement.offsetWidth,
+          height: kotElement.offsetHeight
+        })
+          .then((canvas) => {
+            const imgData = canvas.toDataURL('image/png')
+            setKOTImage(imgData)
+            setShowKOTModal(true)
+            toast.success('KOT generated successfully!', { autoClose: 2000 })
+          })
+          .catch((error) => {
+            console.error('KOT generation error:', error)
+            toast.error(`Error generating KOT preview: ${error.message}`, { autoClose: 3000 })
+          })
+          .finally(() => {
+            // Hide the element again
+            kotElement.style.position = 'absolute'
+            kotElement.style.left = '-9999px'
+            kotElement.style.top = '-9999px'
+            kotElement.style.visibility = 'hidden'
+          })
+      }, 300)
+    } catch (error) {
+      console.error('KOT generation error:', error)
+      toast.error(`Error generating KOT: ${error.message}`, { autoClose: 3000 })
+    }
+  }
+
 
   const generateInvoicePDF = (transactionDetails) => {
     const doc = new jsPDF({
@@ -203,28 +246,82 @@ const Order = () => {
   }
 
   const generateBill = (order) => {
-    setSelectedOrder(order)
-    
-    const invoiceElement = invoiceRef.current
-    if (!invoiceElement) {
-      toast.error('Invoice component not found', { autoClose: 3000 })
-      return
+    try {
+      setSelectedOrder(order)
+      
+      // Get cart items from either items or order_details
+      const cartItems = order.items?.map(item => ({
+        id: item._id || item.id || item.itemId,
+        itemName: item.itemName || item.item_name,
+        price: item.price || item.subtotal,
+        quantity: item.quantity,
+        notes: item.notes || ''
+      })) || order.order_details?.map(item => ({
+        id: item._id || item.id,
+        itemName: item.item_name,
+        price: item.price,
+        quantity: item.quantity,
+        notes: item.notes || ''
+      })) || []
+
+      console.log('Invoice Order:', order)
+      console.log('Invoice Cart Items:', cartItems)
+      console.log('Invoice Order Items:', order.items)
+      console.log('Invoice Order Details:', order.order_details)
+
+      if (cartItems.length === 0) {
+        toast.error('No items found in this order', { autoClose: 3000 })
+        return
+      }
+
+      const invoiceElement = invoiceRef.current
+      if (!invoiceElement) {
+        toast.error('Invoice component not found', { autoClose: 3000 })
+        return
+      }
+
+      // Make the element visible temporarily for html2canvas
+      invoiceElement.style.position = 'absolute'
+      invoiceElement.style.left = '0'
+      invoiceElement.style.top = '0'
+      invoiceElement.style.visibility = 'visible'
+      invoiceElement.style.zIndex = '9999'
+
+      // Wait a bit for the component to render
+      setTimeout(() => {
+        html2canvas(invoiceElement, { 
+          scale: 2, 
+          useCORS: true,
+          allowTaint: true,
+          backgroundColor: '#ffffff',
+          width: invoiceElement.offsetWidth,
+          height: invoiceElement.offsetHeight
+        })
+          .then((canvas) => {
+            const imgData = canvas.toDataURL('image/png')
+            console.log('Invoice canvas generated:', canvas)
+            console.log('Invoice image data length:', imgData.length)
+            console.log('Invoice image data preview:', imgData.substring(0, 100))
+            setInvoiceImage(imgData)
+            setShowInvoiceModal(true)
+            toast.success('Invoice generated successfully!', { autoClose: 2000 })
+          })
+          .catch((error) => {
+            console.error('Invoice generation error:', error)
+            toast.error(`Error generating invoice: ${error.message}`, { autoClose: 3000 })
+          })
+          .finally(() => {
+            // Hide the element again
+            invoiceElement.style.position = 'absolute'
+            invoiceElement.style.left = '-9999px'
+            invoiceElement.style.top = '-9999px'
+            invoiceElement.style.visibility = 'hidden'
+          })
+      }, 300)
+    } catch (error) {
+      console.error('Invoice generation error:', error)
+      toast.error(`Error generating invoice: ${error.message}`, { autoClose: 3000 })
     }
-
-    invoiceElement.style.display = 'block'
-
-    html2canvas(invoiceElement, { scale: 2, useCORS: true })
-      .then((canvas) => {
-        const imgData = canvas.toDataURL('image/png')
-        setInvoiceImage(imgData)
-        setShowInvoiceModal(true)
-      })
-      .catch((error) => {
-        toast.error(`Error generating invoice: ${error}`, { autoClose: 3000 })
-      })
-      .finally(() => {
-        invoiceElement.style.display = 'none'
-      })
   }
 
   const handleKOTPrint = () => {
@@ -538,6 +635,11 @@ const Order = () => {
     <div style={{ paddingLeft: '20px', paddingRight: '20px' }}>
       <style>
         {`
+          @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+          }
+          
           .mobile-orders-container {
             padding: 0;
           }
@@ -812,12 +914,45 @@ const Order = () => {
       <InvoiceModal isVisible={showInvoiceModal} onClose={() => setShowInvoiceModal(false)}>
         <div style={{ textAlign: 'center' }}>
           <h3>Invoice Preview</h3>
-          {invoiceImage && (
-            <img
-              src={invoiceImage}
-              alt="Invoice Preview"
-              style={{ width: '100%', marginBottom: '10px' }}
-            />
+          {console.log('Invoice Modal - invoiceImage:', invoiceImage)}
+          {console.log('Invoice Modal - showInvoiceModal:', showInvoiceModal)}
+          {invoiceImage ? (
+            <div>
+              <img
+                src={invoiceImage}
+                alt="Invoice Preview"
+                style={{ 
+                  width: '100%', 
+                  marginBottom: '10px', 
+                  maxWidth: '400px',
+                  border: '1px solid #ddd',
+                  borderRadius: '4px'
+                }}
+                onLoad={() => console.log('Invoice image loaded successfully')}
+                onError={(e) => {
+                  console.error('Invoice image failed to load:', e)
+                  toast.error('Failed to load invoice image', { autoClose: 3000 })
+                }}
+              />
+              <p style={{ fontSize: '12px', color: '#666', margin: '5px 0' }}>
+                Invoice generated successfully
+              </p>
+            </div>
+          ) : (
+            <div style={{ padding: '20px', color: '#666', textAlign: 'center' }}>
+              <div style={{ fontSize: '24px', marginBottom: '10px' }}>📄</div>
+              <p>Generating invoice...</p>
+              <p style={{ fontSize: '12px' }}>Invoice Image State: {invoiceImage ? 'Available' : 'Not Available'}</p>
+              <div style={{ 
+                width: '20px', 
+                height: '20px', 
+                border: '2px solid #f3f3f3',
+                borderTop: '2px solid #3498db',
+                borderRadius: '50%',
+                animation: 'spin 1s linear infinite',
+                margin: '10px auto'
+              }}></div>
+            </div>
           )}
           <button
             onClick={handleInvoicePrint}
@@ -987,14 +1122,21 @@ const Order = () => {
       {/* Hidden KOT and Invoice components for generation */}
       {selectedOrder && (
         <>
-          <div style={{ display: 'none' }}>
+          <div style={{ 
+            position: 'absolute', 
+            left: '-9999px', 
+            top: '-9999px',
+            visibility: 'hidden',
+            width: '2in',
+            maxWidth: '2in'
+          }}>
             <KOT
               ref={kotRef}
-              tableNumber={selectedOrder.tableNumber || selectedOrder.table_number}
+              tableNumber={selectedOrder.tableNumber || selectedOrder.table_number || 'N/A'}
               cart={selectedOrder.items?.map(item => ({
-                id: item._id || item.itemId,
-                itemName: item.itemName,
-                price: item.price,
+                id: item._id || item.id || item.itemId,
+                itemName: item.itemName || item.item_name,
+                price: item.price || item.subtotal,
                 quantity: item.quantity,
                 notes: item.notes || ''
               })) || selectedOrder.order_details?.map(item => ({
@@ -1007,15 +1149,22 @@ const Order = () => {
             />
           </div>
           
-          <div style={{ display: 'none' }}>
+          <div style={{ 
+            position: 'absolute', 
+            left: '-9999px', 
+            top: '-9999px',
+            visibility: 'hidden',
+            width: '2in',
+            maxWidth: '2in'
+          }}>
             <Invoice
               ref={invoiceRef}
-              tableNumber={selectedOrder.tableNumber || selectedOrder.table_number}
+              tableNumber={selectedOrder.tableNumber || selectedOrder.table_number || 'N/A'}
               selectedCustomerName={selectedOrder.customerName || selectedOrder.user?.name || 'Walk-in Customer'}
               cart={selectedOrder.items?.map(item => ({
-                id: item._id || item.itemId,
-                itemName: item.itemName,
-                price: item.price,
+                id: item._id || item.id || item.itemId,
+                itemName: item.itemName || item.item_name,
+                price: item.price || item.subtotal,
                 quantity: item.quantity,
                 notes: item.notes || ''
               })) || selectedOrder.order_details?.map(item => ({

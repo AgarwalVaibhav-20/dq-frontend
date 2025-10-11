@@ -60,7 +60,7 @@ const Cart = ({
   const getItemPrice = (item) => {
     // Use adjustedPrice if available (from size selection), otherwise use original price
     const val = item?.adjustedPrice ?? item?.price ?? 0;
-    return Number(item.adjustedPrice);
+    return Number(val) || 0;
   };
   const getCartDiscountPercentage = () => {
     if (!cart.length) return 0;
@@ -68,7 +68,18 @@ const Cart = ({
     const subtotal = getSubtotal();
     if (subtotal === 0) return 0;
 
+    // Get total discount amount from parent component if available
+    const totalDiscountAmount = getDiscountAmount ? getDiscountAmount() : 0;
+    
+    // If we have a total discount amount, calculate percentage from that
+    if (totalDiscountAmount > 0) {
+      const percentage = (totalDiscountAmount / subtotal) * 100;
+      return isNaN(percentage) ? 0 : Math.abs(percentage).toFixed(2);
+    }
+
+    // Fallback to item-specific discounts
     const totalDiscount = cart.reduce((acc, item) => {
+      const itemPrice = getItemPrice(item);
       if (item.discountPercentage) {
         // This only looks at item-specific percentage discounts
         acc += (itemPrice * item.quantity * item.discountPercentage) / 100;
@@ -79,7 +90,11 @@ const Cart = ({
       return acc;
     }, 0);
 
-    return ((totalDiscount / subtotal) * 100).toFixed(2);
+    // Handle case where totalDiscount is 0 or NaN
+    if (totalDiscount === 0 || isNaN(totalDiscount)) return 0;
+    
+    const percentage = (totalDiscount / subtotal) * 100;
+    return isNaN(percentage) ? 0 : Math.abs(percentage).toFixed(2);
   };
 
   const getSubtotal = () => {

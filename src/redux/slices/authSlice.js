@@ -3,6 +3,7 @@ import axios from 'axios';
 import axiosInstance from '../../utils/axiosConfig.js'; // Keep the instance for authenticated calls
 import { BASE_URL } from '../../utils/constants';
 import { toast } from 'react-toastify';
+import { clearAuthData } from '../../utils/tokenUtils';
 
 const configureHeaders = (token) => ({
   headers: {
@@ -252,17 +253,8 @@ const authSlice = createSlice({
       };
       state.users = [];
 
-      // Clear localStorage
-      localStorage.removeItem('authToken');
-      localStorage.removeItem('restaurantId');
-      localStorage.removeItem('userId');
-      localStorage.removeItem('categoryId');
-      localStorage.removeItem('userRole');
-      localStorage.removeItem('userPermissions');
-      localStorage.removeItem('userName');
-      localStorage.removeItem('sessionStarted');
-      localStorage.removeItem('userEmail');
-      localStorage.removeItem('username');
+      // Clear all authentication data using utility function
+      clearAuthData();
 
       toast.info('Logged out locally.', { autoClose: 3000 });
     },
@@ -277,6 +269,35 @@ const authSlice = createSlice({
     // Clear error state
     clearError: (state) => {
       state.error = null;
+    },
+
+    // Sync localStorage with Redux state
+    syncLocalStorage: (state) => {
+      const token = localStorage.getItem('authToken');
+      const userId = localStorage.getItem('userId');
+      const restaurantId = localStorage.getItem('restaurantId');
+      const categoryId = localStorage.getItem('categoryId');
+      const role = localStorage.getItem('userRole');
+      const permissions = JSON.parse(localStorage.getItem('userPermissions') || '[]');
+      const userName = localStorage.getItem('userName');
+      const userEmail = localStorage.getItem('userEmail');
+      const username = localStorage.getItem('username');
+
+      if (token) state.token = token;
+      if (userId) state.userId = userId;
+      if (restaurantId) state.restaurantId = restaurantId;
+      if (categoryId) state.categoryId = categoryId;
+      if (role) state.role = role;
+      
+      // Update user object
+      state.user = {
+        id: userId || state.user.id,
+        name: userName || state.user.name,
+        email: userEmail || state.user.email,
+        username: username || state.user.username,
+        role: role || state.user.role,
+        permissions: permissions.length > 0 ? permissions : state.user.permissions,
+      };
     },
   },
   extraReducers: (builder) => {
@@ -293,6 +314,7 @@ const authSlice = createSlice({
 
         const { token, userId, restaurantId, user_id, restaurant_id, message, categoryId, category_id, user } = action.payload;
 
+        // Update Redux state with token and user data
         state.token = token || null;
         state.userId = userId || user_id || null;
         state.restaurantId = restaurantId || restaurant_id || null;
@@ -315,6 +337,13 @@ const authSlice = createSlice({
             localStorage.setItem('userPermissions', JSON.stringify(user.permissions));
           }
         }
+
+        // Ensure localStorage is updated with the latest values
+        if (token) localStorage.setItem('authToken', token);
+        if (userId || user_id) localStorage.setItem('userId', userId || user_id);
+        if (restaurantId || restaurant_id) localStorage.setItem('restaurantId', restaurantId || restaurant_id);
+        if (categoryId || category_id) localStorage.setItem('categoryId', categoryId || category_id);
+        if (user?.role) localStorage.setItem('userRole', user.role);
 
         if (message === 'OTP sent to your email') {
           toast.success('OTP sent to email', { autoClose: 3000 });
@@ -357,6 +386,7 @@ const authSlice = createSlice({
 
         const { token, user_id, restaurant_id, userId, restaurantId, user } = action.payload;
 
+        // Update Redux state with token and user data
         state.token = token || null;
         state.userId = userId || user_id || null;
         state.restaurantId = restaurantId || restaurant_id || null;
@@ -379,6 +409,7 @@ const authSlice = createSlice({
           }
         }
 
+        // Ensure localStorage is updated with the latest values
         if (token) localStorage.setItem('authToken', token);
         if (userId || user_id) localStorage.setItem('userId', userId || user_id);
         if (restaurantId || restaurant_id) localStorage.setItem('restaurantId', restaurantId || restaurant_id);
@@ -414,16 +445,8 @@ const authSlice = createSlice({
         };
         state.users = [];
 
-        // Clear localStorage
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('restaurantId');
-        localStorage.removeItem('userId');
-        localStorage.removeItem('categoryId');
-        localStorage.removeItem('userRole');
-        localStorage.removeItem('userPermissions');
-        localStorage.removeItem('userName');
-        localStorage.removeItem('userEmail');
-        localStorage.removeItem('username');
+        // Clear all authentication data using utility function
+        clearAuthData();
 
         toast.info('You have been logged out.', { autoClose: 3000 });
       })

@@ -94,7 +94,8 @@ const Otp = () => {
     }
     dispatch(verifyOtp({ otp, email })).then((res) => {
       if (res.meta.requestStatus === 'fulfilled') {
-        navigate('/login-activity');
+        // Navigate to dashboard or main app after successful OTP verification
+        navigate('/dashboard');
       }
     });
   };

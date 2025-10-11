@@ -214,11 +214,16 @@ const Supplier = () => {
           </CCol>
         </CRow>
       </CModalBody>
-      <CModalFooter className="d-flex flex-column flex-sm-row gap-2">
+      <CModalFooter className="d-flex justify-content-center gap-2">
         <CButton 
           color="secondary" 
           onClick={() => setModalVisible(false)}
-          className="w-100 w-sm-auto order-2 order-sm-1"
+          size="sm"
+          style={{ 
+            fontSize: '0.875rem', 
+            padding: '0.375rem 0.75rem',
+            minWidth: 'auto'
+          }}
         >
           Close
         </CButton>
@@ -226,7 +231,12 @@ const Supplier = () => {
           color="primary" 
           onClick={handleSaveSupplier} 
           disabled={loading}
-          className="w-100 w-sm-auto order-1 order-sm-2"
+          size="sm"
+          style={{ 
+            fontSize: '0.875rem', 
+            padding: '0.375rem 0.75rem',
+            minWidth: 'auto'
+          }}
         >
           {loading ? 'Saving...' : 'Save'}
         </CButton>
@@ -282,11 +292,16 @@ const Supplier = () => {
           </CCol>
         </CRow>
       </CModalBody>
-      <CModalFooter className="d-flex flex-column flex-sm-row gap-2">
+      <CModalFooter className="d-flex justify-content-center gap-2">
         <CButton 
           color="secondary" 
           onClick={() => setEditModalVisible(false)}
-          className="w-100 w-sm-auto order-2 order-sm-1"
+          size="sm"
+          style={{ 
+            fontSize: '0.875rem', 
+            padding: '0.375rem 0.75rem',
+            minWidth: 'auto'
+          }}
         >
           Close
         </CButton>
@@ -294,7 +309,12 @@ const Supplier = () => {
           color="primary" 
           onClick={handleUpdateSupplier} 
           disabled={loading}
-          className="w-100 w-sm-auto order-1 order-sm-2"
+          size="sm"
+          style={{ 
+            fontSize: '0.875rem', 
+            padding: '0.375rem 0.75rem',
+            minWidth: 'auto'
+          }}
         >
           {loading ? 'Saving...' : 'Save Changes'}
         </CButton>
@@ -312,18 +332,28 @@ const Supplier = () => {
         <CModalTitle>Delete Supplier</CModalTitle>
       </CModalHeader>
       <CModalBody>Are you sure you want to delete this supplier?</CModalBody>
-      <CModalFooter className="d-flex flex-column flex-sm-row gap-2">
+      <CModalFooter className="d-flex justify-content-center gap-2">
         <CButton 
           color="secondary" 
           onClick={() => setDeleteModalVisible(false)}
-          className="w-100 w-sm-auto order-2 order-sm-1"
+          size="sm"
+          style={{ 
+            fontSize: '0.875rem', 
+            padding: '0.375rem 0.75rem',
+            minWidth: 'auto'
+          }}
         >
           Cancel
         </CButton>
         <CButton 
           color="danger" 
           onClick={handleDeleteSupplier}
-          className="w-100 w-sm-auto order-1 order-sm-2"
+          size="sm"
+          style={{ 
+            fontSize: '0.875rem', 
+            padding: '0.375rem 0.75rem',
+            minWidth: 'auto'
+          }}
         >
           Delete
         </CButton>
@@ -426,42 +456,52 @@ const Supplier = () => {
       <style>{mobileStyles}</style>
       <CContainer fluid className="px-2 px-md-3">
       {/* Header Section - Mobile Responsive */}
-      <CRow className="mb-3">
-        <CCol xs={12} sm={6} className="d-flex align-items-center mb-2 mb-sm-0">
-          <h2 className="mb-0">Suppliers</h2>
-        </CCol>
-        <CCol xs={12} sm={6} className="d-flex justify-content-sm-end">
-          <CButton 
-            color="primary" 
-            onClick={() => setModalVisible(true)}
-            className="w-100 w-sm-auto"
-          >
-            Add Supplier
-          </CButton>
-        </CCol>
-      </CRow>
-
-      {/* Export Buttons - Mobile Responsive */}
-      <CRow className="mb-3">
-        <CCol xs={12} sm={6} className="mb-2 mb-sm-0">
-          <CButton 
-            color="info" 
-            onClick={exportToCSV}
-            className="w-100"
-          >
-            Export to CSV
-          </CButton>
-        </CCol>
-        <CCol xs={12} sm={6}>
-          <CButton 
-            color="secondary" 
-            onClick={exportToPDF}
-            className="w-100"
-          >
-            Export to PDF
-          </CButton>
-        </CCol>
-      </CRow>
+      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+        <h2 className="mb-2 mb-md-0">Suppliers</h2>
+        <div className="d-flex flex-column flex-sm-row gap-2 w-100 w-md-auto">
+          <div className="d-flex justify-content-end">
+            <CButton 
+              color="primary" 
+              onClick={() => setModalVisible(true)}
+              className="w-100 w-sm-auto"
+              size="sm"
+              style={{ 
+                fontSize: '0.875rem', 
+                padding: '0.375rem 0.75rem',
+                minWidth: 'auto'
+              }}
+            >
+              Add Supplier
+            </CButton>
+          </div>
+          <div className="d-flex gap-2">
+            <CButton 
+              color="info" 
+              onClick={exportToCSV}
+              size="sm"
+              style={{ 
+                fontSize: '0.875rem', 
+                padding: '0.375rem 0.75rem',
+                minWidth: 'auto'
+              }}
+            >
+              Export to CSV
+            </CButton>
+            <CButton 
+              color="secondary" 
+              onClick={exportToPDF}
+              size="sm"
+              style={{ 
+                fontSize: '0.875rem', 
+                padding: '0.375rem 0.75rem',
+                minWidth: 'auto'
+              }}
+            >
+              Export to PDF
+            </CButton>
+          </div>
+        </div>
+      </div>
 
       {/* Data Grid - Mobile Responsive */}
       <CRow>

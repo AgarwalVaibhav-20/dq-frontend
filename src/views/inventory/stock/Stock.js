@@ -458,12 +458,49 @@ const Stock = () => {
       {/* Header & Buttons */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
         <h2 className="fw-bold text-dark m-0">📦 Inventory Stock</h2>
-        <CButton color="primary" className="shadow-sm px-4 w-100 w-md-auto" onClick={() => setModalVisible(true)}>+ Add Inventory</CButton>
-      </div>
-
-      <div className="d-flex flex-column flex-sm-row gap-2 mb-4">
-        <CButton className="px-4 py-2 shadow-sm fw-semibold text-white w-100 w-sm-auto" style={{ background: '#4361ee', border: 'none', borderRadius: '8px' }} onClick={exportToCSV}>📑 <span>Export CSV</span></CButton>
-        <CButton className="px-4 py-2 shadow-sm fw-semibold text-white w-100 w-sm-auto" style={{ background: '#212121', border: 'none', borderRadius: '8px' }} onClick={exportToPDF}>📄 <span>Export PDF</span></CButton>
+        <div className="d-flex flex-column flex-sm-row gap-2 w-100 w-md-auto">
+          <div className="d-flex justify-content-end">
+            <CButton 
+              color="primary" 
+              onClick={() => setModalVisible(true)}
+              className="w-100 w-sm-auto"
+              size="sm"
+              style={{ 
+                fontSize: '0.875rem', 
+                padding: '0.375rem 0.75rem',
+                minWidth: 'auto'
+              }}
+            >
+              + Add Inventory
+            </CButton>
+          </div>
+          <div className="d-flex gap-2">
+            <CButton 
+              color="info" 
+              onClick={exportToCSV}
+              size="sm"
+              style={{ 
+                fontSize: '0.875rem', 
+                padding: '0.375rem 0.75rem',
+                minWidth: 'auto'
+              }}
+            >
+              📑 Export CSV
+            </CButton>
+            <CButton 
+              color="secondary" 
+              onClick={exportToPDF}
+              size="sm"
+              style={{ 
+                fontSize: '0.875rem', 
+                padding: '0.375rem 0.75rem',
+                minWidth: 'auto'
+              }}
+            >
+              📄 Export PDF
+            </CButton>
+          </div>
+        </div>
       </div>
 
       {/* Inventory Table */}
@@ -735,13 +772,30 @@ const Stock = () => {
             </div>
           </div>
         </CModalBody>
-        <CModalFooter className="d-flex flex-column flex-sm-row justify-content-end gap-2 border-0">
-          <CButton color="secondary" variant="outline" className="w-100 w-sm-auto" onClick={() => { setModalVisible(false); resetForm() }}>Cancel</CButton>
+        <CModalFooter className="d-flex justify-content-center gap-2 border-0">
+          <CButton 
+            color="secondary" 
+            variant="outline" 
+            onClick={() => { setModalVisible(false); resetForm() }}
+            size="sm"
+            style={{ 
+              fontSize: '0.875rem', 
+              padding: '0.375rem 0.75rem',
+              minWidth: 'auto'
+            }}
+          >
+            Cancel
+          </CButton>
           <CButton
             color="success"
-            className="px-4 w-100 w-sm-auto"
             onClick={handleSaveStock}
             disabled={inventoryLoading || !formData.itemName || !formData.quantity || !formData.unit || !formData.supplierId}
+            size="sm"
+            style={{ 
+              fontSize: '0.875rem', 
+              padding: '0.375rem 0.75rem',
+              minWidth: 'auto'
+            }}
           >
             {inventoryLoading ? 'Saving...' : 'Save Inventory'}
           </CButton>
@@ -783,20 +837,30 @@ const Stock = () => {
             </>
           )}
         </CModalBody>
-        <CModalFooter className="bg-light d-flex flex-column flex-sm-row justify-content-end gap-2">
+        <CModalFooter className="bg-light d-flex justify-content-center gap-2">
           <CButton
             color="secondary"
             variant="outline"
-            className="w-100 w-sm-auto"
             onClick={() => { setaddQuantityStockModalVisible(false); setaddQuantityStockData({ quantityToAdd: '' }); setSelectedStock(null) }}
+            size="sm"
+            style={{ 
+              fontSize: '0.875rem', 
+              padding: '0.375rem 0.75rem',
+              minWidth: 'auto'
+            }}
           >
             Cancel
           </CButton>
           <CButton
             color="success"
-            className="px-4 w-100 w-sm-auto"
             onClick={handleaddQuantityStockItem}
             disabled={!addQuantityStockData.quantityToAdd || parseInt(addQuantityStockData.quantityToAdd) <= 0 || saleProcessing}
+            size="sm"
+            style={{ 
+              fontSize: '0.875rem', 
+              padding: '0.375rem 0.75rem',
+              minWidth: 'auto'
+            }}
           >
             {saleProcessing ? 'Processing...' : 'Add Stock'}
           </CButton>
@@ -882,13 +946,30 @@ const Stock = () => {
             </div>
           </div>
         </CModalBody>
-        <CModalFooter className="bg-light d-flex flex-column flex-sm-row justify-content-end gap-2">
-          <CButton color="secondary" variant="outline" className="w-100 w-sm-auto" onClick={() => { setEditModalVisible(false); resetForm() }}>Cancel</CButton>
+        <CModalFooter className="bg-light d-flex justify-content-center gap-2">
+          <CButton 
+            color="secondary" 
+            variant="outline" 
+            onClick={() => { setEditModalVisible(false); resetForm() }}
+            size="sm"
+            style={{ 
+              fontSize: '0.875rem', 
+              padding: '0.375rem 0.75rem',
+              minWidth: 'auto'
+            }}
+          >
+            Cancel
+          </CButton>
           <CButton
             color="primary"
-            className="px-4 w-100 w-sm-auto"
             onClick={handleUpdateInventory}
             disabled={inventoryLoading}
+            size="sm"
+            style={{ 
+              fontSize: '0.875rem', 
+              padding: '0.375rem 0.75rem',
+              minWidth: 'auto'
+            }}
           >
             {inventoryLoading ? 'Updating...' : 'Update Inventory'}
           </CButton>
@@ -911,13 +992,30 @@ const Stock = () => {
             </div>
           )}
         </CModalBody>
-        <CModalFooter className="bg-light d-flex flex-column flex-sm-row justify-content-end gap-2">
-          <CButton color="secondary" variant="outline" className="w-100 w-sm-auto" onClick={() => setDeleteModalVisible(false)}>Cancel</CButton>
+        <CModalFooter className="bg-light d-flex justify-content-center gap-2">
+          <CButton 
+            color="secondary" 
+            variant="outline" 
+            onClick={() => setDeleteModalVisible(false)}
+            size="sm"
+            style={{ 
+              fontSize: '0.875rem', 
+              padding: '0.375rem 0.75rem',
+              minWidth: 'auto'
+            }}
+          >
+            Cancel
+          </CButton>
           <CButton
             color="danger"
-            className="px-4 w-100 w-sm-auto"
             onClick={handleDeleteInventory}
             disabled={inventoryLoading}
+            size="sm"
+            style={{ 
+              fontSize: '0.875rem', 
+              padding: '0.375rem 0.75rem',
+              minWidth: 'auto'
+            }}
           >
             {inventoryLoading ? 'Deleting...' : 'Delete'}
           </CButton>

@@ -186,9 +186,9 @@ export default function Category() {
                 <div className="position-relative" ref={dropdownRef}>
                   <CButton color="light" className="p-0 border-0" style={{ fontSize: '20px' }} onClick={() => toggleDropdown(cat._id)}>&#8942;</CButton>
                   {dropdownOpen[cat._id] && (
-                    <div className="dropdown-menu show position-absolute" style={{ right: 0, zIndex: 1000 }}>
-                      <button className="dropdown-item" onClick={() => handleEditCategory(cat)}>Edit</button>
-                      <button className="dropdown-item text-danger" onClick={() => handleDeleteCategory(cat._id)}>Delete</button>
+                    <div className="dropdown-menu show position-absolute" style={{ right: 0, top: '100%', zIndex: 1000, minWidth: '120px' }}>
+                      <button className="dropdown-item py-2" onClick={() => handleEditCategory(cat)}>Edit</button>
+                      <button className="dropdown-item text-danger py-2" onClick={() => handleDeleteCategory(cat._id)}>Delete</button>
                     </div>
                   )}
                 </div>

@@ -886,7 +886,7 @@ const Settings = () => {
                   </button>
                 </div>
               </div>
-              
+
               {/* Desktop: Normal tabs */}
               <div className="d-none d-md-block">
                 <CNav variant="tabs" role="tablist">
@@ -1256,7 +1256,7 @@ const Settings = () => {
                                   </CButton>
                                 </div>
                               </div>
-                              
+
                               <div className="row g-2">
                                 <div className="col-6">
                                   <small className="text-muted">Charge:</small>
@@ -1552,7 +1552,7 @@ const Settings = () => {
                                   </CButton>
                                 </div>
                               </div>
-                              
+
                               <div className="row g-2">
                                 <div className="col-6">
                                   <small className="text-muted">Charge:</small>
@@ -1789,11 +1789,11 @@ const Settings = () => {
                                   </button>
                                 </div>
                               </div>
-                              
+
                               <p className="card-text text-muted small mb-3">
                                 {member.notes || 'No description.'}
                               </p>
-                              
+
                               <div className="d-flex flex-wrap gap-2">
                                 <span className="badge bg-primary text-white">
                                   <CIcon icon={cilMoney} className="me-1" />
@@ -1818,10 +1818,10 @@ const Settings = () => {
           </CRow>
 
           {/* DIALOG FOR ADD/EDIT MEMBER */}
-          <Dialog 
-            open={memberDialog.open} 
-            onClose={() => setMemberDialog({ open: false, mode: 'create', member: null })} 
-            maxWidth="sm" 
+          <Dialog
+            open={memberDialog.open}
+            onClose={() => setMemberDialog({ open: false, mode: 'create', member: null })}
+            maxWidth="sm"
             fullWidth
             fullScreen={window.innerWidth < 600}
           >
@@ -1875,7 +1875,7 @@ const Settings = () => {
                   <CFormLabel htmlFor="discount">
                     Discount {memberForm.discountType === 'percentage' ? '%' : 'Amount'} *
                   </CFormLabel>
-                  <CFormInput
+                  {/* <CFormInput
                     id="discount"
                     type="number"
                     value={memberForm.discount}
@@ -1886,6 +1886,32 @@ const Settings = () => {
                     type="date"
                     value={memberForm.expirationDate}
                     onChange={(e) => setMemberForm({ ...memberForm, expirationDate: e.target.value })}
+                    InputLabelProps={{ shrink: true }}
+                  /> */}
+                  {/* Discount Input */}
+                  <CFormInput
+                    id="discount"
+                    type="number"
+                    value={memberForm.discount}
+                    onChange={(e) =>
+                      setMemberForm({ ...memberForm, discount: e.target.value })
+                    }
+                    placeholder={`Enter discount ${memberForm.discountType === 'percentage' ? '%' : 'amount'
+                      }`}
+                    label="Discount"
+                    required
+                  />
+
+                  {/* Expiration Date Input */}
+                  <CFormInput
+                    id="expirationDate"
+                    type="date"
+                    value={memberForm.expirationDate}
+                    onChange={(e) =>
+                      setMemberForm({ ...memberForm, expirationDate: e.target.value })
+                    }
+                    label="Expiration Date"
+                    required
                     InputLabelProps={{ shrink: true }}
                   />
                 </div>
@@ -1915,8 +1941,8 @@ const Settings = () => {
                     value={memberForm.notes}
                     onChange={(e) => setMemberForm({ ...memberForm, notes: e.target.value })}
                   />
-                </Grid> */}
-              </div> 
+                </Grid> */
+              </div>
             </DialogContent>
             <DialogActions className="px-2 px-md-3 py-2 py-md-3">
               <div className="d-flex flex-column flex-sm-row gap-2 w-100">
@@ -2076,7 +2102,7 @@ const Settings = () => {
                                 </>
                               )}
                             </CButton>
-  
+
                             <CButton
                               color="info"
                               onClick={checkLowStockItems}

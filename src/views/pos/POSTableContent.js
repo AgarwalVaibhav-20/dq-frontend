@@ -569,8 +569,14 @@ const POSTableContent = () => {
       } else { // 'percentage'
         totalDiscount = (subtotal * membershipDiscount.value) / 100;
       }
+    } else {
+      // Handle manual and item-specific discounts
+      totalDiscount = (subtotal * discount) / 100;
+      cart.forEach(item => {
+        if (item.discountAmount) totalDiscount += Number(item.discountAmount);
+      });
     }
-    // ... more logic for other discount types
+    
     return totalDiscount;
   }, [calculateSubtotal, discount, cart, membershipDiscount]);
 
@@ -1264,6 +1270,7 @@ const POSTableContent = () => {
             calculateSubtotal={calculateSubtotal}
             calculateTotalTaxAmount={calculateTotalTaxAmount}
             calculateDiscountAmount={calculateDiscountAmount}
+            getDiscountAmount={calculateDiscountAmount}
             calculateTotal={calculateTotal}
             tax={tax}
             discount={discount}
