@@ -237,7 +237,7 @@ const App = () => {
 
   // ✅ Fixed: Fetch orders with restaurantId
   useEffect(() => {
-    if (restaurantId) {
+    if (restaurantId && window.location.pathname !== '/customer-menu') {
       dispatch(fetchOrders({ restaurantId }))
       const intervalId = setInterval(() => {
         dispatch(fetchOrders({ restaurantId }))
@@ -265,7 +265,7 @@ const App = () => {
 
   // ✅ Fixed: Check permissions with userId and token
   useEffect(() => {
-    if (userId && token && !permissionCheckAttempted) {
+    if (userId && token && !permissionCheckAttempted && window.location.pathname !== '/customer-menu') {
       console.log('Checking permissions for userId:', userId)
       // Fetch user profile to get permissions
       dispatch(fetchUserProfile({ userId, token }))
@@ -287,7 +287,7 @@ const App = () => {
 
   // ✅ Also check permissions when restaurantId changes (if needed)
   useEffect(() => {
-    if (restaurantId && userId && token && permissionCheckAttempted) {
+    if (restaurantId && userId && token && permissionCheckAttempted && window.location.pathname !== '/customer-menu') {
       // Only re-check if restaurantId changes after initial check
       // console.log('Restaurant ID changed, re-checking permissions')
       dispatch(fetchUserProfile({ userId, token }))
@@ -356,6 +356,7 @@ const App = () => {
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path='/check-otp' element={<CheckOtp />} />
               <Route path='/customer-menu' element={<CustomerMenu />} />
+              <Route path="table" element={<TableRedirect />} />
 
               {/* Private Routes */}
               <Route
@@ -379,7 +380,7 @@ const App = () => {
                       path="delivery"
                       element={<WooOrders />}
                     />
-                    <Route path='customer-menu' element={<CustomerMenu />} />
+                    {/* <Route path='customer-menu' element={<CustomerMenu />} /> */}
                     <Route path="restaurants" element={<Restaurants />} />
                     <Route path="purchaseanalytics" element={<PurchaseAnalytics />} />
                     <Route path="delivery-timing" element={<DeliveryTiming />} />
@@ -399,7 +400,7 @@ const App = () => {
                     <Route path="transactions" element={<Transactions />} />
                     <Route path="pos" element={<POS />} />
                     <Route path="pos/system/:tableNumber" element={<SystemSelection />} />
-                    <Route path="table/:restaurantId/:floorId/:tableNumber" element={<TableRedirect />} />
+                    {/* <Route path="table" element={<TableRedirect />} /> */}
                     <Route path="pos/system/tableNumber/:tableNumber" element={<POSTableContent />} />
                     <Route path="pos/tableNumber/:tableNumber" element={<POSTableContent />} />
                     <Route path="account/:userId" element={<Account />} />
@@ -451,11 +452,11 @@ const App = () => {
                         <SystemSelection />
                       </PermissionGuard>
                     } />
-                    <Route path="table/:restaurantId/:floorId/:tableNumber" element={
+                    {/* <Route path="table/:restaurantId/:floorId/:tableNumber" element={
                       <PermissionGuard requiredPermissions={['pos']}>
                         <TableRedirect />
                       </PermissionGuard>
-                    } />
+                    } /> */}
                     <Route path="pos/system/tableNumber/:tableNumber" element={
                       <PermissionGuard requiredPermissions={['pos']}>
                         <POSTableContent />

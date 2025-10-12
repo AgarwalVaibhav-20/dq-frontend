@@ -1898,7 +1898,6 @@ const Settings = () => {
                     }
                     placeholder={`Enter discount ${memberForm.discountType === 'percentage' ? '%' : 'amount'
                       }`}
-                    label="Discount"
                     required
                   />
 
@@ -1941,7 +1940,7 @@ const Settings = () => {
                     value={memberForm.notes}
                     onChange={(e) => setMemberForm({ ...memberForm, notes: e.target.value })}
                   />
-                </Grid> */
+                </Grid> 
               </div>
             </DialogContent>
             <DialogActions className="px-2 px-md-3 py-2 py-md-3">

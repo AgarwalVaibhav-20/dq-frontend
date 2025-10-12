@@ -7,6 +7,9 @@ import { fetchMenuItems } from '../../redux/slices/menuSlice';
 import { fetchCategories } from '../../redux/slices/categorySlice';
 import { createOrder } from '../../redux/slices/orderSlice'; // <-- IMPORT createOrder
 import { useLocation } from 'react-router-dom';
+import {
+  useColorModes,
+} from '@coreui/react';
 
 const RestaurantOrderingApp = () => {
     const { search } = useLocation();
@@ -14,8 +17,9 @@ const RestaurantOrderingApp = () => {
     const [tableNumber, setTableNumber] = useState(
         query.get('table') || localStorage.getItem('tableNumber') || '1'
     );
-
+    const { colorMode, setColorMode } = useColorModes('coreui-free-react-admin-template-theme');
     useEffect(() => {
+        setColorMode("light")
         localStorage.setItem('tableNumber', tableNumber);
     }, [tableNumber]);
 
@@ -29,14 +33,14 @@ const RestaurantOrderingApp = () => {
     const restaurantId = localStorage.getItem('restaurantId');
     useEffect(() => {
 
-        if (token && restaurantId) {
+        if (restaurantId) {
             dispatch(fetchBanners({ token, restaurantId }));
             dispatch(fetchMenuItems({ token, restaurantId }));
             // --> Fetch customers when the component loads
             dispatch(fetchCustomers({ token, restaurantId }));
             dispatch(fetchCategories(token));
         }
-    }, [dispatch, token, restaurantId]);
+    }, [dispatch, restaurantId]);
 
     const [cart, setCart] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState('All');
@@ -102,17 +106,75 @@ const RestaurantOrderingApp = () => {
     const getTotalPrice = () => cart.reduce((total, item) => total + (item.price * item.quantity), 0);
     const getTotalItems = () => cart.reduce((total, item) => total + item.quantity, 0);
 
-    const handleCheckout = () => {
-        if (cart.length === 0) return;
+    // MODIFIED with the main logic change
+const handleCheckout = () => {
+    if (cart.length === 0) return;
+
+    // Check if we already have customer details from a previous order in this session
+    const savedCustomer = localStorage.getItem('currentCustomer');
+
+    if (savedCustomer) {
+        // If customer exists, parse the data and place the order directly
+        console.log("Customer data found in session. Placing order directly.");
+        const customerData = JSON.parse(savedCustomer);
+        setCartOpen(false); // Close the cart
+        placeOrder(customerData); // Call our reusable order function
+    } else {
+        // If no customer data, open the form to collect details
+        console.log("No customer data in session. Opening checkout form.");
         setCartOpen(false);
         setCheckoutOpen(true);
-    };
+    }
+};
 
     const handlePhoneChange = (e) => {
         const phone = e.target.value;
         setCustomerForm({ ...customerForm, phoneNumber: phone });
         checkExistingCustomer(phone);
     };
+
+    // NEW REUSABLE FUNCTION to handle the actual order creation
+const placeOrder = async (customerData) => {
+    try {
+        const restaurantId = localStorage.getItem('restaurantId');
+        const userId = localStorage.getItem('userId');
+        const totalAmount = getTotalPrice();
+
+        const orderPayload = {
+            customerId: customerData._id,
+            restaurantId,
+            userId: userId || restaurantId,
+            items: cart.map(item => ({
+                itemId: item._id,
+                itemName: item.displayName,
+                price: item.price,
+                quantity: item.quantity,
+                subtotal: item.price * item.quantity,
+                selectedSubcategoryId: item.selectedSize?._id || null
+            })),
+            subtotal: totalAmount,
+            totalAmount: totalAmount,
+            tableNumber,
+            customerName: customerData.name,
+            customerAddress: customerData.address || '',
+        };
+
+        await dispatch(createOrder({ token, ...orderPayload })).unwrap();
+
+        // Reset cart and close any open dialogs
+        setCart([]);
+        setCartOpen(false);
+        setCheckoutOpen(false);
+
+        alert('Order placed successfully!');
+
+    } catch (error) {
+        setCustomerError('Failed to process order. Please try again.');
+        console.error('Order submission error:', error);
+        // If it fails, we should probably show the checkout form again to allow correction
+        setCheckoutOpen(true);
+    }
+};
 
     const checkExistingCustomer = (phone) => {
         if (phone.length >= 10) {
@@ -135,73 +197,52 @@ const RestaurantOrderingApp = () => {
         }
     };
 
-    const handleSubmitOrder = async () => {
-        if (!customerForm.name || !customerForm.phoneNumber) {
-            setCustomerError('Name and Phone Number are required');
-            return;
+    // MODIFIED to use the new placeOrder function
+const handleSubmitOrder = async () => {
+    if (!customerForm.name || !customerForm.phoneNumber) {
+        setCustomerError('Name and Phone Number are required');
+        return;
+    }
+    if (customerForm.phoneNumber.length < 10) {
+        setCustomerError('Please enter a valid phone number');
+        return;
+    }
+
+    try {
+        let customerData;
+
+        // Create or find the customer
+        if (!existingCustomer) {
+            const resultAction = await dispatch(addCustomer({ token, ...customerForm })).unwrap();
+            customerData = resultAction.customer;
+        } else {
+            customerData = existingCustomer;
         }
-        if (customerForm.phoneNumber.length < 10) {
-            setCustomerError('Please enter a valid phone number');
-            return;
-        }
 
-        try {
-            const restaurantId = localStorage.getItem('restaurantId');
-            const userId = localStorage.getItem('userId'); // ADD THIS - get userId from localStorage
-            let customerData;
+        // Save customer details for the session. THIS IS KEY.
+        localStorage.setItem('currentCustomer', JSON.stringify({
+            _id: customerData._id, // Also save the ID!
+            name: customerData.name,
+            email: customerData.email,
+            phoneNumber: customerData.phoneNumber,
+            address: customerData.address,
+        }));
 
-            if (!existingCustomer) {
-                const resultAction = await dispatch(addCustomer({ token, ...customerForm })).unwrap();
-                customerData = resultAction.customer;
-            } else {
-                customerData = existingCustomer;
-            }
+        // Reset form state for next time (optional but good practice)
+        setCustomerForm({ name: '', email: '', phoneNumber: '', address: '' });
+        setExistingCustomer(null);
+        setCustomerError('');
+        
+        // Call the reusable function to place the order
+        await placeOrder(customerData);
+        // DO NOT remove 'currentCustomer' from localStorage here anymore.
 
-            localStorage.setItem('currentCustomer', JSON.stringify({
-                name: customerData.name,
-                email: customerData.email,
-                phoneNumber: customerData.phoneNumber,
-                address: customerData.address,
-            }));
-
-            const totalAmount = getTotalPrice();
-
-            const orderPayload = {
-                customerId: customerData._id,
-                restaurantId,
-                userId: userId || restaurantId, // ADD THIS - use userId or fallback to restaurantId
-                items: cart.map(item => ({
-                    itemId: item._id,                    // CHANGED from menuItemId
-                    itemName: item.displayName,
-                    price: item.price,
-                    quantity: item.quantity,
-                    subtotal: item.price * item.quantity, // ADD THIS - item-level subtotal
-                    selectedSubcategoryId: item.selectedSize?._id || null // CHANGED from size
-                })),
-                subtotal: totalAmount,        // Order-level subtotal
-                totalAmount: totalAmount,     // CHANGED from total
-                tableNumber,
-                customerName: customerData.name,     // ADD THIS
-                customerAddress: customerData.address || '', // ADD THIS
-                // orderType removed as per your request
-            };
-
-            await dispatch(createOrder({ token, ...orderPayload })).unwrap();
-
-            setCart([]);
-            setCheckoutOpen(false);
-            setCustomerForm({ name: '', email: '', phoneNumber: '', address: '' });
-            setExistingCustomer(null);
-            setCustomerError('');
-            localStorage.removeItem('currentCustomer');
-
-            alert('Order placed successfully!');
-
-        } catch (error) {
-            setCustomerError('Failed to process order. Please try again.');
-            console.error('Order submission error:', error);
-        }
-    }; // --> UPDATED ORDER SUBMISSION LOGIC
+    } catch (error) {
+        // Error handling is now mostly inside placeOrder, but we can keep this for customer creation errors
+        setCustomerError('Failed to save customer details. Please try again.');
+        console.error('Customer submission error:', error);
+    }
+}; // --> UPDATED ORDER SUBMISSION LOGIC
     // const handleSubmitOrder = async () => {
     //     if (!customerForm.name || !customerForm.phoneNumber) {
     //         setCustomerError('Name and Phone Number are required');
@@ -475,25 +516,27 @@ const RestaurantOrderingApp = () => {
                             ) : (
                                 <div className="space-y-3">
                                     {cart.map(item => (
-                                        <div key={item.key} className="flex gap-4 p-3 border bg-white rounded-lg shadow-sm items-center">
-                                            <img src={item.itemImage || 'https://via.placeholder.com/80x80'} alt={item.displayName} className="w-20 h-20 object-cover rounded-md" />
-                                            <div className="flex-1">
-                                                <h3 className="font-bold text-gray-800">
+                                        <div key={item.key} className="flex flex-col gap-3 p-3 border bg-white rounded-lg shadow-sm">
+                                            <button onClick={() => removeFromCart(item.key)} className="p-2 self-start hover:bg-red-100 text-red-500 rounded-full"><Trash2 className="w-5 h-5" /></button>
+                                            <div className="flex gap-2 self-start">
+                                                <img src={item.itemImage || 'https://via.placeholder.com/80x80'} alt={item.displayName} className="w-20 h-20 object-cover rounded-md" />
+                                                <div className="flex flex-col gap-1">
+                                                    <h3 className="font-bold text-gray-800">
                                                     {item.itemName}
                                                     {item.selectedSize?.size && (<span className="text-sm font-medium text-gray-500"> ({item.selectedSize.size})</span>)}
-                                                </h3>
-                                                <p className="text-sm text-gray-500">{item.categoryName}</p>
-                                                <p className="text-purple-600 font-semibold mt-1">
-                                                    ₹{item.price.toFixed(2)}
-                                                </p>
+                                                    </h3>
+                                                    <p className="text-sm text-gray-500">{item.categoryName}</p>
+                                                    <p className="text-purple-600 font-semibold mt-1">
+                                                        ₹{item.price.toFixed(2)}
+                                                    </p>
+                                                </div>
                                             </div>
-                                            <div className="flex items-center gap-3">
+                                            <div className="flex justify-center gap-2">
                                                 <button onClick={() => updateQuantity(item.key, -1)} className="p-1.5 h-7 w-7 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full transition"><Minus className="w-4 h-4" /></button>
                                                 <span className="font-semibold w-8 text-center text-lg">{item.quantity}</span>
                                                 <button onClick={() => updateQuantity(item.key, 1)} className="p-1.5 h-7 w-7 flex items-center justify-center bg-gray-200 hover:bg-gray-300 rounded-full transition"><Plus className="w-4 h-4" /></button>
                                             </div>
-                                            <p className="font-bold text-lg text-gray-800 w-24 text-right">₹{(item.price * item.quantity).toFixed(2)}</p>
-                                            <button onClick={() => removeFromCart(item.key)} className="p-2 self-center hover:bg-red-100 text-red-500 rounded-full transition"><Trash2 className="w-5 h-5" /></button>
+                                            <p className="font-bold self-center text-lg text-gray-800 w-24 text-right">₹{(item.price * item.quantity).toFixed(2)}</p>
                                         </div>
                                     ))}
                                 </div>

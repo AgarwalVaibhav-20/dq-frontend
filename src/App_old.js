@@ -174,7 +174,7 @@ const App = () => {
 
   // ✅ Fixed: Fetch orders with restaurantId
   useEffect(() => {
-    if (restaurantId) {
+    if (restaurantId && window.location.pathname !== '/customer-menu') {
       dispatch(fetchOrders({ restaurantId }))
       const intervalId = setInterval(() => {
         dispatch(fetchOrders({ restaurantId }))
