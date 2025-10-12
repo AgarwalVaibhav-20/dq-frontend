@@ -292,7 +292,7 @@ function CustomerLoyalty() {
 
               <Grid container spacing={{ xs: 2, sm: 2 }}>
                 {/* Coupon Code */}
-                <Grid item xs={12}>
+                {/* <Grid item xs={12}>
                   <TextField
                     fullWidth
                     label="Coupon Code"
@@ -302,7 +302,7 @@ function CustomerLoyalty() {
                     helperText="6-8 alphanumeric characters (auto-generated if empty)"
                     size="small"
                   />
-                </Grid>
+                </Grid> */}
 
                 {/* Discount Type and Value */}
                 <Grid item xs={12} sm={6}>

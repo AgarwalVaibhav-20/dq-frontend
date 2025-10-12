@@ -213,9 +213,9 @@ export default function Category() {
             <CNavItem>
               <CNavLink active={activeTab === 'basic'} onClick={() => setActiveTab('basic')}>Basic Info</CNavLink>
             </CNavItem>
-            <CNavItem>
+            {/* <CNavItem>
               <CNavLink active={activeTab === 'sizes'} onClick={() => setActiveTab('sizes')}>Sizes & Portions</CNavLink>
-            </CNavItem>
+            </CNavItem> */}
           </CNav>
 
           <CTabContent className="mt-3">
@@ -231,7 +231,7 @@ export default function Category() {
               )}
             </CTabPane>
 
-            <CTabPane visible={activeTab === 'sizes'}>
+            {/* <CTabPane visible={activeTab === 'sizes'}>
               <div className="d-flex flex-column gap-3">
                 <p>Category Sizes & Portions</p>
                 <p className='text-sm'>Define standard sizes/portions that will be available for all menu items in this category. Each size can have different pricing that will be applied to menu items.</p>
@@ -273,7 +273,7 @@ export default function Category() {
                 </CButton>
               </div>
 
-              {/* Optional CSS for hover effect */}
+              
               <style>
                 {`
       .hover-shadow:hover {
@@ -282,7 +282,7 @@ export default function Category() {
       }
     `}
               </style>
-            </CTabPane>
+            </CTabPane> */}
 
           </CTabContent>
         </CModalBody>
