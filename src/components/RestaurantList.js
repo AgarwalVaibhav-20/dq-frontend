@@ -168,8 +168,8 @@ const RestaurantList = ({
             onChange={(e) => setCuisineFilter(e.target.value)}
           >
             <option value="all">All Cuisines</option>
-            {uniqueCuisines.map(cuisine => (
-              <option key={cuisine} value={cuisine}>{cuisine}</option>
+            {uniqueCuisines.map((cuisine, indx) => (
+              <option key={indx} value={cuisine}>{cuisine}</option>
             ))}
           </CFormSelect>
         </CCol>

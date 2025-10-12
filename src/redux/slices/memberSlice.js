@@ -20,7 +20,6 @@ export const fetchMembers = createAsyncThunk(
         Authorization: `Bearer ${token}`,
         "Content-Type": "application/json",
       };
-
       const response = await axios.get(`${BASE_URL}/all/members`, { params: restaurantId ? { restaurantId } : {}, ...configureHeaders(token) });
       console.log("fetch member", response.data)
 
@@ -120,6 +119,7 @@ const memberSlice = createSlice({
       })
       .addCase(fetchMembers.fulfilled, (state, action) => {
         state.loading = false;
+        console.log("fetching member" , action.payload)
         state.members = Array.isArray(action.payload) ? action.payload : [];
       })
       .addCase(fetchMembers.rejected, (state, action) => {

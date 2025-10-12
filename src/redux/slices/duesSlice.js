@@ -28,19 +28,26 @@ export const fetchDues = createAsyncThunk(
   },
 )
 
-
-// Fetch dues by customer
 export const fetchDuesByCustomer = createAsyncThunk(
   'dues/fetchDuesByCustomer',
-  async ({ customerId, token }, { rejectWithValue }) => {
+  async ({ customer_id, token }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(`${BASE_URL}/dues/customer/${customerId}`, configureHeaders(token))
-      return response.data.data
+      const response = await axios.get(
+        `${BASE_URL}/dues/customer/${customer_id}`,
+        configureHeaders(token)
+      );
+
+      const data = response?.data?.data || [];
+      console.log('Received dues:', data); // DEBUG
+      return data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch customer dues')
+      console.error('Fetch dues error:', error.response?.data || error);
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch customer dues');
     }
-  },
-)
+  }
+);
+
+
 
 // Add a new due
 export const addDue = createAsyncThunk(

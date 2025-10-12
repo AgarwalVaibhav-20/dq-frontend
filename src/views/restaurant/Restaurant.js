@@ -32,7 +32,7 @@ const availableFeatures = [
 ]
 
 const defaultFormData = {
-  restaurantId: '',
+  // restaurantId: '',
   restaurantName: '',
   ownerName: '',
   email: '',
@@ -54,7 +54,7 @@ const defaultFormData = {
 const buildFormData = (data) => {
   const formDataObj = new FormData()
   Object.keys(data).forEach((key) => {
-    if (key === 'createdBy') return
+    if (key === 'restaurantId') return
     if (key === 'restaurantImage' && data[key]) {
       formDataObj.append(key, data[key])
     } else if (key === 'features' || key === 'operatingHours') {
@@ -156,7 +156,7 @@ const Restaurants = () => {
         toast.success('Restaurant deleted successfully!')
       }
 
-      await dispatch(fetchRestaurants({ token }))
+      await dispatch(fetchRestaurants({ token , restaurantId }))
       resetForm()
     } catch (error) {
       toast.error(error.message || 'Operation failed')
@@ -245,8 +245,8 @@ const Restaurants = () => {
           <>
             {/* Tabs */}
             <ul className="nav nav-tabs mb-3">
-              {['basic', 'contact', 'features'].map((tab) => (
-                <li className="nav-item" key={tab}>
+              {['basic', 'contact', 'features'].map((tab, idx) => (
+                <li className="nav-item" key={idx}>
                   <button
                     className={`nav-link ${activeTab === tab ? 'active' : ''}`}
                     onClick={() => setActiveTab(tab)}
@@ -265,8 +265,8 @@ const Restaurants = () => {
             {/* Basic Tab */}
             {activeTab === 'basic' && (
               <div className="row">
-                {['restaurantId', 'restaurantName', 'ownerName', 'cuisine'].map((field) => (
-                  <div className="col-12 col-md-6 mb-3" key={field}>
+                {['restaurantName', 'ownerName', 'cuisine'].map((field, i) => (
+                  <div className="col-12 col-md-6 mb-3" key={i}>
                     <label className="form-label text-capitalize">
                       {field.replace(/([A-Z])/g, ' $1')}
                     </label>
@@ -317,10 +317,10 @@ const Restaurants = () => {
             {activeTab === 'contact' && (
               <div className="row">
                 {['email', 'phone', 'address', 'city', 'state', 'zipCode', 'country', 'website'].map(
-                  (field) => (
+                  (field, indx) => (
                     <div
                       className={`col-12 col-md-${field === 'address' || field === 'website' ? '12' : '6'} mb-3`}
-                      key={field}
+                      key={indx}
                     >
                       <label className="form-label text-capitalize">
                         {field.replace(/([A-Z])/g, ' $1')}
@@ -345,8 +345,8 @@ const Restaurants = () => {
                 <div className="mb-4">
                   <label className="form-label fw-bold">Restaurant Features</label>
                   <div className="row">
-                    {availableFeatures.map((feature) => (
-                      <div key={feature} className="col-12 col-sm-6 col-lg-4 mb-2">
+                    {availableFeatures.map((feature, index) => (
+                      <div key={index} className="col-12 col-sm-6 col-lg-4 mb-2">
                         <div className="form-check">
                           <input
                             className="form-check-input"
@@ -370,8 +370,8 @@ const Restaurants = () => {
                 {/* Operating Hours */}
                 <div className="mb-3">
                   <label className="form-label fw-bold">Operating Hours</label>
-                  {Object.keys(formData.operatingHours).map((day) => (
-                    <div key={day} className="row align-items-center mb-3 p-2 border rounded">
+                  {Object.keys(formData.operatingHours).map((day, index) => (
+                    <div key={index} className="row align-items-center mb-3 p-2 border rounded">
                       <div className="col-12 col-md-2 text-capitalize fw-semibold mb-2 mb-md-0">{day}</div>
                       <div className="col-12 col-md-2 mb-2 mb-md-0">
                         <div className="form-check">

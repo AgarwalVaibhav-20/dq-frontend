@@ -7,6 +7,12 @@ import {
   deleteTransaction,
   fetchPOSTransactions,
 } from '../../redux/slices/transactionSlice'
+import {
+  fetchDues,
+  addDue,
+  updateDue,
+  deleteDue,
+} from '../../redux/slices/duesSlice';
 import { fetchDuesByCustomer } from '../../redux/slices/duesSlice'
 import { CSpinner, CModal, CModalBody, CModalHeader, CModalTitle, CModalFooter, CButton, CForm, CFormLabel, CFormInput, CCard, CCardBody, CCardHeader, CCardTitle, CRow, CCol, CBadge, CFormSelect, CInputGroup, CInputGroupText, CFormRange, CAccordion, CAccordionItem, CAccordionHeader, CAccordionBody, CFormCheck } from '@coreui/react'
 
@@ -136,12 +142,12 @@ const Transactions = () => {
     y += 4
 
     // Try different customer name fields
-    const customerName = transactionDetails?.customerId?.name ||
-                        transactionDetails?.userId?.name ||
-                        transactionDetails?.userId?.username ||
-                        transactionDetails?.username ||
-                        transactionDetails?.customerName ||
-                        'Walk-in';
+    const customerName = transactionDetails?.customer_id?.name ||
+      transactionDetails?.userId?.name ||
+      transactionDetails?.userId?.username ||
+      transactionDetails?.username ||
+      transactionDetails?.customerName ||
+      'Walk-in';
     centerText(`Customer: ${customerName}`, y, 8)
     y += 5
     line()
@@ -171,9 +177,9 @@ const Transactions = () => {
     // ---------- TOTALS ----------
     centerText(`Subtotal: Rs ${formatAmount(transactionDetails.sub_total || 0)}`, y, 8)
     y += 4
-    centerText(`Tax: Rs ${formatAmount(transactionDetails.taxAmount || 0)}`, y, 8)
+    centerText(`Tax: Rs ${formatAmount(transactionDetails.tax || 0)}`, y, 8)
     y += 4
-    centerText(`Discount: Rs ${formatAmount(transactionDetails.discountAmount || 0)}`, y, 8)
+    centerText(`Discount: Rs ${formatAmount(transactionDetails.discount || 0)}`, y, 8)
     y += 4
     centerText(`RoundOff: Rs ${formatAmount(transactionDetails.roundOff || 0)}`, y, 8)
     y += 4
@@ -256,27 +262,30 @@ const Transactions = () => {
   const handleCustomerDues = async (transaction) => {
     console.log('Customer Dues for transaction:', transaction)
 
+    // Handle both object and string cases
+    const customerId = transaction.customerId;
+
+    if (!customerId) {
+      console.error('❌ No valid customer ID found:', transaction.customerId);
+      return;
+    }
+
     // Set the selected customer
     setSelectedCustomer({
-      id: transaction.userId,
+      id: customerId,
       name: transaction.username || 'Unknown Customer'
-    })
+    });
 
-    // Fetch customer dues
     try {
-      await dispatch(fetchDuesByCustomer({
-        customerId: transaction.userId,
-        token
-      })).unwrap()
-
-      // Show the modal
-      setShowCustomerDuesModal(true)
+      const result = await dispatch(fetchDuesByCustomer({ customer_id:customerId, token })).unwrap();
+      console.log('Fetched dues:', result);
+      setShowCustomerDuesModal(true);
     } catch (error) {
-      console.error('Error fetching customer dues:', error)
-      // Still show modal with empty dues
-      setShowCustomerDuesModal(true)
+      console.error('Error fetching customer dues:', error);
+      setShowCustomerDuesModal(true);
     }
-  }
+  };
+
 
 
   const columns = [
@@ -429,7 +438,7 @@ const Transactions = () => {
       if (filters.dateRange !== 'all') {
         const transactionDate = new Date(transaction.createdAt);
         const now = new Date();
-        
+
         switch (filters.dateRange) {
           case 'today':
             const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -470,19 +479,19 @@ const Transactions = () => {
       console.log('No transactions data available:', transactions);
       return [];
     }
-    
+
     const sortedTransactions = transactions
       .slice()
       .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
-    
+
     const transformed = sortedTransactions.map((transaction, index) => ({
       ...transaction,
       id: transaction._id || transaction.id || `temp-${index}`, // Ensure unique ID
     }));
-    
+
     // Apply filters
     const filtered = applyFilters(transformed);
-    
+
     console.log('Transformed transactions:', filtered.length, 'items');
     return filtered;
   }, [transactions, filters]);
@@ -504,9 +513,9 @@ const Transactions = () => {
     return (
       <CAccordion activeItemKey={showFilters ? "filters" : ""} className="mb-3">
         <CAccordionItem itemKey="filters">
-          <CAccordionHeader 
+          <CAccordionHeader
             onClick={() => setShowFilters(!showFilters)}
-            style={{ 
+            style={{
               backgroundColor: theme === 'dark' ? '#333333' : '#f8f9fa',
               cursor: 'pointer'
             }}
@@ -521,7 +530,7 @@ const Transactions = () => {
               </div>
             </div>
           </CAccordionHeader>
-          <CAccordionBody style={{ 
+          <CAccordionBody style={{
             backgroundColor: theme === 'dark' ? '#2A2A2A' : '#ffffff',
             border: theme === 'dark' ? '1px solid #404040' : '1px solid #e0e0e0'
           }}>
@@ -654,14 +663,14 @@ const Transactions = () => {
     };
 
     return (
-      <CCard className="mb-3 shadow-sm" style={{ 
+      <CCard className="mb-3 shadow-sm" style={{
         backgroundColor: theme === 'dark' ? '#2A2A2A' : '#ffffff',
         border: theme === 'dark' ? '1px solid #404040' : '1px solid #e0e0e0'
       }}>
         <CCardHeader className="pb-2">
           <div className="d-flex justify-content-between align-items-start">
             <div>
-              <CCardTitle className="h6 mb-1" style={{ 
+              <CCardTitle className="h6 mb-1" style={{
                 color: theme === 'dark' ? '#ffffff' : '#000000',
                 fontSize: '0.9rem'
               }}>
@@ -671,7 +680,7 @@ const Transactions = () => {
                 {formatDate(transaction.createdAt)}
               </small>
             </div>
-            <CBadge 
+            <CBadge
               color={transaction.type === 'cash' ? 'success' : transaction.type === 'card' ? 'info' : 'warning'}
               className="text-uppercase"
               style={{ fontSize: '0.7rem' }}
@@ -684,7 +693,7 @@ const Transactions = () => {
           <CRow className="mb-2">
             <CCol xs={6}>
               <small className="text-muted d-block" style={{ fontSize: '0.75rem' }}>Sub Total</small>
-              <span className="fw-bold" style={{ 
+              <span className="fw-bold" style={{
                 color: theme === 'dark' ? '#ffffff' : '#000000',
                 fontSize: '0.85rem'
               }}>
@@ -698,11 +707,11 @@ const Transactions = () => {
               </span>
             </CCol>
           </CRow>
-          
+
           <CRow className="mb-3">
             <CCol xs={6}>
               <small className="text-muted d-block" style={{ fontSize: '0.75rem' }}>Tax</small>
-              <span style={{ 
+              <span style={{
                 color: theme === 'dark' ? '#ffffff' : '#000000',
                 fontSize: '0.8rem'
               }}>
@@ -711,7 +720,7 @@ const Transactions = () => {
             </CCol>
             <CCol xs={6}>
               <small className="text-muted d-block" style={{ fontSize: '0.75rem' }}>Discount</small>
-              <span style={{ 
+              <span style={{
                 color: theme === 'dark' ? '#ffffff' : '#000000',
                 fontSize: '0.8rem'
               }}>
@@ -760,16 +769,16 @@ const Transactions = () => {
   };
 
   return (
-    <div style={{ 
-      paddingLeft: isMobile ? '10px' : '20px', 
+    <div style={{
+      paddingLeft: isMobile ? '10px' : '20px',
       paddingRight: isMobile ? '10px' : '20px',
       paddingTop: isMobile ? '10px' : '0px'
     }}>
       <div className={`d-flex ${isMobile ? 'flex-column' : 'justify-content-between'} align-items-${isMobile ? 'start' : 'center'} mb-4`}>
         <h2 className={isMobile ? 'mb-3' : ''}>Transactions</h2>
-        <CButton 
-          color="primary" 
-          onClick={() => dispatch(fetchTransactionsByRestaurant({ restaurantId, token })) }
+        <CButton
+          color="primary"
+          onClick={() => dispatch(fetchTransactionsByRestaurant({ restaurantId, token }))}
           className={isMobile ? 'w-100' : ''}
           size={isMobile ? 'sm' : 'md'}
         >
@@ -792,9 +801,9 @@ const Transactions = () => {
             // Mobile View - Cards
             <div className="mobile-transactions-container">
               {transformedTransactions.map((transaction) => (
-                <MobileTransactionCard 
-                  key={transaction.id} 
-                  transaction={transaction} 
+                <MobileTransactionCard
+                  key={transaction.id}
+                  transaction={transaction}
                 />
               ))}
             </div>
@@ -864,8 +873,8 @@ const Transactions = () => {
           </div>
           <h5 className="text-muted">No transactions found</h5>
           <p className="text-muted">Try refreshing the page or check your connection</p>
-          <CButton 
-            color="primary" 
+          <CButton
+            color="primary"
             onClick={() => dispatch(fetchTransactionsByRestaurant({ restaurantId, token }))}
             className="mt-3"
           >
@@ -876,8 +885,8 @@ const Transactions = () => {
 
       {/* Modal for Invoice Preview */}
       {invoiceContent && (
-        <CModal 
-          visible={modalVisible} 
+        <CModal
+          visible={modalVisible}
           onClose={() => setModalVisible(false)}
           size={isMobile ? "lg" : "xl"}
           fullscreen={isMobile}
@@ -888,25 +897,25 @@ const Transactions = () => {
           <CModalBody>
             <iframe
               src={pdfDoc?.output('datauristring')}
-              style={{ 
-                width: '100%', 
-                height: isMobile ? '300px' : '400px', 
+              style={{
+                width: '100%',
+                height: isMobile ? '300px' : '400px',
                 border: 'none',
                 minHeight: isMobile ? '250px' : '350px'
               }}
               title="Invoice Preview"
             ></iframe>
             <div className={`mt-3 d-flex ${isMobile ? 'flex-column gap-2' : 'justify-content-between'}`}>
-              <CButton 
-                color="primary" 
+              <CButton
+                color="primary"
                 onClick={handleDownload}
                 className={isMobile ? 'w-100' : ''}
                 size={isMobile ? 'sm' : 'md'}
               >
                 Download
               </CButton>
-              <CButton 
-                color="secondary" 
+              <CButton
+                color="secondary"
                 onClick={handlePrint}
                 className={isMobile ? 'w-100' : ''}
                 size={isMobile ? 'sm' : 'md'}
@@ -968,7 +977,7 @@ const Transactions = () => {
           </CButton>
           <CButton
             color="success"
-            onClick={() => dispatch(deleteTransaction({ id:deleteTransactionId, deletionRemark }))}
+            onClick={() => dispatch(deleteTransaction({ id: deleteTransactionId, deletionRemark }))}
             className={isMobile ? 'w-100' : ''}
             size={isMobile ? 'sm' : 'md'}
           >
@@ -985,9 +994,9 @@ const Transactions = () => {
       </CModal>
 
       {/* Modal for Customer Dues */}
-      <CModal 
-        visible={showCustomerDuesModal} 
-        onClose={() => setShowCustomerDuesModal(false)} 
+      <CModal
+        visible={showCustomerDuesModal}
+        onClose={() => setShowCustomerDuesModal(false)}
         size={isMobile ? "lg" : "lg"}
         fullscreen={isMobile}
       >
@@ -1076,8 +1085,8 @@ const Transactions = () => {
           )}
         </CModalBody>
         <CModalFooter>
-          <CButton 
-            color="secondary" 
+          <CButton
+            color="secondary"
             onClick={() => setShowCustomerDuesModal(false)}
             className={isMobile ? 'w-100' : ''}
             size={isMobile ? 'sm' : 'md'}

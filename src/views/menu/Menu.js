@@ -182,7 +182,6 @@ const Menu = () => {
     setEditModalVisible(false);
     setActiveTab("basic");
   };
-
   const handleAddMenuItem = async () => {
     setIsSubmitting(true);
     try {
@@ -190,7 +189,6 @@ const Menu = () => {
         size.name?.trim() && size.price && Number(size.price) > 0
       );
 
-      // 🚨 Show erroring if no valid sizes
       if (validSizes.length === 0) {
         toast.error("Please enter at least one size and price before saving.", {
           position: "top-center",
@@ -207,11 +205,22 @@ const Menu = () => {
         item.unit?.trim()
       );
 
+      // 🚨 NEW VALIDATION: Require at least one inventory
+      if (validStockItems.length === 0) {
+        toast.error("Inventory is required. Please select at least one stock item.", {
+          position: "top-center",
+          autoClose: 3000,
+        });
+        setActiveTab("inventory"); // 👈 Automatically switch to the inventory tab
+        setIsSubmitting(false);
+        return;
+      }
+
       const dataToSend = {
         ...formData,
         restaurantId,
         sizes: validSizes,
-        stockItems: validStockItems
+        stockItems: validStockItems,
       };
 
       await dispatch(addMenuItem({ ...dataToSend, token })).unwrap();
@@ -225,6 +234,49 @@ const Menu = () => {
       setIsSubmitting(false);
     }
   };
+
+  // const handleAddMenuItem = async () => {
+  //   setIsSubmitting(true);
+  //   try {
+  //     const validSizes = formData.sizes.filter(size =>
+  //       size.name?.trim() && size.price && Number(size.price) > 0
+  //     );
+
+  //     // 🚨 Show erroring if no valid sizes
+  //     if (validSizes.length === 0) {
+  //       toast.error("Please enter at least one size and price before saving.", {
+  //         position: "top-center",
+  //         autoClose: 3000,
+  //       });
+  //       setIsSubmitting(false);
+  //       return;
+  //     }
+
+  //     const validStockItems = formData.stockItems.filter(item =>
+  //       item.stockId?.trim() &&
+  //       item.quantity &&
+  //       Number(item.quantity) > 0 &&
+  //       item.unit?.trim()
+  //     );
+
+  //     const dataToSend = {
+  //       ...formData,
+  //       restaurantId,
+  //       sizes: validSizes,
+  //       stockItems: validStockItems
+  //     };
+
+  //     await dispatch(addMenuItem({ ...dataToSend, token })).unwrap();
+  //     await dispatch(fetchMenuItems({ token, restaurantId }));
+  //     handleCancel();
+  //     toast.success("Menu item added successfully!");
+  //   } catch (error) {
+  //     console.error("❌ Add menu item error:", error);
+  //     toast.error(error.message || "Failed to add menu item.");
+  //   } finally {
+  //     setIsSubmitting(false);
+  //   }
+  // };
 
 
   const handleEditMenuItem = async () => {
@@ -305,7 +357,7 @@ const Menu = () => {
         deleteMenuItem({ id: selectedMenu._id, token })
       ).unwrap();
 
-      await dispatch(fetchMenuItems({ restaurantId , token }));
+      await dispatch(fetchMenuItems({ restaurantId, token }));
 
       setDeleteModalVisible(false);
       toast.success("Menu item deleted successfully!");
@@ -449,7 +501,7 @@ const Menu = () => {
                 style={{ fontSize: '14px' }}
               />
             </div>
-            
+
             <div className="mb-3">
               <label className="form-label fw-semibold">Item Name</label>
               <input
@@ -623,9 +675,9 @@ const Menu = () => {
                     src={previewImage}
                     alt="Preview"
                     className="img-thumbnail"
-                    style={{ 
-                      width: "100px", 
-                      height: "100px", 
+                    style={{
+                      width: "100px",
+                      height: "100px",
                       objectFit: "cover",
                       maxWidth: "100%",
                       borderRadius: "8px"
