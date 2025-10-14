@@ -52,7 +52,7 @@ export const createTransaction = createAsyncThunk(
         discount,
         total,
         type,
-        customerId,
+        customerId: customerId || null,
         transactionId,
         systemCharge,
         roundOff,

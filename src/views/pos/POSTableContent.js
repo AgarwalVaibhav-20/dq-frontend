@@ -795,12 +795,12 @@ const POSTableContent = () => {
       return;
     }
 
-    if (!selectedCustomer) {
-      toast.error('Please select a customer');
-      return;
-    }
+    // if (!selectedCustomer) {
+    //   toast.error('Please select a customer');
+    //   return;
+    // }
 
-    const { _id, frequency, totalSpent } = selectedCustomer;
+    const { _id, frequency, totalSpent } = selectedCustomer || {};
 
     let freq = frequency + 1;
     let updatedTotalSpent = totalSpent + calculateTotal();
@@ -836,7 +836,8 @@ const POSTableContent = () => {
       tax: calculateTotalTaxAmount(),
       discount: calculateDiscountAmount(),
       discountAmount: calculateDiscountAmount(),
-      customerId: _id,
+      customerId: selectedCustomer?._id || null,
+
       roundOff: roundOff,
       systemCharge: selectedSystem ? Number(selectedSystem.chargeOfSystem) : 0,
       sub_total: calculateSubtotal(),
@@ -860,7 +861,8 @@ const POSTableContent = () => {
       console.log('✅ Transaction created:', result);
 
       // 2. Update customer frequency and total spent
-      await dispatch(updateCustomerFrequency({
+      if(selectedCustomer){
+           await dispatch(updateCustomerFrequency({
         id: _id,
         frequency: freq,
         totalSpent: updatedTotalSpent
@@ -890,6 +892,9 @@ const POSTableContent = () => {
           { autoClose: 4000 }
         );
       }
+
+      }
+   
 
       // 5. Handle unmerge logic if needed
       if (tableId.startsWith('merged_')) {

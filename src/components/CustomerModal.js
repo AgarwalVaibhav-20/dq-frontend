@@ -105,6 +105,7 @@ const CustomerModal = ({
     }
 
     setFormErrors(errors);
+    console.log("errors utomer memship",errors);
     return Object.keys(errors).length === 0;
   };
 
