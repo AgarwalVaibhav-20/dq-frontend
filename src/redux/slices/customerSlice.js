@@ -42,7 +42,7 @@ export const fetchCustomers = createAsyncThunk(
 // Add customer
 export const addCustomer = createAsyncThunk(
   'customers/addCustomer',
-  async ({ token, name, email, address, phoneNumber, birthday, anniversary, membershipId, membershipName, corporate }, { rejectWithValue, dispatch }) => {
+  async ({ token, name, email, address, phoneNumber, birthday, anniversary, membershipId, membershipName, corporate, rewardCustomerPoints }, { rejectWithValue, dispatch }) => {
     try {
       const restaurantId = localStorage.getItem("restaurantId");
       if (!restaurantId) {
@@ -62,7 +62,8 @@ export const addCustomer = createAsyncThunk(
           corporate,
           birthday,
           membershipId,
-          membershipName
+          membershipName,
+          rewardCustomerPoints
         },
         configureHeaders(token));
 
@@ -82,7 +83,47 @@ export const addCustomer = createAsyncThunk(
     }
   }
 );
+// Add reward points (earned from purchases)
+export const addRewardPoints = createAsyncThunk(
+  'customers/addRewardPoints',
+  async ({ customerId, pointsToAdd }, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await axios.patch(
+        `${BASE_URL}/customer/reward-points/add/${customerId}`,
+        { pointsToAdd },
+        configureHeaders(token)
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error adding reward points:', error);
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to add reward points'
+      );
+    }
+  }
+);
 
+// Deduct reward points (used as discount)
+export const deductRewardPoints = createAsyncThunk(
+  'customers/deductRewardPoints',
+  async ({ customerId, pointsToDeduct }, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await axios.patch(
+        `${BASE_URL}/customer/reward-points/deduct/${customerId}`,
+        { pointsToDeduct },
+        configureHeaders(token)
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error deducting reward points:', error);
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to deduct reward points'
+      );
+    }
+  }
+);
 // Delete customer
 export const deleteCustomer = createAsyncThunk(
   'customers/deleteCustomer',
@@ -341,6 +382,47 @@ const customerSlice = createSlice({
       .addCase(updateCustomerFrequency.rejected, (state, action) => {
         state.error = action.payload;
         toast.error('Failed to update customer frequency.');
+      })
+      .addCase(addRewardPoints.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(addRewardPoints.fulfilled, (state, action) => {
+        state.loading = false;
+        // Update customer in the list
+        const customerIndex = state.customers.findIndex(
+          (c) => c._id === action.payload.data.customerId
+        );
+        if (customerIndex !== -1) {
+          state.customers[customerIndex].rewardCustomerPoints =
+            action.payload.data.totalPoints;
+        }
+        toast.success(`Added ${action.payload.data.pointsAdded} reward points!`);
+      })
+      .addCase(addRewardPoints.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        toast.error('Failed to add reward points.');
+      })
+      .addCase(deductRewardPoints.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(deductRewardPoints.fulfilled, (state, action) => {
+        state.loading = false;
+        const customerIndex = state.customers.findIndex(
+          (c) => c._id === action.payload.data.customerId
+        );
+        if (customerIndex !== -1) {
+          state.customers[customerIndex].rewardCustomerPoints =
+            action.payload.data.remainingPoints;
+        }
+        toast.success(`Deducted ${action.payload.data.pointsDeducted} reward points!`);
+      })
+      .addCase(deductRewardPoints.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        toast.error('Failed to deduct reward points.');
       });
   },
 });

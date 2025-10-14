@@ -27,6 +27,7 @@ import floorSlices from './slices/floorSlices'
 import memeberSlice from './slices/memberSlice'
 // import floorRedux from './slices/FloorRedux'
 import tableReducer from './slices/tableSlice'
+import wasteSlice from './slices/wasteSlice';
 // Configure the Redux store
 const store = configureStore({
   reducer: {
@@ -56,6 +57,7 @@ const store = configureStore({
     bulkEmail: sendBulkEmailReducer,
     banner: bannerReducer,
     coupons: couponReducer, 
+    wastes:wasteSlice,
   },
 })
 // console.log " Store -> ", store)

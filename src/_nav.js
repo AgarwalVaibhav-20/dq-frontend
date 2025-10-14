@@ -23,6 +23,7 @@ import {
   cibMessenger,
   cilImage,
   cilUser,
+  cilTrash,
   cilFastfood
   // cilRestaurant,
 } from '@coreui/icons'
@@ -126,6 +127,13 @@ const _nav = [
     to: '/transactions',
     icon: <CIcon icon={cilWallet} customClassName="nav-icon" />,
     roles: ['admin'], // Only admin can see
+  },
+  {
+    component: CNavItem,
+    name: 'Waste',
+    to: '/waste',
+    icon: <CIcon icon={cilTrash} customClassName="nav-icon" />,
+    roles: ['admin', 'waiter'],
   },
   {
     component: CNavItem,

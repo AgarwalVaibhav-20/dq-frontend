@@ -8,20 +8,24 @@ import {
   CButton,
   CFormInput,
   CFormCheck,
+  CAlert,
 } from '@coreui/react';
-import axiosInstance from '../utils/axiosConfig';
+import axios from 'axios';
+import { BASE_URL } from '../utils/constants';
 
 const DiscountModal = ({
   showDiscountModal,
   setShowDiscountModal,
   cart = [],
   handleDiscountSubmit,
+  selectedCustomer = null, // Customer with rewardCustomerPoints
 }) => {
   const [selectedItemIds, setSelectedItemIds] = useState([]);
   const [discountValue, setDiscountValue] = useState('');
-  const [discountType, setDiscountType] = useState('percentage'); // 'percentage' or 'fixed'
+  const [discountType, setDiscountType] = useState('percentage');
   const [couponCode, setCouponCode] = useState('');
   const [couponDiscount, setCouponDiscount] = useState(0);
+  const [useRewardPoints, setUseRewardPoints] = useState(false); // Reward points checkbox
 
   useEffect(() => {
     if (showDiscountModal) {
@@ -30,10 +34,10 @@ const DiscountModal = ({
       setDiscountType('percentage');
       setCouponCode('');
       setCouponDiscount(0);
+      setUseRewardPoints(false);
     }
   }, [showDiscountModal, cart]);
 
-  // Validate coupon when coupon code changes
   useEffect(() => {
     const timeoutId = setTimeout(() => {
       if (couponCode.trim()) {
@@ -41,7 +45,7 @@ const DiscountModal = ({
       } else {
         setCouponDiscount(0);
       }
-    }, 500); // Debounce for 500ms
+    }, 500);
 
     return () => clearTimeout(timeoutId);
   }, [couponCode]);
@@ -69,12 +73,16 @@ const DiscountModal = ({
     }
 
     try {
-      // Calculate order total for validation
       const orderTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
       
-      const response = await axiosInstance.post('/api/coupon/validate', {
+      const token = localStorage.getItem('authToken');
+      const response = await axios.post(`${BASE_URL}/api/coupon/validate`, {
         couponCode: code.trim(),
         orderTotal: orderTotal
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
       });
 
       if (response.data.success) {
@@ -107,12 +115,32 @@ const DiscountModal = ({
     }
   };
 
+  // Calculate total reward points from cart items
+  const calculateTotalRewardPoints = () => {
+    return cart.reduce((total, item) => {
+      const itemRewardPoints = Number(item.rewardPoints) || 0;
+      return total + (itemRewardPoints * item.quantity);
+    }, 0);
+  };
+
+  // Calculate reward points discount (1 point = ₹1)
+  const calculateRewardPointsDiscount = () => {
+    if (!useRewardPoints || !selectedCustomer) return 0;
+    
+    const totalRewardPoints = calculateTotalRewardPoints();
+    const customerPoints = Number(selectedCustomer.rewardCustomerPoints) || 0;
+    
+    // Customer can use up to the reward points they've earned from items in cart
+    // But limited by their available balance
+    return Math.min(totalRewardPoints, customerPoints);
+  };
+
   const onSubmit = () => {
     if (
-      (selectedItemIds.length === 0 && !couponDiscount.value) ||
-      (!discountValue && !couponDiscount.value)
+      (selectedItemIds.length === 0 && !couponDiscount.value && !useRewardPoints) ||
+      (!discountValue && !couponDiscount.value && !useRewardPoints)
     ) {
-      console.warn('Invalid submission');
+      console.warn('Invalid submission: No discount applied');
       return;
     }
 
@@ -123,20 +151,30 @@ const DiscountModal = ({
         type: discountType,
       },
       coupon: couponDiscount,
+      rewardPoints: useRewardPoints ? {
+        enabled: true,
+        pointsUsed: calculateRewardPointsDiscount(),
+        discountAmount: calculateRewardPointsDiscount(),
+      } : null,
     };
 
+    console.log('Submitting discounts:', discounts);
     handleDiscountSubmit(discounts);
+    
+    // Reset form
     setSelectedItemIds([]);
     setDiscountValue('');
     setDiscountType('percentage');
     setCouponCode('');
     setCouponDiscount(0);
+    setUseRewardPoints(false);
     setShowDiscountModal(false);
   };
 
   const calculatePreview = () => {
     let totalDiscount = 0;
 
+    // Item-specific discounts
     if (discountValue && selectedItemIds.length > 0) {
       totalDiscount += selectedItemIds.reduce((total, itemId) => {
         const item = cart.find(
@@ -154,6 +192,7 @@ const DiscountModal = ({
       }, 0);
     }
 
+    // Coupon discounts
     if (couponDiscount.value) {
       if (couponDiscount.type === 'percentage') {
         const subtotal = cart.reduce(
@@ -166,18 +205,85 @@ const DiscountModal = ({
       }
     }
 
+    // Reward points discount
+    if (useRewardPoints) {
+      totalDiscount += calculateRewardPointsDiscount();
+    }
+
     return totalDiscount;
   };
 
   const validCart = Array.isArray(cart) ? cart : [];
   const hasItems = validCart.length > 0;
+  const totalRewardPoints = calculateTotalRewardPoints();
+  const customerPoints = selectedCustomer ? Number(selectedCustomer.rewardCustomerPoints) || 0 : 0;
+  const availableRewardDiscount = Math.min(totalRewardPoints, customerPoints);
 
   return (
     <CModal visible={showDiscountModal} onClose={() => setShowDiscountModal(false)} size="lg">
       <CModalHeader>
-        <CModalTitle>Apply Discount / Coupon</CModalTitle>
+        <CModalTitle>Apply Discount / Coupon / Reward Points</CModalTitle>
       </CModalHeader>
       <CModalBody style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+        {/* Reward Points Section */}
+        {selectedCustomer && totalRewardPoints > 0 && (
+          <div className="mb-4 p-3 border rounded" style={{ backgroundColor: '#fff3cd' }}>
+            <div className="d-flex align-items-center justify-content-between mb-2">
+              <h6 className="fw-bold mb-0 text-dark">🎁 Reward Points Discount</h6>
+              <CFormCheck
+                type="checkbox"
+                id="useRewardPoints"
+                label={<span className="fw-bold">Use Reward Points</span>}
+                checked={useRewardPoints}
+                onChange={(e) => setUseRewardPoints(e.target.checked)}
+              />
+            </div>
+            
+            <div className="row mt-3">
+              <div className="col-6">
+                <small className="text-muted">Customer's Balance:</small>
+                <div className="fw-bold text-primary fs-5">{customerPoints} points</div>
+              </div>
+              <div className="col-6">
+                <small className="text-muted">Cart Reward Points:</small>
+                <div className="fw-bold text-success fs-5">{totalRewardPoints} points</div>
+              </div>
+            </div>
+
+            {useRewardPoints && (
+              <CAlert color="success" className="mt-3 mb-0">
+                <div className="d-flex justify-content-between align-items-center">
+                  <span className="fw-bold">✅ Discount Applied:</span>
+                  <span className="fw-bold fs-5">
+                    ₹{availableRewardDiscount.toFixed(2)}
+                  </span>
+                </div>
+                <small className="d-block mt-1">
+                  Using {availableRewardDiscount} reward points (1 point = ₹1)
+                </small>
+              </CAlert>
+            )}
+
+            {customerPoints < totalRewardPoints && (
+              <CAlert color="warning" className="mt-2 mb-0 py-2">
+                <small>
+                  ⚠️ Customer has {customerPoints} points available. 
+                  Need {totalRewardPoints - customerPoints} more points for full discount.
+                </small>
+              </CAlert>
+            )}
+          </div>
+        )}
+
+        {/* No customer selected warning */}
+        {!selectedCustomer && totalRewardPoints > 0 && (
+          <CAlert color="info" className="mb-4">
+            <small>
+              ℹ️ Select a customer to use reward points. This cart has {totalRewardPoints} reward points available.
+            </small>
+          </CAlert>
+        )}
+
         {/* Discount Type */}
         <div className="mb-4">
           <label className="form-label fw-bold mb-2">Discount Type:</label>
@@ -281,13 +387,6 @@ const DiscountModal = ({
                   <span className="text-muted ms-1">{couponDiscount.description}</span>
                 </div>
               )}
-              
-              <div className="mt-2">
-                <strong>Usage:</strong> 
-                <span className="text-info ms-1">
-                  {couponDiscount.usageCount || 0}/{couponDiscount.maxUsage || 'Unlimited'}
-                </span>
-              </div>
             </div>
           ) : couponCode ? (
             <small className="text-danger d-block mt-2">
@@ -296,9 +395,9 @@ const DiscountModal = ({
           ) : null}
         </div>
 
-        {/* Items */}
+        {/* Select Items */}
         <div className="border rounded p-3 mb-3">
-          <h6 className="fw-bold mb-2">Select Items:</h6>
+          <h6 className="fw-bold mb-2">Select Items for Item-Specific Discount:</h6>
           {hasItems ? (
             <>
               <CButton
@@ -310,20 +409,29 @@ const DiscountModal = ({
                 {selectedItemIds.length === validCart.length ? 'Deselect All' : 'Select All'}
               </CButton>
               {validCart.map((item) => {
-                // const itemId = item.id || item._id; // This line is removed
+                const itemRewardPoints = Number(item.rewardPoints) || 0;
                 return (
                   <div key={item.id} className="d-flex align-items-center border p-2 mb-2 rounded"> 
                     <CFormCheck
                       type="checkbox"
-                      checked={selectedItemIds.includes(item.id)} // Use item.id directly
-                      onChange={() => toggleSelection(item.id)} // Pass item.id
+                      checked={selectedItemIds.includes(item.id)}
+                      onChange={() => toggleSelection(item.id)}
                       className="me-2"
                     />
                     <div className="flex-grow-1">
-                      <div>{item.itemName}</div>
-                      <small className="text-muted">
-                        Qty: {item.quantity}, Price: ₹{item.adjustedPrice}
-                      </small>
+                      <div className="d-flex justify-content-between align-items-start">
+                        <div>
+                          <div className="fw-bold">{item.itemName}</div>
+                          <small className="text-muted">
+                            Qty: {item.quantity}, Price: ₹{item.adjustedPrice}
+                          </small>
+                        </div>
+                        {itemRewardPoints > 0 && (
+                          <span className="badge bg-warning text-dark">
+                            🎁 {itemRewardPoints * item.quantity} pts
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
                 );
@@ -334,11 +442,21 @@ const DiscountModal = ({
           )}
         </div>
 
-        {/* Preview */}
-        {(selectedItemIds.length > 0 || couponDiscount.value) && (
-          <div className="alert alert-info">
-            <strong>Total Discount: </strong> ₹{calculatePreview().toFixed(2)}
-          </div>
+        {/* Discount Preview */}
+        {(selectedItemIds.length > 0 || couponDiscount.value || useRewardPoints) && (
+          <CAlert color="info" className="mb-0">
+            <div className="d-flex justify-content-between align-items-center">
+              <strong>Total Discount Preview:</strong>
+              <strong className="fs-5">₹{calculatePreview().toFixed(2)}</strong>
+            </div>
+            {useRewardPoints && (
+              <div className="mt-2">
+                <small className="text-muted">
+                  (Includes ₹{calculateRewardPointsDiscount().toFixed(2)} from reward points)
+                </small>
+              </div>
+            )}
+          </CAlert>
         )}
       </CModalBody>
       <CModalFooter>
@@ -349,8 +467,8 @@ const DiscountModal = ({
           color="primary"
           onClick={onSubmit}
           disabled={
-            (selectedItemIds.length === 0 && !couponDiscount.value) ||
-            (!discountValue && !couponDiscount.value)
+            (selectedItemIds.length === 0 && !couponDiscount.value && !useRewardPoints) ||
+            (!discountValue && !couponDiscount.value && !useRewardPoints)
           }
         >
           Apply Discount

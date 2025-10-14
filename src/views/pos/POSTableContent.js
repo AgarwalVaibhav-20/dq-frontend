@@ -4,7 +4,13 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useDispatch, useSelector } from 'react-redux'
 import { fetchMenuItems } from '../../redux/slices/menuSlice'
-import { fetchCustomers, updateCustomerFrequency, addCustomer } from '../../redux/slices/customerSlice'
+import {
+  fetchCustomers,
+  updateCustomerFrequency,
+  addCustomer,
+  addRewardPoints,      // ADD THIS
+  deductRewardPoints    // ADD THIS
+} from '../../redux/slices/customerSlice'
 import { createTransaction } from '../../redux/slices/transactionSlice'
 import { fetchSubCategories } from '../../redux/slices/subCategorySlice'
 import { fetchCategories } from '../../redux/slices/categorySlice'
@@ -267,7 +273,7 @@ const POSTableContent = () => {
 
   const handleMenuItemClick = useCallback((product) => {
     console.log('handleMenuItemClick called with:', product.itemName);
-    
+
     // Skip subcategory check for now - direct add to cart
     // const relevantSubcategoriesExist = subCategories.some(sub => sub.category_id === product.categoryId);
 
@@ -275,56 +281,56 @@ const POSTableContent = () => {
     //   setSelectedMenuItemForSubcategory(product);
     //   setShowSubCategoryModal(true);
     // } else {
-      // A product is considered unique based on its ID AND its size ID.
-      const productId = product._id || product.id;
-      const sizeId = product.sizeId || null; // sizeId comes from ProductList.js
+    // A product is considered unique based on its ID AND its size ID.
+    const productId = product._id || product.id;
+    const sizeId = product.sizeId || null; // sizeId comes from ProductList.js
 
-      const existingItemIndex = cart.findIndex((item) => {
-        const cartItemId = item._id || item.id;
-        const cartItemSizeId = item.sizeId || null; // use 'item' here
-        return cartItemId === productId && cartItemSizeId === sizeId;
-      });
+    const existingItemIndex = cart.findIndex((item) => {
+      const cartItemId = item._id || item.id;
+      const cartItemSizeId = item.sizeId || null; // use 'item' here
+      return cartItemId === productId && cartItemSizeId === sizeId;
+    });
 
-      if (existingItemIndex > -1) {
-        setCart(prevCart =>
-          prevCart.map((item, index) => {
-            if (index === existingItemIndex) {
-              const newQuantity = item.quantity + 1;
-              return {
-                ...item,
-                quantity: newQuantity,
-                // Recalculate tax amount if item has tax
-                taxAmount: item.taxPercentage ?
-                  (item.adjustedPrice * newQuantity * item.taxPercentage) / 100 : 0
-              };
-            }
-            return item;
-          })
-        );
-      } else {
-        // Create a unique cart item ID by combining product ID and size ID
-        const cartItemId = `${productId}${product.sizeId ? `_${product.sizeId}` : ''}`;
-        const newCartItem = {
-          ...product,
-          id: cartItemId,
-          _id: product._id,
-          quantity: 1,
-          price: Number(product.adjustedPrice) || Number(product.price) || 0,
-          adjustedPrice: Number(product.adjustedPrice) || Number(product.price) || 0, // IMPORTANT: always set adjustedPrice
-          taxType: null,
-          taxPercentage: 0,
-          fixedTaxAmount: 0,
-          taxAmount: 0
-        };
+    if (existingItemIndex > -1) {
+      setCart(prevCart =>
+        prevCart.map((item, index) => {
+          if (index === existingItemIndex) {
+            const newQuantity = item.quantity + 1;
+            return {
+              ...item,
+              quantity: newQuantity,
+              // Recalculate tax amount if item has tax
+              taxAmount: item.taxPercentage ?
+                (item.adjustedPrice * newQuantity * item.taxPercentage) / 100 : 0
+            };
+          }
+          return item;
+        })
+      );
+    } else {
+      // Create a unique cart item ID by combining product ID and size ID
+      const cartItemId = `${productId}${product.sizeId ? `_${product.sizeId}` : ''}`;
+      const newCartItem = {
+        ...product,
+        id: cartItemId,
+        _id: product._id,
+        quantity: 1,
+        price: Number(product.adjustedPrice) || Number(product.price) || 0,
+        adjustedPrice: Number(product.adjustedPrice) || Number(product.price) || 0, // IMPORTANT: always set adjustedPrice
+        taxType: null,
+        taxPercentage: 0,
+        fixedTaxAmount: 0,
+        taxAmount: 0
+      };
 
-        setCart(prevCart => [...prevCart, newCartItem]);
-      }
+      setCart(prevCart => [...prevCart, newCartItem]);
+    }
 
-      if (!startTime) {
-        const now = new Date();
-        setStartTime(now);
-        localStorage.setItem(`start_time_${tableNumber}`, now.toISOString());
-      }
+    if (!startTime) {
+      const now = new Date();
+      setStartTime(now);
+      localStorage.setItem(`start_time_${tableNumber}`, now.toISOString());
+    }
     // }
   }, [cart, startTime, tableNumber]);
 
@@ -464,7 +470,7 @@ const POSTableContent = () => {
   };
 
   const handleDiscountSubmit = (discounts) => {
-    // console.log('Received discounts:', discounts);
+    console.log('Received discounts:', discounts);
 
     // Handle item-specific discounts
     if (discounts.selectedItemDiscount && discounts.selectedItemDiscount.ids && discounts.selectedItemDiscount.ids.length > 0) {
@@ -472,8 +478,7 @@ const POSTableContent = () => {
 
       setCart(prevCart =>
         prevCart.map(item => {
-          // The 'ids' array now contains the unique composite IDs
-          if (ids.includes(item.id)) { // <-- Correctly use item.id
+          if (ids.includes(item.id)) {
             let discountAmount = 0;
             let discountPercentage = 0;
             let fixedDiscountAmount = 0;
@@ -482,7 +487,6 @@ const POSTableContent = () => {
               discountPercentage = value;
               discountAmount = (item.adjustedPrice * item.quantity * value) / 100;
             } else if (type === 'fixed') {
-              // Fixed amount is per item, not affected by quantity
               fixedDiscountAmount = value;
               discountAmount = value;
             }
@@ -502,7 +506,7 @@ const POSTableContent = () => {
       toast.success(`${type === 'percentage' ? 'Percentage' : 'Fixed'} discount applied to ${ids.length} item(s)!`);
     }
 
-    // Handle coupon discounts (apply to entire cart)
+    // Handle coupon discounts
     if (discounts.coupon && discounts.coupon.value) {
       const { value, type } = discounts.coupon;
 
@@ -510,13 +514,27 @@ const POSTableContent = () => {
         setDiscount(value);
         toast.success(`Coupon discount of ${value}% applied to entire order!`);
       } else if (type === 'fixed') {
-        // For fixed coupon discounts, we can add it to round off or handle it separately
-        // Option 1: Add to existing discount calculation
         const subtotal = calculateSubtotal();
         const percentageEquivalent = (value / subtotal) * 100;
         setDiscount(percentageEquivalent);
         toast.success(`Fixed coupon discount of ₹${value} applied!`);
       }
+    }
+
+    // NEW: Handle reward points discount
+    if (discounts.rewardPoints && discounts.rewardPoints.enabled) {
+      const { pointsUsed, discountAmount } = discounts.rewardPoints;
+
+      // Store reward points discount separately
+      setAppliedDiscounts(prev => ({
+        ...prev,
+        rewardPoints: {
+          pointsUsed,
+          discountAmount
+        }
+      }));
+
+      toast.success(`Reward points discount of ₹${discountAmount.toFixed(2)} applied!`);
     }
 
     setShowDiscountModal(false);
@@ -562,11 +580,11 @@ const POSTableContent = () => {
     const subtotal = calculateSubtotal();
     let totalDiscount = 0;
 
-    // This logic correctly handles fixed vs percentage for memberships.
-    if (membershipDiscount && membershipDiscount.value > 0) { // If value is 0, this block is skipped
+    // Handle membership discounts
+    if (membershipDiscount && membershipDiscount.value > 0) {
       if (membershipDiscount.type === 'fixed') {
         totalDiscount = membershipDiscount.value;
-      } else { // 'percentage'
+      } else {
         totalDiscount = (subtotal * membershipDiscount.value) / 100;
       }
     } else {
@@ -576,10 +594,14 @@ const POSTableContent = () => {
         if (item.discountAmount) totalDiscount += Number(item.discountAmount);
       });
     }
-    
-    return totalDiscount;
-  }, [calculateSubtotal, discount, cart, membershipDiscount]);
 
+    // NEW: Add reward points discount
+    if (appliedDiscounts?.rewardPoints?.discountAmount) {
+      totalDiscount += Number(appliedDiscounts.rewardPoints.discountAmount);
+    }
+
+    return totalDiscount;
+  }, [calculateSubtotal, discount, cart, membershipDiscount, appliedDiscounts]);
 
   const calculateTotal = useCallback(() => {
     const subtotal = calculateSubtotal();
@@ -763,24 +785,41 @@ const POSTableContent = () => {
     const userId = localStorage.getItem('userId');
     const restaurantId = localStorage.getItem('restaurantId');
 
-    const customerInfo = JSON.parse(localStorage.getItem('customer'));
+    if (!token || !restaurantId) {
+      toast.error('Authentication required');
+      return;
+    }
 
-    const { _id, frequency, totalSpent } = customerInfo;
-    console.log("postTable", _id, frequency, totalSpent);
+    if (cart.length === 0) {
+      toast.error('Cart is empty');
+      return;
+    }
 
+    if (!selectedCustomer) {
+      toast.error('Please select a customer');
+      return;
+    }
+
+    const { _id, frequency, totalSpent } = selectedCustomer;
 
     let freq = frequency + 1;
     let updatedTotalSpent = totalSpent + calculateTotal();
 
+    // ✅ Calculate total reward points earned from menu items in cart
+    const totalRewardPointsEarned = cart.reduce((total, item) => {
+      const itemRewardPoints = Number(item.rewardPoints) || 0;
+      return total + (itemRewardPoints * item.quantity);
+    }, 0);
 
-    // ... (your existing checks for token, restaurantId, cart) ...
+    console.log('🎁 Total Reward Points to be added:', totalRewardPointsEarned);
 
     const payload = {
       token,
       userId,
       restaurantId,
-      // For merged tables, we can send the merged name or original tables list
-      tableNumber: tableId.startsWith('merged_') ? `Merged (${tableId.substring(0, 15)}...)` : tableNumber,
+      tableNumber: tableId.startsWith('merged_')
+        ? `Merged (${tableId.substring(0, 15)}...)`
+        : tableNumber,
       items: cart?.map((item) => ({
         itemId: item._id || item.id,
         itemName: item.itemName,
@@ -791,19 +830,20 @@ const POSTableContent = () => {
         taxType: item.taxType || null,
         taxPercentage: item.taxPercentage || 0,
         fixedTaxAmount: item.fixedTaxAmount || 0,
-        taxAmount: item.taxAmount || 0
+        taxAmount: item.taxAmount || 0,
+        rewardPoints: item.rewardPoints || 0
       })),
       tax: calculateTotalTaxAmount(),
       discount: calculateDiscountAmount(),
-      // discountAmount:  calculateDiscountAmount(),
-      // discount: membershipDiscount > 0 ? membershipDiscount : discount,
       discountAmount: calculateDiscountAmount(),
-      customerId: selectedCustomer ? selectedCustomer._id : null,
+      customerId: _id,
       roundOff: roundOff,
       systemCharge: selectedSystem ? Number(selectedSystem.chargeOfSystem) : 0,
       sub_total: calculateSubtotal(),
       total: calculateTotal(),
       type: paymentType,
+      rewardPointsUsed: appliedDiscounts?.rewardPoints?.pointsUsed || 0,
+      rewardPointsEarned: totalRewardPointsEarned
     };
 
     if (paymentType === "split") {
@@ -815,46 +855,63 @@ const POSTableContent = () => {
     }
 
     try {
+      // 1. Create transaction
       const result = await dispatch(createTransaction(payload)).unwrap();
-      // console.log('Transaction created:', result);
+      console.log('✅ Transaction created:', result);
 
-      const response = await dispatch(updateCustomerFrequency({ id: _id, frequency: freq, totalSpent: updatedTotalSpent }))
-      //  const {_id, frequency,totalSpent} = response.payload;
-      //  const updatedTotalSpent=totalSpent+calculateTotal();
-      //  const feq=frequency+1;
+      // 2. Update customer frequency and total spent
+      await dispatch(updateCustomerFrequency({
+        id: _id,
+        frequency: freq,
+        totalSpent: updatedTotalSpent
+      })).unwrap();
+      console.log('✅ Customer frequency updated');
 
-      //  console.log(response.payload,"freq:",feq,"spent:",updatedTotalSpent,"total::",calculateTotal())
+      // 3. ✅ DEDUCT reward points if customer used them (checkbox was checked)
+      if (appliedDiscounts?.rewardPoints?.pointsUsed > 0) {
+        await dispatch(deductRewardPoints({
+          customerId: _id,
+          pointsToDeduct: appliedDiscounts.rewardPoints.pointsUsed
+        })).unwrap();
 
-
-      // --- NEW UNMERGE LOGIC ON SUCCESSFUL PAYMENT ---
-      if (tableId.startsWith('merged_')) {
-        // 1. Get all merged tables from localStorage
-        const allMergedTables = JSON.parse(localStorage.getItem('mergedTables') || '[]')
-
-        // 2. Remove the current merged table from the array
-        const updatedMergedTables = allMergedTables.filter(m => `merged_${m.id}` !== tableId)
-        localStorage.setItem('mergedTables', JSON.stringify(updatedMergedTables))
-
-        // 3. Clean up the merged table's specific localStorage
-        localStorage.removeItem(`cart_${tableId}`)
-        localStorage.removeItem(`start_time_${tableId}`)
-        // console.log(`Unmerged table ${tableId} after payment.`);
+        console.log(`✅ Deducted ${appliedDiscounts.rewardPoints.pointsUsed} points`);
       }
-      // --- END OF NEW LOGIC ---
 
+      // 4. ✅ ADD reward points earned from menu items
+      if (totalRewardPointsEarned > 0) {
+        await dispatch(addRewardPoints({
+          customerId: _id,
+          pointsToAdd: totalRewardPointsEarned
+        })).unwrap();
+
+        console.log(`✅ Added ${totalRewardPointsEarned} points`);
+        toast.success(
+          `🎉 Customer earned ${totalRewardPointsEarned} reward points from this order!`,
+          { autoClose: 4000 }
+        );
+      }
+
+      // 5. Handle unmerge logic if needed
+      if (tableId.startsWith('merged_')) {
+        const allMergedTables = JSON.parse(localStorage.getItem('mergedTables') || '[]');
+        const updatedMergedTables = allMergedTables.filter(m => `merged_${m.id}` !== tableId);
+        localStorage.setItem('mergedTables', JSON.stringify(updatedMergedTables));
+        localStorage.removeItem(`cart_${tableId}`);
+        localStorage.removeItem(`start_time_${tableId}`);
+      }
+
+      // 6. Success - clear cart and navigate
       setShowPaymentModal(false);
-      clearCart(); // This will now clear the state for the current (now defunct) view
-      toast.success('Payment processed successfully!');
-
-      // Navigate back to the main screen after payment
+      clearCart();
+      setAppliedDiscounts(null);
+      toast.success('✅ Payment processed successfully!');
       navigate('/pos');
 
     } catch (error) {
-      console.error("Error submitting payment:", error);
+      console.error("❌ Error submitting payment:", error);
       toast.error('Failed to process payment: ' + (error.message || 'Unknown error'));
     }
   };
-
   const generateInvoice = () => {
     const invoiceElement = invoiceRef.current
 
@@ -1297,39 +1354,39 @@ const POSTableContent = () => {
             </h4>
           </CCol>
           <CCol md={8} className="d-flex justify-content-end gap-2 flex-wrap">
-            <CButton 
-              color="danger" 
-              variant="outline" 
-              size="lg" 
+            <CButton
+              color="danger"
+              variant="outline"
+              size="lg"
               onClick={clearCart}
               className="btn-mobile-responsive"
               style={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
             >
               Cancel
             </CButton>
-            <CButton 
-              color="info" 
-              variant="outline" 
-              size="lg" 
+            <CButton
+              color="info"
+              variant="outline"
+              size="lg"
               onClick={generateKOT}
               className="btn-mobile-responsive"
               style={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
             >
               KOT
             </CButton>
-            <CButton 
-              color="warning" 
-              variant="outline" 
-              size="lg" 
+            <CButton
+              color="warning"
+              variant="outline"
+              size="lg"
               onClick={generateInvoice}
               className="btn-mobile-responsive"
               style={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
             >
               Bill
             </CButton>
-            <CButton 
-              color="success" 
-              size="lg" 
+            <CButton
+              color="success"
+              size="lg"
               onClick={() => setShowPaymentModal(true)}
               className="btn-mobile-responsive"
               style={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
@@ -1436,7 +1493,8 @@ const POSTableContent = () => {
       <DiscountModal
         showDiscountModal={showDiscountModal}
         setShowDiscountModal={setShowDiscountModal}
-        cart={cart} // This was missing!
+        cart={cart}
+        selectedCustomer={selectedCustomer} // ADD THIS LINE
         handleDiscountSubmit={handleDiscountSubmit}
       />
       <RoundOffAmountModal

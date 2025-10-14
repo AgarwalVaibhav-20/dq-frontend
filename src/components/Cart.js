@@ -70,7 +70,7 @@ const Cart = ({
 
     // Get total discount amount from parent component if available
     const totalDiscountAmount = getDiscountAmount ? getDiscountAmount() : 0;
-    
+
     // If we have a total discount amount, calculate percentage from that
     if (totalDiscountAmount > 0) {
       const percentage = (totalDiscountAmount / subtotal) * 100;
@@ -92,7 +92,7 @@ const Cart = ({
 
     // Handle case where totalDiscount is 0 or NaN
     if (totalDiscount === 0 || isNaN(totalDiscount)) return 0;
-    
+
     const percentage = (totalDiscount / subtotal) * 100;
     return isNaN(percentage) ? 0 : Math.abs(percentage).toFixed(2);
   };
@@ -130,7 +130,7 @@ const Cart = ({
     if (calculateDiscountAmount) return calculateDiscountAmount();
     return (getSubtotal() * (discount || 0)) / 100;
   };
-  console.log(getDiscountAmount , "get discount amount")
+  console.log(getDiscountAmount, "get discount amount")
 
   const getTotal = () => {
     if (calculateTotal) return calculateTotal();
@@ -376,6 +376,16 @@ const Cart = ({
               </span>
               <span className="text-danger">- ₹{getDiscountAmount().toFixed(2)}</span>
             </div>
+
+            {/* NEW: Show reward points discount separately */}
+            {appliedDiscounts?.rewardPoints?.discountAmount > 0 && (
+              <div className="d-flex justify-content-between mb-2">
+                <span className="text-success">
+                  🎁 Reward Points ({appliedDiscounts.rewardPoints.pointsUsed} pts)
+                </span>
+                <span className="text-success">- ₹{appliedDiscounts.rewardPoints.discountAmount.toFixed(2)}</span>
+              </div>
+            )}
             {selectedSystem && (
               <div className="d-flex justify-content-between mb-2 align-items-center">
                 <span>System Charge ({selectedSystem.systemName})</span>

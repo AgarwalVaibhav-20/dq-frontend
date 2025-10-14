@@ -62,7 +62,7 @@ const getPermissionForRoute = (routePath) => {
     'license': 'License',
     'downloads': 'Downloads'
   };
-  
+
   return permissionMap[routePath] || null;
 };
 import './global.css'
@@ -102,6 +102,7 @@ import YearlyChartReport from './views/reports/YearlyChartReport'
 import WeeklyChartReport from './views/reports/WeeklyChartReport'
 
 // Lazy Loading for pages
+const Waste = React.lazy(() => import('./views/waste/Waste.js'))
 const SubCategory = React.lazy(() => import('./views/subCategory/SubCategory'))
 const DefaultLayout = React.lazy(() => import('./layout/DefaultLayout'))
 const Login = React.lazy(() => import('./views/pages/login/Login'))
@@ -309,7 +310,7 @@ const App = () => {
   useEffect(() => {
     const sessionStarted = localStorage.getItem('sessionStarted') === 'true';
     dispatch({ type: 'auth/setSessionStarted', payload: sessionStarted });
-    
+
     // Sync localStorage with Redux state on app initialization
     dispatch(syncLocalStorage());
   }, [dispatch]);
@@ -428,6 +429,7 @@ const App = () => {
                     <Route path="license" element={<License />} />
                     <Route path="downloads" element={<Downloads />} />
                     <Route path="*" element={<Page404 />} />
+                    <Route path="waste" element={<Waste />} />
                   </>
                 ) : (
                   // Non-admin users के लिए permission-based routing
@@ -442,6 +444,7 @@ const App = () => {
                         <Orders />
                       </PermissionGuard>
                     } />
+                    {/* <Route path="waste" */}
                     <Route path="pos" element={
                       <PermissionGuard requiredPermissions={['POS']}>
                         <POS />
@@ -467,7 +470,7 @@ const App = () => {
                         <POSTableContent />
                       </PermissionGuard>
                     } />
-                    
+
                     {/* Permission-based routes 
                     <Route path="dashboard" element={
                       <PermissionGuard requiredPermissions={['Overview']}>
@@ -491,17 +494,17 @@ const App = () => {
                     } />
                     <Route path="purchaseanalytics" element={
                       <PermissionGuard requiredPermissions={['Purchase Analytics']}>
-                          <PurchaseAnalytics />
+                        <PurchaseAnalytics />
                       </PermissionGuard>
                     } />
                     <Route path="delivery-timing" element={
                       <PermissionGuard requiredPermissions={['Delivery Timing']}>
-                          <DeliveryTiming />
+                        <DeliveryTiming />
                       </PermissionGuard>
                     } />
                     <Route path="supplier" element={
                       <PermissionGuard requiredPermissions={['Inventory']}>
-                          <Supplier />
+                        <Supplier />
                       </PermissionGuard>
                     } />
                     <Route path="permission" element={
@@ -512,52 +515,52 @@ const App = () => {
                     <Route path="login-activity" element={<LoginActivity />} />
                     <Route path="customerloyality" element={
                       <PermissionGuard requiredPermissions={['Customer Loyality']}>
-                          <CustomerLoyality />
+                        <CustomerLoyality />
                       </PermissionGuard>
                     } />
                     <Route path="salesanalytics" element={
                       <PermissionGuard requiredPermissions={['Sales Analytics']}>
-                          <SalesAnalytics />
+                        <SalesAnalytics />
                       </PermissionGuard>
                     } />
                     <Route path="qr-code" element={
                       <PermissionGuard requiredPermissions={['QR Code']}>
-                          <QRCode />
+                        <QRCode />
                       </PermissionGuard>
                     } />
                     <Route path="category" element={
                       <PermissionGuard requiredPermissions={['Category']}>
-                          <Category restaurantId={restaurantId} />
+                        <Category restaurantId={restaurantId} />
                       </PermissionGuard>
                     } />
                     <Route path="subCategory" element={
                       <PermissionGuard requiredPermissions={['SubCategory']}>
-                          <SubCategory restaurantId={restaurantId} />
+                        <SubCategory restaurantId={restaurantId} />
                       </PermissionGuard>
                     } />
                     <Route path="stock" element={
                       <PermissionGuard requiredPermissions={['Inventory']}>
-                          <Stock />
+                        <Stock />
                       </PermissionGuard>
                     } />
                     <Route path="menu" element={
                       <PermissionGuard requiredPermissions={['Menu']}>
-                          <Menu />
+                        <Menu />
                       </PermissionGuard>
                     } />
                     <Route path="banners" element={
                       <PermissionGuard requiredPermissions={['Banners']}>
-                          <Banner />
+                        <Banner />
                       </PermissionGuard>
                     } />
                     <Route path="customers" element={
                       <PermissionGuard requiredPermissions={['Customers']}>
-                          <Customers />
+                        <Customers />
                       </PermissionGuard>
                     } />
                     <Route path="transactions" element={
                       <PermissionGuard requiredPermissions={['Transactions']}>
-                          <Transactions />
+                        <Transactions />
                       </PermissionGuard>
                     } />
                     <Route path="account/:userId" element={<Account />} />
@@ -566,116 +569,116 @@ const App = () => {
                         <Settings />
                       </PermissionGuard>
                     } />
-                    
+
                     {/* Report routes with permissions */}
                     <Route path="daily-report" element={
                       <PermissionGuard requiredPermissions={['Reports']}>
-                          <DailyReport />
+                        <DailyReport />
                       </PermissionGuard>
                     } />
                     <Route path="payment-report" element={
                       <PermissionGuard requiredPermissions={['Reports']}>
-                          <PaymentReport />
+                        <PaymentReport />
                       </PermissionGuard>
                     } />
                     <Route path="customer-report" element={
                       <PermissionGuard requiredPermissions={['Reports']}>
-                          <CustomerReport />
+                        <CustomerReport />
                       </PermissionGuard>
                     } />
                     <Route path="table-report" element={
                       <PermissionGuard requiredPermissions={['Reports']}>
-                          <TableReport />
+                        <TableReport />
                       </PermissionGuard>
                     } />
                     <Route path="payment-type-report" element={
                       <PermissionGuard requiredPermissions={['Reports']}>
-                          <PaymentTypeReport />
+                        <PaymentTypeReport />
                       </PermissionGuard>
                     } />
                     <Route path="dashboard-statistics-report" element={
                       <PermissionGuard requiredPermissions={['Reports']}>
-                          <DashboardStatisticsReport />
+                        <DashboardStatisticsReport />
                       </PermissionGuard>
                     } />
                     <Route path="due-report" element={
                       <PermissionGuard requiredPermissions={['Reports']}>
-                      <DueReport />
+                        <DueReport />
                       </PermissionGuard>
                     } />
                     <Route path="transactionByDate-report" element={
                       <PermissionGuard requiredPermissions={['Reports']}>
-                          <TransactionCountReport />
+                        <TransactionCountReport />
                       </PermissionGuard>
                     } />
                     <Route path="tax-collection-report" element={
                       <PermissionGuard requiredPermissions={['Reports']}>
-                          <TaxCollectedReport />
+                        <TaxCollectedReport />
                       </PermissionGuard>
                     } />
                     <Route path="table-usage-report" element={
                       <PermissionGuard requiredPermissions={['Reports']}>
-                          <TableUsageReport />
+                        <TableUsageReport />
                       </PermissionGuard>
                     } />
                     <Route path="discount-usage-report" element={
                       <PermissionGuard requiredPermissions={['Reports']}>
-                          <DiscountUsageReport />
+                        <DiscountUsageReport />
                       </PermissionGuard>
                     } />
                     <Route path="average-order-report" element={
                       <PermissionGuard requiredPermissions={['Reports']}>
-                          <AverageOrderValueReport />
+                        <AverageOrderValueReport />
                       </PermissionGuard>
                     } />
                     <Route path="payment-type-transaction-report" element={
                       <PermissionGuard requiredPermissions={['Reports']}>
-                          <TransactionsByPaymentTypeReport />
+                        <TransactionsByPaymentTypeReport />
                       </PermissionGuard>
                     } />
                     <Route path="total-revenue-report" element={
                       <PermissionGuard requiredPermissions={['Reports']}>
-                          <TotalRevenueReport />
+                        <TotalRevenueReport />
                       </PermissionGuard>
                     } />
                     <Route path="yearly-chart-report" element={
                       <PermissionGuard requiredPermissions={['Reports']}>
-                          <YearlyChartReport />
+                        <YearlyChartReport />
                       </PermissionGuard>
                     } />
                     <Route path="weekly-chart-report" element={
                       <PermissionGuard requiredPermissions={['Reports']}>
-                          <WeeklyChartReport />
+                        <WeeklyChartReport />
                       </PermissionGuard>
                     } />
                     <Route path="feedback" element={
                       <PermissionGuard requiredPermissions={['Feedbacks']}>
-                          <Feedback />
+                        <Feedback />
                       </PermissionGuard>
                     } />
                     <Route path="reservations" element={
                       <PermissionGuard requiredPermissions={['Reservations']}>
-                          <Reservation />
+                        <Reservation />
                       </PermissionGuard>
                     } />
                     <Route path="dues" element={
                       <PermissionGuard requiredPermissions={['Dues']}>
-                          <Dues />
+                        <Dues />
                       </PermissionGuard>
                     } />
                     <Route path="help" element={
                       <PermissionGuard requiredPermissions={['Help']}>
-                          <Help />
+                        <Help />
                       </PermissionGuard>
                     } />
                     <Route path="license" element={
                       <PermissionGuard requiredPermissions={['License']}>
-                          <License />
+                        <License />
                       </PermissionGuard>
                     } />
                     <Route path="downloads" element={
                       <PermissionGuard requiredPermissions={['Downloads']}>
-                          <Downloads />
+                        <Downloads />
                       </PermissionGuard>
                     } />
                     <Route path="debug-permissions" element={<PermissionDebug />} />
