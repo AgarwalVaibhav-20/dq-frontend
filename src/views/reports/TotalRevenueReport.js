@@ -45,7 +45,7 @@ function TotalRevenueReport() {
     if (token && restaurantId) {
       dispatch(fetchTotalRevenueByDate({ token, startDate, endDate, restaurantId }));
     }
-  }, [dispatch, token, restaurantId]); // once on mount
+  }, [dispatch, token,, startDate, endDate, restaurantId]); // once on mount
 
   const handleGenerateReport = () => {
     if (!startDate || !endDate) return alert('Please select both dates');

@@ -59,7 +59,7 @@ const AverageOrderValueReport = () => {
     if (token && restaurantId) {
       dispatch(fetchAverageOrderValueByDate({ token, startDate, endDate, restaurantId }));
     }
-  }, [dispatch, token, restaurantId]);         // fetch once on mount
+  }, [dispatch, token, startDate, endDate,restaurantId]);         // fetch once on mount
 
   const handleGenerateReport = () => {
     if (!startDate || !endDate) return alert('Please select both dates.');

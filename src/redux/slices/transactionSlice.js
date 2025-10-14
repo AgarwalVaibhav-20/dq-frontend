@@ -198,7 +198,7 @@ export const fetchTransactionsByRestaurant = createAsyncThunk(
     try {
       console.log("Fetching transactions with token:", token);
       const response = await axios.get(`${BASE_URL}/get-by-restaurant/transaction/${restaurantId}`, configureHeaders(token))
-      console.log("Response data:", response.data)
+      console.log("Response data tran:", response.data)
 
       // Return the actual data array, not the wrapper object
       return response.data.data || response.data;
@@ -208,6 +208,24 @@ export const fetchTransactionsByRestaurant = createAsyncThunk(
     }
   },
 )
+
+export const fetchTransactionsByRestaurantyear = createAsyncThunk(
+  "transactions/fetchTransactionsByRestaurantyear",
+  async ({ restaurantId, year ,token}, { rejectWithValue }) => {
+    try {
+      const response = await axios.get(
+        `${BASE_URL}/get-by-year-restaurant/transaction/${restaurantId}?year=${year}`,
+        configureHeaders(token)
+      );
+      console.log("yearkadata",response.data);
+      return response.data.data || response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || "Failed to fetch transactions"
+      );
+    }
+  }
+);
 
 // GET API: Fetch transaction details by transactionId
 export const fetchTransactionDetails = createAsyncThunk(
@@ -523,6 +541,7 @@ const transactionSlice = createSlice({
       .addCase(fetchTransactionsByRestaurant.fulfilled, (state, action) => {
         state.loading = false
         state.transactions = action.payload
+        console.log("tran data",action.payload);
         state.error = null
       })
       .addCase(fetchTransactionsByRestaurant.rejected, (state, action) => {

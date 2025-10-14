@@ -1,17 +1,28 @@
+// src/views/reports/YearlyChartReport.js
+import React, { useEffect, useState, useMemo } from "react";
+import { useDispatch, useSelector } from "react-redux";
 
-import React, { useEffect, useState } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
-import { CCard, CCardHeader, CCardBody, CFormSelect, CSpinner } from '@coreui/react';
-import { CChartLine } from '@coreui/react-chartjs';
-import { fetchChartData } from '../../redux/slices/dashboardSlice';
-import {fetchTransactionsByRestaurant} from '../../redux/slices/transactionSlice'  
+import {
+  CCard,
+  CCardHeader,
+  CCardBody,
+  CFormSelect,
+  CSpinner,
+} from "@coreui/react";
+import { CChartLine } from "@coreui/react-chartjs";
+
+import { fetchTransactionsByRestaurantyear } from "../../redux/slices/transactionSlice";
+
 const YearlyChartReport = () => {
   const dispatch = useDispatch();
   const restaurantId = useSelector((state) => state.auth.restaurantId);
-  const { chartData, loading } = useSelector((state) => state.dashboard);
 
   const currentYear = new Date().getFullYear();
   const [selectedYear, setSelectedYear] = useState(currentYear);
+  const [transactions, setTransactions] = useState([]); // local state for chart
+  const [loading, setLoading] = useState(false);
+
+  const token = localStorage.getItem("authToken");
 
   const yearOptions = Array.from({ length: 10 }, (_, i) => {
     const year = currentYear - i;
@@ -21,23 +32,71 @@ const YearlyChartReport = () => {
       </option>
     );
   });
-  const token = localStorage.getItem('authToken')
-  useEffect(() => {
-    if (token) {
-      dispatch(fetchTransactionsByRestaurant({  token }));
-    }
-  }, [selectedYear, token, dispatch]);
 
-  const formattedDatasets =
-    chartData?.datasets?.map((ds) => ({
-      ...ds,
-      data: ds.data.map((val) => parseFloat(val)),
-      tension: 0.4,
-      fill: false,
-      borderWidth: 2,
-      pointRadius: 4,
-      pointHoverRadius: 6,
-    })) || [];
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!restaurantId || !token) return;
+      setLoading(true);
+
+      try {
+        const res = await dispatch(
+          fetchTransactionsByRestaurantyear({
+            restaurantId,
+            year: selectedYear,
+            token,
+          })
+        ).unwrap();
+
+        console.log("Yearly transactions (dispatch):", res);
+        setTransactions(res || []); // store in local state
+      } catch (err) {
+        console.error("Error fetching yearly transactions:", err);
+        setTransactions([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [dispatch, restaurantId, selectedYear, token]);
+
+  // Transform transactions for chart
+  const chartData = useMemo(() => {
+    const monthlyTotals = Array(12).fill(0);
+    const months = [
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
+    ];
+
+    transactions.forEach((txn) => {
+      const date = new Date(txn.createdAt);
+      const monthIndex = date.getMonth();
+      const total = txn.total || 0;
+      if (monthIndex >= 0 && monthIndex < 12) monthlyTotals[monthIndex] += total;
+    });
+
+    return {
+      labels: months,
+      datasets: [
+        {
+          label: `Total Revenue for ${selectedYear} (₹)`,
+          data: monthlyTotals,
+          backgroundColor: "rgba(75, 192, 192, 0.6)",
+          borderColor: "rgba(75, 192, 192, 1)",
+        },
+      ],
+    };
+  }, [transactions, selectedYear]);
 
   return (
     <CCard className="my-4">
@@ -46,43 +105,38 @@ const YearlyChartReport = () => {
         <CFormSelect
           value={selectedYear}
           onChange={(e) => setSelectedYear(e.target.value)}
-          style={{ width: '120px' }}
+          style={{ width: "120px" }}
         >
           {yearOptions}
         </CFormSelect>
       </CCardHeader>
-      <CCardBody >
+      <CCardBody>
         {loading ? (
           <div className="d-flex justify-content-center">
             <CSpinner color="primary" variant="grow" />
           </div>
         ) : (
           <CChartLine
-            data={{
-              labels: chartData?.labels || [],
-              datasets: formattedDatasets,
-            }}
+            data={chartData}
             options={{
               responsive: true,
               plugins: {
-                legend: {
-                  position: 'top',
-                },
+                legend: { position: "top" },
                 title: {
                   display: true,
-                  text: `Yearly Performance for ${selectedYear}`,
+                  text: `Monthly Revenue Trends in ${selectedYear}`,
                 },
               },
               scales: {
                 y: {
                   beginAtZero: true,
                   ticks: {
-                    callback: (value) => `₹${value}`,
+                    callback: (value) => `₹${value.toLocaleString("en-IN")}`,
                   },
                 },
               },
             }}
-            style={{ height: '400px' }}
+            style={{ height: "400px" }}
           />
         )}
       </CCardBody>

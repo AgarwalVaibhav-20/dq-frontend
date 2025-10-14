@@ -12,6 +12,9 @@ const DueReport = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+
+  const restaurantId = localStorage.getItem('restaurantId');
+  
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     if (token) {

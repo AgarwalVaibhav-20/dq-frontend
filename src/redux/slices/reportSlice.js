@@ -88,7 +88,7 @@ export const fetchTransactionCountByDate = createAsyncThunk(
   'reports/fetchTransactionCountByDate',
   async ({ startDate, endDate, token, restaurantId }, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get(`/transactionCountByDate`, {
+      const response = await axiosInstance.get(`/report/transactionCountByDate`, {
         params: {
           startDate,
           endDate,
@@ -96,7 +96,7 @@ export const fetchTransactionCountByDate = createAsyncThunk(
         },
         ...configureHeaders(token), // ⬅️ Spread the headers outside `params`
       })
-      return response.data
+      return response.data.data
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message)
     }
@@ -125,7 +125,7 @@ export const fetchTableUsageByDate = createAsyncThunk(
   'reports/fetchTableUsageByDate',
   async ({ startDate, endDate, token, restaurantId }, { rejectWithValue }) => {
     try {
-      const response = await axiosInstance.get(`/tableUsageByDate`, {
+      const response = await axiosInstance.get(`/report/tableUsageByDate`, {
         params: {
           startDate,
           endDate,
@@ -133,7 +133,7 @@ export const fetchTableUsageByDate = createAsyncThunk(
         },
         ...configureHeaders(token),
       })
-      return response.data
+      return response.data.data
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message)
     }
@@ -173,7 +173,7 @@ export const fetchDiscountUsageByDate = createAsyncThunk(
   async ({ startDate, endDate, token, restaurantId }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('authToken')
-      const response = await axiosInstance.get(`${BASE_URL}/discountUsageByDate`, {
+      const response = await axiosInstance.get(`${BASE_URL}/report/discountUsageByDate`, {
         params: {
           startDate,
           endDate,
@@ -181,7 +181,7 @@ export const fetchDiscountUsageByDate = createAsyncThunk(
         },
         ...configureHeaders(token),
       })
-      return response.data
+      return response.data.data
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message)
     }
@@ -193,7 +193,7 @@ export const fetchAverageOrderValueByDate = createAsyncThunk(
   'reports/fetchAverageOrderValueByDate',
   async ({ token, startDate, endDate, restaurantId }, { rejectWithValue }) => {
     try {
-      const res = await axiosInstance.get(`/averageOrderValueByDate`, {
+      const res = await axiosInstance.get(`/report/averageOrderValueByDate`, {
         params: {
           startDate,
           endDate,
@@ -201,7 +201,7 @@ export const fetchAverageOrderValueByDate = createAsyncThunk(
         },
         ...configureHeaders(token),
       })
-      return res.data
+      return res.data.data
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to fetch average order value.'
       toast.error(msg)
@@ -232,11 +232,11 @@ export const fetchTotalRevenueByDate = createAsyncThunk(
   'reports/fetchTotalRevenueByDate',
   async ({ token, startDate, endDate, restaurantId }, { rejectWithValue }) => {
     try {
-      const res = await axiosInstance.get(`/totalRevenueByDate`, {
+      const res = await axiosInstance.get(`/reports/totalRevenueByDate`, {
         params: { startDate, endDate, restaurantId },
         ...configureHeaders(token),
       })
-      return res.data
+      return res.data.data
     } catch (err) {
       const msg = err.response?.data?.message || 'Failed to fetch total-revenue report'
       toast.error(msg)
