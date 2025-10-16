@@ -49,13 +49,26 @@ const POS = () => {
   const { dailyCashBalance, dailyTransactionCount, cashLoading } = useSelector((state) => state.transactions);
   const { qrList, loading, error } = useSelector((state) => state.qr)
   const { floors: manjil } = useSelector((state) => state.floors)
-  const restaurantId = useSelector((state) => state.auth.restaurantId)
-  const resturantIdLocalStorage = localStorage.getItem('restaurantId')
   const userId = useSelector((state) => state.auth.userId)
   const username = useSelector((state) => state.auth.username)
-  // const authToken = useSelector((state) => state.auth.authToken)
   const theme = useSelector((state) => state.theme.theme)
   const token = localStorage.getItem('authToken')
+  
+  // Extract restaurantId from JWT token
+  const getRestaurantIdFromToken = () => {
+    try {
+      if (!token) return null
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      console.log('🔍 POS Token payload:', payload)
+      return payload.restaurantId || payload.restaurant_id
+    } catch (error) {
+      console.error('Error decoding token:', error)
+      return null
+    }
+  }
+  
+  const restaurantId = getRestaurantIdFromToken() || useSelector((state) => state.auth.restaurantId) || localStorage.getItem('restaurantId')
+  const resturantIdLocalStorage = restaurantId
   // Get cash management state from Redux
   // const { dailyCashBalance, cashLoading } = useSelector((state) => state.transactions)
 
@@ -256,14 +269,44 @@ const POS = () => {
 
     }
 
+    // Make cart data user-specific by including userId in the key
+    const currentUserId = userId || localStorage.getItem('userId')
+    console.log('🔍 POS User Debug:', {
+      currentUserId,
+      authState: { userId, username, restaurantId }
+    })
+    
     const storedCarts = {}
     qrList.forEach((qr) => {
-      const savedCart = localStorage.getItem(`cart_${qr.tableNumber}`)
+      const savedCart = localStorage.getItem(`cart_${qr.tableNumber}_${currentUserId}`)
       if (savedCart) {
         storedCarts[qr.tableNumber] = JSON.parse(savedCart)
+      } else {
+        // If no user-specific cart, try to get from general cart (for backward compatibility)
+        const generalCart = localStorage.getItem(`cart_${qr.tableNumber}`)
+        if (generalCart) {
+          console.log('🔍 Found general cart for table', qr.tableNumber, ', migrating to user-specific')
+          // Migrate to user-specific storage
+          localStorage.setItem(`cart_${qr.tableNumber}_${currentUserId}`, generalCart)
+          storedCarts[qr.tableNumber] = JSON.parse(generalCart)
+        }
       }
     })
     setCart(storedCarts)
+    
+    // Check and clean invalid system data
+    checkAndCleanSystemData()
+    
+    // Force clear any remaining system data on page load
+    setTimeout(() => {
+      const allKeys = Object.keys(localStorage)
+      allKeys.forEach(key => {
+        if (key.includes('selectedSystem') || key.includes('dine') || key.includes('Dine') || key.includes('system')) {
+          console.log(`Auto-clearing system data: ${key}`)
+          localStorage.removeItem(key)
+        }
+      })
+    }, 1000)
   }, [dispatch, resturantIdLocalStorage, qrList.length])
 
   // Update tables with orders when modal opens - include floor information
@@ -604,6 +647,68 @@ const POS = () => {
     return `${hours}h ${minutes}m`
   }
 
+  // Function to clear selectedSystem from localStorage for all tables
+  const clearAllSelectedSystems = () => {
+    qrList.forEach((qr) => {
+      localStorage.removeItem(`selectedSystem_${qr.tableNumber}`)
+    })
+    // Also clear for merged tables
+    mergedTables.forEach((mergedTable) => {
+      localStorage.removeItem(`selectedSystem_merged_${mergedTable.id}`)
+    })
+    console.log('All selectedSystem data cleared from localStorage')
+  }
+
+  // Function to check and clean invalid system data
+  const checkAndCleanSystemData = () => {
+    qrList.forEach((qr) => {
+      const savedSystem = localStorage.getItem(`selectedSystem_${qr.tableNumber}`)
+      if (savedSystem) {
+        try {
+          const system = JSON.parse(savedSystem)
+          console.log(`Found system data for table ${qr.tableNumber}:`, system)
+          // Check if system has invalid data like "dine-in" without proper structure
+          if (system.systemName === 'dine-in' || system.systemName === 'Dine in' || system.systemName === 'Dine-in') {
+            console.log(`Removing invalid system data for table ${qr.tableNumber}`)
+            localStorage.removeItem(`selectedSystem_${qr.tableNumber}`)
+          }
+        } catch (error) {
+          console.log(`Removing corrupted system data for table ${qr.tableNumber}`)
+          localStorage.removeItem(`selectedSystem_${qr.tableNumber}`)
+        }
+      }
+    })
+  }
+
+  // Force clear all system data - more aggressive approach
+  const forceClearAllSystemData = () => {
+    // Clear all possible system data keys
+    const keysToRemove = []
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && key.includes('selectedSystem')) {
+        keysToRemove.push(key)
+      }
+    }
+    
+    keysToRemove.forEach(key => {
+      console.log(`Removing system data: ${key}`)
+      localStorage.removeItem(key)
+    })
+    
+    // Also clear any dine-in related data
+    const allKeys = Object.keys(localStorage)
+    allKeys.forEach(key => {
+      if (key.includes('dine') || key.includes('Dine') || key.includes('system')) {
+        console.log(`Removing additional system data: ${key}`)
+        localStorage.removeItem(key)
+      }
+    })
+    
+    console.log('All system data cleared forcefully')
+    alert('All system data has been cleared! Please refresh the page.')
+  }
+
   return (
     <CContainer className="py-2 px-2 px-md-3">
       {/* Mobile Responsive Header */}
@@ -666,6 +771,24 @@ const POS = () => {
                   <span className="d-none d-sm-inline">Merge Tables</span>
                   <span className="d-sm-none">Merge</span>
                 </CButton>
+                <CButton
+                  color="warning"
+                  onClick={clearAllSelectedSystems}
+                  className="flex-fill"
+                  size="sm"
+                >
+                  <span className="d-none d-sm-inline">Clear Systems</span>
+                  <span className="d-sm-none">Clear</span>
+                </CButton>
+                <CButton
+                  color="danger"
+                  onClick={forceClearAllSystemData}
+                  className="flex-fill"
+                  size="sm"
+                >
+                  <span className="d-none d-sm-inline">Force Clear</span>
+                  <span className="d-sm-none">Force</span>
+                </CButton>
               </div>
             </div>
           </div>
@@ -709,6 +832,18 @@ const POS = () => {
                 onClick={handleMergeTablesClick}
               >
                 Merge Tables
+              </CButton>
+              <CButton
+                color="warning"
+                onClick={clearAllSelectedSystems}
+              >
+                Clear Systems
+              </CButton>
+              <CButton
+                color="danger"
+                onClick={forceClearAllSystemData}
+              >
+                Force Clear
               </CButton>
             </div>
           </div>

@@ -59,8 +59,17 @@ const Menu = () => {
   // ------------------ Fetch Data ------------------
   useEffect(() => {
     const fetchData = async () => {
-      if (!restaurantId || !token) return;
+      console.log('🔍 Menu Page Debug:');
+      console.log('restaurantId:', restaurantId);
+      console.log('token:', token ? 'Present' : 'Missing');
+      
+      if (!restaurantId || !token) {
+        console.log('❌ Missing restaurantId or token');
+        return;
+      }
+      
       try {
+        console.log('✅ Fetching menu data with restaurantId:', restaurantId);
         await Promise.all([
           dispatch(fetchCategories({ restaurantId, token })),
           dispatch(fetchInventories({ token })),

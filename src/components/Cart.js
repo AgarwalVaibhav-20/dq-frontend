@@ -386,7 +386,7 @@ const Cart = ({
                 <span className="text-success">- ₹{appliedDiscounts.rewardPoints.discountAmount.toFixed(2)}</span>
               </div>
             )}
-            {selectedSystem && (
+            {selectedSystem && selectedSystem._id && selectedSystem.systemName && selectedSystem.chargeOfSystem > 0 && (
               <div className="d-flex justify-content-between mb-2 align-items-center">
                 <span>System Charge ({selectedSystem.systemName})</span>
                 <div className="d-flex align-items-center">

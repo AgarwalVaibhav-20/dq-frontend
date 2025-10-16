@@ -31,7 +31,7 @@ const Dashboard = () => {
     loading,
     error,
   } = useSelector((state) => state.dashboard);
-  const restaurantId = localStorage.getItem('restaurantId');
+  const restaurantId = useSelector((state) => state.auth.restaurantId);
   const token = localStorage.getItem('authToken');
   const { dailyCashBalance, dailyTransactionCount, cashLoading } = useSelector((state) => state.transactions);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());

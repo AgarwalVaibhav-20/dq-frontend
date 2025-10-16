@@ -222,6 +222,7 @@ const initialState = {
     username: localStorage.getItem('username') || null,
     role: localStorage.getItem('userRole') || 'admin',
     permissions: JSON.parse(localStorage.getItem('userPermissions') || '[]'),
+    restaurantId: localStorage.getItem('restaurantId') || null,
   },
   users: [],
   loading: false,
@@ -330,6 +331,7 @@ const authSlice = createSlice({
             username: user.username || null,
             role: user.role || 'admin',
             permissions: user.permissions || [],
+            restaurantId: user.restaurantId || null,
           };
           
           // Store permissions in localStorage
@@ -401,6 +403,7 @@ const authSlice = createSlice({
             username: user.username || null,
             role: user.role || 'admin',
             permissions: user.permissions || [],
+            restaurantId: user.restaurantId || null,
           };
           
           // Store permissions in localStorage

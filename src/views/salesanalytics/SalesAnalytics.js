@@ -323,14 +323,14 @@ export default function SalesAnalytics() {
               // === Convert rate into smallest unit ===
               let currentRate = 0;
               if (unit === "kg") {
-                currentRate = inventoryRate;
+                currentRate = inventoryRate; // per kg
               } else if (unit === "gm") {
-                currentRate = inventoryRate / 1000;
-              } else if (unit === "litre") {
-                currentRate = inventoryRate / 1000; // per ml
-              } else if (unit === "ml") {
-                currentRate = inventoryRate; // already per ml
-              } else if (unit === "pcs") {
+                currentRate = inventoryRate / 1000; // per gm (kg/1000)
+              } else if (unit === "litre" || unit === "liter" || unit === "ltr") {
+                currentRate = inventoryRate; // per ltr (no conversion needed)
+              } else if (unit === "ml" || unit === "milliliter") {
+                currentRate = inventoryRate/1000; // per ml (ltr/1000)
+              } else if (unit === "pcs" || unit === "pieces") {
                 currentRate = inventoryRate; // per piece
               } else {
                 currentRate = inventoryRate; // fallback

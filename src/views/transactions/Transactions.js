@@ -809,8 +809,9 @@ const Transactions = () => {
             </div>
           ) : (
             // Desktop View - DataGrid
-            <div style={{ width: '100%', minWidth: '600px' }}>
+            <div style={{ width: '100%', minWidth: '800px' }}>
               <DataGrid
+                style={{ width: '100%', minHeight: '400px' }}
                 autoHeight
                 rows={transformedTransactions}
                 columns={columns}

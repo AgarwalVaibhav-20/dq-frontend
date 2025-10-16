@@ -17,6 +17,9 @@ export const addTable = createAsyncThunk(
   async ({ restaurantId, floorId, tableNumber }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
 
       console.log('Making API call with:', { restaurantId, floorId, tableNumber });
 
@@ -48,6 +51,10 @@ export const getQrs = createAsyncThunk(
   async ({ restaurantId, floorId }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem("authToken");
+      if (!token) {
+        throw new Error("No authentication token found");
+      }
+      
       const config = {
         ...configureHeaders(token),
         params: {}

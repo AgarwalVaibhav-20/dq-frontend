@@ -49,16 +49,23 @@ export const createCategory = createAsyncThunk(
 // Async thunk to fetch all categories
 export const fetchCategories = createAsyncThunk(
   'category/fetchCategories',
-  async ({ token }, { rejectWithValue }) => {
+  async ({ token, restaurantId }, { rejectWithValue }) => {
     try {
-      const restaurantId = localStorage.getItem('restaurantId')
+      console.log('🔍 fetchCategories API Call:');
+      console.log('restaurantId:', restaurantId);
+      console.log('API URL:', `${BASE_URL}/categories`);
+      console.log('Params:', { restaurantId });
+      
       const response = await axios.get(
         `${BASE_URL}/categories`, {
         params: { restaurantId },
         ...configureHeaders(token)
       });
+      
+      console.log('✅ Categories API Response:', response.data);
       return response.data.data;
     } catch (error) {
+      console.log('❌ Categories API Error:', error.response?.data);
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch categories');
     }
   }

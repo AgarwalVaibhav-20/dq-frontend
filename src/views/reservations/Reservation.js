@@ -1055,9 +1055,11 @@ const Reservation = () => {
               <div style={{ 
                 height: '500px', 
                 width: '100%',
+                minWidth: '800px',
                 overflow: 'visible'
               }}>
                 <DataGrid
+                  style={{ width: '100%', minHeight: '400px' }}
                   rows={pastReservations}
                   columns={historyColumns}
                   getRowId={(row) => getReservationId(row)}
@@ -1257,9 +1259,11 @@ const Reservation = () => {
                 <div style={{ 
                   height: 'auto',
                   width: '100%',
+                  minWidth: '800px',
                   overflow: 'visible'
                 }}>
                   <DataGrid
+                    style={{ width: '100%', minHeight: '400px' }}
                     rows={futureReservations}
                     columns={columns}
                     getRowId={(row) => getReservationId(row)}

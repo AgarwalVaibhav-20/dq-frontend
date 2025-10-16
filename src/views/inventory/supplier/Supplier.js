@@ -90,7 +90,8 @@ const Supplier = () => {
   // Fetch suppliers
   useEffect(() => {
     if (restaurantId) {
-      dispatch(fetchSuppliers({ restaurantId }));
+      const token = localStorage.getItem('authToken');
+      dispatch(fetchSuppliers({ restaurantId, token }));
     }
   }, [dispatch, restaurantId]);
 
@@ -101,8 +102,9 @@ const Supplier = () => {
 
   // Save supplier
   const handleSaveSupplier = async () => {
-    await dispatch(addSupplier({ restaurantId, ...formData }));
-    await dispatch(fetchSuppliers({ restaurantId }));
+    const token = localStorage.getItem('authToken');
+    await dispatch(addSupplier({ restaurantId, token, ...formData }));
+    await dispatch(fetchSuppliers({ restaurantId, token }));
     setModalVisible(false);
     setFormData({ supplierName: "", email: "", phoneNumber: "", rawItem: "" });
   };
@@ -110,13 +112,16 @@ const Supplier = () => {
   // Update supplier
   const handleUpdateSupplier = async () => {
     if (!selectedSupplier) return;
+    const token = localStorage.getItem('authToken');
     await dispatch(
       updateSupplier({
-        supplierId: selectedSupplier.supplierId,
-        updates: formData,
+        id: selectedSupplier.supplierId || selectedSupplier._id,
+        restaurantId,
+        token,
+        ...formData,
       })
     );
-    await dispatch(fetchSuppliers({ restaurantId }));
+    await dispatch(fetchSuppliers({ restaurantId, token }));
     setEditModalVisible(false);
     setSelectedSupplier(null);
     setFormData({ supplierName: "", email: "", phoneNumber: "", rawItem: "" });
@@ -124,8 +129,13 @@ const Supplier = () => {
 
   // Delete supplier
   const handleDeleteSupplier = async () => {
-    await dispatch(deleteSupplier()); // 👈 no supplierId needed
-    await dispatch(fetchSuppliers({ restaurantId: localStorage.getItem('restaurantId') }));
+    const token = localStorage.getItem('authToken');
+    await dispatch(deleteSupplier({ 
+      supplierId: selectedSupplier.supplierId || selectedSupplier._id,
+      restaurantId,
+      token 
+    }));
+    await dispatch(fetchSuppliers({ restaurantId, token }));
 
     setDeleteModalVisible(false);
     setSelectedSupplier(null);

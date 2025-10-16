@@ -512,9 +512,10 @@ const Stock = () => {
         ) : (
           <>
             {/* Desktop Table View */}
-            <div className="d-none d-lg-block">
-              <div className="table-responsive" style={{ minHeight: '400px' }}>
+            <div className="d-none d-lg-block" style={{ width: '100%', minWidth: '800px' }}>
+              <div className="table-responsive" style={{ minHeight: '400px', width: '100%' }}>
                 <DataGrid
+                  style={{ width: '100%', minHeight: '400px' }}
                   rows={rows}
                   columns={columns}
                   autoHeight

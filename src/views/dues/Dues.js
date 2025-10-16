@@ -1159,6 +1159,7 @@ const Dues = () => {
           ) : (
             // Desktop DataGrid View
             <DataGrid
+              style={{ width: '100%', minHeight: '400px' }}
               rows={validatedDues}
               columns={columns}
               getRowId={(row) => getDueId(row)}

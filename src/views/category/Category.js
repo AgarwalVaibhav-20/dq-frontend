@@ -12,7 +12,8 @@ export default function Category() {
   const dispatch = useDispatch();
   const { categories, loading } = useSelector(state => state.category);
   const token = useSelector(state => state.auth.token);
-  const restaurantId = localStorage.getItem('restaurantId')
+  const restaurantId = useSelector(state => state.auth.restaurantId);
+  const user = useSelector(state => state.auth.user);
 
   const [modalVisible, setModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
@@ -28,10 +29,18 @@ export default function Category() {
   const [dropdownOpen, setDropdownOpen] = useState({});
   const dropdownRef = useRef();
   useEffect(() => {
+    console.log('🔍 Category Page Debug:');
+    console.log('restaurantId:', restaurantId);
+    console.log('token:', token ? 'Present' : 'Missing');
+    console.log('user from Redux:', user);
+    
     if (restaurantId && token) {
+      console.log('✅ Fetching categories with restaurantId:', restaurantId);
       dispatch(fetchCategories({ token, restaurantId }));
+    } else {
+      console.log('❌ Missing restaurantId or token');
     }
-  }, [dispatch, restaurantId, token]);
+  }, [dispatch, restaurantId, token, user]);
 
 
   useEffect(() => {
@@ -67,7 +76,7 @@ export default function Category() {
         setCategoryName('');
         setCategoryImage(null);
         setModalVisible(false);
-        dispatch(fetchCategories({ token }));
+        dispatch(fetchCategories({ token, restaurantId }));
       })
       .finally(() => setSaving(false));
   };
@@ -104,7 +113,7 @@ export default function Category() {
         setEditModalVisible(false);
         setEditedCategory({});
         setSizes([{ sizeName: "", basePrice: "", description: "" }]);
-        dispatch(fetchCategories({ token }));
+        dispatch(fetchCategories({ token, restaurantId }));
       })
       .finally(() => setUpdating(false));
   };
@@ -117,7 +126,7 @@ export default function Category() {
       .unwrap()
       .then(() => {
         toast.success('Category deleted!');
-        dispatch(fetchCategories({ token }));
+        dispatch(fetchCategories({ token, restaurantId }));
       })
       .catch((err) => {
         toast.error(err || 'Failed to delete category');

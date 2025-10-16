@@ -18,6 +18,7 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { createOrder } from '../../redux/slices/orderSlice'
 import CustomerModal from '../../components/CustomerModal'
+import { BASE_URL } from '../../utils/constants'
 import ProductList from '../../components/ProductList'
 import Cart from '../../components/Cart'
 import Invoice from '../../components/Invoice'
@@ -47,9 +48,23 @@ const POSTableContent = () => {
   const { subCategories, loading: subCategoryLoading } = useSelector((state) => state.subCategory)
 
   const authState = useSelector((state) => state.auth)
-  const restaurantId = localStorage.getItem('restaurantId')
   const theme = useSelector((state) => state.theme.theme)
   const token = localStorage.getItem('authToken')
+  
+  // Extract restaurantId from JWT token
+  const getRestaurantIdFromToken = () => {
+    try {
+      if (!token) return null
+      const payload = JSON.parse(atob(token.split('.')[1]))
+      console.log('🔍 Token payload:', payload)
+      return payload.restaurantId || payload.restaurant_id
+    } catch (error) {
+      console.error('Error decoding token:', error)
+      return null
+    }
+  }
+  
+  const restaurantId = getRestaurantIdFromToken() || localStorage.getItem('restaurantId')
 
   // Debug: Log restaurantId to console (commented for production)
   // console.log('POSTableContent - restaurantId:', restaurantId)
@@ -58,9 +73,12 @@ const POSTableContent = () => {
 
 
   // Debug: Log restaurantId to console
-  console.log('POSTableContent - restaurantId:', restaurantId)
-  console.log('POSTableContent - localStorage restaurantId:', localStorage.getItem('restaurantId'))
-  console.log('POSTableContent - authState:', authState)
+  console.log('🔍 POSTableContent Debug:', {
+    restaurantId,
+    tokenFromLocalStorage: localStorage.getItem('restaurantId'),
+    authState,
+    tokenExists: !!token
+  })
 
   // Fallback: If restaurantId is missing, try to get it from user profile or redirect
   useEffect(() => {
@@ -106,17 +124,75 @@ const POSTableContent = () => {
   const [showSystemModal, setShowSystemModal] = useState(false)
   const [selectedSystem, setSelectedSystem] = useState(() => {
     const savedSystem = localStorage.getItem(`selectedSystem_${tableId}`)
-    return savedSystem ? JSON.parse(savedSystem) : null
+    if (savedSystem) {
+      try {
+        const system = JSON.parse(savedSystem)
+        // Validate system data - reject if it's invalid dine-in data or missing required fields
+        if (system.systemName === 'dine-in' || system.systemName === 'Dine in' || system.systemName === 'Dine-in' || !system._id || !system.systemName || !system.chargeOfSystem) {
+          console.log('Invalid system data found, clearing:', system)
+          localStorage.removeItem(`selectedSystem_${tableId}`)
+          return null
+        }
+        return system
+      } catch (error) {
+        console.log('Corrupted system data found, clearing')
+        localStorage.removeItem(`selectedSystem_${tableId}`)
+        return null
+      }
+    }
+    return null
   })
 
-  const userId = localStorage.getItem('userId')
+  // Get userId from Redux state or localStorage
+  const userId = useSelector((state) => state.auth.userId) || localStorage.getItem('userId')
+  
   const [cart, setCart] = useState(() => {
-    const savedCart = localStorage.getItem(`cart_${tableId}`)
+    // Make cart data user-specific by including userId in the key
+    const currentUserId = userId || localStorage.getItem('userId')
+    console.log('🔍 User Debug:', {
+      tableId,
+      currentUserId,
+      authState: { userId, restaurantId }
+    })
+    
+    const savedCart = localStorage.getItem(`cart_${tableId}_${currentUserId}`)
+    
+    // If no user-specific cart, try to get from general cart (for backward compatibility)
+    if (!savedCart) {
+      const generalCart = localStorage.getItem(`cart_${tableId}`)
+      if (generalCart) {
+        console.log('🔍 Found general cart, migrating to user-specific:', generalCart)
+        // Migrate to user-specific storage
+        localStorage.setItem(`cart_${tableId}_${currentUserId}`, generalCart)
+        return JSON.parse(generalCart)
+      }
+    }
+    
+    console.log('🔍 Cart Debug:', {
+      tableId,
+      currentUserId,
+      savedCart,
+      parsedCart: savedCart ? JSON.parse(savedCart) : null
+    })
     return savedCart ? JSON.parse(savedCart) : []
   })
 
   const [startTime, setStartTime] = useState(() => {
-    const savedStartTime = localStorage.getItem(`start_time_${tableId}`)
+    // Make start time user-specific by including userId in the key
+    const currentUserId = userId || localStorage.getItem('userId')
+    const savedStartTime = localStorage.getItem(`start_time_${tableId}_${currentUserId}`)
+    
+    // If no user-specific start time, try to get from general start time (for backward compatibility)
+    if (!savedStartTime) {
+      const generalStartTime = localStorage.getItem(`start_time_${tableId}`)
+      if (generalStartTime) {
+        console.log('🔍 Found general start time, migrating to user-specific:', generalStartTime)
+        // Migrate to user-specific storage
+        localStorage.setItem(`start_time_${tableId}_${currentUserId}`, generalStartTime)
+        return new Date(generalStartTime)
+      }
+    }
+    
     return savedStartTime ? new Date(savedStartTime) : null
   })
   const [mobilePrintOptions, setMobilePrintOptions] = useState({
@@ -143,36 +219,87 @@ const POSTableContent = () => {
       dispatch(fetchCustomers({ token, restaurantId }))
       dispatch(fetchCategories({ token, restaurantId }))
       dispatch(fetchSubCategories({ token, restaurantId }))
+      
+      // Auto-fetch and select system if available
+      fetchAndSelectSystem()
     } else {
       // console.log('Missing token or restaurantId:', { token: !!token, restaurantId })
     }
   }, [dispatch, token, restaurantId])
 
-  useEffect(() => {
-    localStorage.setItem(`cart_${tableId}`, JSON.stringify(cart))
-  }, [cart, tableId])
 
-  // Check if system is selected when component mounts
-  useEffect(() => {
-    // console.log('POSTableContent - Checking selectedSystem:', selectedSystem)
-    if (!selectedSystem) {
-      // console.log('POSTableContent - No system selected, opening modal')
-      // If no system is selected, open the system selection modal
-      setShowSystemModal(true)
+  // Function to fetch and auto-select system
+  const fetchAndSelectSystem = async () => {
+    try {
+      const response = await fetch(`${BASE_URL}/api/settings?restaurantId=${restaurantId}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      })
+      
+      const data = await response.json()
+      
+      if (data.success && data.data && data.data.length > 0) {
+        // Transform the data to match expected format and filter by willOccupy
+        const transformedSystems = data.data
+          .filter(setting => setting.willOccupy === true) // Only show systems with willOccupy: true
+          .map(setting => ({
+            _id: setting._id,
+            systemName: setting.systemName,
+            chargeOfSystem: parseInt(setting.chargeOfSystem) || 0,
+            willOccupy: setting.willOccupy,
+            color: setting.color
+          }))
+        
+        console.log('Filtered systems (willOccupy: true):', transformedSystems)
+        
+        // Handle system selection based on count
+        if (!selectedSystem) {
+          if (transformedSystems.length === 1 && transformedSystems[0].chargeOfSystem > 0) {
+            // Only one system - auto-select it
+            console.log('Auto-selecting single system:', transformedSystems[0])
+            setSelectedSystem(transformedSystems[0])
+            localStorage.setItem(`selectedSystem_${tableId}`, JSON.stringify(transformedSystems[0]))
+          } else if (transformedSystems.length > 1) {
+            // Multiple systems - show selection modal
+            console.log('Multiple systems found, showing selection modal')
+            setShowSystemModal(true)
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching systems:', error)
     }
-  }, [selectedSystem])
+  }
 
-  // Also check on component mount
   useEffect(() => {
-    // console.log('POSTableContent - Component mounted, checking system for table:', tableId)
-    const savedSystem = localStorage.getItem(`selectedSystem_${tableId}`)
-    // console.log('POSTableContent - Saved system from localStorage:', savedSystem)
+    // Make cart data user-specific by including userId in the key
+    const currentUserId = userId || localStorage.getItem('userId')
+    localStorage.setItem(`cart_${tableId}_${currentUserId}`, JSON.stringify(cart))
+  }, [cart, tableId, userId])
 
-    if (!savedSystem) {
-      // console.log('POSTableContent - No saved system found, opening modal')
-      setShowSystemModal(true)
-    }
-  }, [tableId])
+  // Check if system is selected when component mounts - DISABLED
+  // useEffect(() => {
+  //   // console.log('POSTableContent - Checking selectedSystem:', selectedSystem)
+  //   if (!selectedSystem) {
+  //     // console.log('POSTableContent - No system selected, opening modal')
+  //     // If no system is selected, open the system selection modal
+  //     setShowSystemModal(true)
+  //   }
+  // }, [selectedSystem])
+
+  // Also check on component mount - DISABLED
+  // useEffect(() => {
+  //   // console.log('POSTableContent - Component mounted, checking system for table:', tableId)
+  //   const savedSystem = localStorage.getItem(`selectedSystem_${tableId}`)
+  //   // console.log('POSTableContent - Saved system from localStorage:', savedSystem)
+
+  //   if (!savedSystem) {
+  //     // console.log('POSTableContent - No saved system found, opening modal')
+  //     setShowSystemModal(true)
+  //   }
+  // }, [tableId])
 
   const handleDeleteClick = (item) => {
     setItemToDelete(item)
@@ -265,7 +392,9 @@ const POSTableContent = () => {
     if (!startTime) {
       const now = new Date();
       setStartTime(now);
-      localStorage.setItem(`start_time_${tableNumber}`, now.toISOString());
+      // Make start time user-specific by including userId in the key
+      const currentUserId = userId || localStorage.getItem('userId')
+      localStorage.setItem(`start_time_${tableNumber}_${currentUserId}`, now.toISOString());
     }
     setShowSubCategoryModal(false);
     setSelectedMenuItemForSubcategory(null);
@@ -329,7 +458,9 @@ const POSTableContent = () => {
     if (!startTime) {
       const now = new Date();
       setStartTime(now);
-      localStorage.setItem(`start_time_${tableNumber}`, now.toISOString());
+      // Make start time user-specific by including userId in the key
+      const currentUserId = userId || localStorage.getItem('userId')
+      localStorage.setItem(`start_time_${tableNumber}_${currentUserId}`, now.toISOString());
     }
     // }
   }, [cart, startTime, tableNumber]);
@@ -398,10 +529,14 @@ const POSTableContent = () => {
           })
 
           Object.entries(ordersPerTable).forEach(([tableNumber, orders]) => {
-            localStorage.setItem(`cart_${tableNumber}`, JSON.stringify(orders))
+            // Make cart data user-specific by including userId in the key
+            const currentUserId = userId || localStorage.getItem('userId')
+            localStorage.setItem(`cart_${tableNumber}_${currentUserId}`, JSON.stringify(orders))
             // Restore start time if it exists
             if (mergedTable.startTime) {
-              localStorage.setItem(`start_time_${tableNumber}`, mergedTable.startTime)
+              // Make start time user-specific by including userId in the key
+              const currentUserId = userId || localStorage.getItem('userId')
+              localStorage.setItem(`start_time_${tableNumber}_${currentUserId}`, mergedTable.startTime)
             }
           })
 
@@ -608,7 +743,7 @@ const POSTableContent = () => {
     const totalTaxAmount = calculateTotalTaxAmount();
     const discountAmount = calculateDiscountAmount();
     // console.log("discount amount :", discountAmount)
-    const systemCharge = selectedSystem ? Number(selectedSystem.chargeOfSystem || 0) : 0;
+    const systemCharge = (selectedSystem && selectedSystem._id && selectedSystem.systemName && selectedSystem.chargeOfSystem > 0) ? Number(selectedSystem.chargeOfSystem || 0) : 0;
     // console.log("system amount :", systemCharge)
     // console.log("round off amount :", roundOff)
     const total = subtotal + totalTaxAmount + systemCharge - discountAmount - roundOff
@@ -839,7 +974,7 @@ const POSTableContent = () => {
       customerId: selectedCustomer?._id || null,
 
       roundOff: roundOff,
-      systemCharge: selectedSystem ? Number(selectedSystem.chargeOfSystem) : 0,
+      systemCharge: (selectedSystem && selectedSystem._id && selectedSystem.systemName && selectedSystem.chargeOfSystem > 0) ? Number(selectedSystem.chargeOfSystem) : 0,
       sub_total: calculateSubtotal(),
       total: calculateTotal(),
       type: paymentType,
@@ -1353,11 +1488,12 @@ const POSTableContent = () => {
       </CRow>
       <CCardFooter className="p-3 mt-3 shadow-lg" style={{ borderRadius: '15px', backgroundColor: '#fff' }}>
         <CRow className="align-items-center">
-          <CCol md={4}>
-            <h4 className="fw-bold mb-0">
-              Total: ₹{calculateTotal().toFixed(2)}
-            </h4>
-          </CCol>
+            <CCol md={4}>
+              <h4 className="fw-bold mb-0">
+                Total: ₹{calculateTotal().toFixed(2)}
+              </h4>
+            </CCol>
+            {/* System display removed - system will work in background */}
           <CCol md={8} className="d-flex justify-content-end gap-2 flex-wrap">
             <CButton
               color="danger"
@@ -1411,6 +1547,7 @@ const POSTableContent = () => {
         onAddToCartWithSubcategory={handleAddToCartWithSubcategory}
       />
 
+      {/* System Selection Modal */}
       <SystemSelectionModal
         showSystemModal={showSystemModal}
         setShowSystemModal={setShowSystemModal}

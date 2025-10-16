@@ -126,6 +126,7 @@ const Delivery = () => {
         </Box>
       ) : (
         <DataGrid
+          style={{ width: '100%', minHeight: '400px' }}
           autoHeight
           disableRowSelectionOnClick
           rows={deliveryOrders || []}

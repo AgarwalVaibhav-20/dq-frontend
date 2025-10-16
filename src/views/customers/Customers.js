@@ -15,7 +15,7 @@ import { Portal } from '@mui/material';
 const Customer = () => {
   const dispatch = useDispatch()
   const { customers, loading, selectedCustomerType } = useSelector((state) => state.customers)
-  const restaurantId = localStorage.getItem('restaurantId')
+  const restaurantId = useSelector((state) => state.auth.restaurantId)
   const token = localStorage.getItem('authToken')
   const isMobile = useMediaQuery('(max-width:600px)')
 
@@ -123,7 +123,7 @@ const Customer = () => {
   const fetchCustomerSettings = async () => {
     try {
       setCustomerLoading(true)
-      const restaurantIdFromStorage = localStorage.getItem('restaurantId')
+      const restaurantIdFromStorage = restaurantId
       const response = await axiosInstance.get(`/api/customer-settings?restaurantId=${restaurantIdFromStorage}`)
 
       if (response.data.success) {
@@ -615,9 +615,10 @@ const Customer = () => {
       ) : (
         <>
           {/* Desktop View - DataGrid */}
-          <div className="bg-white rounded-xl shadow-sm p-2 sm:p-4 hidden sm:block">
+          <div className="bg-white rounded-xl shadow-sm p-2 sm:p-4 hidden sm:block" style={{ width: '100%', minWidth: '800px' }}>
             <DataGrid
               autoHeight
+              style={{ width: '100%', minHeight: '400px' }}
               rows={filteredCustomers?.map((customer, index) => ({
                 ...customer,
                 sno: index + 1,

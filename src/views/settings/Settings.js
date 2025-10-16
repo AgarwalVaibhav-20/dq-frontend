@@ -218,15 +218,7 @@ const Settings = () => {
   };
 
   const handleDelete = async () => {
-    if (deleteDialog.type === 'coupon' && deleteDialog.item) {
-      try {
-        await dispatch(deleteCoupon(deleteDialog.item._id)).unwrap();
-        setDeleteDialog({ open: false, type: '', item: null });
-        dispatch(fetchCoupons());
-      } catch (error) {
-        console.error('Delete error:', error);
-      }
-    } else if (deleteDialog.type === 'member' && deleteDialog.item) {
+    if (deleteDialog.type === 'member' && deleteDialog.item) {
       try {
         await dispatch(deleteMember(deleteDialog.item._id)).unwrap();
         setSnackbar({ open: true, message: 'Member deleted successfully', severity: 'success' });
@@ -2208,6 +2200,7 @@ const Settings = () => {
             </CCol>
           </CRow>
         </CTabPane>
+
 
       </CTabContent>
     </CContainer >

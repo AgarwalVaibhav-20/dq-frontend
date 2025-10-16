@@ -451,7 +451,7 @@ const App = () => {
                       </PermissionGuard>
                     } />
                     <Route path="pos/system/:tableNumber" element={
-                      <PermissionGuard requiredPermissions={['pos']}>
+                      <PermissionGuard requiredPermissions={['POS']}>
                         <SystemSelection />
                       </PermissionGuard>
                     } />
@@ -461,12 +461,12 @@ const App = () => {
                       </PermissionGuard>
                     } /> */}
                     <Route path="pos/system/tableNumber/:tableNumber" element={
-                      <PermissionGuard requiredPermissions={['pos']}>
+                      <PermissionGuard requiredPermissions={['POS']}>
                         <POSTableContent />
                       </PermissionGuard>
                     } />
                     <Route path="pos/tableNumber/:tableNumber" element={
-                      <PermissionGuard requiredPermissions={['pos']}>
+                      <PermissionGuard requiredPermissions={['POS']}>
                         <POSTableContent />
                       </PermissionGuard>
                     } />

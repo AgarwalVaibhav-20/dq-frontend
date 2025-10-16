@@ -299,8 +299,9 @@ const MenuItemList = ({
   return (
     <div style={{ width: '100%', backgroundColor: 'white' }}>
       {/* Desktop Table View */}
-      <div className="d-none d-lg-block" style={{ width: '100%', minWidth: '600px' }}>
+      <div className="d-none d-lg-block" style={{ width: '100%', minWidth: '800px' }}>
         <DataGrid
+          style={{ width: '100%', minHeight: '400px' }}
           rows={transformedMenuItems}
           columns={columns}
           getRowId={(row) => row.id}

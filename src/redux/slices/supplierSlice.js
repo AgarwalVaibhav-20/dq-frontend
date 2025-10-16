@@ -12,10 +12,8 @@ const configureHeaders = (token) => ({
 // Fetch suppliers
 export const fetchSuppliers = createAsyncThunk(
   "suppliers/fetchSuppliers",
-  async ({ token }, { rejectWithValue }) => {
+  async ({ restaurantId, token }, { rejectWithValue }) => {
     try {
-      const restaurantId = localStorage.getItem('restaurantId');
-
       const response = await axios.get(
         `${BASE_URL}/suppliers`,
         {
@@ -62,13 +60,12 @@ export const addSupplier = createAsyncThunk(
 // Update a supplier
 export const updateSupplier = createAsyncThunk(
   'suppliers/updateSupplier',
-  async ({ id, restaurantId, supplierName, email, phoneNumber, rawItem }, { rejectWithValue }) => {
+  async ({ id, restaurantId, token, supplierName, email, phoneNumber, rawItem }, { rejectWithValue }) => {
     try {
-
       const response = await axios.put(
         `${BASE_URL}/suppliers/${id}`,
         { supplierName, email, phoneNumber, rawItem, restaurantId },
-        { headers: getAuthHeaders() }
+        configureHeaders(token)
       );
       return response.data;
     } catch (error) {
@@ -81,16 +78,14 @@ export const updateSupplier = createAsyncThunk(
 // Delete a supplier
 export const deleteSupplier = createAsyncThunk(
   'suppliers/deleteSupplier',
-  async (_, { rejectWithValue }) => {
+  async ({ supplierId, restaurantId, token }, { rejectWithValue }) => {
     try {
-      const restaurantId = localStorage.getItem('restaurantId'); // 👈 only restaurantId
-
       const response = await axios.delete(
-        `${BASE_URL}/suppliers/${restaurantId}`, // 👈 restaurantId in path
-        { headers: getAuthHeaders() }
+        `${BASE_URL}/suppliers/${supplierId}`,
+        configureHeaders(token)
       );
 
-      return { restaurantId, message: response.data.message };
+      return { supplierId, message: response.data.message };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to delete supplier');
     }
@@ -174,7 +169,7 @@ const supplierSlice = createSlice({
       .addCase(deleteSupplier.fulfilled, (state, action) => {
         state.loading = false;
         state.suppliers = state.suppliers.filter(
-          (supplier) => supplier.id !== action.payload.id
+          (supplier) => supplier.supplierId !== action.payload.supplierId && supplier._id !== action.payload.supplierId
         );
         toast.success("Supplier deleted successfully!");
       })

@@ -16,6 +16,10 @@ export const addFloor = createAsyncThunk(
     async ({ id, name }, { rejectWithValue }) => {
         try {
             const token = localStorage.getItem("authToken");
+            if (!token) {
+                throw new Error("No authentication token found");
+            }
+            
             const res = await axios.post(
                 `${BASE_URL}/add/floors/${id}`,   // ✅ id in URL
                 { name: name.trim() },           // ✅ only name in body
@@ -42,9 +46,12 @@ export const getFloors = createAsyncThunk(
     "floors/getFloors",
     async (restaurantId, { rejectWithValue }) => {
         try {
-
-            const res = await axios.get(`${BASE_URL}/get/floors/${restaurantId}`);
-
+            const token = localStorage.getItem("authToken");
+            if (!token) {
+                throw new Error("No authentication token found");
+            }
+            
+            const res = await axios.get(`${BASE_URL}/get/floors/${restaurantId}`, configureHeaders(token));
 
             return res.data.data;
         } catch (err) {

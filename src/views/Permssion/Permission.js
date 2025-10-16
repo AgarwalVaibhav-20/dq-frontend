@@ -214,6 +214,14 @@ export default function PermissionManagement() {
     type: 'single' // 'single' or 'bulk'
   });
   const [roleInfoModal, setRoleInfoModal] = useState({ visible: false, role: null });
+  const [inviteModal, setInviteModal] = useState({ visible: false });
+  const [inviteForm, setInviteForm] = useState({
+    email: '',
+    role: 'waiter',
+    message: ''
+  });
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [showOnlyInvited, setShowOnlyInvited] = useState(true);
 
   const [updating, setUpdating] = useState({});
   const [bulkUpdating, setBulkUpdating] = useState(false);
@@ -265,8 +273,14 @@ export default function PermissionManagement() {
 
       const matchesRole = roleFilter === 'all' || user.role === roleFilter;
       const matchesStatus = statusFilter === 'all' || user.status === statusFilter;
+      
+      // Filter for invited users only if toggle is on
+      // Show only users who are in the same restaurant or are current user
+      const matchesInvited = !showOnlyInvited || 
+        (user.restaurantId && user.restaurantId === currentUserId) ||
+        (user._id === currentUserId); // Always show current user
 
-      return matchesSearch && matchesRole && matchesStatus;
+      return matchesSearch && matchesRole && matchesStatus && matchesInvited;
     });
 
     // Sort users
@@ -529,6 +543,57 @@ export default function PermissionManagement() {
     }
   };
 
+
+  // Handle invite user
+  const handleInviteUser = async () => {
+    if (!inviteForm.email || !inviteForm.email.includes('@')) {
+      toast.error('Please enter a valid email address');
+      return;
+    }
+
+    // Check if user is already in the restaurant
+    const existingUser = users.find(user => 
+      user.email === inviteForm.email && 
+      user.restaurantId === currentUserId
+    );
+    
+    if (existingUser) {
+      toast.error('User is already part of this restaurant');
+      return;
+    }
+
+    setInviteLoading(true);
+    try {
+      const response = await fetch('/api/notifications/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          receiver: inviteForm.email, // Email address
+          restaurantId: currentUserId, // Current user's restaurant
+          message: inviteForm.message || `You have been invited to join as ${inviteForm.role}`,
+          type: 'invitation'
+        })
+      });
+
+      if (response.ok) {
+        toast.success('Invitation sent successfully!');
+        setInviteModal({ visible: false });
+        setInviteForm({ email: '', role: 'waiter', message: '' });
+      } else {
+        const error = await response.json();
+        toast.error(error.message || 'Failed to send invitation');
+      }
+    } catch (error) {
+      console.error('Invite error:', error);
+      toast.error('Failed to send invitation');
+    } finally {
+      setInviteLoading(false);
+    }
+  };
+
   // Early return for non-admin users
   if (!isAdmin && currentUserRole && currentUserRole !== 'admin') {
     return (
@@ -601,7 +666,21 @@ export default function PermissionManagement() {
             <CBadge color="info" className="fs-6 px-3 py-2 text-center">
               Total Users: {stats.total}
             </CBadge>
-            <div className="d-flex justify-content-end">
+            <div className="d-flex justify-content-end gap-2">
+              <CButton
+                color="success"
+                size="sm"
+                onClick={() => setInviteModal({ visible: true })}
+                className="w-100 w-sm-auto"
+                style={{ 
+                  fontSize: '0.875rem', 
+                  padding: '0.375rem 0.75rem',
+                  minWidth: 'auto'
+                }}
+              >
+                <CIcon icon={cilUserFollow} className="me-1" />
+                Invite User
+              </CButton>
               <CButton
                 color="primary"
                 variant="outline"
@@ -793,6 +872,20 @@ export default function PermissionManagement() {
                 <option value="date-desc">Newest First</option>
                 <option value="date-asc">Oldest First</option>
               </CFormSelect>
+            </CCol>
+            <CCol xs={12} sm={12} md={2}>
+              <div className="d-flex align-items-center">
+                <input
+                  type="checkbox"
+                  className="form-check-input me-2"
+                  id="showOnlyInvited"
+                  checked={showOnlyInvited}
+                  onChange={(e) => setShowOnlyInvited(e.target.checked)}
+                />
+                <label htmlFor="showOnlyInvited" className="form-label mb-0 small">
+                  Show only my restaurant users
+                </label>
+              </div>
             </CCol>
           </CRow>
         </CCardBody>
@@ -1209,7 +1302,6 @@ export default function PermissionManagement() {
         visible={confirmModal.visible}
         onClose={() => setConfirmModal({ visible: false, user: null, newRole: null, type: 'single' })}
         size="lg"
-        fullscreen="md-down"
       >
         <CModalHeader>
           <h5 className="d-flex align-items-center">
@@ -1418,8 +1510,7 @@ export default function PermissionManagement() {
       <CModal
         visible={roleInfoModal.visible}
         onClose={() => setRoleInfoModal({ visible: false, role: null })}
-        size="md"
-        fullscreen="sm-down"
+        size="lg"
       >
         <CModalHeader>
           <h5 className="d-flex align-items-center">
@@ -1478,6 +1569,103 @@ export default function PermissionManagement() {
             className="w-100 w-sm-auto"
           >
             Close
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
+      {/* Invite User Modal */}
+      <CModal
+        visible={inviteModal.visible}
+        onClose={() => setInviteModal({ visible: false })}
+        size="lg"
+      >
+        <CModalHeader>
+          <h5 className="d-flex align-items-center">
+            <CIcon icon={cilUserFollow} className="me-2" />
+            Invite User
+          </h5>
+        </CModalHeader>
+        <CModalBody>
+          <div className="mb-3">
+            <label className="form-label">Email Address *</label>
+            <CFormInput
+              type="email"
+              placeholder="Enter user's email address"
+              value={inviteForm.email}
+              onChange={(e) => setInviteForm({ ...inviteForm, email: e.target.value })}
+              required
+            />
+            <small className="text-muted">User will receive an invitation notification</small>
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label">Role</label>
+            <CFormSelect
+              value={inviteForm.role}
+              onChange={(e) => setInviteForm({ ...inviteForm, role: e.target.value })}
+            >
+              <option value="waiter">Waiter</option>
+              <option value="manager">Manager</option>
+              <option value="cashier">Cashier</option>
+            </CFormSelect>
+            <small className="text-muted">Default role for the invited user</small>
+          </div>
+
+          <div className="mb-3">
+            <label className="form-label">Message (Optional)</label>
+            <CFormInput
+              type="text"
+              placeholder="Custom invitation message"
+              value={inviteForm.message}
+              onChange={(e) => setInviteForm({ ...inviteForm, message: e.target.value })}
+            />
+            <small className="text-muted">Personal message to include in the invitation</small>
+          </div>
+
+          <CAlert color="info">
+            <div className="d-flex align-items-start">
+              <div className="me-2 mt-1" style={{ fontSize: '1.2rem' }}>ℹ️</div>
+              <div>
+                <strong>How it works:</strong>
+                <ul className="mb-0 mt-2">
+                  <li>User will receive a notification invitation</li>
+                  <li>They need to accept the invitation to join</li>
+                  <li>Once accepted, they'll appear in your user list</li>
+                </ul>
+              </div>
+            </div>
+          </CAlert>
+
+          <CAlert color="warning">
+            <div className="d-flex align-items-start">
+              <div className="me-2 mt-1" style={{ fontSize: '1.2rem' }}>⚠️</div>
+              <div>
+                <strong>Note:</strong>
+                <ul className="mb-0 mt-2">
+                  <li>Cannot invite users who are already in this restaurant</li>
+                  <li>Cannot send duplicate invitations</li>
+                  <li>User must be registered in the system</li>
+                </ul>
+              </div>
+            </div>
+          </CAlert>
+        </CModalBody>
+        <CModalFooter className="d-flex flex-column flex-sm-row gap-2">
+          <CButton
+            color="secondary"
+            onClick={() => setInviteModal({ visible: false })}
+            className="w-100 w-sm-auto"
+          >
+            Cancel
+          </CButton>
+          <CButton
+            color="success"
+            onClick={handleInviteUser}
+            disabled={inviteLoading || !inviteForm.email}
+            className="w-100 w-sm-auto"
+          >
+            {inviteLoading && <CSpinner size="sm" className="me-2" />}
+            Send Invitation
           </CButton>
         </CModalFooter>
       </CModal>

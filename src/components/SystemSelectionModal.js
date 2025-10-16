@@ -54,15 +54,18 @@ const SystemSelectionModal = ({
       console.log('Settings API response:', response.data)
 
       if (response.data.success && response.data.data && response.data.data.length > 0) {
-        // Transform the data to match expected format
-        const transformedSystems = response.data.data.map(setting => ({
-          _id: setting._id,
-          systemName: setting.systemName,
-          chargeOfSystem: parseInt(setting.chargeOfSystem) || 0,
-          willOccupy: setting.willOccupy,
-          color: setting.color
-        }))
+        // Transform the data to match expected format and filter by willOccupy
+        const transformedSystems = response.data.data
+          .filter(setting => setting.willOccupy === true) // Only show systems with willOccupy: true
+          .map(setting => ({
+            _id: setting._id,
+            systemName: setting.systemName,
+            chargeOfSystem: parseInt(setting.chargeOfSystem) || 0,
+            willOccupy: setting.willOccupy,
+            color: setting.color
+          }))
 
+        console.log('Filtered systems for modal (willOccupy: true):', transformedSystems)
         setSystems(transformedSystems)
 
         // If there's only one system, auto-select it

@@ -24,17 +24,20 @@ import {
   cilMenu,
   cilMoon,
   cilSun,
+  cilUserFollow,
 } from '@coreui/icons';
 
 import { AppBreadcrumb } from './index';
 import { AppHeaderDropdown } from './header/index';
 import { toggleSidebar } from '../redux/slices/sidebarSlice';
 import NotificationModal from './NotificationModal';
+import InvitationNotification from './InvitationNotification';
 
 const AppHeader = () => {
   const headerRef = useRef();
   const { colorMode, setColorMode } = useColorModes('coreui-free-react-admin-template-theme');
   const [notificationModalVisible, setNotificationModalVisible] = useState(false);
+  const [invitationModalVisible, setInvitationModalVisible] = useState(false);
 
   const dispatch = useDispatch();
   const sidebarShow = useSelector((state) => state.sidebar.sidebarShow);
@@ -55,8 +58,16 @@ const AppHeader = () => {
     setNotificationModalVisible(true);
   };
 
+  const handleInvitationClick = () => {
+    setInvitationModalVisible(true);
+  };
+
   const handleNotificationModalClose = () => {
     setNotificationModalVisible(false);
+  };
+
+  const handleInvitationModalClose = () => {
+    setInvitationModalVisible(false);
   };
 
   return (
@@ -86,6 +97,12 @@ const AppHeader = () => {
             <CNavLink href="#" onClick={handleNotificationClick} style={{ cursor: 'pointer', position: 'relative' }}>
               <CIcon icon={cilBell} size="lg" />
               {/* You can add a badge here if needed */}
+            </CNavLink>
+          </CNavItem>
+          <CNavItem>
+            <CNavLink href="#" onClick={handleInvitationClick} style={{ cursor: 'pointer', position: 'relative' }}>
+              <CIcon icon={cilUserFollow} size="lg" />
+              {/* Invitation notifications */}
             </CNavLink>
           </CNavItem>
           <CNavItem>
@@ -157,6 +174,12 @@ const AppHeader = () => {
       <NotificationModal 
         visible={notificationModalVisible} 
         onClose={handleNotificationModalClose} 
+      />
+      
+      {/* Invitation Notification Modal */}
+      <InvitationNotification 
+        visible={invitationModalVisible} 
+        onClose={handleInvitationModalClose} 
       />
     </CHeader>
   );

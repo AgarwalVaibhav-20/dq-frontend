@@ -25,7 +25,8 @@ export const fetchMenuItems = createAsyncThunk(
         ? `${BASE_URL}/menu/allmenues?restaurantId=${restaurantId}`
         : `${BASE_URL}/menu/allmenues`;
 
-      console.log("🔍 API URL:", url);
+      console.log("🔍 Menu API URL:", url);
+      console.log("🔍 Menu API Params:", { restaurantId });
 
       const response = await axios.get(url, { headers });
 
