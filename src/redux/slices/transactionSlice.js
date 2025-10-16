@@ -108,7 +108,7 @@ export const createCashInTransaction = createAsyncThunk(
     }
   }
 )
-// NEW: Cash Out transaction
+
 export const createCashOutTransaction = createAsyncThunk(
   'transactions/createCashOutTransaction',
   async ({ amount, token, userId, restaurantId, username, notes }, { rejectWithValue }) => {
@@ -143,6 +143,83 @@ export const createCashOutTransaction = createAsyncThunk(
     } catch (error) {
       console.error('Cash Out transaction error:', error.response?.data || error.message);
       return rejectWithValue(error.response?.data || { message: 'Failed to create cash out transaction' });
+    }
+  }
+)
+
+export const createBankInTransaction = createAsyncThunk(
+  'transactions/createBankInTransaction',
+  async ({ total, token, userId, restaurantId, username, notes, type }, { rejectWithValue }) => {
+    try {
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      const finalRestaurantId = restaurantId || localStorage.getItem('restaurantId');
+      const finalUserId = userId || localStorage.getItem('userId');
+      const finalUsername = username || localStorage.getItem('username');
+
+      const requestData = {
+        username: finalUsername,
+        restaurantId: finalRestaurantId,
+        userId: finalUserId,
+        total: total,
+        type: type || 'bank_in',
+        notes,
+      };
+
+      console.log('Bank In payload:', requestData);
+      const response = await axios.post(`${BASE_URL}/bankin`, requestData, { headers });
+
+      return {
+        ...response.data,
+        amount: total,
+        notes,
+        transaction: { ...response.data.transaction, type: 'bank_in' }
+      };
+
+    } catch (error) {
+      console.error('Bank In transaction error:', error.response?.data || error.message);
+      return rejectWithValue(error.response?.data || { message: 'Failed to create bank in transaction' });
+    }
+  }
+);
+
+export const createBankOutTransaction = createAsyncThunk(
+  'transactions/createBankOutTransaction',
+  async ({ amount, token, userId, restaurantId, username, notes }, { rejectWithValue }) => {
+    try {
+      const headers = {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      };
+
+      const finalRestaurantId = restaurantId || localStorage.getItem('restaurantId');
+      const finalUserId = userId || localStorage.getItem('userId');
+      const finalUsername = username || localStorage.getItem('username');
+
+      const requestData = {
+        username: finalUsername,
+        restaurantId: finalRestaurantId,
+        userId: finalUserId,
+        total: amount, // Use 'total' to match backend expectation
+        type: 'BankOut',
+        notes,
+      };
+
+      console.log('Bank Out payload:', requestData);
+
+      const response = await axios.post(`${BASE_URL}/bankout`, requestData, { headers });
+      return {
+        ...response.data,
+        amount,
+        notes,
+        transaction: response.data.transaction
+      };
+    } catch (error) {
+      console.error('Bank Out transaction error:', error.response?.data || error.message);
+      return rejectWithValue(error.response?.data || { message: 'Failed to create bank out transaction' });
     }
   }
 )
@@ -211,13 +288,13 @@ export const fetchTransactionsByRestaurant = createAsyncThunk(
 
 export const fetchTransactionsByRestaurantyear = createAsyncThunk(
   "transactions/fetchTransactionsByRestaurantyear",
-  async ({ restaurantId, year ,token}, { rejectWithValue }) => {
+  async ({ restaurantId, year, token }, { rejectWithValue }) => {
     try {
       const response = await axios.get(
         `${BASE_URL}/get-by-year-restaurant/transaction/${restaurantId}?year=${year}`,
         configureHeaders(token)
       );
-      console.log("yearkadata",response.data);
+      console.log("yearkadata", response.data);
       return response.data.data || response.data;
     } catch (error) {
       return rejectWithValue(
@@ -328,87 +405,87 @@ const transactionSlice = createSlice({
     builder
       // Create Transaction
       .addCase(createTransaction.pending, (state) => {
-      state.loading = true
-      state.error = null
-    })
-    .addCase(createTransaction.fulfilled, (state, action) => {
-      state.loading = false
-      const newTransaction = action.payload.transaction;
+        state.loading = true
+        state.error = null
+      })
+      .addCase(createTransaction.fulfilled, (state, action) => {
+        state.loading = false
+        const newTransaction = action.payload.transaction;
 
-      if (!newTransaction) {
-        toast.error('Received an invalid transaction response from the server.');
-        return;
-      }
+        if (!newTransaction) {
+          toast.error('Received an invalid transaction response from the server.');
+          return;
+        }
 
-      state.transactions = [newTransaction, ...state.transactions];
-      toast.success('Transaction created successfully.')
+        state.transactions = [newTransaction, ...state.transactions];
+        toast.success('Transaction created successfully.')
 
-      // FIXED: Only update balance for regular Cash payments, not CashIn/CashOut
-      if (newTransaction.type === 'Cash' && 
-          newTransaction.transactionType !== 'CashIn' && 
+        // FIXED: Only update balance for regular Cash payments, not CashIn/CashOut
+        if (newTransaction.type === 'Cash' &&
+          newTransaction.transactionType !== 'CashIn' &&
           newTransaction.transactionType !== 'CashOut') {
-        const currentBalance = Number(state.dailyCashBalance) || 0;
-        const transactionTotal = Number(newTransaction.total) || 0;
-        state.dailyCashBalance = currentBalance + transactionTotal;
-      }
-    })
-    .addCase(createTransaction.rejected, (state, action) => {
-      state.loading = false
-      state.error = action.payload
-      toast.error('Failed to create transaction.')
-    })
+          const currentBalance = Number(state.dailyCashBalance) || 0;
+          const transactionTotal = Number(newTransaction.total) || 0;
+          state.dailyCashBalance = currentBalance + transactionTotal;
+        }
+      })
+      .addCase(createTransaction.rejected, (state, action) => {
+        state.loading = false
+        state.error = action.payload
+        toast.error('Failed to create transaction.')
+      })
 
-    // Cash In Transaction
-    .addCase(createCashInTransaction.pending, (state) => {
-      state.cashLoading = true
-      state.error = null
-    })
-    .addCase(createCashInTransaction.fulfilled, (state, action) => {
-      state.cashLoading = false
-      
-      // Add to transactions list
-      if (action.payload.transaction) {
-        state.transactions = [action.payload.transaction, ...state.transactions];
-      }
-      
-      // FIXED: Don't update balance locally - let the server handle it
-      // The balance will be updated when getDailyCashBalance is called
-      state.error = null
-      const amount = action.payload.transaction?.total || 0;
-      toast.success(`Cash In: ₹${amount.toFixed(2)} added successfully!`)
-    })
-    .addCase(createCashInTransaction.rejected, (state, action) => {
-      state.cashLoading = false
-      state.error = action.payload
-      const errorMessage = action.payload?.message || 'Failed to process cash in transaction.';
-      toast.error(errorMessage)
-    })
+      // Cash In Transaction
+      .addCase(createCashInTransaction.pending, (state) => {
+        state.cashLoading = true
+        state.error = null
+      })
+      .addCase(createCashInTransaction.fulfilled, (state, action) => {
+        state.cashLoading = false
 
-    // Cash Out Transaction
-    .addCase(createCashOutTransaction.pending, (state) => {
-      state.cashLoading = true
-      state.error = null
-    })
-    .addCase(createCashOutTransaction.fulfilled, (state, action) => {
-      state.cashLoading = false
-      
-      // Add to transactions list
-      if (action.payload.transaction) {
-        state.transactions = [action.payload.transaction, ...state.transactions];
-      }
-      
-      // FIXED: Don't update balance locally - let the server handle it
-      // The balance will be updated when getDailyCashBalance is called
-      state.error = null
-      const amount = action.payload.transaction?.total || 0;
-      toast.success(`Cash Out: ₹${amount.toFixed(2)} removed successfully!`)
-    })
-    .addCase(createCashOutTransaction.rejected, (state, action) => {
-      state.cashLoading = false
-      state.error = action.payload
-      const errorMessage = action.payload?.message || 'Failed to process cash out transaction.';
-      toast.error(errorMessage)
-    })
+        // Add to transactions list
+        if (action.payload.transaction) {
+          state.transactions = [action.payload.transaction, ...state.transactions];
+        }
+
+        // FIXED: Don't update balance locally - let the server handle it
+        // The balance will be updated when getDailyCashBalance is called
+        state.error = null
+        const amount = action.payload.transaction?.total || 0;
+        toast.success(`Cash In: ₹${amount.toFixed(2)} added successfully!`)
+      })
+      .addCase(createCashInTransaction.rejected, (state, action) => {
+        state.cashLoading = false
+        state.error = action.payload
+        const errorMessage = action.payload?.message || 'Failed to process cash in transaction.';
+        toast.error(errorMessage)
+      })
+
+      // Cash Out Transaction
+      .addCase(createCashOutTransaction.pending, (state) => {
+        state.cashLoading = true
+        state.error = null
+      })
+      .addCase(createCashOutTransaction.fulfilled, (state, action) => {
+        state.cashLoading = false
+
+        // Add to transactions list
+        if (action.payload.transaction) {
+          state.transactions = [action.payload.transaction, ...state.transactions];
+        }
+
+        // FIXED: Don't update balance locally - let the server handle it
+        // The balance will be updated when getDailyCashBalance is called
+        state.error = null
+        const amount = action.payload.transaction?.total || 0;
+        toast.success(`Cash Out: ₹${amount.toFixed(2)} removed successfully!`)
+      })
+      .addCase(createCashOutTransaction.rejected, (state, action) => {
+        state.cashLoading = false
+        state.error = action.payload
+        const errorMessage = action.payload?.message || 'Failed to process cash out transaction.';
+        toast.error(errorMessage)
+      })
 
       // .addCase(createTransaction.pending, (state) => {
       //   state.loading = true
@@ -534,6 +611,52 @@ const transactionSlice = createSlice({
       // })
 
       // Fetch Transactions by Restaurant
+
+      .addCase(createBankInTransaction.pending, (state) => {
+        state.cashLoading = true
+        state.error = null
+      })
+      .addCase(createBankInTransaction.fulfilled, (state, action) => {
+        state.cashLoading = false
+
+        // Add to transactions list
+        if (action.payload.transaction) {
+          state.transactions = [action.payload.transaction, ...state.transactions];
+        }
+
+        // FIXED: Don't update balance locally - let the server handle it
+        state.error = null
+        const amount = action.payload.transaction?.total || 0;
+        toast.success(`Bank In: ₹${amount.toFixed(2)} added successfully!`)
+      })
+      .addCase(createBankInTransaction.rejected, (state, action) => {
+        state.cashLoading = false
+        state.error = action.payload
+        const errorMessage = action.payload?.message || 'Failed to process bank in transaction.';
+        toast.error(errorMessage)
+      })
+      .addCase(createBankOutTransaction.fulfilled, (state, action) => {
+        state.cashLoading = false
+
+        // Add to transactions list
+        if (action.payload.transaction) {
+          state.transactions = [action.payload.transaction, ...state.transactions];
+        }
+
+        // FIXED: Don't update balance locally - let the server handle it
+        // The balance will be updated when getDailyCashBalance is called
+        state.error = null
+        const amount = action.payload.transaction?.total || 0;
+        // Fixed: Changed message to reflect Bank Out
+        toast.success(`Bank Out: ₹${amount.toFixed(2)} removed successfully!`)
+      })
+      .addCase(createBankOutTransaction.rejected, (state, action) => {
+        state.cashLoading = false
+        state.error = action.payload
+        const errorMessage = action.payload?.message || 'Failed to process bank out transaction.';
+        toast.error(errorMessage)
+      })
+
       .addCase(fetchTransactionsByRestaurant.pending, (state) => {
         state.loading = true
         state.error = null
@@ -541,7 +664,7 @@ const transactionSlice = createSlice({
       .addCase(fetchTransactionsByRestaurant.fulfilled, (state, action) => {
         state.loading = false
         state.transactions = action.payload
-        console.log("tran data",action.payload);
+        console.log("tran data", action.payload);
         state.error = null
       })
       .addCase(fetchTransactionsByRestaurant.rejected, (state, action) => {

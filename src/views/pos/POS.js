@@ -9,6 +9,7 @@ import {
   fetchTransactionDetails,
   createCashInTransaction,
   createCashOutTransaction,
+  createBankInTransaction,
   getDailyCashBalance
 } from '../../redux/slices/transactionSlice'
 import {
@@ -41,34 +42,23 @@ import {
   CFormTextarea,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
+// cilBank is not available in @coreui/icons, using cilMoney or cilNotes for visual representation
 import { cilBuilding, cilMoney, cilPlus, cilMinus, cilCash, cilNotes } from '@coreui/icons'
 
 const POS = () => {
   const dispatch = useDispatch()
   const navigate = useNavigate()
-  const { dailyCashBalance, dailyTransactionCount, cashLoading } = useSelector((state) => state.transactions);
+  const { dailyCashBalance, transactions, dailyTransactionCount, cashLoading } = useSelector((state) => state.transactions);
+  console.log("bhai ka trans ", transactions);
   const { qrList, loading, error } = useSelector((state) => state.qr)
   const { floors: manjil } = useSelector((state) => state.floors)
+  const restaurantId = useSelector((state) => state.auth.restaurantId)
+  const resturantIdLocalStorage = localStorage.getItem('restaurantId')
   const userId = useSelector((state) => state.auth.userId)
   const username = useSelector((state) => state.auth.username)
+  // const authToken = useSelector((state) => state.auth.authToken)
   const theme = useSelector((state) => state.theme.theme)
   const token = localStorage.getItem('authToken')
-  
-  // Extract restaurantId from JWT token
-  const getRestaurantIdFromToken = () => {
-    try {
-      if (!token) return null
-      const payload = JSON.parse(atob(token.split('.')[1]))
-      console.log('🔍 POS Token payload:', payload)
-      return payload.restaurantId || payload.restaurant_id
-    } catch (error) {
-      console.error('Error decoding token:', error)
-      return null
-    }
-  }
-  
-  const restaurantId = getRestaurantIdFromToken() || useSelector((state) => state.auth.restaurantId) || localStorage.getItem('restaurantId')
-  const resturantIdLocalStorage = restaurantId
   // Get cash management state from Redux
   // const { dailyCashBalance, cashLoading } = useSelector((state) => state.transactions)
 
@@ -98,6 +88,14 @@ const POS = () => {
   const [cashAmount, setCashAmount] = useState('')
   const [cashAmountNotes, setCashAmountNotes] = useState('')
 
+  // 👇 UPDATED: Bank Balance States
+  const [showBankInModal, setShowBankInModal] = useState(false);
+  const [bankAmount, setBankAmount] = useState('');
+  const [bankAmountNotes, setBankAmountNotes] = useState('');
+
+  const [paymentBreakdown, setPaymentBreakdown] = useState({});
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+
   // Helper function to get floor ID consistently from QR object
   const getFloorIdFromQr = (qr) => {
     return qr.floorId?._id || qr.floor
@@ -126,6 +124,41 @@ const POS = () => {
     const [tableNumber, floorId] = tableId.split('_')
     return { tableNumber: parseInt(tableNumber), floorId }
   }
+
+  const calculatePaymentBreakdown = (transactions) => {
+    if (!transactions || transactions.length === 0) return {};
+
+    const breakdown = transactions.reduce((acc, transaction) => {
+        // Updated to handle 'bank_in' and 'bank_out' types
+        const type = transaction.type; 
+        const amount = transaction.total || transaction.amount || 0; 
+        
+        let cleanType;
+
+        if (type === 'cash_in') {
+            cleanType = 'Cash In (Net)';
+        } else if (type === 'cash_out') {
+            cleanType = 'Cash Out (Net)';
+        } else if (type === 'bank_in') { 
+            cleanType = 'Bank In';
+        } else if (type === 'bank_out') { 
+            cleanType = 'Bank Out';
+        } 
+        else {
+            cleanType = type; 
+        }
+
+        // Add to accumulator only if amount is positive (or it's a cash_out/bank_out)
+        if (amount > 0 || type.includes('out')) { 
+             acc[cleanType] = (acc[cleanType] || 0) + amount;
+        }
+       
+        return acc;
+    }, {});
+    
+    return breakdown;
+  };
+
   const handleCashIn = async () => {
     if (!cashAmount || parseFloat(cashAmount) <= 0) {
       alert('Please enter a valid amount')
@@ -140,7 +173,8 @@ const POS = () => {
         userId,
         restaurantId,
         username,
-        notes: cashAmountNotes
+        notes: cashAmountNotes,
+        type: 'cash_in' // Ensure type is explicitly set for clarity
       })).unwrap()
 
       // Reset form
@@ -182,7 +216,8 @@ const POS = () => {
         userId,
         restaurantId,
         username,
-        notes: cashAmountNotes
+        notes: cashAmountNotes,
+        type: 'cash_out' // Ensure type is explicitly set for clarity
       })).unwrap()
 
       // Reset form
@@ -201,6 +236,42 @@ const POS = () => {
     }
   }
 
+  // 👇 UPDATED: Bank In Function using createBankInTransaction
+  const handleBankIn = async () => {
+    if (!bankAmount || parseFloat(bankAmount) <= 0) {
+      alert('Please enter a valid amount')
+      return
+    }
+
+    try {
+      // ✅ Using the dedicated Redux action for Bank In
+      await dispatch(createBankInTransaction({
+        total: parseFloat(bankAmount),
+        token,
+        userId,
+        restaurantId,
+        username,
+        notes: bankAmountNotes,
+        type: 'bank_in' 
+      })).unwrap()
+
+      // Reset form
+      setBankAmount('');
+      setBankAmountNotes('');
+      setShowBankInModal(false);
+
+      // IMPORTANT: Refresh the daily cash balance from server
+      await dispatch(getDailyCashBalance({
+        token,
+        restaurantId
+      }))
+
+    } catch (error) {
+      console.error('Bank In error:', error)
+    }
+  }
+  // 👆 END UPDATED
+  
   const formatBalance = (balance) => {
     if (balance === null || balance === undefined || isNaN(balance)) {
       return '0.00'
@@ -218,6 +289,15 @@ const POS = () => {
       }))
     }
   }, [dispatch, restaurantId, token])
+
+   useEffect(() => {
+    if (transactions) {
+        const breakdown = calculatePaymentBreakdown(transactions);
+        setPaymentBreakdown(breakdown);
+    } else {
+        setPaymentBreakdown({});
+    }
+  }, [transactions]); 
 
   useEffect(() => {
     dispatch(getFloors(resturantIdLocalStorage))
@@ -269,44 +349,14 @@ const POS = () => {
 
     }
 
-    // Make cart data user-specific by including userId in the key
-    const currentUserId = userId || localStorage.getItem('userId')
-    console.log('🔍 POS User Debug:', {
-      currentUserId,
-      authState: { userId, username, restaurantId }
-    })
-    
     const storedCarts = {}
     qrList.forEach((qr) => {
-      const savedCart = localStorage.getItem(`cart_${qr.tableNumber}_${currentUserId}`)
+      const savedCart = localStorage.getItem(`cart_${qr.tableNumber}`)
       if (savedCart) {
         storedCarts[qr.tableNumber] = JSON.parse(savedCart)
-      } else {
-        // If no user-specific cart, try to get from general cart (for backward compatibility)
-        const generalCart = localStorage.getItem(`cart_${qr.tableNumber}`)
-        if (generalCart) {
-          console.log('🔍 Found general cart for table', qr.tableNumber, ', migrating to user-specific')
-          // Migrate to user-specific storage
-          localStorage.setItem(`cart_${qr.tableNumber}_${currentUserId}`, generalCart)
-          storedCarts[qr.tableNumber] = JSON.parse(generalCart)
-        }
       }
     })
     setCart(storedCarts)
-    
-    // Check and clean invalid system data
-    checkAndCleanSystemData()
-    
-    // Force clear any remaining system data on page load
-    setTimeout(() => {
-      const allKeys = Object.keys(localStorage)
-      allKeys.forEach(key => {
-        if (key.includes('selectedSystem') || key.includes('dine') || key.includes('Dine') || key.includes('system')) {
-          console.log(`Auto-clearing system data: ${key}`)
-          localStorage.removeItem(key)
-        }
-      })
-    }, 1000)
   }, [dispatch, resturantIdLocalStorage, qrList.length])
 
   // Update tables with orders when modal opens - include floor information
@@ -349,7 +399,7 @@ const POS = () => {
     localStorage.setItem('mergedTables', JSON.stringify(mergedTables))
   }, [mergedTables])
 
-  const handleQrClick = (qr) => {
+  const  handleQrClick = (qr) => {
     navigate(`/pos/system/tableNumber/${qr.tableNumber}`)
   }
 
@@ -647,68 +697,6 @@ const POS = () => {
     return `${hours}h ${minutes}m`
   }
 
-  // Function to clear selectedSystem from localStorage for all tables
-  const clearAllSelectedSystems = () => {
-    qrList.forEach((qr) => {
-      localStorage.removeItem(`selectedSystem_${qr.tableNumber}`)
-    })
-    // Also clear for merged tables
-    mergedTables.forEach((mergedTable) => {
-      localStorage.removeItem(`selectedSystem_merged_${mergedTable.id}`)
-    })
-    console.log('All selectedSystem data cleared from localStorage')
-  }
-
-  // Function to check and clean invalid system data
-  const checkAndCleanSystemData = () => {
-    qrList.forEach((qr) => {
-      const savedSystem = localStorage.getItem(`selectedSystem_${qr.tableNumber}`)
-      if (savedSystem) {
-        try {
-          const system = JSON.parse(savedSystem)
-          console.log(`Found system data for table ${qr.tableNumber}:`, system)
-          // Check if system has invalid data like "dine-in" without proper structure
-          if (system.systemName === 'dine-in' || system.systemName === 'Dine in' || system.systemName === 'Dine-in') {
-            console.log(`Removing invalid system data for table ${qr.tableNumber}`)
-            localStorage.removeItem(`selectedSystem_${qr.tableNumber}`)
-          }
-        } catch (error) {
-          console.log(`Removing corrupted system data for table ${qr.tableNumber}`)
-          localStorage.removeItem(`selectedSystem_${qr.tableNumber}`)
-        }
-      }
-    })
-  }
-
-  // Force clear all system data - more aggressive approach
-  const forceClearAllSystemData = () => {
-    // Clear all possible system data keys
-    const keysToRemove = []
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)
-      if (key && key.includes('selectedSystem')) {
-        keysToRemove.push(key)
-      }
-    }
-    
-    keysToRemove.forEach(key => {
-      console.log(`Removing system data: ${key}`)
-      localStorage.removeItem(key)
-    })
-    
-    // Also clear any dine-in related data
-    const allKeys = Object.keys(localStorage)
-    allKeys.forEach(key => {
-      if (key.includes('dine') || key.includes('Dine') || key.includes('system')) {
-        console.log(`Removing additional system data: ${key}`)
-        localStorage.removeItem(key)
-      }
-    })
-    
-    console.log('All system data cleared forcefully')
-    alert('All system data has been cleared! Please refresh the page.')
-  }
-
   return (
     <CContainer className="py-2 px-2 px-md-3">
       {/* Mobile Responsive Header */}
@@ -717,7 +705,7 @@ const POS = () => {
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
           <div className="mb-2 mb-md-0">
             <h3 className="mb-0 text-center text-md-start">Select Table To Generate Bill</h3>
-          </div>
+          </div> 
           
           {/* Mobile Responsive Button Groups */}
           <div className="w-100 d-md-none">
@@ -753,6 +741,20 @@ const POS = () => {
               
               {/* Action Buttons Row */}
               <div className="d-flex gap-2">
+                {/* Bank In Button (Mobile) */}
+                <CButton
+                  color="warning"
+                  variant="outline"
+                  onClick={() => setShowBankInModal(true)}
+                  className="d-flex align-items-center gap-1 flex-fill"
+                  disabled={cashLoading}
+                  size="sm"
+                >
+                  <CIcon icon={cilMoney} size="sm" />
+                  <span className="d-none d-sm-inline">Bank In</span>
+                  <span className="d-sm-none">Bank</span>
+                </CButton>
+
                 <CButton 
                   color="primary" 
                   onClick={fetchActiveOrders}
@@ -770,24 +772,6 @@ const POS = () => {
                 >
                   <span className="d-none d-sm-inline">Merge Tables</span>
                   <span className="d-sm-none">Merge</span>
-                </CButton>
-                <CButton
-                  color="warning"
-                  onClick={clearAllSelectedSystems}
-                  className="flex-fill"
-                  size="sm"
-                >
-                  <span className="d-none d-sm-inline">Clear Systems</span>
-                  <span className="d-sm-none">Clear</span>
-                </CButton>
-                <CButton
-                  color="danger"
-                  onClick={forceClearAllSystemData}
-                  className="flex-fill"
-                  size="sm"
-                >
-                  <span className="d-none d-sm-inline">Force Clear</span>
-                  <span className="d-sm-none">Force</span>
                 </CButton>
               </div>
             </div>
@@ -807,11 +791,46 @@ const POS = () => {
                 <CIcon icon={cilPlus} size="sm" />
                 Cash In
               </CButton>
-              <CBadge color="info" size="lg" className="d-flex align-items-center gap-1">
-                <CIcon icon={cilCash} />
-                Daily Balance: ₹{formatBalance(dailyCashBalance)}
-                {cashLoading && <CSpinner size="sm" className="ms-1" />}
-              </CBadge>
+            <CDropdown
+                  variant="btn-group"
+                  onMouseEnter={() => setIsDropdownOpen(true)}
+                  onMouseLeave={() => setIsDropdownOpen(false)}
+                  show={isDropdownOpen} // Mouse over पर show होगा
+              >
+                  <CDropdownToggle
+                      color="info"
+                      size="lg"
+                      className="d-flex align-items-center gap-1 p-2"
+                      caret={false} // Arrow हटा दें
+                      style={{ cursor: 'default' }}
+                  >
+                      <CIcon icon={cilCash} />
+                      Daily Balance: ₹{formatBalance(dailyCashBalance)}
+                      {cashLoading && <CSpinner size="sm" className="ms-1" />}
+                  </CDropdownToggle>
+
+                  <CDropdownMenu className='p-2'>
+                      <CDropdownItem header className='fw-bold'>Cash Breakdown</CDropdownItem>
+                      <hr className="dropdown-divider" />
+                      {cashLoading ? (
+                          <CDropdownItem disabled>
+                              <CSpinner size="sm" className="me-2" /> Loading...
+                          </CDropdownItem>
+                      ) : (
+                          Object.entries(paymentBreakdown).map(([type, amount]) => (
+                              <CDropdownItem key={type} className={`text-${type.includes('In') ? 'success' : 'danger'}`}>
+                                  <div className="d-flex justify-content-between w-100">
+                                      <strong>{type}</strong>
+                                      <span>₹{formatBalance(amount)}</span>
+                                  </div>
+                              </CDropdownItem>
+                          ))
+                      )}
+                      {Object.keys(paymentBreakdown).length === 0 && (
+                          <CDropdownItem disabled>No transactions yet</CDropdownItem>
+                      )}
+                  </CDropdownMenu>
+              </CDropdown>
               <CButton
                 color="danger"
                 variant="outline"
@@ -824,6 +843,18 @@ const POS = () => {
               </CButton>
             </div>
             <div className='d-flex gap-2'>
+                {/* Bank In Button (Desktop) */}
+                <CButton
+                  color="warning"
+                  variant="outline"
+                  onClick={() => setShowBankInModal(true)}
+                  className="d-flex align-items-center gap-1"
+                  disabled={cashLoading}
+                >
+                  <CIcon icon={cilMoney} size="sm" />
+                  Bank In
+                </CButton>
+
               <CButton color="primary" onClick={fetchActiveOrders}>
                 All Orders
               </CButton>
@@ -833,103 +864,58 @@ const POS = () => {
               >
                 Merge Tables
               </CButton>
-              <CButton
-                color="warning"
-                onClick={clearAllSelectedSystems}
-              >
-                Clear Systems
-              </CButton>
-              <CButton
-                color="danger"
-                onClick={forceClearAllSystemData}
-              >
-                Force Clear
-              </CButton>
+              
             </div>
           </div>
         </div>
         
         {/* Mobile: Daily Balance Badge */}
         <div className="d-md-none text-center mb-3">
-          <CBadge color="info" size="lg" className="d-flex align-items-center gap-1 justify-content-center">
-            <CIcon icon={cilCash} />
-            Daily Balance: ₹{formatBalance(dailyCashBalance)}
-            {cashLoading && <CSpinner size="sm" className="ms-1" />}
-          </CBadge>
+         <CDropdown
+              variant="btn-group"
+              onMouseEnter={() => setIsDropdownOpen(true)}
+              onMouseLeave={() => setIsDropdownOpen(false)}
+              show={isDropdownOpen}
+          >
+              <CDropdownToggle
+                  color="info"
+                  size="lg"
+                  className="d-flex align-items-center gap-1 justify-content-center p-2"
+                  caret={false}
+                  style={{ cursor: 'default' }}
+              >
+                  <CIcon icon={cilCash} />
+                  Daily Balance: ₹{formatBalance(dailyCashBalance)}
+                  {cashLoading && <CSpinner size="sm" className="ms-1" />}
+              </CDropdownToggle>
+
+              <CDropdownMenu className='p-2'>
+                  <CDropdownItem header className='fw-bold'>Cash Breakdown</CDropdownItem>
+                  <hr className="dropdown-divider" />
+                  {cashLoading ? (
+                      <CDropdownItem disabled>
+                          <CSpinner size="sm" className="me-2" /> Loading...
+                      </CDropdownItem>
+                  ) : (
+                      Object.entries(paymentBreakdown).map(([type, amount]) => (
+                          <CDropdownItem key={type} className={`text-${type.includes('In') ? 'success' : 'danger'}`}>
+                              <div className="d-flex justify-content-between w-100">
+                                  <strong>{type}</strong>
+                                  <span>₹{formatBalance(amount)}</span>
+                              </div>
+                          </CDropdownItem>
+                      ))
+                  )}
+                  {Object.keys(paymentBreakdown).length === 0 && (
+                      <CDropdownItem disabled>No transactions yet</CDropdownItem>
+                  )}
+              </CDropdownMenu>
+          </CDropdown>
         </div>
       </div>
 
       {/* Floor Selection Dropdown */}
-      {/* <div className="mb-4">
-        <div className="d-flex align-items-center gap-3">
-          <CDropdown>
-            <CDropdownToggle variant="outline" size="lg">
-              <CIcon icon={cilBuilding} className="me-2" />
-              {selectedFloor === 'all'
-                ? 'All Floors'
-                : manjil.find((f) => f._id === selectedFloor)?.name || 'Select Floor'}
-            </CDropdownToggle>
-            <CDropdownMenu>
-              <CDropdownItem
-                onClick={() => setSelectedFloor('all')}
-                active={selectedFloor === 'all'}
-              >
-                All Floors
-                <CBadge color="secondary" className="ms-2">
-                  {qrList.length} tables
-                </CBadge>
-              </CDropdownItem>
-              <hr className="dropdown-divider" />
-
-              {manjil.map((floor) => {
-                const floorStats = getFloorTableCount(floor._id)
-                return (
-                  <CDropdownItem
-                    key={floor._id}
-                    onClick={() => setSelectedFloor(floor._id)}
-                    active={selectedFloor === floor._id}
-                  >
-                    <div className="d-flex justify-content-between align-items-center w-100">
-                      <span>{floor.name}</span>
-                      <div className="d-flex gap-1">
-                        <CBadge color="secondary">{floorStats.total}</CBadge>
-                        {floorStats.occupied > 0 && (
-                          <CBadge color="danger">{floorStats.occupied}</CBadge>
-                        )}
-                        {floorStats.merged > 0 && (
-                          <CBadge color="info">{floorStats.merged}M</CBadge>
-                        )}
-                      </div>
-                    </div>
-                  </CDropdownItem>
-                )
-              })}
-            </CDropdownMenu>
-          </CDropdown>
-
-          
-          {selectedFloor !== 'all' && (
-            <div className="d-flex gap-2 align-items-center">
-              <CBadge color="secondary">
-                Total: {getFloorTableCount(selectedFloor).total}
-              </CBadge>
-              <CBadge color="success">
-                Available: {getFloorTableCount(selectedFloor).available}
-              </CBadge>
-              {getFloorTableCount(selectedFloor).occupied > 0 && (
-                <CBadge color="danger">
-                  Occupied: {getFloorTableCount(selectedFloor).occupied}
-                </CBadge>
-              )}
-              {getFloorTableCount(selectedFloor).merged > 0 && (
-                <CBadge color="info">
-                  Merged: {getFloorTableCount(selectedFloor).merged}
-                </CBadge>
-              )}
-            </div>
-          )}
-        </div>
-      </div> */}
+      {/* ... (Floor Selection code is commented out) ... */}
 
       {loading ? (
         <div className="d-flex justify-content-center">
@@ -938,163 +924,6 @@ const POS = () => {
       ) : error ? (
         <div className="text-danger text-center">{error}</div>
       ) : (
-        // <>
-        //   {/* Merged Tables Section */}
-        //   {getMergedTablesForFloor(selectedFloor).length > 0 && (
-        //     <div className="mb-4">
-        //       <h5 className="mb-3">
-        //         Merged Tables {selectedFloor !== 'all' && `- ${manjil.find(f => f._id === selectedFloor)?.name || 'Floor'}`}
-        //       </h5>
-        //       <CRow className="justify-content-start">
-        //         {getMergedTablesForFloor(selectedFloor).map((mergedTable) => (
-        //           <CCol
-        //             key={mergedTable.id}
-        //             xs="6"
-        //             sm="4"
-        //             md="3"
-        //             lg="2"
-        //             xl="2"
-        //             className="mx-2 mb-4 d-flex justify-content-center"
-        //           >
-        //             <CContainer
-        //               className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 bg-info text-white`}
-        //               onClick={() => handleMergedTableClick(mergedTable)}
-        //               style={{
-        //                 height: '12rem',
-        //                 cursor: 'pointer',
-        //                 width: '100%',
-        //                 position: 'relative'
-        //               }}
-        //             >
-        //               <CBadge
-        //                 color="light"
-        //                 className="position-absolute top-0 end-0 m-1"
-        //                 style={{ fontSize: '0.7rem' }}
-        //               >
-        //                 MERGED
-        //               </CBadge>
-        //               <div className="fw-bold text-center mb-1">
-        //                 {mergedTable.name}
-        //               </div>
-        //               <small className="text-center">
-        //                 {mergedTable.combinedOrders?.length || 0} items
-        //               </small>
-        //               <small className="text-center">
-        //                 ₹{(mergedTable.totalAmount || 0).toFixed(2)}
-        //               </small>
-        //               <small className="text-center">
-        //                 {formatDuration(mergedTable.startTime)}
-        //               </small>
-        //               <CButton
-        //                 size="sm"
-        //                 color="light"
-        //                 className="mt-2"
-        //                 onClick={(e) => {
-        //                   e.stopPropagation()
-        //                   handleUnmergeTable(mergedTable)
-        //                 }}
-        //               >
-        //                 Unmerge
-        //               </CButton>
-        //             </CContainer>
-        //           </CCol>
-        //         ))}
-        //       </CRow>
-        //     </div>
-        //   )}
-
-        //   {/* Individual Tables Section */}
-        //   <div className="mb-4">
-        //     <h5 className="mb-3">
-        //       Individual Tables {selectedFloor !== 'all' && `- ${manjil.find(f => f._id === selectedFloor)?.name || 'Floor'}`}
-        //     </h5>
-        //     <CRow className="justify-content-start">
-        //       {getAvailableTables().map((qr, index) => {
-        //         const floorName = getFloorNameFromQr(qr)
-
-        //         return (
-        //           <CCol
-        //             key={index}
-        //             xs="6"
-        //             sm="4"
-        //             md="3"
-        //             lg="2"
-        //             xl="2"
-        //             className="mx-2 mb-4 d-flex justify-content-center"
-        //           >
-        //             <CContainer
-        //               className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${shouldTableBeRed(qr)
-        //                 ? 'bg-danger text-white'
-        //                 : theme === 'dark'
-        //                   ? 'bg-secondary text-white'
-        //                   : 'bg-white text-dark'
-        //                 }`}
-        //               onClick={() => handleQrClick(qr)}
-        //               style={{
-        //                 height: '10rem',
-        //                 cursor: 'pointer',
-        //                 width: '100%',
-        //                 position: 'relative'
-        //               }}
-        //             >
-        //               {/* Floor badge */}
-        //               <CBadge
-        //                 color="secondary"
-        //                 className="position-absolute top-0 start-0 m-1"
-        //                 style={{ fontSize: '0.6rem' }}
-        //               >
-        //                 {floorName}
-        //               </CBadge>
-
-        //               <div className="fw-bold">Table {qr.tableNumber}</div>
-        //               {isItemInCart(qr) && (
-        //                 <small className="text-center mt-1">
-        //                   {cart[qr.tableNumber]?.length || 0} items
-        //                 </small>
-        //               )}
-        //             </CContainer>
-        //           </CCol>
-        //         )
-        //       })}
-
-        //       {/* Takeaway - only show on "All Floors" or first floor */}
-        //       {(selectedFloor === 'all' || (manjil.length > 0 && selectedFloor === manjil[0]._id)) && (
-        //         <CCol
-        //           xs="6"
-        //           sm="4"
-        //           md="3"
-        //           lg="2"
-        //           xl="2"
-        //           className="mx-2 mb-4 d-flex justify-content-center"
-        //         >
-        //           <CContainer
-        //             className={`d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-3 w-100 ${theme === 'dark'
-        //               ? 'bg-secondary text-white'
-        //               : 'bg-white text-dark'
-        //               }`}
-        //             onClick={() => navigate('/pos/system/tableNumber/0')}
-        //             style={{
-        //               height: '10rem',
-        //               cursor: 'pointer',
-        //               width: '100%',
-        //             }}
-        //           >
-        //             <div className="fw-bold">Takeaway</div>
-        //           </CContainer>
-        //         </CCol>
-        //       )}
-        //     </CRow>
-        //   </div>
-
-        //   {/* No tables message */}
-        //   {getAvailableTables().length === 0 && getMergedTablesForFloor(selectedFloor).length === 0 && (
-        //     <div className="text-center text-muted py-4">
-        //       <CAlert color="info">
-        //         No tables found for {selectedFloor === 'all' ? 'any floor' : manjil.find(f => f._id === selectedFloor)?.name || 'this floor'}.
-        //       </CAlert>
-        //     </div>
-        //   )}
-        // </>
         // ADD THIS NEW LOGIC
         <>
 
@@ -1397,6 +1226,84 @@ const POS = () => {
         </CModalFooter>
       </CModal>
 
+      {/* Bank In Modal - Mobile Responsive */}
+      <CModal
+        visible={showBankInModal}
+        onClose={() => {
+          setShowBankInModal(false)
+          setBankAmount('')
+          setBankAmountNotes('')
+        }}
+        size="md"
+        backdrop="static"
+        className="modal-mobile-responsive"
+      >
+        <CModalHeader>
+          <CModalTitle className="d-flex align-items-center gap-2">
+            <CIcon icon={cilMoney} />
+            Add Bank Balance (Bank In)
+          </CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <CForm>
+            <div className="mb-3">
+              <CFormLabel htmlFor="bankInAmount">Amount to Deposit *</CFormLabel>
+              <CFormInput
+                type="number"
+                id="bankInAmount"
+                placeholder="Enter bank deposit amount"
+                value={bankAmount}
+                onChange={(e) => setBankAmount(e.target.value)}
+                min="0"
+                step="0.01"
+                disabled={cashLoading}
+              />
+            </div>
+            <div className="mb-3">
+              <CFormLabel htmlFor="bankInAmountNotes">Notes (e.g., Bank Transfer, UPI)</CFormLabel>
+              <CFormInput
+                type="string"
+                id="bankInAmountNotes"
+                placeholder="Enter any note"
+                value={bankAmountNotes}
+                onChange={(e) => setBankAmountNotes(e.target.value)}
+                disabled={cashLoading}
+              />
+            </div>
+            <CAlert color="info">
+              This amount will be tracked as a Bank deposit.
+            </CAlert>
+          </CForm>
+        </CModalBody>
+        <CModalFooter>
+          <CButton
+            color="secondary"
+            onClick={() => {
+              setShowBankInModal(false)
+              setBankAmount('')
+              setBankAmountNotes('')
+            }}
+            disabled={cashLoading}
+          >
+            Cancel
+          </CButton>
+          <CButton
+            color="warning"
+            onClick={handleBankIn}
+            disabled={!bankAmount || parseFloat(bankAmount) <= 0 || cashLoading}
+          >
+            {cashLoading ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                Processing...
+              </>
+            ) : (
+              'Deposit to Bank'
+            )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
       {/* Combined Order Modal - Mobile Responsive */}
       <CModal
         visible={showCombinedModal}
@@ -1555,6 +1462,7 @@ const POS = () => {
               setShowMergeModal(false)
               setSelectedMergeTables([])
             }}
+            disabled={mergingLoading}
           >
             Cancel
           </CButton>
