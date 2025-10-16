@@ -12,6 +12,10 @@ import {
   deductRewardPoints    // ADD THIS
 } from '../../redux/slices/customerSlice'
 import { createTransaction } from '../../redux/slices/transactionSlice'
+import {
+  fetchInventories,
+  deductStock  // ADD THIS
+} from '../../redux/slices/stockSlice'
 import { fetchSubCategories } from '../../redux/slices/subCategorySlice'
 import { fetchCategories } from '../../redux/slices/categorySlice'
 import jsPDF from 'jspdf'
@@ -50,7 +54,7 @@ const POSTableContent = () => {
   const authState = useSelector((state) => state.auth)
   const theme = useSelector((state) => state.theme.theme)
   const token = localStorage.getItem('authToken')
-  
+
   // Extract restaurantId from JWT token
   const getRestaurantIdFromToken = () => {
     try {
@@ -63,7 +67,7 @@ const POSTableContent = () => {
       return null
     }
   }
-  
+
   const restaurantId = getRestaurantIdFromToken() || localStorage.getItem('restaurantId')
 
   // Debug: Log restaurantId to console (commented for production)
@@ -145,7 +149,7 @@ const POSTableContent = () => {
 
   // Get userId from Redux state or localStorage
   const userId = useSelector((state) => state.auth.userId) || localStorage.getItem('userId')
-  
+
   const [cart, setCart] = useState(() => {
     // Make cart data user-specific by including userId in the key
     const currentUserId = userId || localStorage.getItem('userId')
@@ -154,9 +158,9 @@ const POSTableContent = () => {
       currentUserId,
       authState: { userId, restaurantId }
     })
-    
+
     const savedCart = localStorage.getItem(`cart_${tableId}_${currentUserId}`)
-    
+
     // If no user-specific cart, try to get from general cart (for backward compatibility)
     if (!savedCart) {
       const generalCart = localStorage.getItem(`cart_${tableId}`)
@@ -167,7 +171,7 @@ const POSTableContent = () => {
         return JSON.parse(generalCart)
       }
     }
-    
+
     console.log('🔍 Cart Debug:', {
       tableId,
       currentUserId,
@@ -181,7 +185,7 @@ const POSTableContent = () => {
     // Make start time user-specific by including userId in the key
     const currentUserId = userId || localStorage.getItem('userId')
     const savedStartTime = localStorage.getItem(`start_time_${tableId}_${currentUserId}`)
-    
+
     // If no user-specific start time, try to get from general start time (for backward compatibility)
     if (!savedStartTime) {
       const generalStartTime = localStorage.getItem(`start_time_${tableId}`)
@@ -192,7 +196,7 @@ const POSTableContent = () => {
         return new Date(generalStartTime)
       }
     }
-    
+
     return savedStartTime ? new Date(savedStartTime) : null
   })
   const [mobilePrintOptions, setMobilePrintOptions] = useState({
@@ -219,7 +223,7 @@ const POSTableContent = () => {
       dispatch(fetchCustomers({ token, restaurantId }))
       dispatch(fetchCategories({ token, restaurantId }))
       dispatch(fetchSubCategories({ token, restaurantId }))
-      
+
       // Auto-fetch and select system if available
       fetchAndSelectSystem()
     } else {
@@ -237,9 +241,9 @@ const POSTableContent = () => {
           'Content-Type': 'application/json'
         }
       })
-      
+
       const data = await response.json()
-      
+
       if (data.success && data.data && data.data.length > 0) {
         // Transform the data to match expected format and filter by willOccupy
         const transformedSystems = data.data
@@ -251,9 +255,9 @@ const POSTableContent = () => {
             willOccupy: setting.willOccupy,
             color: setting.color
           }))
-        
+
         console.log('Filtered systems (willOccupy: true):', transformedSystems)
-        
+
         // Handle system selection based on count
         if (!selectedSystem) {
           if (transformedSystems.length === 1 && transformedSystems[0].chargeOfSystem > 0) {
@@ -914,7 +918,6 @@ const POSTableContent = () => {
         toast.error('Failed to add customer: ' + error.message);
       });
   };
-
   const handlePaymentSubmit = async () => {
     const token = localStorage.getItem('authToken');
     const userId = localStorage.getItem('userId');
@@ -930,17 +933,12 @@ const POSTableContent = () => {
       return;
     }
 
-    // if (!selectedCustomer) {
-    //   toast.error('Please select a customer');
-    //   return;
-    // }
-
     const { _id, frequency, totalSpent } = selectedCustomer || {};
 
     let freq = frequency + 1;
     let updatedTotalSpent = totalSpent + calculateTotal();
 
-    // ✅ Calculate total reward points earned from menu items in cart
+    // Calculate total reward points earned from menu items in cart
     const totalRewardPointsEarned = cart.reduce((total, item) => {
       const itemRewardPoints = Number(item.rewardPoints) || 0;
       return total + (itemRewardPoints * item.quantity);
@@ -972,9 +970,8 @@ const POSTableContent = () => {
       discount: calculateDiscountAmount(),
       discountAmount: calculateDiscountAmount(),
       customerId: selectedCustomer?._id || null,
-
       roundOff: roundOff,
-      systemCharge: (selectedSystem && selectedSystem._id && selectedSystem.systemName && selectedSystem.chargeOfSystem > 0) ? Number(selectedSystem.chargeOfSystem) : 0,
+      systemCharge: selectedSystem ? Number(selectedSystem.chargeOfSystem) : 0,
       sub_total: calculateSubtotal(),
       total: calculateTotal(),
       type: paymentType,
@@ -996,42 +993,83 @@ const POSTableContent = () => {
       console.log('✅ Transaction created:', result);
 
       // 2. Update customer frequency and total spent
-      if(selectedCustomer){
-           await dispatch(updateCustomerFrequency({
-        id: _id,
-        frequency: freq,
-        totalSpent: updatedTotalSpent
-      })).unwrap();
-      console.log('✅ Customer frequency updated');
-
-      // 3. ✅ DEDUCT reward points if customer used them (checkbox was checked)
-      if (appliedDiscounts?.rewardPoints?.pointsUsed > 0) {
-        await dispatch(deductRewardPoints({
-          customerId: _id,
-          pointsToDeduct: appliedDiscounts.rewardPoints.pointsUsed
+      if (selectedCustomer) {
+        await dispatch(updateCustomerFrequency({
+          id: _id,
+          frequency: freq,
+          totalSpent: updatedTotalSpent
         })).unwrap();
+        console.log('✅ Customer frequency updated');
 
-        console.log(`✅ Deducted ${appliedDiscounts.rewardPoints.pointsUsed} points`);
+        // 3. Deduct reward points if customer used them
+        if (appliedDiscounts?.rewardPoints?.pointsUsed > 0) {
+          await dispatch(deductRewardPoints({
+            customerId: _id,
+            pointsToDeduct: appliedDiscounts.rewardPoints.pointsUsed
+          })).unwrap();
+
+          console.log(`✅ Deducted ${appliedDiscounts.rewardPoints.pointsUsed} points`);
+        }
+
+        // 4. Add reward points earned from menu items
+        if (totalRewardPointsEarned > 0) {
+          await dispatch(addRewardPoints({
+            customerId: _id,
+            pointsToAdd: totalRewardPointsEarned
+          })).unwrap();
+
+          console.log(`✅ Added ${totalRewardPointsEarned} points`);
+          toast.success(
+            `🎉 Customer earned ${totalRewardPointsEarned} reward points from this order!`,
+            { autoClose: 4000 }
+          );
+        }
       }
 
-      // 4. ✅ ADD reward points earned from menu items
-      if (totalRewardPointsEarned > 0) {
-        await dispatch(addRewardPoints({
-          customerId: _id,
-          pointsToAdd: totalRewardPointsEarned
-        })).unwrap();
+      // 🔥 NEW: 5. DEDUCT STOCK FROM INVENTORY (FIFO METHOD)
+      console.log('📦 Starting stock deduction...');
 
-        console.log(`✅ Added ${totalRewardPointsEarned} points`);
-        toast.success(
-          `🎉 Customer earned ${totalRewardPointsEarned} reward points from this order!`,
-          { autoClose: 4000 }
+      // Prepare stock deduction data from cart
+      const stockDeductionPromises = [];
+
+      for (const cartItem of cart) {
+        // Get the menu item's stock configuration
+        const menuItem = menuItems.find(m =>
+          (m._id === cartItem._id || m._id === cartItem.id)
         );
+
+        if (menuItem && menuItem.stockItems && menuItem.stockItems.length > 0) {
+          // For each stock item configured in the menu
+          for (const stockItem of menuItem.stockItems) {
+            const quantityToDeduct = Number(stockItem.quantity) * cartItem.quantity;
+
+            console.log(`📦 Deducting ${quantityToDeduct} ${stockItem.unit} from stock ${stockItem.stockId} for ${cartItem.itemName}`);
+
+            // Deduct stock using FIFO method
+            const deductPromise = dispatch(deductStock({
+              itemId: stockItem.stockId,
+              quantityToDeduct: quantityToDeduct,
+              token
+            })).unwrap();
+
+            stockDeductionPromises.push(deductPromise);
+          }
+        }
       }
 
-      }
-   
+      // Wait for all stock deductions to complete
+      if (stockDeductionPromises.length > 0) {
+        await Promise.all(stockDeductionPromises);
+        console.log('✅ All stock deductions completed successfully');
+        toast.success('📦 Inventory updated successfully!', { autoClose: 3000 });
 
-      // 5. Handle unmerge logic if needed
+        // Refresh inventory data
+        await dispatch(fetchInventories({ token }));
+      } else {
+        console.log('⚠️ No stock items configured for menu items in cart');
+      }
+
+      // 6. Handle unmerge logic if needed
       if (tableId.startsWith('merged_')) {
         const allMergedTables = JSON.parse(localStorage.getItem('mergedTables') || '[]');
         const updatedMergedTables = allMergedTables.filter(m => `merged_${m.id}` !== tableId);
@@ -1040,7 +1078,7 @@ const POSTableContent = () => {
         localStorage.removeItem(`start_time_${tableId}`);
       }
 
-      // 6. Success - clear cart and navigate
+      // 7. Success - clear cart and navigate
       setShowPaymentModal(false);
       clearCart();
       setAppliedDiscounts(null);
@@ -1049,9 +1087,153 @@ const POSTableContent = () => {
 
     } catch (error) {
       console.error("❌ Error submitting payment:", error);
-      toast.error('Failed to process payment: ' + (error.message || 'Unknown error'));
+
+      // Better error messaging
+      if (error.message && error.message.includes('Insufficient stock')) {
+        toast.error(`⚠️ ${error.message}`, { autoClose: 5000 });
+      } else {
+        toast.error('Failed to process payment: ' + (error.message || 'Unknown error'));
+      }
     }
   };
+  // const handlePaymentSubmit = async () => {
+  //   const token = localStorage.getItem('authToken');
+  //   const userId = localStorage.getItem('userId');
+  //   const restaurantId = localStorage.getItem('restaurantId');
+
+  //   if (!token || !restaurantId) {
+  //     toast.error('Authentication required');
+  //     return;
+  //   }
+
+  //   if (cart.length === 0) {
+  //     toast.error('Cart is empty');
+  //     return;
+  //   }
+
+  //   // if (!selectedCustomer) {
+  //   //   toast.error('Please select a customer');
+  //   //   return;
+  //   // }
+
+  //   const { _id, frequency, totalSpent } = selectedCustomer || {};
+
+  //   let freq = frequency + 1;
+  //   let updatedTotalSpent = totalSpent + calculateTotal();
+
+  //   // ✅ Calculate total reward points earned from menu items in cart
+  //   const totalRewardPointsEarned = cart.reduce((total, item) => {
+  //     const itemRewardPoints = Number(item.rewardPoints) || 0;
+  //     return total + (itemRewardPoints * item.quantity);
+  //   }, 0);
+
+  //   console.log('🎁 Total Reward Points to be added:', totalRewardPointsEarned);
+
+  //   const payload = {
+  //     token,
+  //     userId,
+  //     restaurantId,
+  //     tableNumber: tableId.startsWith('merged_')
+  //       ? `Merged (${tableId.substring(0, 15)}...)`
+  //       : tableNumber,
+  //     items: cart?.map((item) => ({
+  //       itemId: item._id || item.id,
+  //       itemName: item.itemName,
+  //       price: item.adjustedPrice,
+  //       quantity: item.quantity,
+  //       selectedSubcategoryId: item.selectedSubcategoryId || null,
+  //       subtotal: item.adjustedPrice * item.quantity,
+  //       taxType: item.taxType || null,
+  //       taxPercentage: item.taxPercentage || 0,
+  //       fixedTaxAmount: item.fixedTaxAmount || 0,
+  //       taxAmount: item.taxAmount || 0,
+  //       rewardPoints: item.rewardPoints || 0
+  //     })),
+  //     tax: calculateTotalTaxAmount(),
+  //     discount: calculateDiscountAmount(),
+  //     discountAmount: calculateDiscountAmount(),
+  //     customerId: selectedCustomer?._id || null,
+
+  //     roundOff: roundOff,
+  //     systemCharge: (selectedSystem && selectedSystem._id && selectedSystem.systemName && selectedSystem.chargeOfSystem > 0) ? Number(selectedSystem.chargeOfSystem) : 0,
+  //     sub_total: calculateSubtotal(),
+  //     total: calculateTotal(),
+  //     type: paymentType,
+  //     rewardPointsUsed: appliedDiscounts?.rewardPoints?.pointsUsed || 0,
+  //     rewardPointsEarned: totalRewardPointsEarned
+  //   };
+
+  //   if (paymentType === "split") {
+  //     payload.split_details = {
+  //       cash: splitPercentages.cash || 0,
+  //       online: splitPercentages.online || 0,
+  //       due: splitPercentages.due || 0,
+  //     };
+  //   }
+
+  //   try {
+  //     // 1. Create transaction
+  //     const result = await dispatch(createTransaction(payload)).unwrap();
+  //     console.log('✅ Transaction created:', result);
+
+  //     // 2. Update customer frequency and total spent
+  //     if (selectedCustomer) {
+  //       await dispatch(updateCustomerFrequency({
+  //         id: _id,
+  //         frequency: freq,
+  //         totalSpent: updatedTotalSpent
+  //       })).unwrap();
+  //       console.log('✅ Customer frequency updated');
+
+  //       // 3. ✅ DEDUCT reward points if customer used them (checkbox was checked)
+  //       if (appliedDiscounts?.rewardPoints?.pointsUsed > 0) {
+  //         await dispatch(deductRewardPoints({
+  //           customerId: _id,
+  //           pointsToDeduct: appliedDiscounts.rewardPoints.pointsUsed
+  //         })).unwrap();
+
+  //         console.log(`✅ Deducted ${appliedDiscounts.rewardPoints.pointsUsed} points`);
+  //       }
+
+  //       // 4. ✅ ADD reward points earned from menu items
+  //       if (totalRewardPointsEarned > 0) {
+  //         await dispatch(addRewardPoints({
+  //           customerId: _id,
+  //           pointsToAdd: totalRewardPointsEarned
+  //         })).unwrap();
+
+  //         console.log(`✅ Added ${totalRewardPointsEarned} points`);
+  //         toast.success(
+  //           `🎉 Customer earned ${totalRewardPointsEarned} reward points from this order!`,
+  //           { autoClose: 4000 }
+  //         );
+  //       }
+
+  //     }
+
+
+  //     // 5. Handle unmerge logic if needed
+  //     if (tableId.startsWith('merged_')) {
+  //       const allMergedTables = JSON.parse(localStorage.getItem('mergedTables') || '[]');
+  //       const updatedMergedTables = allMergedTables.filter(m => `merged_${m.id}` !== tableId);
+  //       localStorage.setItem('mergedTables', JSON.stringify(updatedMergedTables));
+  //       localStorage.removeItem(`cart_${tableId}`);
+  //       localStorage.removeItem(`start_time_${tableId}`);
+  //     }
+
+  //     // 6. Success - clear cart and navigate
+  //     setShowPaymentModal(false);
+  //     clearCart();
+  //     setAppliedDiscounts(null);
+  //     toast.success('✅ Payment processed successfully!');
+  //     navigate('/pos');
+
+  //   } catch (error) {
+  //     console.error("❌ Error submitting payment:", error);
+  //     toast.error('Failed to process payment: ' + (error.message || 'Unknown error'));
+  //   }
+  // };
+
   const generateInvoice = () => {
     const invoiceElement = invoiceRef.current
 
@@ -1488,12 +1670,12 @@ const POSTableContent = () => {
       </CRow>
       <CCardFooter className="p-3 mt-3 shadow-lg" style={{ borderRadius: '15px', backgroundColor: '#fff' }}>
         <CRow className="align-items-center">
-            <CCol md={4}>
-              <h4 className="fw-bold mb-0">
-                Total: ₹{calculateTotal().toFixed(2)}
-              </h4>
-            </CCol>
-            {/* System display removed - system will work in background */}
+          <CCol md={4}>
+            <h4 className="fw-bold mb-0">
+              Total: ₹{calculateTotal().toFixed(2)}
+            </h4>
+          </CCol>
+          {/* System display removed - system will work in background */}
           <CCol md={8} className="d-flex justify-content-end gap-2 flex-wrap">
             <CButton
               color="danger"

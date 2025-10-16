@@ -158,20 +158,25 @@ const Supplier = () => {
     setSelectedSupplier(null);
   };
   const handleUpdateSupplier = async () => {
-    if (!selectedSupplier) return;
-    const filteredRawItems = formData.rawItems.filter(item => item.trim() !== "");
-    await dispatch(
-      updateSupplier({
-        supplierId: selectedSupplier._id,
-        updates: { ...formData, rawItems: filteredRawItems },
-        token
-      })
-    );
-    await dispatch(fetchSuppliers({ restaurantId }));
-    setEditModalVisible(false);
-    setSelectedSupplier(null);
-    setFormData({ supplierName: "", email: "", phoneNumber: "", rawItems: [""] });
-  };
+  if (!selectedSupplier) return;
+  
+  // Prepare the data payload
+  const filteredRawItems = formData.rawItems.filter(item => item.trim() !== "");
+  const updateData = { ...formData, rawItems: filteredRawItems };
+
+  // Dispatch with the correct structure: { id, data, token }
+  await dispatch(
+    updateSupplier({
+      id: selectedSupplier._id,
+      data: updateData,
+      token,
+    })
+  );
+
+  // Close modal and reset state
+  setEditModalVisible(false);
+  setSelectedSupplier(null);
+}
 
   // const handleDeleteSupplier = async () => {
   //   await dispatch(deleteSupplier({ id: selectedSupplier._id, token }));

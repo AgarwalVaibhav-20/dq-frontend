@@ -15,7 +15,7 @@ export const fetchSuppliers = createAsyncThunk(
   async ({ restaurantId, token }, { rejectWithValue }) => {
     try {
       const response = await axios.get(
-        `${BASE_URL}/suppliers`,
+        `${BASE_URL}/getall/suppliers`,
         {
           params: { restaurantId },
           ...configureHeaders(token)
@@ -37,14 +37,14 @@ export const fetchSuppliers = createAsyncThunk(
 // Add a new supplier
 export const addSupplier = createAsyncThunk(
   'suppliers/addSupplier',
-  async ({ supplierName, email, phoneNumber, rawItem, token, inventoryId }, { rejectWithValue }) => {
+  async ({ supplierName, email, phoneNumber, rawItems, token, inventoryId }, { rejectWithValue }) => {
     try {
       // ✅ Get restaurantId directly from localStorage
       const restaurantId = localStorage.getItem("restaurantId");
 
       const response = await axios.post(
         `${BASE_URL}/create/suppliers`,
-        { supplierName, email, phoneNumber, rawItem, restaurantId, inventoryId },
+        { supplierName, email, phoneNumber, rawItems, restaurantId, inventoryId },
         configureHeaders(token)
       );
 
@@ -60,11 +60,12 @@ export const addSupplier = createAsyncThunk(
 // Update a supplier
 export const updateSupplier = createAsyncThunk(
   'suppliers/updateSupplier',
-  async ({ id, restaurantId, token, supplierName, email, phoneNumber, rawItem }, { rejectWithValue }) => {
+  // 👇 CHANGE the signature to accept an 'id' and a 'data' object
+  async ({ id, data, token }, { rejectWithValue }) => {
     try {
       const response = await axios.put(
-        `${BASE_URL}/suppliers/${id}`,
-        { supplierName, email, phoneNumber, rawItem, restaurantId },
+        `${BASE_URL}/suppliers/${id}`, // Use 'id' in the URL
+        data,                        // Pass the 'data' object as the body
         configureHeaders(token)
       );
       return response.data;
@@ -78,14 +79,16 @@ export const updateSupplier = createAsyncThunk(
 // Delete a supplier
 export const deleteSupplier = createAsyncThunk(
   'suppliers/deleteSupplier',
-  async ({ supplierId, restaurantId, token }, { rejectWithValue }) => {
+  // 👇 CHANGE the signature to only expect 'id' and 'token'
+  async ({ id, token }, { rejectWithValue }) => {
     try {
-      const response = await axios.delete(
-        `${BASE_URL}/suppliers/${supplierId}`,
+      await axios.delete(
+        `${BASE_URL}/suppliers/${id}`, // Use 'id' in the URL
         configureHeaders(token)
       );
 
-      return { supplierId, message: response.data.message };
+      // 👇 Return the original 'id' for the reducer
+      return { id };
     } catch (error) {
       return rejectWithValue(error.response?.data?.message || 'Failed to delete supplier');
     }
@@ -169,7 +172,7 @@ const supplierSlice = createSlice({
       .addCase(deleteSupplier.fulfilled, (state, action) => {
         state.loading = false;
         state.suppliers = state.suppliers.filter(
-          (supplier) => supplier.supplierId !== action.payload.supplierId && supplier._id !== action.payload.supplierId
+          (supplier) => supplier._id !== action.payload.id
         );
         toast.success("Supplier deleted successfully!");
       })
