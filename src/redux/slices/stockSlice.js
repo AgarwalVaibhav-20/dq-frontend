@@ -65,7 +65,7 @@ export const updateInventory = createAsyncThunk(
   async ({ id, unit, token }, { rejectWithValue }) => {
     try {
       const response = await axios.put(
-        `${BASE_URL}/update/${id}`,
+        `${BASE_URL}/update/stock/${id}`,
         { unit },
         configureHeaders(token)
       );
@@ -99,13 +99,14 @@ export const deleteInventory = createAsyncThunk(
 // Deduct stock using FIFO method
 export const deductStock = createAsyncThunk(
   'inventories/deductStock',
-  async ({ itemId, quantityToDeduct, token }, { rejectWithValue }) => {
+  async ({ itemId, quantityToDeduct,unit, token }, { rejectWithValue }) => {
     try {
       const response = await axios.post(
         `${BASE_URL}/deduct-stock`,
         { 
           itemId, 
-          quantityToDeduct: Number(quantityToDeduct) 
+          quantityToDeduct: Number(quantityToDeduct),
+          unit 
         },
         configureHeaders(token)
       );
