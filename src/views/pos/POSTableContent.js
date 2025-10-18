@@ -572,17 +572,17 @@ const POSTableContent = () => {
       } else {
         return // User cancelled the confirmation
       }
+      // --- This is the original logic for non-merged tables ---
     }
-
-    // --- This is the original logic for non-merged tables ---
     setCart([])
     setRoundOff(0)
     setStartTime(null)
     setElapsedTime(0)
     setSelectedCustomer(null);
     setSelectedCustomerName('');
-    localStorage.removeItem(`cart_${tableId}`)
-    localStorage.removeItem(`start_time_${tableId}`)
+    localStorage.removeItem(`cart_${tableId}_${userId}`)
+    localStorage.removeItem(`start_time_${tableId}_${userId}`)
+
     // toast.info('Order has been cancelled.')
   }
 

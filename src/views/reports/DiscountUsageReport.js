@@ -28,18 +28,14 @@ const formatDate = (d) => d.toISOString().split('T')[0];
 const DiscountUsageReport = () => {
   const dispatch = useDispatch();
   const { discountUsageByDate, loading } = useSelector((s) => s.reports);
-  const token  = localStorage.getItem('authToken')
+  const token = localStorage.getItem('authToken')
 
   /* ---------------------- date pickers ---------------------- */
   const today = new Date();
-  const lastMonth = new Date(today);
-  //lastMonth.setMonth(today.getMonth() - 6);
-    const oneYearAgo = new Date();
+  const oneYearAgo = new Date();
   oneYearAgo.setFullYear(today.getFullYear() - 1);
-
   const [startDate, setStartDate] = useState(formatDate(oneYearAgo));
   const [endDate, setEndDate] = useState(formatDate(today));
-
   /* ---------------------- modal state ----------------------- */
   const [modalVisible, setModalVisible] = useState(false);
   const [modalDate, setModalDate] = useState('');
@@ -59,17 +55,18 @@ const DiscountUsageReport = () => {
     const checkMobileView = () => {
       setIsMobileView(window.innerWidth < 768);
     };
-    
+
     checkMobileView();
     window.addEventListener('resize', checkMobileView);
     return () => window.removeEventListener('resize', checkMobileView);
   }, []);
 
   useEffect(() => {
-  if (token && restaurantId) {
-    dispatch(fetchDiscountUsageByDate({ token, startDate, endDate, restaurantId }));
-  }
-}, [dispatch, token, restaurantId,startDate, endDate]);
+    console.log('Token:', token, 'RestaurantId:', restaurantId);
+    if (token && restaurantId) {
+      dispatch(fetchDiscountUsageByDate({ token, startDate, endDate, restaurantId }));
+    }
+  }, [dispatch, token, restaurantId, startDate, endDate]);
   /* ------------------ fetch on button click ----------------- */
   const handleGenerateReport = () => {
     if (!startDate || !endDate) return alert('Please select both dates.');
@@ -97,7 +94,7 @@ const DiscountUsageReport = () => {
 
     // Search filter
     if (searchTerm) {
-      filtered = filtered.filter(row => 
+      filtered = filtered.filter(row =>
         row.date.toLowerCase().includes(searchTerm.toLowerCase()) ||
         row.totalDiscount.toString().includes(searchTerm) ||
         row.transactionCount.toString().includes(searchTerm)
@@ -108,12 +105,12 @@ const DiscountUsageReport = () => {
     filtered.sort((a, b) => {
       let aVal = a[sortBy];
       let bVal = b[sortBy];
-      
+
       if (sortBy === 'date') {
         aVal = new Date(aVal);
         bVal = new Date(bVal);
       }
-      
+
       if (sortOrder === 'asc') {
         return aVal > bVal ? 1 : -1;
       } else {
@@ -355,7 +352,7 @@ const DiscountUsageReport = () => {
               }}
             />
           )}
-          
+
           {/* Mobile View - Cards */}
           {isMobileView && (
             <div className="mobile-cards-container">
@@ -375,9 +372,9 @@ const DiscountUsageReport = () => {
       )}
 
       {/* modal */}
-      <CModal 
-        size={isMobileView ? "lg" : "xl"} 
-        visible={modalVisible} 
+      <CModal
+        size={isMobileView ? "lg" : "xl"}
+        visible={modalVisible}
         onClose={() => setModalVisible(false)}
         className={isMobileView ? "mobile-modal" : ""}
       >
