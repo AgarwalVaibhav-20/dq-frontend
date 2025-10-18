@@ -39,6 +39,8 @@ const Cart = ({
   membershipName,
   selectedSystem,
   onSystemChange,
+  appliedDiscounts,
+  setAppliedDiscounts,
   // optional parent handlers (if parent passed them)
   handleQuantityChange: parentHandleQuantityChange,
   handleDeleteClick: parentHandleDeleteClick,
@@ -47,7 +49,7 @@ const Cart = ({
   const [tempRoundOff, setTempRoundOff] = useState(roundOff || 0);
   const [localDiscountModal, setLocalDiscountModal] = useState(false);
   const [localRoundOffModal, setLocalRoundOffModal] = useState(false);
-  const [appliedDiscounts, setAppliedDiscounts] = useState(null);
+  // const [appliedDiscounts, setAppliedDiscounts] = useState(null);
   // Format time function
   const formatTime = (seconds) => {
     const hours = Math.floor(seconds / 3600);
@@ -378,7 +380,15 @@ const Cart = ({
             </div>
 
             {/* NEW: Show reward points discount separately */}
-            {appliedDiscounts?.rewardPoints?.discountAmount > 0 && (
+            {/* {appliedDiscounts?.rewardPoints?.discountAmount > 0 && (
+              <div className="d-flex justify-content-between mb-2">
+                <span className="text-success">
+                  🎁 Reward Points ({appliedDiscounts.rewardPoints.pointsUsed} pts)
+                </span>
+                <span className="text-success">- ₹{appliedDiscounts.rewardPoints.discountAmount.toFixed(2)}</span>
+              </div>
+            )} */}
+            {appliedDiscounts?.rewardPoints && (
               <div className="d-flex justify-content-between mb-2">
                 <span className="text-success">
                   🎁 Reward Points ({appliedDiscounts.rewardPoints.pointsUsed} pts)

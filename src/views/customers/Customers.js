@@ -1,32 +1,67 @@
-import React, { useState, useEffect } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
-import { DataGrid } from '@mui/x-data-grid'
-import { fetchCustomers, deleteCustomer, addCustomer, updateCustomer, setSelectedCustomerType, updateCustomerFrequency } from '../../redux/slices/customerSlice'
-import { CButton, CSpinner, CModal, CModalHeader, CModalBody, CModalFooter, CForm, CFormInput, CFormTextarea, CFormLabel, CAlert, CFormSelect, CDropdown, CDropdownToggle, CDropdownMenu, CDropdownItem, CFormCheck } from '@coreui/react'
-import CIcon from '@coreui/icons-react'
-import { cilEnvelopeOpen, cilChatBubble, cilTrash, cilPlus, cilFilter, cilPencil, cilOptions, cilPeople } from '@coreui/icons'
-import CustomToolbar from '../../utils/CustomToolbar'
-import { sendBulkEmail, resetBulkEmailStatus } from '../../redux/slices/SendBulkEmailSlice'
-import { useMediaQuery } from '@mui/material'
-import axiosInstance from '../../utils/axiosConfig'
-import { toast } from 'react-toastify'
-import { fetchMembers } from '../../redux/slices/memberSlice'
+import React, { useState, useEffect } from 'react';
+import { useDispatch, useSelector } from 'react-redux';
+import { DataGrid } from '@mui/x-data-grid';
+import {
+  fetchCustomers,
+  deleteCustomer,
+  addCustomer,
+  updateCustomer,
+  setSelectedCustomerType,
+  updateCustomerFrequency,
+} from '../../redux/slices/customerSlice';
+import {
+  CButton,
+  CSpinner,
+  CModal,
+  CModalHeader,
+  CModalBody,
+  CModalFooter,
+  CForm,
+  CFormInput,
+  CFormTextarea,
+  CFormLabel,
+  CAlert,
+  CFormSelect,
+  CDropdown,
+  CDropdownToggle,
+  CDropdownMenu,
+  CDropdownItem,
+  CFormCheck,
+} from '@coreui/react';
+import CIcon from '@coreui/icons-react';
+import {
+  cilEnvelopeOpen,
+  cilChatBubble,
+  cilTrash,
+  cilPlus,
+  cilFilter,
+  cilPencil,
+  cilOptions,
+  cilPeople,
+} from '@coreui/icons';
+import CustomToolbar from '../../utils/CustomToolbar';
+import { sendBulkEmail, resetBulkEmailStatus } from '../../redux/slices/SendBulkEmailSlice';
+import { useMediaQuery } from '@mui/material';
+import axiosInstance from '../../utils/axiosConfig';
+import { toast } from 'react-toastify';
+import { fetchMembers } from '../../redux/slices/memberSlice';
 import { Portal } from '@mui/material';
+
 const Customer = () => {
-  const dispatch = useDispatch()
-  const { customers, loading, selectedCustomerType } = useSelector((state) => state.customers)
-  const restaurantId = useSelector((state) => state.auth.restaurantId)
-  const token = localStorage.getItem('authToken')
-  const isMobile = useMediaQuery('(max-width:600px)')
+  const dispatch = useDispatch();
+  const { customers, loading, selectedCustomerType, error } = useSelector((state) => state.customers);
+  const restaurantId = useSelector((state) => state.auth.restaurantId);
+  const token = localStorage.getItem('authToken');
+  const isMobile = useMediaQuery('(max-width:600px)');
 
-  const [deleteModalVisible, setDeleteModalVisible] = useState(false)
-  const [selectedCustomerId, setSelectedCustomerId] = useState(null)
-  const [bulkEmailModalVisible, setBulkEmailModalVisible] = useState(false)
-  const [subject, setSubject] = useState('')
-  const [title, setTitle] = useState('')
-  const [body, setBody] = useState('')
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [selectedCustomerId, setSelectedCustomerId] = useState(null);
+  const [bulkEmailModalVisible, setBulkEmailModalVisible] = useState(false);
+  const [subject, setSubject] = useState('');
+  const [title, setTitle] = useState('');
+  const [body, setBody] = useState('');
 
-  const [addCustomerModalVisible, setAddCustomerModalVisible] = useState(false)
+  const [addCustomerModalVisible, setAddCustomerModalVisible] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -35,10 +70,11 @@ const Customer = () => {
     birthday: '',
     anniversary: '',
     membershipId: '',
-    membershipName: ''
-  })
+    membershipName: '',
+    corporate: false,
+  });
 
-  const [updateModalVisible, setUpdateModalVisible] = useState(false)
+  const [updateModalVisible, setUpdateModalVisible] = useState(false);
   const [updateFormData, setUpdateFormData] = useState({
     _id: '',
     name: '',
@@ -50,20 +86,20 @@ const Customer = () => {
     membershipId: '',
     membershipName: '',
     corporate: false,
-  })
+  });
 
-  const [formErrors, setFormErrors] = useState({})
-  const { members } = useSelector((state) => state.members)
+  const [formErrors, setFormErrors] = useState({});
+  const { members } = useSelector((state) => state.members);
 
-  // CUSTOMER SETTINGS STATE - UPDATED WITH CORRECT FIELD NAMES
+  // Customer settings state
   const [customerSettings, setCustomerSettings] = useState({
-    lostCustomerDays: '',
-    highSpenderAmount: '',
-    regularCustomerVisits: ''
-  })
+    lostCustomerDays: 60,
+    highSpenderAmount: 10000,
+    regularCustomerVisits: 5,
+  });
 
-  const [customerLoading, setCustomerLoading] = useState(false)
-  const [customerError, setCustomerError] = useState('')
+  const [customerLoading, setCustomerLoading] = useState(false);
+  const [customerError, setCustomerError] = useState('');
 
   // Customer type filter options
   const customerTypeOptions = [
@@ -73,249 +109,218 @@ const Customer = () => {
     { value: 'Regular', label: 'Regular' },
     { value: 'Lost Customer', label: 'Lost Customer' },
     { value: 'High Spender', label: 'High Spender' },
-  ]
+  ];
 
-  // Calculate days since customer was created (for Lost Customer logic)
+  // Calculate days since customer was created
   const daysSinceCreation = (createdAt) => {
     if (!createdAt) return 0;
-
     const today = new Date();
     const createdDate = new Date(createdAt);
     const diffTime = Math.abs(today - createdDate);
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
-  // Main classification function - CORRECTED
+  // Classify customer
   const classifyCustomer = (customer) => {
-    console.log('Classifying customer:', customer.name, {
-      corporate: customer.corporate,
-      totalSpent: customer.totalSpent,
-      frequency: customer.frequency,
-      createdAt: customer.createdAt,
-      settings: customerSettings
-    });
-
-    // 1. Corporate customer (highest priority)
     if (customer.corporate === true) {
       return 'Corporate';
     }
-
-    // 2. High Spender check - based on totalSpent
     if ((customer.totalSpent || 0) >= customerSettings.highSpenderAmount) {
       return 'High Spender';
     }
-
-    // 3. Regular Customer check - based on frequency (visit count)
     if ((customer.frequency || 0) >= customerSettings.regularCustomerVisits) {
       return 'Regular';
     }
-
-    // 4. Lost Customer check - based on days since creation
     const daysSinceCreated = daysSinceCreation(customer.createdAt);
     if (daysSinceCreated > customerSettings.lostCustomerDays) {
       return 'Lost Customer';
     }
-
     return 'FirstTimer';
   };
 
-  // FETCH CUSTOMER SETTINGS FUNCTION
+  // Fetch customer settings
   const fetchCustomerSettings = async () => {
     try {
-      setCustomerLoading(true)
-      const restaurantIdFromStorage = restaurantId
-      const response = await axiosInstance.get(`/api/customer-settings?restaurantId=${restaurantIdFromStorage}`)
-
+      setCustomerLoading(true);
+      const restaurantIdFromStorage = restaurantId;
+      const response = await axiosInstance.get(`/api/customer-settings?restaurantId=${restaurantIdFromStorage}`);
       if (response.data.success) {
         const settings = {
           lostCustomerDays: response.data.data.lostCustomerDays || 60,
           highSpenderAmount: response.data.data.highSpenderAmount || 10000,
-          regularCustomerVisits: response.data.data.regularCustomerVisits || 5
+          regularCustomerVisits: response.data.data.regularCustomerVisits || 5,
         };
-        setCustomerSettings(settings)
-        console.log('Customer settings loaded:', settings)
+        setCustomerSettings(settings);
+        console.log('Customer settings loaded:', settings);
       }
     } catch (error) {
-      console.error('Error fetching customer settings:', error)
+      console.error('Error fetching customer settings:', error);
       if (error.response?.status !== 404) {
-        setCustomerError('Failed to fetch customer settings')
-        toast.error('Failed to fetch customer settings')
+        setCustomerError('Failed to fetch customer settings');
+        toast.error('Failed to fetch customer settings');
       }
     } finally {
-      setCustomerLoading(false)
+      setCustomerLoading(false);
     }
-  }
+  };
 
-  // LOAD DATA ON COMPONENT MOUNT
-
+  // Load data on component mount
   useEffect(() => {
+    console.log('Initial load - Token:', token, 'RestaurantId:', restaurantId);
     if (restaurantId && token) {
-      dispatch(fetchCustomers({ token, restaurantId }))
-      dispatch(fetchMembers(token))
+      dispatch(fetchCustomers({ token, restaurantId }));
+      dispatch(fetchMembers(token));
       fetchCustomerSettings();
+    } else {
+      console.error('Missing token or restaurantId');
+      toast.error('Authentication error: Please log in again.');
     }
-  }, [dispatch, restaurantId, token])
+  }, [dispatch, restaurantId, token]);
 
-  // GET CUSTOMERS WITH DYNAMIC CLASSIFICATION
+  // Get customers with dynamic classification
   const getClassifiedCustomers = () => {
-    return customers.map(customer => ({
+    return customers.map((customer) => ({
       ...customer,
-      dynamicCustomerType: classifyCustomer(customer)
+      dynamicCustomerType: classifyCustomer(customer),
     }));
   };
 
-  // FILTER CUSTOMERS BASED ON CLASSIFICATION
+  // Filter customers based on classification
   const getFilteredCustomers = () => {
     const classifiedCustomers = getClassifiedCustomers();
-
     if (selectedCustomerType === 'All') {
       return classifiedCustomers;
     }
-
-    return classifiedCustomers.filter(customer =>
-      customer.dynamicCustomerType === selectedCustomerType
-    );
+    return classifiedCustomers.filter((customer) => customer.dynamicCustomerType === selectedCustomerType);
   };
 
-  // GET COUNT FOR EACH CUSTOMER TYPE
+  // Get count for each customer type
   const getCustomerTypeCount = (type) => {
     if (type === 'All') return customers.length;
-
     const classifiedCustomers = getClassifiedCustomers();
-    return classifiedCustomers.filter(customer =>
-      customer.dynamicCustomerType === type
-    ).length;
+    return classifiedCustomers.filter((customer) => customer.dynamicCustomerType === type).length;
   };
 
   // Handle customer type filter change
   const handleCustomerTypeChange = (e) => {
-    const newType = e.target.value
-    dispatch(setSelectedCustomerType(newType))
-  }
+    const newType = e.target.value;
+    dispatch(setSelectedCustomerType(newType));
+  };
 
   // Get filtered customers for display
   const filteredCustomers = getFilteredCustomers();
 
-  // REFRESH SETTINGS FUNCTION
+  // Refresh settings
   const refreshCustomerSettings = async () => {
     await fetchCustomerSettings();
     toast.success('Customer settings refreshed!');
   };
 
-  // REST OF YOUR EXISTING FUNCTIONS (unchanged)
+  // Action handlers
   const sendEmail = (email) => {
-    window.location.href = `mailto:${email}?subject=Hello&body=Hi there!`
-  }
+    window.location.href = `mailto:${email}?subject=Hello&body=Hi there!`;
+  };
 
   const sendWhatsApp = (phoneNumber) => {
-    const sanitizedPhone = phoneNumber.replace(/[^0-9]/g, '')
-    window.open(`https://wa.me/${sanitizedPhone}?text=Hi!`, '_blank')
-  }
+    const sanitizedPhone = phoneNumber.replace(/[^0-9]/g, '');
+    window.open(`https://wa.me/${sanitizedPhone}?text=Hi!`, '_blank');
+  };
 
   const handleDelete = () => {
     if (selectedCustomerId) {
       dispatch(deleteCustomer({ _id: selectedCustomerId })).then(() => {
-        dispatch(fetchCustomers({ restaurantId })) // ✅ FIXED
-        setDeleteModalVisible(false)
-        setSelectedCustomerId(null)
-      })
+        dispatch(fetchCustomers({ token, restaurantId }));
+        setDeleteModalVisible(false);
+        setSelectedCustomerId(null);
+      });
     }
-  }
+  };
 
   const openDeleteModal = (id) => {
-    setSelectedCustomerId(id)
-    setDeleteModalVisible(true)
-  }
+    setSelectedCustomerId(id);
+    setDeleteModalVisible(true);
+  };
 
-  let serialCounter = 1
+  let serialCounter = 1;
   const generateSerialNumber = () => {
-    return serialCounter++
-  }
+    return serialCounter++;
+  };
 
-  const sendbulkEmail = () => {
-    setBulkEmailModalVisible(true)
-  }
-
+  const sendBulkEmail = () => {
+    setBulkEmailModalVisible(true);
+  };
 
   const handleSendBulkEmail = () => {
     if (!subject || !title || !body) {
-      alert('Please fill in all fields')
-      return
+      toast.error('Please fill in all fields');
+      return;
     }
-
     try {
-      dispatch(sendBulkEmail({ restaurantId, subject, title, body }))
-      setBulkEmailModalVisible(false)
-      setSubject('')
-      setTitle('')
-      setBody('')
+      dispatch(sendBulkEmail({ restaurantId, subject, title, body }));
+      setBulkEmailModalVisible(false);
+      setSubject('');
+      setTitle('');
+      setBody('');
     } catch (error) {
-      console.error('Send bulk email failed:', error)
+      console.error('Send bulk email failed:', error);
+      toast.error('Failed to send bulk email');
     }
-  }
+  };
 
   const handleInputChange = (e) => {
-    const { name, type, value, checked } = e.target
-    setFormData(prev => ({
+    const { name, type, value, checked } = e.target;
+    setFormData((prev) => ({
       ...prev,
-      [name]: type === 'checkbox' ? checked : value
-    }))
-
+      [name]: type === 'checkbox' ? checked : value,
+    }));
     if (formErrors[name]) {
-      setFormErrors(prev => ({
+      setFormErrors((prev) => ({
         ...prev,
-        [name]: ''
-      }))
+        [name]: '',
+      }));
     }
-  }
+  };
 
-  // Update Customer input handler
   const handleUpdateInputChange = (e) => {
-    const { name, value } = e.target
-    setUpdateFormData(prev => ({
+    const { name, value } = e.target;
+    setUpdateFormData((prev) => ({
       ...prev,
-      [name]: value
-    }))
-  }
+      [name]: value,
+    }));
+  };
 
   const validateForm = () => {
-    const errors = {}
-
+    const errors = {};
     if (!formData.name?.trim()) {
-      errors.name = 'Customer name is required'
+      errors.name = 'Customer name is required';
     }
-
     if (formData.email && !/\S+@\S+\.\S+/.test(formData.email)) {
-      errors.email = 'Please enter a valid email address'
+      errors.email = 'Please enter a valid email address';
     }
-
     if (formData.phoneNumber && !/^\d{10}$/.test(formData.phoneNumber.replace(/\D/g, ''))) {
-      errors.phoneNumber = 'Please enter a valid 10-digit phone number'
+      errors.phoneNumber = 'Please enter a valid 10-digit phone number';
     }
-
-    setFormErrors(errors)
-    return Object.keys(errors).length === 0
-  }
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleAddCustomer = async () => {
-    if (!validateForm()) return
-
+    if (!validateForm()) return;
     try {
-      await dispatch(addCustomer({
-        token,
-        name: formData.name,
-        email: formData.email,
-        address: formData.address,
-        phoneNumber: formData.phoneNumber,
-        birthday: formData.birthday,
-        anniversary: formData.anniversary,
-        corporate: formData.corporate,
-        membershipId: formData.membershipId || null,
-        membershipName: formData.membershipName || null
-      })).unwrap()
-
-      dispatch(fetchCustomers({ restaurantId, token }))
-
+      await dispatch(
+        addCustomer({
+          token,
+          name: formData.name,
+          email: formData.email,
+          address: formData.address,
+          phoneNumber: formData.phoneNumber,
+          birthday: formData.birthday,
+          anniversary: formData.anniversary,
+          corporate: formData.corporate,
+          membershipId: formData.membershipId || null,
+          membershipName: formData.membershipName || null,
+        })
+      ).unwrap();
       setFormData({
         name: '',
         email: '',
@@ -325,17 +330,17 @@ const Customer = () => {
         anniversary: '',
         corporate: false,
         membershipId: '',
-        membershipName: ''
-      })
-      setFormErrors({})
-      setAddCustomerModalVisible(false)
+        membershipName: '',
+      });
+      setFormErrors({});
+      setAddCustomerModalVisible(false);
     } catch (error) {
-      console.error('Failed to add customer:', error)
+      console.error('Failed to add customer:', error);
+      toast.error('Failed to add customer: ' + (error.message || 'Unknown error'));
     }
-  }
+  };
 
   const openUpdateModal = (customer) => {
-    console.log("customer is thi", customer)
     setUpdateFormData({
       _id: customer._id,
       name: customer.name || '',
@@ -345,35 +350,33 @@ const Customer = () => {
       birthday: customer.birthday ? customer.birthday.split('T')[0] : '',
       anniversary: customer.anniversary ? customer.anniversary.split('T')[0] : '',
       membershipId: customer.membershipId?._id || customer.membershipId || '',
-      membershipName: customer.membership?.membershipName || customer.membershipName || ''
-    })
-    setUpdateModalVisible(true)
-  }
+      membershipName: customer.membership?.membershipName || customer.membershipName || '',
+      corporate: customer.corporate || false,
+    });
+    setUpdateModalVisible(true);
+  };
 
   const handleUpdateCustomer = async () => {
     if (!updateFormData.name?.trim()) {
-      alert('Customer name is required')
-      return
+      toast.error('Customer name is required');
+      return;
     }
-
     try {
-      const token = localStorage.getItem('authToken')
-      await dispatch(updateCustomer({
-        _id: updateFormData._id,
-        token,
-        name: updateFormData.name,
-        email: updateFormData.email,
-        address: updateFormData.address,
-        phoneNumber: updateFormData.phoneNumber,
-        birthday: updateFormData.birthday,
-        anniversary: updateFormData.anniversary,
-        membershipId: updateFormData.membershipId || null,
-        membershipName: updateFormData.membershipName || null
-      })).unwrap()
-
-      dispatch(fetchCustomers({ restaurantId })) // ✅ FIXED
-
-      setUpdateModalVisible(false)
+      await dispatch(
+        updateCustomer({
+          _id: updateFormData._id,
+          token,
+          name: updateFormData.name,
+          email: updateFormData.email,
+          address: updateFormData.address,
+          phoneNumber: updateFormData.phoneNumber,
+          birthday: updateFormData.birthday,
+          anniversary: updateFormData.anniversary,
+          membershipId: updateFormData.membershipId || null,
+          membershipName: updateFormData.membershipName || null,
+        })
+      ).unwrap();
+      setUpdateModalVisible(false);
       setUpdateFormData({
         _id: '',
         name: '',
@@ -383,15 +386,17 @@ const Customer = () => {
         birthday: '',
         anniversary: '',
         membershipId: '',
-        membershipName: ''
-      })
+        membershipName: '',
+        corporate: false,
+      });
     } catch (error) {
-      console.error('Failed to update customer:', error)
+      console.error('Failed to update customer:', error);
+      toast.error('Failed to update customer: ' + (error.message || 'Unknown error'));
     }
-  }
+  };
 
   const closeAddCustomerModal = () => {
-    setAddCustomerModalVisible(false)
+    setAddCustomerModalVisible(false);
     setFormData({
       name: '',
       email: '',
@@ -401,13 +406,13 @@ const Customer = () => {
       anniversary: '',
       corporate: false,
       membershipId: '',
-      membershipName: ''
-    })
-    setFormErrors({})
-  }
+      membershipName: '',
+    });
+    setFormErrors({});
+  };
 
   const closeUpdateModal = () => {
-    setUpdateModalVisible(false)
+    setUpdateModalVisible(false);
     setUpdateFormData({
       _id: '',
       name: '',
@@ -417,10 +422,11 @@ const Customer = () => {
       birthday: '',
       anniversary: '',
       membershipId: '',
-      membershipName: ''
-    })
-  }
-  // UPDATED COLUMNS WITH DYNAMIC CLASSIFICATION
+      membershipName: '',
+      corporate: false,
+    });
+  };
+
   const columns = [
     {
       field: 'sno',
@@ -430,6 +436,7 @@ const Customer = () => {
       align: 'center',
       sortable: false,
       filterable: false,
+      renderCell: () => generateSerialNumber(),
     },
     {
       field: 'name',
@@ -474,17 +481,23 @@ const Customer = () => {
       headerAlign: 'center',
       align: 'center',
       renderCell: (params) => {
-        const type = params.row.dynamicCustomerType || 'FirstTimer'
+        const type = params.row.dynamicCustomerType || 'FirstTimer';
         const getTypeColor = (type) => {
           switch (type) {
-            case 'FirstTimer': return '#6c757d'
-            case 'Corporate': return '#0d6efd'
-            case 'Regular': return '#198754'
-            case 'Lost Customer': return '#dc3545'
-            case 'High Spender': return '#fd7e14'
-            default: return '#6c757d'
+            case 'FirstTimer':
+              return '#6c757d';
+            case 'Corporate':
+              return '#0d6efd';
+            case 'Regular':
+              return '#198754';
+            case 'Lost Customer':
+              return '#dc3545';
+            case 'High Spender':
+              return '#fd7e14';
+            default:
+              return '#6c757d';
           }
-        }
+        };
         return (
           <span
             style={{
@@ -496,12 +509,12 @@ const Customer = () => {
               fontWeight: '500',
               display: 'inline-block',
               minWidth: '80px',
-              textAlign: 'center'
+              textAlign: 'center',
             }}
           >
             {type}
           </span>
-        )
+        );
       },
     },
     {
@@ -530,9 +543,9 @@ const Customer = () => {
       filterable: false,
       renderCell: (params) => {
         const { email, phoneNumber, _id } = params.row;
-
         return (
-          <div className='d-flex gap-2 justify-content-center align-items-center'
+          <div
+            className="d-flex gap-2 justify-content-center align-items-center"
             style={{
               flexWrap: 'nowrap',
               overflow: 'visible',
@@ -542,11 +555,9 @@ const Customer = () => {
             <CButton color="primary" size="sm" onClick={() => sendEmail(email)}>
               <CIcon icon={cilEnvelopeOpen} className="me-1" /> Email
             </CButton>
-
             <CButton color="success" size="sm" onClick={() => sendWhatsApp(phoneNumber)}>
               <CIcon icon={cilChatBubble} className="me-1" /> WhatsApp
             </CButton>
-
             <CDropdown variant="btn-group">
               <CDropdownToggle color="secondary" size="sm" caret={false}>
                 <CIcon icon={cilOptions} />
@@ -556,30 +567,31 @@ const Customer = () => {
                   <CDropdownItem onClick={() => openUpdateModal(params.row)}>
                     <CIcon icon={cilPencil} className="me-2" /> Update
                   </CDropdownItem>
-                  <CDropdownItem
-                    onClick={() => openDeleteModal(_id)}
-                    className="text-danger"
-                  >
+                  <CDropdownItem onClick={() => openDeleteModal(_id)} className="text-danger">
                     <CIcon icon={cilTrash} className="me-2" /> Delete
                   </CDropdownItem>
                 </CDropdownMenu>
               </Portal>
             </CDropdown>
           </div>
-        )
+        );
       },
-    }
-  ]
+    },
+  ];
 
   return (
     <div className="p-4 bg-gray-50 min-h-screen">
       <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
         <h2 className="text-2xl font-bold text-gray-800 mb-3 sm:mb-0">Customers</h2>
         <div className="flex gap-2">
-          <CButton color="success" onClick={() => setAddCustomerModalVisible(true)} className="shadow-sm">
+          <CButton
+            color="success"
+            onClick={() => setAddCustomerModalVisible(true)}
+            className="shadow-sm"
+          >
             <CIcon icon={cilPlus} className="me-2" /> Add Customer
           </CButton>
-          <CButton color="primary" onClick={sendbulkEmail} className="shadow-sm">
+          <CButton color="primary" onClick={sendBulkEmail} className="shadow-sm">
             <CIcon icon={cilEnvelopeOpen} className="me-2" /> Send Bulk Emails
           </CButton>
         </div>
@@ -610,157 +622,97 @@ const Customer = () => {
 
       {loading ? (
         <div className="flex justify-center my-6">
-          <CSpinner color="primary" variant="grow" />
+          <CSpinner color="primary" />
         </div>
       ) : (
         <>
-          {/* Desktop View - DataGrid */}
-          <div className="bg-white rounded-xl shadow-sm p-2 sm:p-4 hidden sm:block" style={{ width: '100%', minWidth: '800px' }}>
-            <DataGrid
-              autoHeight
-              style={{ width: '100%', minHeight: '400px' }}
-              rows={filteredCustomers?.map((customer, index) => ({
-                ...customer,
-                sno: index + 1,
-                membership: customer.membership || '',
-              }))}
-              columns={columns}
-              getRowId={(row) => row.id || row._id || Math.random()}
-              pageSize={10}
-              rowsPerPageOptions={[10, 25, 50]}
-              slots={{ Toolbar: CustomToolbar }}
-              disableColumnMenu={false}
-              disableColumnFilter={false}
-              disableColumnSelector={false}
-              disableDensitySelector={false}
-              columnHeaderHeight={60}
-              rowHeight={60}
-              headerHeight={60}
-              sx={{
-                '& .MuiDataGrid-columnHeaders': {
-                  backgroundColor: '#f8f9fa',
-                  fontWeight: 'bold',
-                  fontSize: '0.95rem',
-                  borderBottom: '2px solid #dee2e6',
-                  '& .MuiDataGrid-columnHeaderTitle': {
-                    fontWeight: 'bold',
-                    fontSize: '0.95rem',
-                    color: '#495057',
-                    textOverflow: 'unset',
-                    whiteSpace: 'normal',
-                    lineHeight: 1.2,
-                  },
-                  '& .MuiDataGrid-columnHeaderTitleContainer': {
-                    justifyContent: 'center',
-                  }
-                },
-                '& .MuiDataGrid-cell': {
-                  fontSize: '0.9rem',
-                  padding: '12px 8px',
-                  borderBottom: '1px solid #e9ecef',
-                  '&:focus': {
-                    outline: 'none',
-                  }
-                },
-                '& .MuiDataGrid-row': {
-                  '&:hover': {
-                    backgroundColor: '#f8f9fa',
-                  },
-                  '&:nth-of-type(even)': {
-                    backgroundColor: '#fafafa',
-                  }
-                },
-                '& .MuiDataGrid-columnHeader': {
-                  '&:focus': {
-                    outline: 'none',
-                  }
-                },
-              }}
-            />
-          </div>
-
-          {/* Mobile View - Cards */}
-          <div className="block sm:hidden space-y-3">
-            {filteredCustomers?.map((customer, index) => {
-              const customerType = customer.dynamicCustomerType || 'FirstTimer';
-              const getTypeColor = (type) => {
-                switch (type) {
-                  case 'FirstTimer': return '#6c757d'
-                  case 'Corporate': return '#0d6efd'
-                  case 'Regular': return '#198754'
-                  case 'Lost Customer': return '#dc3545'
-                  case 'High Spender': return '#fd7e14'
-                  default: return '#6c757d'
-                }
-              }
-
-              return (
-                <div key={customer._id || customer.id} className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
-                  {/* Header with Customer Name and Type */}
-                  <div className="flex justify-between items-start mb-3">
-                    <div className="flex-1">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-1">
-                        {customer.name || 'N/A'}
-                      </h3>
+          {!isMobile ? (
+            <div style={{ height: 600, width: '100%' }}>
+              <DataGrid
+                rows={filteredCustomers}
+                columns={columns}
+                pageSize={10}
+                rowsPerPageOptions={[10, 20, 50]}
+                components={{ Toolbar: CustomToolbar }}
+                getRowId={(row) => row._id}
+                disableSelectionOnClick
+              />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {filteredCustomers?.map((customer) => (
+                <div
+                  key={customer._id}
+                  className="p-4 bg-white rounded-lg shadow-sm border border-gray-200"
+                >
+                  <div className="mb-3">
+                    <div className="flex justify-between items-center">
+                      <h3 className="text-lg font-semibold text-gray-900">{customer.name}</h3>
                       <span
-                        className="inline-block px-3 py-1 rounded-full text-xs font-medium text-white"
-                        style={{ backgroundColor: getTypeColor(customerType) }}
+                        style={{
+                          backgroundColor:
+                            customer.dynamicCustomerType === 'FirstTimer'
+                              ? '#6c757d'
+                              : customer.dynamicCustomerType === 'Corporate'
+                              ? '#0d6efd'
+                              : customer.dynamicCustomerType === 'Regular'
+                              ? '#198754'
+                              : customer.dynamicCustomerType === 'Lost Customer'
+                              ? '#dc3545'
+                              : '#fd7e14',
+                          color: 'white',
+                          padding: '4px 8px',
+                          borderRadius: '12px',
+                          fontSize: '0.75rem',
+                          fontWeight: '500',
+                        }}
                       >
-                        {customerType}
+                        {customer.dynamicCustomerType || 'FirstTimer'}
                       </span>
                     </div>
-                    <div className="text-right">
-                      <span className="text-sm text-gray-500">#{index + 1}</span>
-                    </div>
-                  </div>
-
-                  {/* Customer Details */}
-                  <div className="space-y-2 mb-4">
                     {customer.email && (
-                      <div className="flex items-center">
-                        <CIcon icon={cilEnvelopeOpen} className="text-gray-400 me-2" size="sm" />
+                      <div className="flex items-center gap-2 mt-2">
+                        <CIcon icon={cilEnvelopeOpen} size="sm" />
                         <span className="text-sm text-gray-600">{customer.email}</span>
                       </div>
                     )}
-                    
                     {customer.phoneNumber && (
-                      <div className="flex items-center">
-                        <CIcon icon={cilChatBubble} className="text-gray-400 me-2" size="sm" />
+                      <div className="flex items-center gap-2 mt-1">
+                        <CIcon icon={cilChatBubble} size="sm" />
                         <span className="text-sm text-gray-600">{customer.phoneNumber}</span>
                       </div>
                     )}
-                    
                     {customer.address && (
-                      <div className="flex items-start">
+                      <div className="flex items-start mt-1">
                         <span className="text-sm text-gray-600 flex-1">{customer.address}</span>
                       </div>
                     )}
                   </div>
-
-                  {/* Stats Row */}
                   <div className="flex justify-between items-center mb-4 text-sm">
                     <div className="text-center">
                       <div className="font-semibold text-gray-900">{customer.frequency || 0}</div>
                       <div className="text-gray-500">Visits</div>
                     </div>
                     <div className="text-center">
-                      <div className="font-semibold text-green-600">₹{customer.totalSpent || 0}</div>
+                      <div className="font-semibold text-green-600">
+                        ₹{customer.totalSpent || 0}
+                      </div>
                       <div className="text-gray-500">Total Spent</div>
                     </div>
                     {customer.membership?.membershipName && (
                       <div className="text-center">
-                        <div className="font-semibold text-blue-600">{customer.membership.membershipName}</div>
+                        <div className="font-semibold text-blue-600">
+                          {customer.membership.membershipName}
+                        </div>
                         <div className="text-gray-500">Membership</div>
                       </div>
                     )}
                   </div>
-
-                  {/* Action Buttons */}
                   <div className="flex gap-2 flex-wrap">
                     {customer.email && (
-                      <CButton 
-                        color="primary" 
-                        size="sm" 
+                      <CButton
+                        color="primary"
+                        size="sm"
                         onClick={() => sendEmail(customer.email)}
                         className="flex-1 min-w-0"
                       >
@@ -768,11 +720,10 @@ const Customer = () => {
                         Email
                       </CButton>
                     )}
-                    
                     {customer.phoneNumber && (
-                      <CButton 
-                        color="success" 
-                        size="sm" 
+                      <CButton
+                        color="success"
+                        size="sm"
                         onClick={() => sendWhatsApp(customer.phoneNumber)}
                         className="flex-1 min-w-0"
                       >
@@ -780,7 +731,6 @@ const Customer = () => {
                         WhatsApp
                       </CButton>
                     )}
-
                     <CDropdown variant="btn-group" className="flex-1 min-w-0">
                       <CDropdownToggle color="secondary" size="sm" caret={false} className="w-100">
                         <CIcon icon={cilOptions} />
@@ -799,31 +749,23 @@ const Customer = () => {
                     </CDropdown>
                   </div>
                 </div>
-              );
-            })}
-
-            {/* No customers message for mobile */}
-            {filteredCustomers?.length === 0 && (
-              <div className="text-center py-8">
-                <div className="text-gray-500 mb-2">
-                  <CIcon icon={cilPeople} size="3xl" />
+              ))}
+              {filteredCustomers?.length === 0 && (
+                <div className="text-center py-8">
+                  <div className="text-gray-500 mb-2">
+                    <CIcon icon={cilPeople} size="3xl" />
+                  </div>
+                  <h3 className="text-lg font-medium text-gray-900 mb-1">No customers found</h3>
+                  <p className="text-gray-500">Try adjusting your filters or add new customers.</p>
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-1">No customers found</h3>
-                <p className="text-gray-500">Try adjusting your filters or add new customers.</p>
-              </div>
-            )}
-          </div>
+              )}
+            </div>
+          )}
         </>
       )}
 
-      {/* ALL YOUR EXISTING MODALS REMAIN THE SAME */}
-
       {/* Delete Confirmation Modal */}
-      <CModal
-        visible={deleteModalVisible}
-        onClose={() => setDeleteModalVisible(false)}
-        backdrop="static"
-      >
+      <CModal visible={deleteModalVisible} onClose={() => setDeleteModalVisible(false)} backdrop="static">
         <CModalHeader className="fw-bold">Confirm Deletion</CModalHeader>
         <CModalBody className="text-gray-700">
           Are you sure you want to delete this customer? This action cannot be undone.
@@ -874,7 +816,11 @@ const Customer = () => {
           </CForm>
         </CModalBody>
         <CModalFooter>
-          <CButton color="secondary" variant="outline" onClick={() => setBulkEmailModalVisible(false)}>
+          <CButton
+            color="secondary"
+            variant="outline"
+            onClick={() => setBulkEmailModalVisible(false)}
+          >
             Cancel
           </CButton>
           <CButton color="primary" className="shadow-sm" onClick={handleSendBulkEmail}>
@@ -904,7 +850,6 @@ const Customer = () => {
               </ul>
             </CAlert>
           )}
-
           <CForm>
             <div className="row">
               <div className="col-md-6">
@@ -941,7 +886,6 @@ const Customer = () => {
                 </div>
               </div>
             </div>
-
             <div className="row">
               <div className="col-md-6">
                 <div className="mb-3">
@@ -975,7 +919,6 @@ const Customer = () => {
                 </div>
               </div>
             </div>
-
             <div className="row">
               <div className="col-md-6">
                 <div className="mb-3">
@@ -1030,22 +973,23 @@ const Customer = () => {
                     name="membershipId"
                     value={formData.membershipId}
                     onChange={(e) => {
-                      const selectedId = e.target.value
-                      const selectedMembership = members.find(m => m._id === selectedId)
-
+                      const selectedId = e.target.value;
+                      const selectedMembership = members.find((m) => m._id === selectedId);
                       setFormData({
                         ...formData,
                         membershipId: selectedId,
-                        membershipName: selectedMembership?.membershipName || ''
-                      })
+                        membershipName: selectedMembership?.membershipName || '',
+                      });
                     }}
                   >
                     <option value="">No Membership</option>
                     {members?.map((member) => (
                       <option key={member._id} value={member._id}>
-                        {member.membershipName} -
-                        {member.discountType === 'fixed' ? `₹${member.discount}` : `${member.discount}%`} OFF
-                        (Min: ₹{member.minSpend})
+                        {member.membershipName} -{' '}
+                        {member.discountType === 'fixed'
+                          ? `₹${member.discount}`
+                          : `${member.discount}%`}{' '}
+                        OFF (Min: ₹{member.minSpend})
                       </option>
                     ))}
                   </CFormSelect>
@@ -1108,7 +1052,6 @@ const Customer = () => {
                 </div>
               </div>
             </div>
-
             <div className="row">
               <div className="col-md-6">
                 <div className="mb-3">
@@ -1141,7 +1084,6 @@ const Customer = () => {
                 </div>
               </div>
             </div>
-
             <div className="row">
               <div className="col-md-6">
                 <div className="mb-3">
@@ -1172,7 +1114,6 @@ const Customer = () => {
                 </div>
               </div>
             </div>
-
             <div className="row">
               <div className="col-md-6">
                 <div className="mb-3">
@@ -1184,22 +1125,23 @@ const Customer = () => {
                     name="membershipId"
                     value={updateFormData.membershipId}
                     onChange={(e) => {
-                      const selectedId = e.target.value
-                      const selectedMembership = members.find(m => m._id === selectedId)
-
+                      const selectedId = e.target.value;
+                      const selectedMembership = members.find((m) => m._id === selectedId);
                       setUpdateFormData({
                         ...updateFormData,
                         membershipId: selectedId,
-                        membershipName: selectedMembership?.membershipName || ''
-                      })
+                        membershipName: selectedMembership?.membershipName || '',
+                      });
                     }}
                   >
                     <option value="">No Membership</option>
                     {members?.map((member) => (
                       <option key={member._id} value={member._id}>
-                        {member.membershipName} -
-                        {member.discountType === 'fixed' ? `₹${member.discount}` : `${member.discount}%`} OFF
-                        (Min: ₹{member.minSpend})
+                        {member.membershipName} -{' '}
+                        {member.discountType === 'fixed'
+                          ? `₹${member.discount}`
+                          : `${member.discount}%`}{' '}
+                        OFF (Min: ₹{member.minSpend})
                       </option>
                     ))}
                   </CFormSelect>
@@ -1219,7 +1161,7 @@ const Customer = () => {
         </CModalFooter>
       </CModal>
     </div>
-  )
-}
+  );
+};
 
-export default Customer
+export default Customer;

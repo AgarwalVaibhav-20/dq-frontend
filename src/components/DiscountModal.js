@@ -74,7 +74,7 @@ const DiscountModal = ({
 
     try {
       const orderTotal = cart.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-      
+
       const token = localStorage.getItem('authToken');
       const response = await axios.post(`${BASE_URL}/api/coupon/validate`, {
         couponCode: code.trim(),
@@ -119,20 +119,20 @@ const DiscountModal = ({
   const calculateTotalRewardPoints = () => {
     return cart.reduce((total, item) => {
       const itemRewardPoints = Number(item.rewardPoints) || 0;
+      console.log(`Item: ${item.itemName}, Reward Points per unit: ${itemRewardPoints}, Quantity: ${item.quantity}`);
       return total + (itemRewardPoints * item.quantity);
     }, 0);
   };
 
-  // Calculate reward points discount (1 point = ₹1)
   const calculateRewardPointsDiscount = () => {
     if (!useRewardPoints || !selectedCustomer) return 0;
-    
     const totalRewardPoints = calculateTotalRewardPoints();
     const customerPoints = Number(selectedCustomer.rewardCustomerPoints) || 0;
-    
-    // Customer can use up to the reward points they've earned from items in cart
-    // But limited by their available balance
-    return Math.min(totalRewardPoints, customerPoints);
+    return Math.min(totalRewardPoints, customerPoints); // Cap at customer's points
+  };
+
+  const calculateCartSubtotal = () => {
+    return cart.reduce((sum, item) => sum + (item.adjustedPrice * item.quantity), 0);
   };
 
   const onSubmit = () => {
@@ -154,13 +154,13 @@ const DiscountModal = ({
       rewardPoints: useRewardPoints ? {
         enabled: true,
         pointsUsed: calculateRewardPointsDiscount(),
-        discountAmount: calculateRewardPointsDiscount(),
+        discountAmount: calculateRewardPointsDiscount(), // Apply to total
       } : null,
     };
 
     console.log('Submitting discounts:', discounts);
     handleDiscountSubmit(discounts);
-    
+
     // Reset form
     setSelectedItemIds([]);
     setDiscountValue('');
@@ -177,9 +177,7 @@ const DiscountModal = ({
     // Item-specific discounts
     if (discountValue && selectedItemIds.length > 0) {
       totalDiscount += selectedItemIds.reduce((total, itemId) => {
-        const item = cart.find(
-          (cartItem) => (cartItem.id || cartItem._id) === itemId
-        );
+        const item = cart.find((cartItem) => (cartItem.id || cartItem._id) === itemId);
         if (!item) return total;
         const itemSubtotal = item.adjustedPrice * item.quantity;
         let itemDiscount = 0;
@@ -195,19 +193,17 @@ const DiscountModal = ({
     // Coupon discounts
     if (couponDiscount.value) {
       if (couponDiscount.type === 'percentage') {
-        const subtotal = cart.reduce(
-          (sum, item) => sum + item.price * item.quantity,
-          0
-        );
+        const subtotal = calculateCartSubtotal();
         totalDiscount += (subtotal * couponDiscount.value) / 100;
       } else if (couponDiscount.type === 'fixed') {
         totalDiscount += couponDiscount.value;
       }
     }
 
-    // Reward points discount
+    // Reward points discount applied to total cart
     if (useRewardPoints) {
-      totalDiscount += calculateRewardPointsDiscount();
+      const rewardDiscount = calculateRewardPointsDiscount(); // Total discount for the cart
+      totalDiscount += rewardDiscount;
     }
 
     return totalDiscount;
@@ -238,7 +234,7 @@ const DiscountModal = ({
                 onChange={(e) => setUseRewardPoints(e.target.checked)}
               />
             </div>
-            
+
             <div className="row mt-3">
               <div className="col-6">
                 <small className="text-muted">Customer's Balance:</small>
@@ -253,21 +249,21 @@ const DiscountModal = ({
             {useRewardPoints && (
               <CAlert color="success" className="mt-3 mb-0">
                 <div className="d-flex justify-content-between align-items-center">
-                  <span className="fw-bold">✅ Discount Applied:</span>
+                  <span className="fw-bold">✅ Total Discount Applied:</span>
                   <span className="fw-bold fs-5">
                     ₹{availableRewardDiscount.toFixed(2)}
                   </span>
                 </div>
                 <small className="d-block mt-1">
-                  Using {availableRewardDiscount} reward points (1 point = ₹1)
+                  Using {availableRewardDiscount} reward points (1 point = ₹1) for the total order
                 </small>
               </CAlert>
             )}
 
-            {customerPoints < totalRewardPoints && (
+            {customerPoints < totalRewardPoints && useRewardPoints && (
               <CAlert color="warning" className="mt-2 mb-0 py-2">
                 <small>
-                  ⚠️ Customer has {customerPoints} points available. 
+                  ⚠️ Customer has {customerPoints} points available.
                   Need {totalRewardPoints - customerPoints} more points for full discount.
                 </small>
               </CAlert>
@@ -343,47 +339,47 @@ const DiscountModal = ({
                 <span className="text-success me-2">✅</span>
                 <span className="fw-bold text-success">Coupon Applied Successfully!</span>
               </div>
-              
+
               <div className="row">
                 <div className="col-md-6">
                   <div className="mb-2">
                     <strong>Code:</strong> <span className="text-primary">{couponDiscount.code}</span>
                   </div>
                   <div className="mb-2">
-                    <strong>Discount:</strong> 
+                    <strong>Discount:</strong>
                     <span className="text-success ms-1">
-                      {couponDiscount.type === 'percentage' 
-                        ? `${couponDiscount.value}% OFF` 
+                      {couponDiscount.type === 'percentage'
+                        ? `${couponDiscount.value}% OFF`
                         : `₹${couponDiscount.value} OFF`}
                     </span>
                   </div>
                   <div className="mb-2">
-                    <strong>Discount Amount:</strong> 
+                    <strong>Discount Amount:</strong>
                     <span className="text-success ms-1">₹{couponDiscount.amount?.toFixed(2) || '0.00'}</span>
                   </div>
                 </div>
-                
+
                 <div className="col-md-6">
                   <div className="mb-2">
-                    <strong>Min Order:</strong> 
+                    <strong>Min Order:</strong>
                     <span className="text-info ms-1">₹{couponDiscount.minOrderValue || '0'}</span>
                   </div>
                   <div className="mb-2">
-                    <strong>Max Discount:</strong> 
+                    <strong>Max Discount:</strong>
                     <span className="text-warning ms-1">₹{couponDiscount.maxDiscountAmount || 'No limit'}</span>
                   </div>
                   <div className="mb-2">
-                    <strong>Expires:</strong> 
+                    <strong>Expires:</strong>
                     <span className="text-secondary ms-1">
                       {couponDiscount.expiryDate ? new Date(couponDiscount.expiryDate).toLocaleDateString() : 'N/A'}
                     </span>
                   </div>
                 </div>
               </div>
-              
+
               {couponDiscount.description && (
                 <div className="mt-2">
-                  <strong>Description:</strong> 
+                  <strong>Description:</strong>
                   <span className="text-muted ms-1">{couponDiscount.description}</span>
                 </div>
               )}
@@ -411,7 +407,7 @@ const DiscountModal = ({
               {validCart.map((item) => {
                 const itemRewardPoints = Number(item.rewardPoints) || 0;
                 return (
-                  <div key={item.id} className="d-flex align-items-center border p-2 mb-2 rounded"> 
+                  <div key={item.id} className="d-flex align-items-center border p-2 mb-2 rounded">
                     <CFormCheck
                       type="checkbox"
                       checked={selectedItemIds.includes(item.id)}
@@ -452,7 +448,7 @@ const DiscountModal = ({
             {useRewardPoints && (
               <div className="mt-2">
                 <small className="text-muted">
-                  (Includes ₹{calculateRewardPointsDiscount().toFixed(2)} from reward points)
+                  (Includes ₹{calculateRewardPointsDiscount().toFixed(2)} from reward points for the total order)
                 </small>
               </div>
             )}

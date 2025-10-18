@@ -330,19 +330,31 @@ const POSTableContent = () => {
   const filteredMenuItems = React.useMemo(() => {
     let items = menuItems;
 
+    // Filter by selected category
     if (selectedCategoryId) {
       items = items?.filter(item => {
-        // Handle both populated category object and direct categoryId
         const itemCategoryId = typeof item.categoryId === 'object'
           ? item.categoryId._id
           : item.categoryId;
         return itemCategoryId === selectedCategoryId;
       });
     }
-    return items?.filter((product) =>
-      product.itemName?.toLowerCase().includes(searchProduct.toLowerCase()),
-    );
+
+    // Enhanced search: Search by itemName OR menuId
+    return items?.filter((product) => {
+      const searchLower = searchProduct.toLowerCase().trim();
+
+      // If search is empty, show all items
+      if (!searchLower) return true;
+
+      const itemNameMatch = product.itemName?.toLowerCase().includes(searchLower);
+      const menuIdMatch = product.menuId?.toLowerCase().includes(searchLower);
+
+      // Return true if either itemName or menuId matches
+      return itemNameMatch || menuIdMatch;
+    });
   }, [menuItems, selectedCategoryId, searchProduct]);
+
 
   const handleAddToCartWithSubcategory = useCallback((item) => {
     const itemId = item._id || item.id;
@@ -608,13 +620,81 @@ const POSTableContent = () => {
     toast.success(`${taxName || 'Tax'} applied to ${selectedItemIds.length} item(s)!`);
   };
 
+  // const handleDiscountSubmit = (discounts) => {
+  //   console.log('Received discounts:', discounts);
+
+  //   // Handle item-specific discounts
+  //   if (discounts.selectedItemDiscount && discounts.selectedItemDiscount.ids && discounts.selectedItemDiscount.ids.length > 0) {
+  //     const { ids, value, type } = discounts.selectedItemDiscount;
+
+  //     setCart(prevCart =>
+  //       prevCart.map(item => {
+  //         if (ids.includes(item.id)) {
+  //           let discountAmount = 0;
+  //           let discountPercentage = 0;
+  //           let fixedDiscountAmount = 0;
+
+  //           if (type === 'percentage') {
+  //             discountPercentage = value;
+  //             discountAmount = (item.adjustedPrice * item.quantity * value) / 100;
+  //           } else if (type === 'fixed') {
+  //             fixedDiscountAmount = value;
+  //             discountAmount = value;
+  //           }
+
+  //           return {
+  //             ...item,
+  //             discountType: type,
+  //             discountPercentage: discountPercentage,
+  //             fixedDiscountAmount: fixedDiscountAmount,
+  //             discountAmount: discountAmount
+  //           };
+  //         }
+  //         return item;
+  //       })
+  //     );
+
+  //     toast.success(`${type === 'percentage' ? 'Percentage' : 'Fixed'} discount applied to ${ids.length} item(s)!`);
+  //   }
+
+  //   // Handle coupon discounts
+  //   if (discounts.coupon && discounts.coupon.value) {
+  //     const { value, type } = discounts.coupon;
+
+  //     if (type === 'percentage') {
+  //       setDiscount(value);
+  //       toast.success(`Coupon discount of ${value}% applied to entire order!`);
+  //     } else if (type === 'fixed') {
+  //       const subtotal = calculateSubtotal();
+  //       const percentageEquivalent = (value / subtotal) * 100;
+  //       setDiscount(percentageEquivalent);
+  //       toast.success(`Fixed coupon discount of ₹${value} applied!`);
+  //     }
+  //   }
+
+  //   // NEW: Handle reward points discount
+  //   if (discounts.rewardPoints && discounts.rewardPoints.enabled) {
+  //     const { pointsUsed, discountAmount } = discounts.rewardPoints;
+
+  //     // Store reward points discount separately
+  //     setAppliedDiscounts(prev => ({
+  //       ...prev,
+  //       rewardPoints: {
+  //         pointsUsed,
+  //         discountAmount
+  //       }
+  //     }));
+
+  //     toast.success(`Reward points discount of ₹${discountAmount.toFixed(2)} applied!`);
+  //   }
+
+  //   setShowDiscountModal(false);
+  // };
   const handleDiscountSubmit = (discounts) => {
     console.log('Received discounts:', discounts);
 
-    // Handle item-specific discounts
     if (discounts.selectedItemDiscount && discounts.selectedItemDiscount.ids && discounts.selectedItemDiscount.ids.length > 0) {
       const { ids, value, type } = discounts.selectedItemDiscount;
-
       setCart(prevCart =>
         prevCart.map(item => {
           if (ids.includes(item.id)) {
@@ -641,14 +721,11 @@ const POSTableContent = () => {
           return item;
         })
       );
-
       toast.success(`${type === 'percentage' ? 'Percentage' : 'Fixed'} discount applied to ${ids.length} item(s)!`);
     }
 
-    // Handle coupon discounts
     if (discounts.coupon && discounts.coupon.value) {
       const { value, type } = discounts.coupon;
-
       if (type === 'percentage') {
         setDiscount(value);
         toast.success(`Coupon discount of ${value}% applied to entire order!`);
@@ -660,11 +737,9 @@ const POSTableContent = () => {
       }
     }
 
-    // NEW: Handle reward points discount
     if (discounts.rewardPoints && discounts.rewardPoints.enabled) {
       const { pointsUsed, discountAmount } = discounts.rewardPoints;
-
-      // Store reward points discount separately
+      console.log('🎁 Setting Reward Points Discount:', { pointsUsed, discountAmount });
       setAppliedDiscounts(prev => ({
         ...prev,
         rewardPoints: {
@@ -672,13 +747,11 @@ const POSTableContent = () => {
           discountAmount
         }
       }));
-
       toast.success(`Reward points discount of ₹${discountAmount.toFixed(2)} applied!`);
     }
 
     setShowDiscountModal(false);
   };
-
 
   const handleRoundOffSubmit = (roundOffValue) => {
     setRoundOff(roundOffValue)
@@ -719,7 +792,6 @@ const POSTableContent = () => {
     const subtotal = calculateSubtotal();
     let totalDiscount = 0;
 
-    // Handle membership discounts
     if (membershipDiscount && membershipDiscount.value > 0) {
       if (membershipDiscount.type === 'fixed') {
         totalDiscount = membershipDiscount.value;
@@ -727,18 +799,18 @@ const POSTableContent = () => {
         totalDiscount = (subtotal * membershipDiscount.value) / 100;
       }
     } else {
-      // Handle manual and item-specific discounts
       totalDiscount = (subtotal * discount) / 100;
       cart.forEach(item => {
         if (item.discountAmount) totalDiscount += Number(item.discountAmount);
       });
     }
 
-    // NEW: Add reward points discount
     if (appliedDiscounts?.rewardPoints?.discountAmount) {
+      console.log('🎁 Reward Points Discount:', appliedDiscounts.rewardPoints.discountAmount);
       totalDiscount += Number(appliedDiscounts.rewardPoints.discountAmount);
     }
 
+    console.log('Total Discount:', totalDiscount);
     return totalDiscount;
   }, [calculateSubtotal, discount, cart, membershipDiscount, appliedDiscounts]);
 
@@ -746,15 +818,20 @@ const POSTableContent = () => {
     const subtotal = calculateSubtotal();
     const totalTaxAmount = calculateTotalTaxAmount();
     const discountAmount = calculateDiscountAmount();
-    // console.log("discount amount :", discountAmount)
     const systemCharge = (selectedSystem && selectedSystem._id && selectedSystem.systemName && selectedSystem.chargeOfSystem > 0) ? Number(selectedSystem.chargeOfSystem || 0) : 0;
-    // console.log("system amount :", systemCharge)
-    // console.log("round off amount :", roundOff)
-    const total = subtotal + totalTaxAmount + systemCharge - discountAmount - roundOff
-    // console.log("total from calculate total: ", total)
+    const total = subtotal + totalTaxAmount + systemCharge - discountAmount - roundOff;
+
+    console.log('🧮 Total Calculation:', {
+      subtotal,
+      totalTaxAmount,
+      discountAmount,
+      systemCharge,
+      roundOff,
+      total
+    });
+
     return total;
   }, [calculateSubtotal, calculateTotalTaxAmount, calculateDiscountAmount, roundOff, selectedSystem]);
-
   // Initialize inputValue when round off modal opens
   useEffect(() => {
     if (showRoundOffModal) {
@@ -974,10 +1051,10 @@ const POSTableContent = () => {
       roundOff: roundOff,
       systemCharge: selectedSystem ? Number(selectedSystem.chargeOfSystem) : 0,
       sub_total: calculateSubtotal(),
-      total: calculateTotal(),
       type: paymentType,
+      total: calculateTotal(),
       rewardPointsUsed: appliedDiscounts?.rewardPoints?.pointsUsed || 0,
-      rewardPointsEarned: totalRewardPointsEarned
+      rewardPointsEarned: totalRewardPointsEarned,
     };
 
     if (paymentType === "split") {
