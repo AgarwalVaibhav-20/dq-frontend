@@ -97,6 +97,52 @@ const Waste = () => {
     });
     const [selectedWaste, setSelectedWaste] = useState(null);
     const [selectedStock, setSelectedStock] = useState(null);
+    const [convertedQuantity, setConvertedQuantity] = useState(null);
+
+    // Unit conversion function - Simplified and working
+    const convertUnits = (quantity, fromUnit, toUnit) => {
+        console.log(`🔄 Converting: ${quantity} ${fromUnit} to ${toUnit}`);
+        
+        // If same units, return as is
+        if (fromUnit === toUnit) {
+            console.log(`✅ Same units: ${quantity}`);
+            return quantity;
+        }
+
+        // Weight conversions (base: gm)
+        const weightConversions = {
+            'mg': 0.001,    // 1mg = 0.001gm
+            'gm': 1,        // 1gm = 1gm (base)
+            'kg': 1000     // 1kg = 1000gm
+        };
+
+        // Volume conversions (base: ml)
+        const volumeConversions = {
+            'ml': 1,        // 1ml = 1ml (base)
+            'ltr': 1000,    // 1ltr = 1000ml
+            'litre': 1000   // 1litre = 1000ml
+        };
+
+        // Check if both are weight units
+        if (weightConversions[fromUnit] && weightConversions[toUnit]) {
+            const baseQuantity = quantity * weightConversions[fromUnit];
+            const convertedQuantity = baseQuantity / weightConversions[toUnit];
+            console.log(`✅ Weight conversion: ${quantity} ${fromUnit} = ${convertedQuantity} ${toUnit}`);
+            return convertedQuantity;
+        }
+
+        // Check if both are volume units
+        if (volumeConversions[fromUnit] && volumeConversions[toUnit]) {
+            const baseQuantity = quantity * volumeConversions[fromUnit];
+            const convertedQuantity = baseQuantity / volumeConversions[toUnit];
+            console.log(`✅ Volume conversion: ${quantity} ${fromUnit} = ${convertedQuantity} ${toUnit}`);
+            return convertedQuantity;
+        }
+
+        // For pcs or incompatible units, return original
+        console.log(`⚠️ No conversion available: ${fromUnit} to ${toUnit} - using original quantity`);
+        return quantity;
+    };
 
     // Fetch waste and stock data
     useEffect(() => {
@@ -120,6 +166,22 @@ const Waste = () => {
                     itemName: stock.itemName,
                     unit: stock.unit || 'kg'
                 });
+                // Reset converted quantity when item changes
+                setConvertedQuantity(null);
+            }
+        } else if (name === "wasteQuantity" || name === "unit") {
+            const newFormData = { ...formData, [name]: value };
+            setFormData(newFormData);
+            
+            // Calculate converted quantity if both quantity and unit are provided
+            if (newFormData.wasteQuantity && newFormData.unit && selectedStock) {
+                const quantity = parseFloat(newFormData.wasteQuantity);
+                if (!isNaN(quantity)) {
+                    const converted = convertUnits(quantity, newFormData.unit, selectedStock.unit);
+                    setConvertedQuantity(converted);
+                }
+            } else {
+                setConvertedQuantity(null);
             }
         } else {
             setFormData({ ...formData, [name]: value });
@@ -128,13 +190,13 @@ const Waste = () => {
 
     // Save waste
     const handleSaveWaste = async () => {
-        if (!formData.itemId || !formData.wasteQuantity) {
+        if (!formData.itemId || !formData.wasteQuantity || !formData.unit) {
             toast.error("Please fill in all required fields");
             return;
         }
 
-        if (selectedStock && parseFloat(formData.wasteQuantity) > (selectedStock.stock?.quantity || 0)) {
-            toast.error(`Insufficient stock. Available: ${selectedStock.stock?.quantity || 0} ${selectedStock.unit}`);
+        if (selectedStock && parseFloat(formData.wasteQuantity) > (selectedStock.totalRemainingQuantity || 0)) {
+            toast.error(`Insufficient stock. Available: ${selectedStock.totalRemainingQuantity || 0} ${selectedStock.unit}`);
             return;
         }
 
@@ -158,7 +220,7 @@ const Waste = () => {
     const handleUpdateWaste = async () => {
         if (!selectedWaste) return;
 
-        if (!formData.itemId || !formData.wasteQuantity) {
+        if (!formData.itemId || !formData.wasteQuantity || !formData.unit) {
             toast.error("Please fill in all required fields");
             return;
         }
@@ -208,6 +270,7 @@ const Waste = () => {
             date: new Date().toISOString().split('T')[0],
         });
         setSelectedStock(null);
+        setConvertedQuantity(null);
     };
 
     const exportToCSV = () => {
@@ -277,7 +340,7 @@ const Waste = () => {
                             <option value="">Select Stock Item</option>
                             {inventories.map((item) => (
                                 <option key={item._id} value={item._id}>
-                                    {item.itemName} (Available: {item.stock?.quantity || 0} {item.unit})
+                                    {item.itemName} (Available: {item.totalRemainingQuantity || 0} {item.unit})
                                 </option>
                             ))}
                         </CFormSelect>
@@ -306,21 +369,37 @@ const Waste = () => {
                         />
                     </CCol>
                     <CCol xs={12} sm={6} className="mb-3">
-                        <label className="form-label">Unit</label>
-                        <CFormInput
-                            placeholder="Unit"
+                        <label className="form-label">Unit *</label>
+                        <CFormSelect
                             name="unit"
                             value={formData.unit}
                             onChange={handleChange}
-                            disabled
-                        />
+                        >
+                            <option value="">Select Unit</option>
+                            <option value="kg">kg</option>
+                            <option value="gm">gm</option>
+                            <option value="mg">mg</option>
+                            <option value="ltr">ltr</option>
+                            <option value="ml">ml</option>
+                            <option value="pcs">pcs</option>
+                            <option value="other">other</option>
+                        </CFormSelect>
                     </CCol>
                 </CRow>
                 {selectedStock && (
                     <CRow>
                         <CCol xs={12}>
                             <div className="alert alert-info">
-                                <strong>Current Stock:</strong> {selectedStock.itemName} - {selectedStock.stock?.quantity || 0} {selectedStock.unit}
+                                <strong>Current Stock:</strong> {selectedStock.itemName} - {selectedStock.totalRemainingQuantity || 0} {selectedStock.unit}
+                            </div>
+                        </CCol>
+                    </CRow>
+                )}
+                {convertedQuantity !== null && selectedStock && formData.unit !== selectedStock.unit && (
+                    <CRow>
+                        <CCol xs={12}>
+                            <div className="alert alert-warning">
+                                <strong>Unit Conversion:</strong> {formData.wasteQuantity} {formData.unit} = {convertedQuantity.toFixed(4)} {selectedStock.unit}
                             </div>
                         </CCol>
                     </CRow>
@@ -384,7 +463,7 @@ const Waste = () => {
                             <option value="">Select Stock Item</option>
                             {inventories.map((item) => (
                                 <option key={item._id} value={item._id}>
-                                    {item.itemName} (Available: {item.stock?.quantity || 0} {item.unit})
+                                    {item.itemName} (Available: {item.totalRemainingQuantity || 0} {item.unit})
                                 </option>
                             ))}
                         </CFormSelect>
@@ -413,16 +492,41 @@ const Waste = () => {
                         />
                     </CCol>
                     <CCol xs={12} sm={6} className="mb-3">
-                        <label className="form-label">Unit</label>
-                        <CFormInput
-                            placeholder="Unit"
+                        <label className="form-label">Unit *</label>
+                        <CFormSelect
                             name="unit"
                             value={formData.unit}
                             onChange={handleChange}
-                            disabled
-                        />
+                        >
+                            <option value="">Select Unit</option>
+                            <option value="kg">kg</option>
+                            <option value="gm">gm</option>
+                            <option value="mg">mg</option>
+                            <option value="ltr">ltr</option>
+                            <option value="ml">ml</option>
+                            <option value="pcs">pcs</option>
+                            <option value="other">other</option>
+                        </CFormSelect>
                     </CCol>
                 </CRow>
+                {selectedStock && (
+                    <CRow>
+                        <CCol xs={12}>
+                            <div className="alert alert-info">
+                                <strong>Current Stock:</strong> {selectedStock.itemName} - {selectedStock.totalRemainingQuantity || 0} {selectedStock.unit}
+                            </div>
+                        </CCol>
+                    </CRow>
+                )}
+                {convertedQuantity !== null && selectedStock && formData.unit !== selectedStock.unit && (
+                    <CRow>
+                        <CCol xs={12}>
+                            <div className="alert alert-warning">
+                                <strong>Unit Conversion:</strong> {formData.wasteQuantity} {formData.unit} = {convertedQuantity.toFixed(4)} {selectedStock.unit}
+                            </div>
+                        </CCol>
+                    </CRow>
+                )}
             </CModalBody>
             <CModalFooter className="d-flex justify-content-center gap-2">
                 <CButton

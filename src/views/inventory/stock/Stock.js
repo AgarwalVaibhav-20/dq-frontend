@@ -244,52 +244,56 @@ const Stock = () => {
   // Add/Purchase inventory
   const handleSaveStock = async () => {
     try {
-      await dispatch(addInventory({ 
+      console.log('🔄 Adding inventory with data:', formData);
+      console.log('🔄 Restaurant ID:', restaurantId);
+      console.log('🔄 Token:', token ? 'Present' : 'Missing');
+      
+      const result = await dispatch(addInventory({ 
         restaurantId, 
         ...formData, 
         token 
-      })).unwrap()
+      })).unwrap();
+      
+      console.log('✅ Inventory added successfully:', result);
+      
       await dispatch(fetchInventories({ restaurantId, token })).unwrap()
+      console.log('✅ Inventories refreshed');
+      
       resetForm()
       setModalVisible(false)
     } catch (error) {
-      console.error("Failed to add inventory:", error)
+      console.error("❌ Failed to add inventory:", error)
     }
   }
 
-  // Update inventory
+  // Update inventory (Purchase more stock)
   const handleUpdateInventory = async () => {
     try {
+      console.log('🔄 Purchasing stock for items:', editItems);
+      
       // Process each item in the editItems array
       for (const item of editItems) {
         if (item.itemName && item.quantity && item.unit && item.pricePerUnit && item.supplierId) {
-          // If editing existing item (has _id), update it with all fields
-          if (item._id && item.isExisting) {
-            await dispatch(updateInventory({ 
-              id: item._id, 
-              itemName: item.itemName,
-              quantity: item.quantity,
-              unit: item.unit,
-              pricePerUnit: item.pricePerUnit,
-              supplierId: item.supplierId,
-              token 
-            })).unwrap();
-          } else {
-            // If new item, add it as a purchase
-            await dispatch(addInventory({ 
-              restaurantId, 
-              itemName: item.itemName,
-              quantity: item.quantity,
-              unit: item.unit,
-              pricePerUnit: item.pricePerUnit,
-              supplierId: item.supplierId,
-              token 
-            })).unwrap();
-          }
+          // ✅ FIXED: Always use addInventory to purchase stock (existing or new item)
+          // The backend will automatically add to existing item or create new one
+          await dispatch(addInventory({ 
+            restaurantId, 
+            itemName: item.itemName,
+            quantity: item.quantity,
+            unit: item.unit,
+            pricePerUnit: item.pricePerUnit,
+            supplierId: item.supplierId,
+            token 
+          })).unwrap();
+          
+          console.log('✅ Stock purchased for:', item.itemName);
         }
       }
       
+      console.log('🔄 Refreshing inventory list...');
       await dispatch(fetchInventories({ restaurantId, token })).unwrap();
+      console.log('✅ Inventory list refreshed');
+      
       setEditItems([{
         itemName: '',
         quantity: '',
@@ -299,8 +303,8 @@ const Stock = () => {
       }]);
       setEditModalVisible(false);
     } catch (error) {
-      console.log("Error updating inventory:", error);
-      console.error('Error updating inventory:', error);
+      console.log("❌ Error purchasing stock:", error);
+      console.error('❌ Error purchasing stock:', error);
     }
   };
 
@@ -496,7 +500,7 @@ const Stock = () => {
           >
             <CIcon icon={cilInfo} size="sm" />
           </CButton>
-          <CButton 
+          {/* <CButton 
             color="warning" 
             size="sm" 
             onClick={() => {
@@ -510,7 +514,7 @@ const Stock = () => {
             title="Deduct Stock"
           >
             <CIcon icon={cilMinus} size="sm" />
-          </CButton>
+          </CButton> */}
           <CButton 
             color="secondary" 
             size="sm" 
@@ -533,12 +537,12 @@ const Stock = () => {
               // Initialize ALL fields with current data
               setEditItems([{
                 _id: params.row._id,
-                itemName: params.row.itemName || '',
-                quantity: params.row.totalRemainingQuantity || '',
-                unit: params.row.unit || '',
-                pricePerUnit: params.row.supplierStocks?.[0]?.pricePerUnit || '',
-                supplierId: params.row.supplierStocks?.[0]?.supplierId || '',
-                supplierName: params.row.supplierStocks?.[0]?.supplierName || 'Unknown',
+                itemName: params.row.itemName || '', // ✅ Item name pre-filled
+                quantity: '', // ✅ Quantity field empty for new purchase
+                unit: params.row.unit || '', // ✅ Unit pre-filled
+                pricePerUnit: '', // ✅ Price field empty for new purchase
+                supplierId: '', // ✅ Supplier field empty for new purchase
+                supplierName: '', // ✅ Supplier name empty for new purchase
                 suppliers: availableItem ? availableItem.suppliers : itemSuppliers,
                 isExisting: true
               }]);
@@ -749,17 +753,31 @@ const Stock = () => {
                 <label className="form-label fw-semibold">
                   Item Name <span className="text-danger">*</span>
                 </label>
-                <CFormSelect 
-                  value={item.itemName}
-                  onChange={(e) => handleEditItemChange(index, 'itemName', e.target.value)}
-                >
-                  <option value="">Select Item</option>
-                  {availableItems.map((availItem, idx) => (
-                    <option key={idx} value={availItem.itemName}>
-                      {availItem.itemName}
-                    </option>
-                  ))}
-                </CFormSelect>
+                {item.isExisting ? (
+                  // ✅ For existing items, show readonly input (cannot be changed)
+                  <CFormInput 
+                    value={item.itemName}
+                    readOnly
+                    disabled
+                    className="bg-light"
+                  />
+                ) : (
+                  // ✅ For new items, show dropdown to select
+                  <CFormSelect 
+                    value={item.itemName}
+                    onChange={(e) => handleEditItemChange(index, 'itemName', e.target.value)}
+                  >
+                    <option value="">Select Item</option>
+                    {availableItems.map((availItem, idx) => (
+                      <option key={idx} value={availItem.itemName}>
+                        {availItem.itemName}
+                      </option>
+                    ))}
+                  </CFormSelect>
+                )}
+                {item.isExisting && (
+                  <small className="text-muted">Item name cannot be changed for existing items</small>
+                )}
               </div>
 
               {/* Quantity and Unit Row */}
@@ -973,8 +991,8 @@ const Stock = () => {
         </CModalFooter>
       </CModal>
 
-      {/* Deduct Stock Modal with Unit Selection */}
-      <CModal visible={deductStockModalVisible} onClose={() => { setDeductStockModalVisible(false); setDeductStockData({ quantityToDeduct: '', deductUnit: '' }) }}>
+      {/* Deduct Stock Modal with Unit Selection - COMMENTED OUT */}
+      {/* <CModal visible={deductStockModalVisible} onClose={() => { setDeductStockModalVisible(false); setDeductStockData({ quantityToDeduct: '', deductUnit: '' }) }}>
         <CModalHeader><CModalTitle>➖ Deduct Stock (FIFO)</CModalTitle></CModalHeader>
         <CModalBody>
           {selectedStock && (
@@ -1043,7 +1061,7 @@ const Stock = () => {
             {saleProcessing ? <CSpinner size="sm" /> : 'Deduct Stock'}
           </CButton>
         </CModalFooter>
-      </CModal>
+      </CModal> */}
 
       {/* Delete Confirmation Modal */}
       <CModal visible={deleteModalVisible} onClose={() => setDeleteModalVisible(false)}>

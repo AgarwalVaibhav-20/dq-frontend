@@ -403,9 +403,9 @@ export default function PurchaseAnalytics() {
           const getPricePerBaseUnit = (price, unit) => {
             const u = normalizeUnit(unit);
             switch (u) {
-              case 'kg': return price / 1000; // ₹ per gram
+              case 'kg': return price/1000; // ₹ per gram
               case 'gm': return price;
-              case 'litre': return price / 1000; // ₹ per ml
+              case 'ltr': return price/1000; // ₹ per ml
               case 'ml': return price;
               case 'pcs': return price;
               default: return price; // fallback
@@ -418,7 +418,7 @@ export default function PurchaseAnalytics() {
             switch (u) {
               case 'kg': return qty * 1000; // gm
               case 'gm': return qty;
-              case 'litre': return qty * 1000; // ml
+              case 'ltr': return qty * 1000; // ml
               case 'ml': return qty;
               case 'pcs': return qty;
               default: return qty;
