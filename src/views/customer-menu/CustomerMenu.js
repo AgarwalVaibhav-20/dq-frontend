@@ -149,6 +149,7 @@ const placeOrder = async (customerData) => {
                 itemName: item.displayName,
                 price: item.price,
                 quantity: item.quantity,
+                size: item.selectedSize?.name || item.selectedSize || null, // ✅ ADD SIZE FIELD
                 subtotal: item.price * item.quantity,
                 selectedSubcategoryId: item.selectedSize?._id || null
             })),

@@ -376,102 +376,216 @@ export default function PurchaseAnalytics() {
       const filteredMenuItems = menuItems.filter(item => String(item.restaurantId) === String(restaurantId));
       const filteredInventories = inventories.filter(item => String(item.restaurantId) === String(restaurantId));
 
-      const menuItemsWithCosts = filteredMenuItems.map(menuItem => {
-        const ingredients = (menuItem.stockItems || []).map(stockItem => {
-          const inventory = filteredInventories.find(inv => String(inv._id) === String(stockItem.stockId));
+      const menuItemsWithCosts = filteredMenuItems.flatMap(menuItem => {
+        // If menu item has sizes, create separate rows for each size
+        if (menuItem.sizes && menuItem.sizes.length > 0) {
+          return menuItem.sizes.map(size => {
+            // Filter ingredients based on the specific size
+            const ingredients = (menuItem.stockItems || [])
+              .filter(stockItem => {
+                // Only include ingredients that match the current size
+                return stockItem.size === size.name || stockItem.size === size.name.toLowerCase();
+              })
+              .map(stockItem => {
+                const inventory = filteredInventories.find(inv => String(inv._id) === String(stockItem.stockId));
 
-          if (!inventory || !inventory.supplierStocks || inventory.supplierStocks.length === 0) {
-            return { name: "Unknown Item", totalCost: 0, costPerUnit: 0, currentRate: 0, previousRate: 0, rateChange: 0, supplier: 'N/A', unit: 'N/A', stockId: stockItem.stockId, quantity: stockItem.quantity };
-          }
+                if (!inventory || !inventory.supplierStocks || inventory.supplierStocks.length === 0) {
+                  return { name: "Unknown Item", totalCost: 0, costPerUnit: 0, currentRate: 0, previousRate: 0, rateChange: 0, supplier: 'N/A', unit: 'N/A', stockId: stockItem.stockId, quantity: stockItem.quantity };
+                }
 
-          const latestPurchase = [...inventory.supplierStocks].sort((a, b) => new Date(b.purchasedAt) - new Date(a.purchasedAt))[0];
+                const latestPurchase = [...inventory.supplierStocks].sort((a, b) => new Date(b.purchasedAt) - new Date(a.purchasedAt))[0];
 
-          // --- 👇 NEW UNIT CONVERSION LOGIC START 👇 ---
+                // --- 👇 NEW UNIT CONVERSION LOGIC START 👇 ---
 
-          const normalizeUnit = (u) => {
-            if (!u) return '';
-            u = u.toLowerCase().trim();
-            if (['g', 'gram', 'grams'].includes(u)) return 'gm';
-            if (['kilogram', 'kgs', 'kg.'].includes(u)) return 'kg';
-            if (['l', 'liter', 'liters'].includes(u)) return 'litre';
-            if (['mls'].includes(u)) return 'ml';
-            if (['piece', 'pieces', 'unit', 'units'].includes(u)) return 'pcs';
-            return u;
-          };
+                const normalizeUnit = (u) => {
+                  if (!u) return '';
+                  u = u.toLowerCase().trim();
+                  if (['g', 'gram', 'grams'].includes(u)) return 'gm';
+                  if (['kilogram', 'kgs', 'kg.'].includes(u)) return 'kg';
+                  if (['l', 'liter', 'liters'].includes(u)) return 'litre';
+                  if (['mls'].includes(u)) return 'ml';
+                  if (['piece', 'pieces', 'unit', 'units'].includes(u)) return 'pcs';
+                  return u;
+                };
 
-          // Convert pricePerUnit → price per base unit (gm/ml/pcs)
-          const getPricePerBaseUnit = (price, unit) => {
-            const u = normalizeUnit(unit);
-            switch (u) {
-              case 'kg': return price/1000; // ₹ per gram
-              case 'gm': return price;
-              case 'ltr': return price/1000; // ₹ per ml
-              case 'ml': return price;
-              case 'pcs': return price;
-              default: return price; // fallback
+                // Convert pricePerUnit → price per base unit (gm/ml/pcs)
+                const getPricePerBaseUnit = (price, unit) => {
+                  const u = normalizeUnit(unit);
+                  switch (u) {
+                    case 'kg': return price/1000; // ₹ per gram
+                    case 'gm': return price;
+                    case 'ltr': return price/1000; // ₹ per ml
+                    case 'ml': return price;
+                    case 'pcs': return price;
+                    default: return price; // fallback
+                  }
+                };
+
+                // Convert recipe quantity → base unit (gm/ml/pcs)
+                const getQuantityInBaseUnit = (qty, unit) => {
+                  const u = normalizeUnit(unit);
+                  switch (u) {
+                    case 'kg': return qty * 1000; // gm
+                    case 'gm': return qty;
+                    case 'ltr': return qty * 1000; // ml
+                    case 'ml': return qty;
+                    case 'pcs': return qty;
+                    default: return qty;
+                  }
+                };
+
+                const purchasePrice = latestPurchase.pricePerUnit || 0;
+                const purchaseUnit = inventory.unit || 'pcs';
+                const recipeQuantity = stockItem.quantity || 0;
+                const recipeUnit = stockItem.unit || inventory.unit || 'pcs';
+
+                const pricePerBaseUnit = getPricePerBaseUnit(purchasePrice, purchaseUnit);
+                const recipeQuantityInBaseUnit = getQuantityInBaseUnit(recipeQuantity, recipeUnit);
+
+                // ✅ Accurate total cost
+                const totalCost = pricePerBaseUnit * recipeQuantityInBaseUnit;
+
+                // ✅ FIXED: Calculate actual rate per recipe unit
+                const recipeUnitInBaseUnits = getQuantityInBaseUnit(1, recipeUnit);
+                const currentRatePerRecipeUnit = pricePerBaseUnit * recipeUnitInBaseUnits;
+
+                const currentRate =  pricePerBaseUnit * recipeUnitInBaseUnits;
+
+                return {
+                  stockId: stockItem.stockId,
+                  name: inventory.itemName,
+                  quantity: recipeQuantity,
+                  unit: recipeUnit,
+                  size: stockItem.size || 'N/A', // ✅ ADD size field
+                  totalCost: totalCost,
+                  supplier: latestPurchase.supplierName || 'N/A',
+                  currentRate: currentRate.toFixed(2), // This is the rate of the purchase (e.g., price per kg)
+                  // Other properties can be added here if needed
+                  previousRate: "0.00", // Note: Previous rate logic would need similar conversion
+                  rateChange: 0,
+                };
+              });
+
+            const totalIngredientCost = ingredients.reduce((sum, ing) => sum + ing.totalCost, 0);
+            const profitMargin = size.price - totalIngredientCost;
+            const profitPercentage = size.price > 0 ? ((profitMargin / size.price) * 100).toFixed(2) : 0;
+
+            return {
+              id: `${menuItem._id}-${size.name}`, // Unique ID for each size
+              itemName: menuItem.itemName,
+              menuId: menuItem.menuId,
+              price: size.price,
+              size: size.name, // Individual size name
+              category: menuItem.sub_category || "General",
+              ingredients,
+              totalIngredientCost: totalIngredientCost,
+              profitMargin: profitMargin.toFixed(2),
+              profitPercentage,
+              stock: menuItem.stockItems?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0,
+              date: new Date(menuItem.createdAt).toISOString().split("T")[0],
+            };
+          });
+        } else {
+          // If no sizes, create a single row with default values
+          const ingredients = (menuItem.stockItems || []).map(stockItem => {
+            const inventory = filteredInventories.find(inv => String(inv._id) === String(stockItem.stockId));
+
+            if (!inventory || !inventory.supplierStocks || inventory.supplierStocks.length === 0) {
+              return { name: "Unknown Item", totalCost: 0, costPerUnit: 0, currentRate: 0, previousRate: 0, rateChange: 0, supplier: 'N/A', unit: 'N/A', stockId: stockItem.stockId, quantity: stockItem.quantity };
             }
-          };
 
-          // Convert recipe quantity → base unit (gm/ml/pcs)
-          const getQuantityInBaseUnit = (qty, unit) => {
-            const u = normalizeUnit(unit);
-            switch (u) {
-              case 'kg': return qty * 1000; // gm
-              case 'gm': return qty;
-              case 'ltr': return qty * 1000; // ml
-              case 'ml': return qty;
-              case 'pcs': return qty;
-              default: return qty;
-            }
-          };
+            const latestPurchase = [...inventory.supplierStocks].sort((a, b) => new Date(b.purchasedAt) - new Date(a.purchasedAt))[0];
 
-          const purchasePrice = latestPurchase.pricePerUnit || 0;
-          const purchaseUnit = inventory.unit || 'pcs';
-          const recipeQuantity = stockItem.quantity || 0;
-          const recipeUnit = stockItem.unit || inventory.unit || 'pcs';
+            // --- 👇 NEW UNIT CONVERSION LOGIC START 👇 ---
 
-          const pricePerBaseUnit = getPricePerBaseUnit(purchasePrice, purchaseUnit);
-          const recipeQuantityInBaseUnit = getQuantityInBaseUnit(recipeQuantity, recipeUnit);
+            const normalizeUnit = (u) => {
+              if (!u) return '';
+              u = u.toLowerCase().trim();
+              if (['g', 'gram', 'grams'].includes(u)) return 'gm';
+              if (['kilogram', 'kgs', 'kg.'].includes(u)) return 'kg';
+              if (['l', 'liter', 'liters'].includes(u)) return 'litre';
+              if (['mls'].includes(u)) return 'ml';
+              if (['piece', 'pieces', 'unit', 'units'].includes(u)) return 'pcs';
+              return u;
+            };
 
-          // ✅ Accurate total cost
-          const totalCost = pricePerBaseUnit * recipeQuantityInBaseUnit;
+            // Convert pricePerUnit → price per base unit (gm/ml/pcs)
+            const getPricePerBaseUnit = (price, unit) => {
+              const u = normalizeUnit(unit);
+              switch (u) {
+                case 'kg': return price/1000; // ₹ per gram
+                case 'gm': return price;
+                case 'ltr': return price/1000; // ₹ per ml
+                case 'ml': return price;
+                case 'pcs': return price;
+                default: return price; // fallback
+              }
+            };
 
-          // ✅ FIXED: Calculate actual rate per recipe unit
-          const recipeUnitInBaseUnits = getQuantityInBaseUnit(1, recipeUnit);
-          const currentRatePerRecipeUnit = pricePerBaseUnit * recipeUnitInBaseUnits;
+            // Convert recipe quantity → base unit (gm/ml/pcs)
+            const getQuantityInBaseUnit = (qty, unit) => {
+              const u = normalizeUnit(unit);
+              switch (u) {
+                case 'kg': return qty * 1000; // gm
+                case 'gm': return qty;
+                case 'ltr': return qty * 1000; // ml
+                case 'ml': return qty;
+                case 'pcs': return qty;
+                default: return qty;
+              }
+            };
 
-          const currentRate =  pricePerBaseUnit * recipeUnitInBaseUnits;
+            const purchasePrice = latestPurchase.pricePerUnit || 0;
+            const purchaseUnit = inventory.unit || 'pcs';
+            const recipeQuantity = stockItem.quantity || 0;
+            const recipeUnit = stockItem.unit || inventory.unit || 'pcs';
+
+            const pricePerBaseUnit = getPricePerBaseUnit(purchasePrice, purchaseUnit);
+            const recipeQuantityInBaseUnit = getQuantityInBaseUnit(recipeQuantity, recipeUnit);
+
+            // ✅ Accurate total cost
+            const totalCost = pricePerBaseUnit * recipeQuantityInBaseUnit;
+
+            // ✅ FIXED: Calculate actual rate per recipe unit
+            const recipeUnitInBaseUnits = getQuantityInBaseUnit(1, recipeUnit);
+            const currentRatePerRecipeUnit = pricePerBaseUnit * recipeUnitInBaseUnits;
+
+            const currentRate =  pricePerBaseUnit * recipeUnitInBaseUnits;
+
+            return {
+              stockId: stockItem.stockId,
+              name: inventory.itemName,
+              quantity: recipeQuantity,
+              unit: recipeUnit,
+              size: stockItem.size || 'N/A', // ✅ ADD size field
+              totalCost: totalCost,
+              supplier: latestPurchase.supplierName || 'N/A',
+              currentRate: currentRate.toFixed(2), // This is the rate of the purchase (e.g., price per kg)
+              // Other properties can be added here if needed
+              previousRate: "0.00", // Note: Previous rate logic would need similar conversion
+              rateChange: 0,
+            };
+          });
+
+          const totalIngredientCost = ingredients.reduce((sum, ing) => sum + ing.totalCost, 0);
+          const profitMargin = menuItem.price - totalIngredientCost;
+          const profitPercentage = menuItem.price > 0 ? ((profitMargin / menuItem.price) * 100).toFixed(2) : 0;
 
           return {
-            stockId: stockItem.stockId,
-            name: inventory.itemName,
-            quantity: recipeQuantity,
-            unit: recipeUnit,
-            totalCost: totalCost,
-            supplier: latestPurchase.supplierName || 'N/A',
-            currentRate: currentRate.toFixed(2), // This is the rate of the purchase (e.g., price per kg)
-            // Other properties can be added here if needed
-            previousRate: "0.00", // Note: Previous rate logic would need similar conversion
-            rateChange: 0,
+            id: menuItem._id,
+            itemName: menuItem.itemName,
+            menuId: menuItem.menuId,
+            price: menuItem.price,
+            size: 'Standard', // Default size name
+            category: menuItem.sub_category || "General",
+            ingredients,
+            totalIngredientCost: totalIngredientCost,
+            profitMargin: profitMargin.toFixed(2),
+            profitPercentage,
+            stock: menuItem.stockItems?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0,
+            date: new Date(menuItem.createdAt).toISOString().split("T")[0],
           };
-        });
-
-        const totalIngredientCost = ingredients.reduce((sum, ing) => sum + ing.totalCost, 0);
-        const profitMargin = menuItem.price - totalIngredientCost;
-        const profitPercentage = menuItem.price > 0 ? ((profitMargin / menuItem.price) * 100).toFixed(2) : 0;
-
-        return {
-          id: menuItem._id,
-          itemName: menuItem.itemName,
-          price: menuItem.price,
-          category: menuItem.sub_category || "General",
-          ingredients,
-          totalIngredientCost: totalIngredientCost,
-          profitMargin: profitMargin.toFixed(2),
-          profitPercentage,
-          stock: menuItem.stockItems?.reduce((sum, item) => sum + (item.quantity || 0), 0) || 0,
-          date: new Date(menuItem.createdAt).toISOString().split("T")[0],
-        };
+        }
       });
 
       setMenuItemsWithIngredients(menuItemsWithCosts);
@@ -1501,6 +1615,7 @@ export default function PurchaseAnalytics() {
                     ) : (
                       [
                         { label: "Menu Item", Icon: UtensilsCrossed },
+                        { label: "Size", Icon: Package }, // ✅ ADD SIZE COLUMN
                         { label: "Ingredient Cost", Icon: ReceiptIndianRupee },
                         { label: "Details", Icon: Info },
                         { label: "Stock", Icon: Package },
@@ -1610,6 +1725,16 @@ export default function PurchaseAnalytics() {
                                     <Typography variant="caption" color="text.secondary">{item.menuId}</Typography>
                                   </Stack>
                                 </TableCell>
+                                {/* Size Column - Now shows individual size */}
+                                <TableCell>
+                                  <Chip
+                                    label={`${item.size} - ₹${item.price}`}
+                                    variant="outlined"
+                                    size="small"
+                                    color="primary"
+                                    sx={{ fontSize: '0.7rem', height: '20px' }}
+                                  />
+                                </TableCell>
                                 {/* Ingredient Cost */}
                                 <TableCell>
                                   <Typography variant="body2" color="warning.main" fontWeight="medium">
@@ -1650,7 +1775,7 @@ export default function PurchaseAnalytics() {
                           {/* Expandable row for ingredient details (menu view only) */}
                           {viewMode === 'menu' && (
                             <TableRow>
-                              <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={5}>
+                              <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
                                 <Collapse in={expandedRows.has(item.id)} timeout="auto" unmountOnExit>
                                   <Box sx={{ margin: 2, p: 2, backgroundColor: isDark ? theme.palette.grey[900] : theme.palette.grey[50], borderRadius: 2 }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
@@ -1663,6 +1788,7 @@ export default function PurchaseAnalytics() {
                                       <TableHead>
                                         <TableRow sx={{ backgroundColor: isDark ? theme.palette.grey[800] : theme.palette.grey[200] }}>
                                           <TableCell sx={{ fontWeight: 'bold' }}>Ingredient</TableCell>
+                                          <TableCell sx={{ fontWeight: 'bold' }}>Size</TableCell>
                                           <TableCell sx={{ fontWeight: 'bold' }}>Quantity</TableCell>
                                           <TableCell sx={{ fontWeight: 'bold' }}>Cost/Unit</TableCell>
                                           <TableCell sx={{ fontWeight: 'bold' }}>Total Cost</TableCell>
@@ -1679,6 +1805,15 @@ export default function PurchaseAnalytics() {
                                               <Typography variant="body2" fontWeight="medium">
                                                 {ingredient.name}
                                               </Typography>
+                                            </TableCell>
+                                            <TableCell>
+                                              <Chip
+                                                label={ingredient.size || 'N/A'}
+                                                variant="outlined"
+                                                size="small"
+                                                color="secondary"
+                                                sx={{ fontSize: '0.7rem', height: '20px' }}
+                                              />
                                             </TableCell>
                                             <TableCell>
                                               <Typography variant="body2">

@@ -36,6 +36,7 @@ const Menu = () => {
 
   const [selectedMenu, setSelectedMenu] = useState(null);
   const [activeTab, setActiveTab] = useState("basic");
+  const [selectedSize, setSelectedSize] = useState(""); // New state for selected size
 
   // ✅ FIXED: Initialize with proper structure
   const [formData, setFormData] = useState({
@@ -47,7 +48,7 @@ const Menu = () => {
     sub_category: "",
     stock: 0,
     sizes: [{ name: "", price: "", enabled: true }],
-    stockItems: [{ stockId: "", quantity: "", unit: "" }],
+    stockItems: [{ stockId: "", quantity: "", unit: "", size: "", price: "" }],
     description: "",
     preparationTime: "",
     rewardPoints: 0
@@ -107,14 +108,16 @@ const Menu = () => {
         }))
         : [{ name: "", price: "", enabled: true }];
 
-      // ✅ FIXED: Properly handle stockItems with units
+      // ✅ FIXED: Properly handle stockItems with units, size and price
       const transformedStockItems = selectedMenu.stockItems?.length
         ? selectedMenu.stockItems.map(item => ({
           stockId: item.stockId || "",
           quantity: item.quantity || "",
-          unit: item.unit || ""
+          unit: item.unit || "",
+          size: item.size || "",
+          price: item.price || ""
         }))
-        : [{ stockId: "", quantity: "", unit: "" }];
+        : [{ stockId: "", quantity: "", unit: "", size: "", price: "" }];
 
       setFormData({
         menuId: selectedMenu.menuId || "",
@@ -155,14 +158,99 @@ const Menu = () => {
       ...updatedStockItems[index],
       [field]: value
     };
+    
+    // 🔍 DEBUG: Log stock item changes
+    console.log("🔍 DEBUG - Stock item change:");
+    console.log("index:", index, "field:", field, "value:", value);
+    console.log("updatedStockItems[index]:", updatedStockItems[index]);
+    
     setFormData(prev => ({ ...prev, stockItems: updatedStockItems }));
   };
 
   const addStockItem = () => {
+    if (!selectedSize) {
+      toast.error("Please select a size first", {
+        position: "top-center",
+        autoClose: 3000,
+      });
+      return;
+    }
+    
+    // Find the price for the selected size
+    const selectedSizeData = formData.sizes.find(size => size.name === selectedSize);
+    const sizePrice = selectedSizeData ? selectedSizeData.price : "";
+    
+    console.log("🔍 DEBUG - Add stock item:");
+    console.log("selectedSize:", selectedSize);
+    console.log("All formData.sizes:", formData.sizes);
+    console.log("selectedSizeData:", selectedSizeData);
+    console.log("sizePrice:", sizePrice);
+    
+    const newStockItem = { 
+      stockId: "", 
+      quantity: "", 
+      unit: "", 
+      size: selectedSize, 
+      price: sizePrice 
+    };
+    
+    console.log("🔍 DEBUG - New stock item:", newStockItem);
+    
     setFormData(prev => ({
       ...prev,
-      stockItems: [...prev.stockItems, { stockId: "", quantity: "", unit: "" }]
+      stockItems: [...prev.stockItems, newStockItem]
     }));
+  };
+
+  // Function to create stock items for all sizes
+  const createStockItemsForAllSizes = () => {
+    const allSizes = formData.sizes.filter(size => size.name?.trim() && size.price && Number(size.price) > 0);
+    const allStockItems = [];
+    
+    allSizes.forEach(size => {
+      // Check if stock items already exist for this size
+      const existingItemsForSize = formData.stockItems.filter(item => item.size === size.name);
+      
+      if (existingItemsForSize.length === 0) {
+        // Create a default stock item for this size
+        allStockItems.push({
+          stockId: "",
+          quantity: "",
+          unit: "",
+          size: size.name,
+          price: size.price
+        });
+      } else {
+        // Keep existing items for this size
+        allStockItems.push(...existingItemsForSize);
+      }
+    });
+    
+    setFormData(prev => ({
+      ...prev,
+      stockItems: allStockItems
+    }));
+  };
+
+  // Update existing stock items when size changes
+  const handleSizeChange = (newSize) => {
+    console.log("🔍 DEBUG - Size change:", newSize);
+    console.log("🔍 DEBUG - All formData.sizes:", formData.sizes);
+    setSelectedSize(newSize);
+    
+    // Find the price for the selected size
+    const selectedSizeData = formData.sizes.find(size => size.name === newSize);
+    const sizePrice = selectedSizeData ? selectedSizeData.price : "";
+    
+    console.log("🔍 DEBUG - Selected size data:", selectedSizeData);
+    console.log("🔍 DEBUG - Size price:", sizePrice);
+    
+    // Filter stock items for the selected size only
+    if (newSize) {
+      const filteredStockItems = formData.stockItems.filter(item => item.size === newSize);
+      console.log("🔍 DEBUG - Filtered stock items for size:", newSize, filteredStockItems);
+      // Don't update all items, just filter for current size
+    }
   };
 
   const removeStockItem = (index) => {
@@ -181,7 +269,7 @@ const Menu = () => {
       itemImage: null,
       price: "",
       sizes: [{ name: "", price: "", enabled: true }],
-      stockItems: [{ stockId: "", quantity: "", unit: "" }],
+      stockItems: [{ stockId: "", quantity: "", unit: "", size: "", price: "" }],
       description: "",
       preparationTime: "",
     });
@@ -190,6 +278,7 @@ const Menu = () => {
     setModalVisible(false);
     setEditModalVisible(false);
     setActiveTab("basic");
+    setSelectedSize(""); // Reset selected size
   };
   const handleAddMenuItem = async () => {
     setIsSubmitting(true);
@@ -211,12 +300,15 @@ const Menu = () => {
         item.stockId?.trim() &&
         item.quantity &&
         Number(item.quantity) > 0 &&
-        item.unit?.trim()
+        item.unit?.trim() &&
+        item.size?.trim() &&  // ✅ ADD SIZE VALIDATION
+        item.price &&          // ✅ ADD PRICE VALIDATION
+        Number(item.price) > 0
       );
 
       // 🚨 NEW VALIDATION: Require at least one inventory
       if (validStockItems.length === 0) {
-        toast.error("Inventory is required. Please select at least one stock item.", {
+        toast.error("Inventory is required. Please select at least one stock item with size and price.", {
           position: "top-center",
           autoClose: 3000,
         });
@@ -231,6 +323,12 @@ const Menu = () => {
         sizes: validSizes,
         stockItems: validStockItems,
       };
+
+      // 🔍 DEBUG: Log the data being sent
+      console.log("🔍 DEBUG - Data being sent to backend:");
+      console.log("validStockItems:", validStockItems);
+      console.log("selectedSize:", selectedSize);
+      console.log("Full dataToSend:", dataToSend);
 
       await dispatch(addMenuItem({ ...dataToSend, token })).unwrap();
       await dispatch(fetchMenuItems({ token, restaurantId }));
@@ -315,19 +413,24 @@ const Menu = () => {
         formDataToSend.append("sizes", JSON.stringify(sizesForBackend));
       }
 
-      // ✅ FIXED: Handle stockItems properly with validation
+      // ✅ FIXED: Handle stockItems properly with validation including size and price
       const validStockItems = formData.stockItems.filter(item =>
         item.stockId?.trim() &&
         item.quantity &&
         Number(item.quantity) > 0 &&
-        item.unit?.trim()
+        item.unit?.trim() &&
+        item.size?.trim() &&  // ✅ ADD SIZE VALIDATION
+        item.price &&          // ✅ ADD PRICE VALIDATION
+        Number(item.price) > 0
       );
 
       if (validStockItems.length > 0) {
         const stockItemsForBackend = validStockItems.map(item => ({
           stockId: item.stockId,
           quantity: Number(item.quantity),
-          unit: item.unit
+          unit: item.unit,
+          size: item.size,           // ✅ ADD SIZE FIELD
+          price: Number(item.price)  // ✅ ADD PRICE FIELD
         }));
         formDataToSend.append("stockItems", JSON.stringify(stockItemsForBackend));
         console.log("📦 Sending stockItems:", stockItemsForBackend);
@@ -602,6 +705,8 @@ const Menu = () => {
                     onChange={(e) => {
                       const updatedSizes = [...formData.sizes];
                       updatedSizes[index].name = e.target.value;
+                      console.log("🔍 DEBUG - Size name change:", e.target.value);
+                      console.log("🔍 DEBUG - Updated sizes:", updatedSizes);
                       setFormData((prev) => ({ ...prev, sizes: updatedSizes }));
                     }}
                     style={{ fontSize: '14px' }}
@@ -625,6 +730,8 @@ const Menu = () => {
                     onChange={(e) => {
                       const updatedSizes = [...formData.sizes];
                       updatedSizes[index].price = e.target.value;
+                      console.log("🔍 DEBUG - Size price change:", e.target.value);
+                      console.log("🔍 DEBUG - Updated sizes:", updatedSizes);
                       setFormData((prev) => ({ ...prev, sizes: updatedSizes }));
                     }}
                     style={{ fontSize: '14px' }}
@@ -698,75 +805,147 @@ const Menu = () => {
           </div>
         )}
 
-        {/* ✅ FIXED: Inventory Tab with Multiple Stock Items */}
+        {/* ✅ UPDATED: Inventory Tab with Size Selection */}
         {activeTab === "inventory" && (
           <div className="mb-3">
-            <label className="form-label fw-semibold">Stock Items</label>
-
-            {formData.stockItems.map((stockItem, index) => (
-              <div key={index} className="d-flex flex-column flex-md-row gap-2 align-items-center mb-2">
-                {/* Inventory Select */}
-                <select
-                  className="form-select flex-fill"
-                  value={stockItem.stockId || ""}
-                  onChange={(e) => handleStockItemChange(index, 'stockId', e.target.value)}
-                  style={{ fontSize: '14px' }}
-                >
-                  <option value="">Select Inventory</option>
-                  {inventories?.map((inv) => (
-                    <option key={inv._id} value={inv._id}>
-                      {inv.itemName}
+            {/* Size Selection */}
+            <div className="mb-3">
+              <label className="form-label fw-semibold">Select Size for Inventory</label>
+              <select
+                className="form-select"
+                value={selectedSize}
+                onChange={(e) => handleSizeChange(e.target.value)}
+                style={{ fontSize: '14px' }}
+              >
+                <option value="">Select Size First</option>
+                {formData.sizes
+                  .filter(size => size.name?.trim() && size.price)
+                  .map((size, index) => (
+                    <option key={index} value={size.name}>
+                      {size.name} - ₹{size.price}
                     </option>
                   ))}
-                </select>
+              </select>
+              {!selectedSize && (
+                <small className="text-muted">Please select a size from the Basic tab first</small>
+              )}
+            </div>
 
-                {/* Quantity Input */}
-                <input
-                  type="number"
-                  className="form-control flex-fill"
-                  placeholder="Quantity"
-                  value={stockItem.quantity || ""}
-                  onChange={(e) => handleStockItemChange(index, 'quantity', e.target.value)}
-                  style={{ fontSize: '14px' }}
-                />
+            {/* Stock Items for All Sizes */}
+            {formData.sizes
+              .filter(size => size.name?.trim() && size.price && Number(size.price) > 0)
+              .map((size, sizeIndex) => (
+                <div key={sizeIndex} className="mb-4">
+                  <label className="form-label fw-semibold text-primary">
+                    📦 Stock Items for {size.name} (₹{size.price})
+                  </label>
+                  
+                  {formData.stockItems
+                    .filter(item => item.size === size.name)
+                    .map((stockItem, stockIndex) => {
+                      // Find the actual index in the full stockItems array
+                      const actualIndex = formData.stockItems.findIndex(item => 
+                        item === stockItem
+                      );
+                      return (
+                  <div key={stockIndex} className="d-flex flex-column flex-md-row gap-2 align-items-center mb-2">
+                    {/* Size Display (Read-only) */}
+                    <input
+                      type="text"
+                      className="form-control flex-fill"
+                      value={stockItem.size || size.name}
+                      readOnly
+                      style={{ fontSize: '14px', backgroundColor: '#f8f9fa' }}
+                    />
 
-                {/* Unit Select */}
-                <select
-                  className="form-select flex-fill"
-                  value={stockItem.unit || ""}
-                  onChange={(e) => handleStockItemChange(index, 'unit', e.target.value)}
-                  style={{ fontSize: '14px' }}
-                >
-                  <option value="">Select Unit</option>
-                  <option value="kg">kg</option>
-                  <option value="gm">gm</option>
-                  <option value="litre">litre</option>
-                  <option value="ml">ml</option>
-                  <option value="pcs">pcs</option>
-                  <option value="mg">mg</option>
-                </select>
+                    {/* Inventory Select */}
+                    <select
+                      className="form-select flex-fill"
+                      value={stockItem.stockId || ""}
+                      onChange={(e) => handleStockItemChange(actualIndex, 'stockId', e.target.value)}
+                      style={{ fontSize: '14px' }}
+                    >
+                      <option value="">Select Inventory</option>
+                      {inventories?.map((inv) => (
+                        <option key={inv._id} value={inv._id}>
+                          {inv.itemName}
+                        </option>
+                      ))}
+                    </select>
 
-                {/* Remove Button */}
-                <button
-                  type="button"
-                  className="btn btn-danger btn-sm w-100 w-md-auto"
-                  style={{ fontSize: '12px' }}
-                  onClick={() => removeStockItem(index)}
-                  disabled={formData.stockItems.length === 1}
-                >
-                  ✖
-                </button>
-              </div>
-            ))}
+                    {/* Quantity Input */}
+                    <input
+                      type="number"
+                      className="form-control flex-fill"
+                      placeholder="Quantity Used"
+                      value={stockItem.quantity || ""}
+                      onChange={(e) => handleStockItemChange(actualIndex, 'quantity', e.target.value)}
+                      style={{ fontSize: '14px' }}
+                    />
 
-            {/* Add New Stock Item */}
+                    {/* Unit Select */}
+                    <select
+                      className="form-select flex-fill"
+                      value={stockItem.unit || ""}
+                      onChange={(e) => handleStockItemChange(actualIndex, 'unit', e.target.value)}
+                      style={{ fontSize: '14px' }}
+                    >
+                      <option value="">Select Unit</option>
+                      <option value="kg">kg</option>
+                      <option value="gm">gm</option>
+                      <option value="litre">litre</option>
+                      <option value="ml">ml</option>
+                      <option value="pcs">pcs</option>
+                      <option value="mg">mg</option>
+                    </select>
+
+                    {/* Price Input for this size */}
+                    <input
+                      type="number"
+                      className="form-control flex-fill"
+                      placeholder="Price for this size"
+                      value={stockItem.price || ""}
+                      onChange={(e) => handleStockItemChange(actualIndex, 'price', e.target.value)}
+                      style={{ fontSize: '14px' }}
+                    />
+
+                    {/* Remove Button */}
+                    <button
+                      type="button"
+                      className="btn btn-danger btn-sm w-100 w-md-auto"
+                      style={{ fontSize: '12px' }}
+                      onClick={() => removeStockItem(actualIndex)}
+                      disabled={formData.stockItems.length === 1}
+                    >
+                      ✖
+                    </button>
+                  </div>
+                      );
+                    })}
+
+                  {/* Add New Stock Item for this size */}
+                  <button
+                    type="button"
+                    className="btn btn-success btn-sm mt-2"
+                    style={{ fontSize: '12px' }}
+                    onClick={() => {
+                      setSelectedSize(size.name);
+                      addStockItem();
+                    }}
+                  >
+                    ➕ Add Stock Item for {size.name}
+                  </button>
+                </div>
+              ))}
+
+            {/* Create Stock Items for All Sizes */}
             <button
               type="button"
-              className="btn btn-success btn-sm mt-2"
+              className="btn btn-primary btn-sm mt-3"
               style={{ fontSize: '12px' }}
-              onClick={addStockItem}
+              onClick={createStockItemsForAllSizes}
             >
-              ➕ Add Stock Item
+              🔄 Create Stock Items for All Sizes
             </button>
           </div>
         )}

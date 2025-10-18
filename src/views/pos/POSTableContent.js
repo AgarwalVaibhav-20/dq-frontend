@@ -13,8 +13,8 @@ import {
 } from '../../redux/slices/customerSlice'
 import { createTransaction } from '../../redux/slices/transactionSlice'
 import {
-  fetchInventories,
-  deductStock  // ADD THIS
+  fetchInventories
+  // deductStock removed - automatic deduction handled by InventoryService
 } from '../../redux/slices/stockSlice'
 import { fetchSubCategories } from '../../redux/slices/subCategorySlice'
 import { fetchCategories } from '../../redux/slices/categorySlice'
@@ -958,6 +958,7 @@ const POSTableContent = () => {
         itemName: item.itemName,
         price: item.adjustedPrice,
         quantity: item.quantity,
+        size: item.selectedSize || item.size || null, // ✅ ADD SIZE FIELD
         selectedSubcategoryId: item.selectedSubcategoryId || null,
         subtotal: item.adjustedPrice * item.quantity,
         taxType: item.taxType || null,
@@ -1030,44 +1031,8 @@ const POSTableContent = () => {
       console.log('📦 Starting stock deduction...');
 
       // Prepare stock deduction data from cart
-      const stockDeductionPromises = [];
-
-      for (const cartItem of cart) {
-        // Get the menu item's stock configuration
-        const menuItem = menuItems.find(m =>
-          (m._id === cartItem._id || m._id === cartItem.id)
-        );
-
-        if (menuItem && menuItem.stockItems && menuItem.stockItems.length > 0) {
-          // For each stock item configured in the menu
-          for (const stockItem of menuItem.stockItems) {
-            const quantityToDeduct = Number(stockItem.quantity) * cartItem.quantity;
-
-            console.log(`📦 Deducting ${quantityToDeduct} ${stockItem.unit} from stock ${stockItem.stockId} for ${cartItem.itemName}`);
-
-            // Deduct stock using FIFO method
-            const deductPromise = dispatch(deductStock({
-              itemId: stockItem.stockId,
-              quantityToDeduct: quantityToDeduct,
-              token
-            })).unwrap();
-
-            stockDeductionPromises.push(deductPromise);
-          }
-        }
-      }
-
-      // Wait for all stock deductions to complete
-      if (stockDeductionPromises.length > 0) {
-        await Promise.all(stockDeductionPromises);
-        console.log('✅ All stock deductions completed successfully');
-        toast.success('📦 Inventory updated successfully!', { autoClose: 3000 });
-
-        // Refresh inventory data
-        await dispatch(fetchInventories({ token }));
-      } else {
-        console.log('⚠️ No stock items configured for menu items in cart');
-      }
+      // ✅ REMOVED: Manual stock deduction - automatic deduction already happens in InventoryService
+      console.log('📦 Stock deduction will be handled automatically by InventoryService');
 
       // 6. Handle unmerge logic if needed
       if (tableId.startsWith('merged_')) {

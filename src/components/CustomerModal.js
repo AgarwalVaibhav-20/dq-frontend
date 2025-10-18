@@ -51,8 +51,8 @@ const CustomerModal = ({
 
   // Fetch customers and members when modal opens
   useEffect(() => {
-    if (showCustomerModal && restaurantId) {
-      dispatch(fetchCustomers({ restaurantId }));
+    if (showCustomerModal && restaurantId && token) {
+      dispatch(fetchCustomers({ token, restaurantId }));
       dispatch(fetchMembers(token));
     }
   }, [showCustomerModal, restaurantId, dispatch, token]);
