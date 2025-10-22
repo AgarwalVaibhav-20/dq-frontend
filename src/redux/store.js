@@ -22,7 +22,7 @@ import subCategoryReducer from './slices/subCategorySlice'
 import sendBulkEmailReducer from './slices/SendBulkEmailSlice'
 import bannerReducer from './slices/bannerSlice'
 import couponReducer from "./slices/coupenSlice";
-import restaurantReducer from './slices/restaurantSlice'
+// import restaurantReducer from './slices/restaurantSlice'
 import floorSlices from './slices/floorSlices'
 import memeberSlice from './slices/memberSlice'
 // import floorRedux from './slices/FloorRedux'
@@ -34,7 +34,7 @@ const store = configureStore({
     members:memeberSlice,
     floors: floorSlices,
     tables: tableReducer,
-    restaurants: restaurantReducer,
+    // restaurants: restaurantReducer,
     auth: authReducer,
     theme: themeReducer,
     qr: qrReducer,
