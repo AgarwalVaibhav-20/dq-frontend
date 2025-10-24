@@ -45,8 +45,41 @@ import {
   cilX
 } from '@coreui/icons';
 
-// Role configurations - Updated to include admin, waiter, manager, and cashier
+// Role configurations - Updated to include superadmin, admin, waiter, manager, and cashier
 const ROLE_CONFIG = {
+  superadmin: {
+    label: 'Super Administrator',
+    color: 'dark',
+    permissions: [
+      'Overview',
+      'POS',
+      'Purchase Analytics',
+      'Category',
+      'Restaurants',
+      'SubCategory',
+      'Customer Loyality',
+      'Sales Analytics',
+      'Menu',
+      'Orders',
+      'Delivery',
+      'Delivery Timing',
+      'Transactions',
+      'Permission',
+      'Customers',
+      'QR Code',
+      'Reservations',
+      'Dues',
+      'Feedbacks',
+      'Banners',
+      'Inventory',
+      'Reports',
+      'Help',
+      'Settings',
+      'Downloads',
+      'License'
+    ],
+    description: 'Complete system access with all administrative privileges and restaurant management capabilities'
+  },
   admin: {
     label: 'Administrator',
     color: 'danger',
@@ -595,7 +628,7 @@ export default function PermissionManagement() {
   };
 
   // Early return for non-admin users
-  if (!isAdmin && currentUserRole && currentUserRole !== 'admin') {
+  if (!isAdmin && currentUserRole && currentUserRole !== 'admin' && currentUserRole !== 'superadmin') {
     return (
       <div className="p-4">
         <CAlert color="danger">
@@ -603,7 +636,7 @@ export default function PermissionManagement() {
             <div className="me-2 text-danger" style={{ fontSize: '1.5rem' }}>🛡️</div>
             <div>
               <h4 className="mb-1">Access Denied</h4>
-              <p className="mb-1">You don't have permission to access this page. Only administrators can manage user permissions.</p>
+              <p className="mb-1">You don't have permission to access this page. Only administrators and super administrators can manage user permissions.</p>
               <small>Your current role: <strong>{currentUserRole || 'unknown'}</strong></small>
             </div>
           </div>

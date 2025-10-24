@@ -1,5 +1,35 @@
 @import "tailwindcss";
 
+/* MUI DataGrid Width Fix */
+.MuiDataGrid-root {
+  width: 100% !important;
+  min-width: 100% !important;
+}
+.MuiDataGrid-container--top {
+  width: 100% !important;
+}
+.MuiDataGrid-container--bottom {
+  width: 100% !important;
+}
+.MuiDataGrid-main {
+  width: 100% !important;
+}
+.MuiDataGrid-virtualScroller {
+  width: 100% !important;
+}
+.MuiDataGrid-virtualScrollerContent {
+  width: 100% !important;
+}
+.MuiDataGrid-columnHeaders {
+  width: 100% !important;
+}
+.MuiDataGrid-columnHeader {
+  width: auto !important;
+}
+.MuiDataGrid-cell {
+  width: auto !important;
+}
+
 .sidebar-backdrop {
     position: fixed;
     top: 0;

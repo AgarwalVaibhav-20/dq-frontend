@@ -832,9 +832,10 @@ const Order = () => {
             </div>
           ) : (
             // Desktop Table View
-            <div style={{ overflowX: 'auto', width: '100%', minWidth: '800px' }}>
+            <div style={{ overflowX: 'auto', width: '100%', minWidth: '800px', display: 'flex', flexDirection: 'column' }}>
               <DataGrid
-                style={{ height: 'auto', width: '100%', minHeight: '400px', backgroundColor: 'white' }}
+                style={{ height: 'auto', width: '100%', minHeight: '400px', backgroundColor: 'white', flex: 1 }}
+                autoHeight
                 rows={filteredAndSortedOrders?.map((order, index) => ({
                   ...order,
                   sno: index + 1,

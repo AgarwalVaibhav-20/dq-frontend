@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { CChartLine, CChartPie, CChartBar } from '@coreui/react-chartjs';
+import { updateRestaurantId } from '../../redux/slices/authSlice';
 import {
   CFormSelect,
   CSpinner,
@@ -20,6 +21,8 @@ import {
   fetchPaymentTypeStats,
 } from '../../redux/slices/dashboardSlice';
 import { fetchTransactionDetails, getDailyCashBalance } from '../../redux/slices/transactionSlice'
+import axios from 'axios'
+import { BASE_URL } from '../../utils/constants'
 const Dashboard = () => {
   const dispatch = useDispatch();
 
@@ -32,7 +35,9 @@ const Dashboard = () => {
     error,
   } = useSelector((state) => state.dashboard);
   const restaurantId = useSelector((state) => state.auth.restaurantId);
-  const token = localStorage.getItem('authToken');
+  const token = useSelector((state) => state.auth.token) || localStorage.getItem('authToken');
+  const userRole = localStorage.getItem('userRole');
+  const isSuperAdmin = userRole === 'superadmin';
   const { dailyCashBalance, dailyTransactionCount, cashLoading } = useSelector((state) => state.transactions);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedWeekYear, setSelectedWeekYear] = useState(new Date().getFullYear());
@@ -45,6 +50,128 @@ const Dashboard = () => {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [paymentStatsLoading, setPaymentStatsLoading] = useState(false);
+  const [restaurants, setRestaurants] = useState([]);
+  const [selectedRestaurant, setSelectedRestaurant] = useState('');
+  const [restaurantsLoading, setRestaurantsLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filteredRestaurants, setFilteredRestaurants] = useState([]);
+
+  // Restaurant click handler function - Switch user's restaurant
+  const handleRestaurantClick = async (restaurantId, restaurantName) => {
+    try {
+      console.log('Switching to restaurant:', { restaurantId, restaurantName });
+      
+      // Call switch restaurant API
+      const response = await axios.post(`${BASE_URL}/api/restaurant/switch-restaurant`, {
+        restaurantId: restaurantId
+      }, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      console.log('Switch restaurant API response:', response.data);
+      
+      if (response.data.success) {
+        // Remove old token from localStorage
+        localStorage.removeItem('authToken');
+        
+        // Update localStorage with new restaurant info and token
+        localStorage.setItem('authToken', response.data.token);
+        localStorage.setItem('selectedRestaurantId', restaurantId);
+        localStorage.setItem('selectedRestaurantName', restaurantName);
+        localStorage.setItem('restaurantId', restaurantId);
+        
+        // Update Redux store with new restaurant ID and token
+        dispatch(updateRestaurantId({ 
+          restaurantId, 
+          restaurantName,
+          token: response.data.token
+        }));
+        
+        // Reload the page to refresh all data with new restaurant
+        window.location.reload();
+        
+        console.log('Restaurant switched successfully with new token!');
+      } else {
+        console.error('Failed to switch restaurant:', response.data.message);
+        alert('Failed to switch restaurant: ' + response.data.message);
+      }
+      
+    } catch (error) {
+      console.error('Error switching restaurant:', error);
+      const errorMessage = error.response?.data?.message || 'Failed to switch restaurant';
+      alert('Error: ' + errorMessage);
+    }
+  };
+
+  // Clear selected restaurant function (optional - for debugging)
+  const clearSelectedRestaurant = () => {
+    localStorage.removeItem('selectedRestaurantId');
+    localStorage.removeItem('selectedRestaurantName');
+    setSelectedRestaurant('');
+    console.log('Selected restaurant cleared from localStorage');
+  };
+
+  // Fetch restaurants from UserProfile collection
+  const fetchRestaurants = async () => {
+    setRestaurantsLoading(true);
+    try {
+      const response = await axios.get(`${BASE_URL}/all/users`, {
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      
+      console.log('Restaurants API Response:', response.data);
+      
+      // Handle different response structures
+      let restaurantsData = [];
+      if (response.data.success && response.data.data) {
+        restaurantsData = response.data.data;
+      } else if (Array.isArray(response.data)) {
+        restaurantsData = response.data;
+      } else if (response.data.users) {
+        restaurantsData = response.data.users;
+      }
+
+      console.log('Raw restaurants data:', restaurantsData);
+      console.log('First few restaurants:', restaurantsData.slice(0, 3));
+
+      // Show only users with restaurantName field (excluding "Not provided" or empty)
+      const allRestaurants = restaurantsData.filter(restaurant => 
+        restaurant.restaurantName && 
+        restaurant.restaurantName !== undefined && 
+        restaurant.restaurantName !== null && 
+        restaurant.restaurantName !== 'Not provided' &&
+        restaurant.restaurantName.trim() !== ''
+      );
+
+      console.log('Filtered restaurants:', allRestaurants);
+      console.log('Restaurant names:', allRestaurants.map(r => ({ id: r._id, restaurantName: r.restaurantName })));
+
+      setRestaurants(allRestaurants);
+      setFilteredRestaurants(allRestaurants);
+      
+      // Check if there's a saved restaurant in localStorage
+      const savedRestaurantId = localStorage.getItem('selectedRestaurantId');
+      const savedRestaurant = allRestaurants.find(r => r._id === savedRestaurantId);
+      
+      if (savedRestaurant) {
+        // Restore saved restaurant
+        console.log('Restoring saved restaurant:', savedRestaurant.restaurantName);
+        setSelectedRestaurant(savedRestaurantId);
+      } else if (allRestaurants.length > 0 && !selectedRestaurant) {
+        // Set first restaurant as default if no saved restaurant
+        setSelectedRestaurant(allRestaurants[0]._id);
+      }
+    } catch (error) {
+      console.error('Error fetching restaurants:', error);
+    } finally {
+      setRestaurantsLoading(false);
+    }
+  };
 
   // Debug logs - Remove in production
   useEffect(() => {
@@ -63,17 +190,70 @@ const Dashboard = () => {
       // Initial load of daily cash balance
       dispatch(getDailyCashBalance({
         token,
-        restaurantId
+        restaurantId: String(restaurantId)
       }))
     }
   }, [dispatch, restaurantId, token])
+
+  // Fetch restaurants on component mount (only for superadmin)
+  useEffect(() => {
+    if (token && isSuperAdmin) {
+      fetchRestaurants();
+    }
+  }, [token, isSuperAdmin]);
+
+  // Restore selected restaurant from localStorage on component mount
+  useEffect(() => {
+    const savedRestaurantId = localStorage.getItem('selectedRestaurantId');
+    const savedRestaurantName = localStorage.getItem('selectedRestaurantName');
+    
+    if (savedRestaurantId && savedRestaurantName) {
+      console.log('Restoring selected restaurant from localStorage:', {
+        id: savedRestaurantId,
+        name: savedRestaurantName
+      });
+      setSelectedRestaurant(savedRestaurantId);
+    }
+  }, []);
+
+  // Debug current user's restaurant name
+  useEffect(() => {
+    const currentUserId = localStorage.getItem('userId');
+    const currentRestaurantId = localStorage.getItem('restaurantId');
+    console.log('Current User ID:', currentUserId);
+    console.log('Current Restaurant ID:', currentRestaurantId);
+    
+    // Check if current user's restaurant is in the list
+    if (restaurants.length > 0) {
+      const currentUserRestaurant = restaurants.find(r => r._id === currentRestaurantId);
+      console.log('Current user restaurant in list:', currentUserRestaurant);
+      if (currentUserRestaurant) {
+        console.log('Current user restaurant name:', currentUserRestaurant.restaurantName);
+      }
+    }
+  }, [restaurants]);
+
+  // Filter restaurants based on search term
+  useEffect(() => {
+    if (!searchTerm.trim()) {
+      setFilteredRestaurants(restaurants);
+    } else {
+      const filtered = restaurants.filter((restaurant) => {
+        const search = searchTerm.toLowerCase();
+        const restaurantName = restaurant.restaurantName || 'No Restaurant Name';
+        return restaurantName.toLowerCase().includes(search);
+      });
+      setFilteredRestaurants(filtered);
+    }
+  }, [searchTerm, restaurants]);
+
   // Load data initially
   useEffect(() => {
     if (restaurantId && token) {
       console.log('Fetching initial data...');
-      dispatch(fetchOverallReport({ restaurantId, token }));
-      dispatch(fetchChartData({ year: selectedYear, restaurantId, token }));
-      dispatch(fetchWeeklyChartData({ year: selectedWeekYear, restaurantId, token }));
+      dispatch(fetchOverallReport({ restaurantId: String(restaurantId), token }));
+      dispatch(fetchChartData({ year: selectedYear, restaurantId: String(restaurantId), token }));
+      dispatch(fetchWeeklyChartData({ year: selectedWeekYear, restaurantId: String(restaurantId), token }));
     } else {
       console.warn('Missing restaurantId or token:', { restaurantId, token: !!token });
     }
@@ -94,7 +274,7 @@ const Dashboard = () => {
     setPaymentStatsLoading(true);
 
     try {
-      await dispatch(fetchPaymentTypeStats({ startDate, endDate, restaurantId, token }));
+      await dispatch(fetchPaymentTypeStats({ startDate, endDate, restaurantId: String(restaurantId), token }));
     } catch (error) {
       console.error('Error fetching payment stats:', error);
     } finally {
@@ -421,11 +601,72 @@ const Dashboard = () => {
 
   return (
     <div style={{ paddingLeft: '20px', paddingRight: '20px' }}>
-      <h2 className="mb-4">Overview</h2>
+      {/* Header with Restaurant Dropdown (only for superadmin) */}
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <div>
+          <h2 className="mb-0">Overview</h2>
+          {isSuperAdmin && (
+            <p className="text-muted mb-0" style={{ fontSize: '14px' }}>
+              Total Restaurants: <strong>{restaurants.length}</strong> | 
+              Showing: <strong>{filteredRestaurants.length}</strong>
+            </p>
+          )}
+        </div>
+        {isSuperAdmin && (
+          <div className="d-flex align-items-center gap-3">
+            <div className="d-flex flex-column gap-2">
+              <label htmlFor="restaurant-search" className="form-label mb-0 fw-semibold">
+                Search Restaurant:
+              </label>
+              <CFormInput
+                id="restaurant-search"
+                type="text"
+                placeholder="Type restaurant name..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                style={{ minWidth: '200px' }}
+              />
+            </div>
+            <div className="d-flex flex-column gap-2">
+              <label htmlFor="restaurant-select" className="form-label mb-0 fw-semibold">
+                Select Restaurant:
+              </label>
+              <CFormSelect
+                id="restaurant-select"
+                value={selectedRestaurant}
+                onChange={(e) => {
+                  const restaurantId = e.target.value;
+                  setSelectedRestaurant(restaurantId);
+                  
+                  // Find restaurant name for API call
+                  const selectedRestaurantData = filteredRestaurants.find(r => r._id === restaurantId);
+                  if (selectedRestaurantData) {
+                    handleRestaurantClick(restaurantId, selectedRestaurantData.restaurantName);
+                  }
+                }}
+                disabled={restaurantsLoading}
+                style={{ minWidth: '200px' }}
+              >
+                {restaurantsLoading ? (
+                  <option>Loading restaurants...</option>
+                ) : filteredRestaurants.length > 0 ? (
+                  filteredRestaurants.map((restaurant) => (
+                    <option key={restaurant._id} value={restaurant._id}>
+                      {restaurant.restaurantName || 'No Restaurant Name'} 
+                    </option>
+                  ))
+                ) : (
+                  <option>No restaurants found</option>
+                )}
+              </CFormSelect>
+            </div>
+          </div>
+        )}
+      </div>
 
       {error && (
         <CAlert color="danger" className="mb-4">
-          Error: {error}
+          Error: {typeof error === 'object' ? JSON.stringify(error) : error}
         </CAlert>
       )}
 

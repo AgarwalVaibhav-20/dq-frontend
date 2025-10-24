@@ -371,65 +371,69 @@ const App = () => {
                 }
               >
                 {/* Nested Authenticated Routes */}
-                {role === 'admin' ? (
-                  // Admin के लिए सभी routes allowed हैं
+                {role === 'admin' || role === 'superadmin' || role === 'manager' || role === 'waiter' || role === 'cashier' ? (
+                  // सभी roles के लिए overview page allowed है
                   <>
                     <Route index element={<LoginActivity />} />
                     <Route path="dashboard" element={<Dashboard />} />
-                    <Route path="orders" element={<Orders />} />
-                    <Route
-                      path="delivery"
-                      element={<WooOrders />}
-                    />
-                    {/* <Route path='customer-menu' element={<CustomerMenu />} /> */}
-                    <Route path="restaurants" element={<Restaurants />} />
-                    <Route path="purchaseanalytics" element={<PurchaseAnalytics />} />
-                    <Route path="delivery-timing" element={<DeliveryTiming />} />
-                    <Route path="supplier" element={<Supplier />} />
-                    <Route path="permission" element={<Waiter />} />
-                    <Route path="login-activity" element={<LoginActivity />} />
-
-                    <Route path="customerloyality" element={<CustomerLoyality />} />
-                    <Route path="salesanalytics" element={<SalesAnalytics />} />
-                    <Route path="qr-code" element={<QRCode />} />
-                    <Route path="category" element={<Category restaurantId={restaurantId} />} />
-                    <Route path="subCategory" element={<SubCategory restaurantId={restaurantId} />} />
-                    <Route path="stock" element={<Stock />} />
-                    <Route path="menu" element={<Menu />} />
-                    <Route path="banners" element={<Banner />} />
-                    <Route path="customers" element={<Customers />} />
-                    <Route path="transactions" element={<Transactions />} />
-                    <Route path="pos" element={<POS />} />
-                    <Route path="pos/system/:tableNumber" element={<SystemSelection />} />
-                    {/* <Route path="table" element={<TableRedirect />} /> */}
-                    <Route path="pos/system/tableNumber/:tableNumber" element={<POSTableContent />} />
-                    <Route path="pos/tableNumber/:tableNumber" element={<POSTableContent />} />
-                    <Route path="account/:userId" element={<Account />} />
-                    <Route path="setting" element={<Settings />} />
-                    <Route path="daily-report" element={<DailyReport />} />
-                    <Route path="payment-report" element={<PaymentReport />} />
-                    <Route path="customer-report" element={<CustomerReport />} />
-                    <Route path="table-report" element={<TableReport />} />
-                    <Route path="payment-type-report" element={<PaymentTypeReport />} />
-                    <Route path="dashboard-statistics-report" element={<DashboardStatisticsReport />} />
-                    <Route path="due-report" element={<DueReport />} />
-                    <Route path="transactionByDate-report" element={<TransactionCountReport />} />
-                    <Route path="tax-collection-report" element={<TaxCollectedReport />} />
-                    <Route path="table-usage-report" element={<TableUsageReport />} />
-                    <Route path="discount-usage-report" element={<DiscountUsageReport />} />
-                    <Route path="average-order-report" element={<AverageOrderValueReport />} />
-                    <Route path="payment-type-transaction-report" element={<TransactionsByPaymentTypeReport />} />
-                    <Route path="total-revenue-report" element={<TotalRevenueReport />} />
-                    <Route path="yearly-chart-report" element={<YearlyChartReport />} />
-                    <Route path="weekly-chart-report" element={<WeeklyChartReport />} />
-                    <Route path="feedback" element={<Feedback />} />
-                    <Route path="reservations" element={<Reservation />} />
-                    <Route path="dues" element={<Dues />} />
-                    <Route path="help" element={<Help />} />
-                    <Route path="license" element={<License />} />
-                    <Route path="downloads" element={<Downloads />} />
-                    <Route path="*" element={<Page404 />} />
-                    <Route path="waste" element={<Waste />} />
+                    {role === 'superadmin' || role === 'admin' ? (
+                      // Superadmin और admin को सब कुछ दिखेगा
+                      <>
+                        <Route path="orders" element={<Orders />} />
+                        <Route
+                          path="delivery"
+                          element={<WooOrders />}
+                        />
+                        {/* <Route path='customer-menu' element={<CustomerMenu />} /> */}
+                        {role === 'superadmin' && <Route path="restaurants" element={<Restaurants />} />}
+                        <Route path="purchaseanalytics" element={<PurchaseAnalytics />} />
+                        <Route path="delivery-timing" element={<DeliveryTiming />} />
+                        <Route path="supplier" element={<Supplier />} />
+                        <Route path="permission" element={<Waiter />} />
+                        <Route path="login-activity" element={<LoginActivity />} />
+                        <Route path="customerloyality" element={<CustomerLoyality />} />
+                        <Route path="salesanalytics" element={<SalesAnalytics />} />
+                        <Route path="qr-code" element={<QRCode />} />
+                        <Route path="category" element={<Category restaurantId={restaurantId} />} />
+                        <Route path="subCategory" element={<SubCategory restaurantId={restaurantId} />} />
+                        <Route path="stock" element={<Stock />} />
+                        <Route path="menu" element={<Menu />} />
+                        <Route path="banners" element={<Banner />} />
+                        <Route path="customers" element={<Customers />} />
+                        <Route path="transactions" element={<Transactions />} />
+                        <Route path="pos" element={<POS />} />
+                        <Route path="pos/system/:tableNumber" element={<SystemSelection />} />
+                        {/* <Route path="table" element={<TableRedirect />} /> */}
+                        <Route path="pos/system/tableNumber/:tableNumber" element={<POSTableContent />} />
+                        <Route path="pos/tableNumber/:tableNumber" element={<POSTableContent />} />
+                        <Route path="account/:userId" element={<Account />} />
+                        <Route path="setting" element={<Settings />} />
+                        <Route path="daily-report" element={<DailyReport />} />
+                        <Route path="payment-report" element={<PaymentReport />} />
+                        <Route path="customer-report" element={<CustomerReport />} />
+                        <Route path="table-report" element={<TableReport />} />
+                        <Route path="payment-type-report" element={<PaymentTypeReport />} />
+                        <Route path="dashboard-statistics-report" element={<DashboardStatisticsReport />} />
+                        <Route path="due-report" element={<DueReport />} />
+                        <Route path="transactionByDate-report" element={<TransactionCountReport />} />
+                        <Route path="tax-collection-report" element={<TaxCollectedReport />} />
+                        <Route path="table-usage-report" element={<TableUsageReport />} />
+                        <Route path="discount-usage-report" element={<DiscountUsageReport />} />
+                        <Route path="average-order-report" element={<AverageOrderValueReport />} />
+                        <Route path="payment-type-transaction-report" element={<TransactionsByPaymentTypeReport />} />
+                        <Route path="total-revenue-report" element={<TotalRevenueReport />} />
+                        <Route path="yearly-chart-report" element={<YearlyChartReport />} />
+                        <Route path="weekly-chart-report" element={<WeeklyChartReport />} />
+                        <Route path="feedback" element={<Feedback />} />
+                        <Route path="reservations" element={<Reservation />} />
+                        <Route path="dues" element={<Dues />} />
+                        <Route path="help" element={<Help />} />
+                        <Route path="license" element={<License />} />
+                        <Route path="downloads" element={<Downloads />} />
+                        <Route path="*" element={<Page404 />} />
+                        <Route path="waste" element={<Waste />} />
+                      </>
+                    ) : null}
                   </>
                 ) : (
                   // Non-admin users के लिए permission-based routing

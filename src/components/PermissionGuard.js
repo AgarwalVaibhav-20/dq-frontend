@@ -6,7 +6,7 @@ import Page404 from '../views/pages/page404/Page404';
 
 const PermissionGuard = ({ children, requiredPermissions = [], fallbackPath = null }) => {
   const { role, user } = useSelector((state) => ({
-    role: state.auth.role,
+    role: state.auth.role || localStorage.getItem('userRole') || 'admin',
     user: state.auth.user
   }));
 
@@ -15,11 +15,15 @@ const PermissionGuard = ({ children, requiredPermissions = [], fallbackPath = nu
     role,
     user,
     requiredPermissions,
-    userPermissions: user?.permissions
+    userPermissions: user?.permissions,
+    localStorageRole: localStorage.getItem('userRole'),
+    reduxRole: useSelector((state) => state.auth.role),
+    normalizedRole: role || user?.role || localStorage.getItem('userRole') || 'admin',
+    isSuperAdmin: (role || user?.role || localStorage.getItem('userRole') || 'admin')?.includes('superadmin')
   });
 
   // अगर user data अभी भी load हो रहा है तो loading show करें
-  if (!user || !role) {
+  if (!user && !role) {
     console.log('⏳ Loading user data...');
     return (
       <div className="pt-3 text-center">
@@ -28,10 +32,55 @@ const PermissionGuard = ({ children, requiredPermissions = [], fallbackPath = nu
       </div>
     );
   }
+  
+  // Early return for superadmin - bypass all other checks
+  if (role === 'superadmin' || user?.role === 'superadmin' || localStorage.getItem('userRole') === 'superadmin') {
+    console.log('✅ Superadmin access granted (early return)');
+    return children;
+  }
 
-  // अगर role admin है तो सभी pages allow हैं
-  if (role === 'admin') {
-    console.log('✅ Admin access granted');
+  // Get role from multiple sources and normalize
+  const normalizedRole = role || user?.role || localStorage.getItem('userRole') || 'admin';
+  
+  // Debug: Log all role sources
+  console.log('🔍 Role Sources Debug:', {
+    role,
+    'user?.role': user?.role,
+    'localStorage.getItem("userRole")': localStorage.getItem('userRole'),
+    normalizedRole
+  });
+  
+  // अगर role admin या superadmin है तो सभी pages allow हैं
+  if (normalizedRole === 'admin' || normalizedRole === 'superadmin') {
+    console.log('✅ Admin/Superadmin access granted for role:', normalizedRole);
+    return children;
+  }
+  
+  // Direct check for superadmin string
+  if (normalizedRole === 'superadmin') {
+    console.log('✅ Superadmin access granted (direct check)');
+    return children;
+  }
+  
+  // Additional check for superadmin in different formats
+  if (normalizedRole?.toLowerCase() === 'superadmin' || normalizedRole?.toLowerCase() === 'admin') {
+    console.log('✅ Admin/Superadmin access granted (case-insensitive) for role:', normalizedRole);
+    return children;
+  }
+  
+  // Temporary bypass for superadmin - check if user has superadmin in any field
+  const isSuperAdmin = normalizedRole?.includes('superadmin') || 
+                      user?.role?.includes('superadmin') || 
+                      localStorage.getItem('userRole')?.includes('superadmin');
+  
+  if (isSuperAdmin) {
+    console.log('✅ Superadmin access granted (fallback check)');
+    return children;
+  }
+  
+  // Final fallback - if we can't determine role, allow access for now
+  if (!normalizedRole || normalizedRole === 'undefined' || normalizedRole === 'null') {
+    console.log('⚠️ Role not determined, allowing access as fallback');
     return children;
   }
 

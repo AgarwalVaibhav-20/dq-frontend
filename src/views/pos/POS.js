@@ -399,6 +399,7 @@ const POS = () => {
     localStorage.setItem('mergedTables', JSON.stringify(mergedTables))
   }, [mergedTables])
 
+
   const  handleQrClick = (qr) => {
     navigate(`/pos/system/tableNumber/${qr.tableNumber}`)
   }
@@ -795,7 +796,7 @@ const POS = () => {
                   variant="btn-group"
                   onMouseEnter={() => setIsDropdownOpen(true)}
                   onMouseLeave={() => setIsDropdownOpen(false)}
-                  show={isDropdownOpen} // Mouse over पर show होगा
+                  show={isDropdownOpen ? true : undefined} // Mouse over पर show होगा
               >
                   <CDropdownToggle
                       color="info"
@@ -875,7 +876,7 @@ const POS = () => {
               variant="btn-group"
               onMouseEnter={() => setIsDropdownOpen(true)}
               onMouseLeave={() => setIsDropdownOpen(false)}
-              show={isDropdownOpen}
+              show={isDropdownOpen ? true : undefined}
           >
               <CDropdownToggle
                   color="info"

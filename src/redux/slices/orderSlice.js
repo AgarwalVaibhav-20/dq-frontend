@@ -66,12 +66,12 @@ export const createOrder = createAsyncThunk(
 // Fetch all orders for a restaurant
 export const fetchOrders = createAsyncThunk(
   'orders/fetchOrders',
-  async (_, { rejectWithValue }) => {
+  async ({ restaurantId }, { rejectWithValue }) => {
     try {
-      const restaurantId = localStorage.getItem('restaurantId')
+      const currentRestaurantId = restaurantId || localStorage.getItem('restaurantId')
       const token = localStorage.getItem("authToken");
 
-      const response = await axios.get(`${BASE_URL}/all/order`, { params: restaurantId ? { restaurantId } : {}, ...configureHeaders(token) })
+      const response = await axios.get(`${BASE_URL}/all/order`, { params: currentRestaurantId ? { restaurantId: currentRestaurantId } : {}, ...configureHeaders(token) })
       return response.data
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || 'Failed to fetch orders')

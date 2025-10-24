@@ -38,7 +38,7 @@ export const createTransaction = createAsyncThunk(
       };
 
       // Fix: Get restaurantId and userId from localStorage correctly
-      const finalRestaurantId = restaurantId || localStorage.getItem('restaurantId');
+      const finalRestaurantId = String(restaurantId || localStorage.getItem('restaurantId'));
       const finalUserId = userId || localStorage.getItem('userId');
 
       const requestData = {
@@ -78,7 +78,7 @@ export const createCashInTransaction = createAsyncThunk(
   async ({ total, token, userId, restaurantId, username, notes }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('authToken');
-      const finalRestaurantId = restaurantId || localStorage.getItem('restaurantId');
+      const finalRestaurantId = String(restaurantId || localStorage.getItem('restaurantId'));
       const finalUserId = userId || localStorage.getItem('userId');
       const finalUsername = username || localStorage.getItem('username');
 
@@ -118,7 +118,7 @@ export const createCashOutTransaction = createAsyncThunk(
         'Content-Type': 'application/json'
       };
 
-      const finalRestaurantId = restaurantId || localStorage.getItem('restaurantId');
+      const finalRestaurantId = String(restaurantId || localStorage.getItem('restaurantId'));
       const finalUserId = userId || localStorage.getItem('userId');
       const finalUsername = username || localStorage.getItem('username');
 
@@ -156,7 +156,7 @@ export const createBankInTransaction = createAsyncThunk(
         'Content-Type': 'application/json'
       };
 
-      const finalRestaurantId = restaurantId || localStorage.getItem('restaurantId');
+      const finalRestaurantId = String(restaurantId || localStorage.getItem('restaurantId'));
       const finalUserId = userId || localStorage.getItem('userId');
       const finalUsername = username || localStorage.getItem('username');
 
@@ -195,7 +195,7 @@ export const createBankOutTransaction = createAsyncThunk(
         'Content-Type': 'application/json'
       };
 
-      const finalRestaurantId = restaurantId || localStorage.getItem('restaurantId');
+      const finalRestaurantId = String(restaurantId || localStorage.getItem('restaurantId'));
       const finalUserId = userId || localStorage.getItem('userId');
       const finalUsername = username || localStorage.getItem('username');
 
@@ -230,10 +230,10 @@ export const getDailyCashBalance = createAsyncThunk(
   async ({ token, restaurantId }, { rejectWithValue }) => {
     try {
       const headers = {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${token || localStorage.getItem('authToken')}`,
         'Content-Type': 'application/json'
       };
-      const finalRestaurantId = restaurantId || localStorage.getItem('restaurantId');
+      const finalRestaurantId = String(restaurantId || localStorage.getItem('restaurantId'));
       const today = new Date().toISOString().split('T')[0];
       const response = await axios.get(`${BASE_URL}/get-daily-cash-balance/${finalRestaurantId}/${today}`, { headers });
       console.log("Daily cash balance response:", response.data);
@@ -253,7 +253,7 @@ export const getDailyCashBalance = createAsyncThunk(
 //         'Content-Type': 'application/json'
 //       };
 
-//       const finalRestaurantId = restaurantId || localStorage.getItem('restaurantId');
+//       const finalRestaurantId = String(restaurantId || localStorage.getItem('restaurantId'));
 
 //       // Get today's date in YYYY-MM-DD format
 //       const today = new Date().toISOString().split('T')[0];
@@ -274,7 +274,7 @@ export const fetchTransactionsByRestaurant = createAsyncThunk(
   async ({ restaurantId, token }, { rejectWithValue }) => {
     try {
       console.log("Fetching transactions with token:", token);
-      const response = await axios.get(`${BASE_URL}/get-by-restaurant/transaction/${restaurantId}`, configureHeaders(token))
+      const response = await axios.get(`${BASE_URL}/get-by-restaurant/transaction/${String(restaurantId)}`, configureHeaders(token))
       console.log("Response data tran:", response.data)
 
       // Return the actual data array, not the wrapper object

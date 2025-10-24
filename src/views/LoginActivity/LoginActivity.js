@@ -242,6 +242,18 @@ const LoginActivity = () => {
                     Logged in at {formatDate(currentSession.logintime)}
                   </small>
                 </div>
+                {/* Logout button hidden */}
+                {/* <div className="flex-shrink-0 ms-2">
+                  <CButton 
+                    color="danger" 
+                    size="sm" 
+                    onClick={handleLogout}
+                    className="d-flex align-items-center"
+                  >
+                    <CIcon icon={cilXCircle} className="me-1" />
+                    Logout
+                  </CButton>
+                </div> */}
               </div>
             </CAlert>
           </CCol>

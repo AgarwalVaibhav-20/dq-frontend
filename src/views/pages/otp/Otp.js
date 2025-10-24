@@ -18,10 +18,10 @@ import {
 } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
 import { cilLockLocked } from '@coreui/icons';
-//import { getMessaging, getToken, isSupported } from "firebase/messaging";
-//import { messaging } from '../../../firebase';
+// import { getMessaging, getToken, isSupported } from "firebase/messaging";
+// import { messaging } from '../../../firebase';
 import { useDispatch, useSelector } from 'react-redux';
-import { updateRestaurantFCM, resetFCMStatus } from '../../../redux/slices/restaurantProfileSlice';
+// import { updateRestaurantFCM, resetFCMStatus } from '../../../redux/slices/restaurantProfileSlice';
 
 const Otp = () => {
   const [otp, setOtp] = useState('');
@@ -30,60 +30,61 @@ const Otp = () => {
   const location = useLocation();
   const { email } = location.state || {};
   const { loading, error } = useSelector((state) => state.auth);
-  const { restaurantId } = useSelector((state) => state.auth);
+  // const { restaurantId } = useSelector((state) => state.auth);
 
-  useEffect(() => {
-    const initializeFCM = async () => {
-      try {
-        // Check if FCM is supported in this browser
-        const isFcmSupported = await isSupported();
-        if (!isFcmSupported) {
-          console.warn('FCM not supported in this browser');
-          return;
-        }
+  // FCM initialization temporarily disabled
+  // useEffect(() => {
+  //   const initializeFCM = async () => {
+  //     try {
+  //       // Check if FCM is supported in this browser
+  //       const isFcmSupported = await isSupported();
+  //       if (!isFcmSupported) {
+  //         console.warn('FCM not supported in this browser');
+  //         return;
+  //       }
 
-        console.log('Requesting notification permission...');
-        const permission = await Notification.requestPermission();
+  //       console.log('Requesting notification permission...');
+  //       const permission = await Notification.requestPermission();
         
-        if (permission === 'granted') {
-          console.log('Notification permission granted.');
+  //       if (permission === 'granted') {
+  //         console.log('Notification permission granted.');
           
-          try {
-            const messagingResolved = messaging;
-            if (!messagingResolved) {
-              throw new Error('Firebase messaging not initialized');
-            }
+  //         try {
+  //           const messagingResolved = messaging;
+  //           if (!messagingResolved) {
+  //             throw new Error('Firebase messaging not initialized');
+  //           }
 
-            const currentToken = await getToken(messagingResolved, {
-              vapidKey: 'BJoy8gqaZ4uYWH8U1itJbzcYkSy5qe7sa-Uyttgnikj7oGEQtl4LeI_PJipz4RHlBKi9Pq0PZn7ekHnpKbHim1U'
-            });
+  //           const currentToken = await getToken(messagingResolved, {
+  //             vapidKey: 'BJoy8gqaZ4uYWH8U1itJbzcYkSy5qe7sa-Uyttgnikj7oGEQtl4LeI_PJipz4RHlBKi9Pq0PZn7ekHnpKbHim1U'
+  //           });
 
-            if (currentToken) {
-              if (restaurantId) {
-                dispatch(updateRestaurantFCM({
-                  id: restaurantId,
-                  fcm: { fcm: currentToken }
-                }))
-                .unwrap()
-                .then(() => console.log('FCM token updated successfully'))
-                .catch(err => console.error('Failed to update FCM token:', err));
-              }
-            } else {
-              console.warn('No FCM token retrieved.');
-            }
-          } catch (err) {
-            console.error('Error getting FCM token:', err);
-          }
-        } else {
-          console.warn('Notification permission denied.');
-        }
-      } catch (error) {
-        console.error('FCM initialization error:', error);
-      }
-    };
+  //           if (currentToken) {
+  //             if (restaurantId) {
+  //               dispatch(updateRestaurantFCM({
+  //                 id: restaurantId,
+  //                 fcm: { fcm: currentToken }
+  //               }))
+  //               .unwrap()
+  //               .then(() => console.log('FCM token updated successfully'))
+  //               .catch(err => console.error('Failed to update FCM token:', err));
+  //             }
+  //           } else {
+  //             console.warn('No FCM token retrieved.');
+  //           }
+  //         } catch (err) {
+  //           console.error('Error getting FCM token:', err);
+  //         }
+  //       } else {
+  //         console.warn('Notification permission denied.');
+  //       }
+  //     } catch (error) {
+  //       console.error('FCM initialization error:', error);
+  //     }
+  //   };
 
-    initializeFCM();
-  }, [dispatch, restaurantId]);
+  //   initializeFCM();
+  // }, [dispatch, restaurantId]);
 
   const handleOtpSubmit = (e) => {
     e.preventDefault();

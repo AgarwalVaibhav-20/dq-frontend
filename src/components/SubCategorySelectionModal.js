@@ -14,9 +14,9 @@ const SubCategorySelectionModal = ({
 
   // Filter subcategories relevant to the current menuItem's category
   // Assuming menuItem has a 'categoryId' property
-  const relevantSubcategories = subCategories.filter(
+  const relevantSubcategories = subCategories?.filter(
     (sub) => sub.category_id === menuItem?.categoryId
-  );
+  ) || [];
 
   useEffect(() => {
     // Reset selected subcategory when modal opens for a new item
@@ -73,11 +73,13 @@ const SubCategorySelectionModal = ({
               required
             >
               <option value="">Choose an option...</option>
-              {relevantSubcategories.map((sub) => (
-                <option key={sub.id} value={sub.id}>
+              {relevantSubcategories && relevantSubcategories.length > 0 ? relevantSubcategories.map((sub, index) => (
+                <option key={sub.id || `sub-${index}`} value={sub.id}>
                   {sub.sub_category_name}
                 </option>
-              ))}
+              )) : (
+                <option value="" disabled>No subcategories available</option>
+              )}
             </CFormSelect>
           </CCol>
         </CRow>

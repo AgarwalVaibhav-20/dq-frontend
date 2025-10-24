@@ -899,14 +899,14 @@ const Menu = () => {
                       <option value="mg">mg</option>
                     </select>
 
-                    {/* Price Input for this size */}
+                    {/* Price Input for this size - HIDDEN */}
                     <input
                       type="number"
                       className="form-control flex-fill"
                       placeholder="Price for this size"
                       value={stockItem.price || ""}
                       onChange={(e) => handleStockItemChange(actualIndex, 'price', e.target.value)}
-                      style={{ fontSize: '14px' }}
+                      style={{ fontSize: '14px', display: 'none' }}
                     />
 
                     {/* Remove Button */}

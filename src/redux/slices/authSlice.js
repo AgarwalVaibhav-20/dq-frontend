@@ -90,9 +90,11 @@ export const logoutUser = createAsyncThunk(
   async (_, { getState, rejectWithValue }) => {
     try {
       const token = getState().auth.token;
-      await axiosInstance.post(`${BASE_URL}/logout`, {}, configureHeaders(token));
-      return true;
+      const response = await axiosInstance.post(`${BASE_URL}/logout`, {}, configureHeaders(token));
+      console.log('🔍 Logout response:', response.data);
+      return response.data;
     } catch (error) {
+      console.error('❌ Logout error:', error);
       return rejectWithValue(error.response?.data?.message || 'Logout failed.');
     }
   }
@@ -119,12 +121,23 @@ export const fetchRestaurantDetails = createAsyncThunk(
   'auth/fetchRestaurantDetails',
   async ({ restaurantId, token }, { rejectWithValue }) => {
     try {
+      console.log("=== FRONTEND: Fetching Restaurant Details ===");
+      console.log("Restaurant ID:", restaurantId);
+      console.log("Token:", token ? "Present" : "Not found");
+      console.log("API URL:", `${BASE_URL}/rest-profile/${restaurantId}`);
+      
+      const currentToken = token || localStorage.getItem('authToken');
       const response = await axiosInstance.get(
-        `${BASE_URL}/rest-profile/${restaurantId}`,
-        configureHeaders(token)
+        `${BASE_URL}/rest-profile/${String(restaurantId)}`,
+        configureHeaders(currentToken)
       );
+      
+      console.log("Restaurant details response:", response.data);
       return response.data;
     } catch (error) {
+      console.error("❌ Error fetching restaurant details:", error);
+      console.error("Error response:", error.response?.data);
+      console.error("Error status:", error.response?.status);
       return rejectWithValue(error.response?.data?.message || 'Failed to fetch restaurant details');
     }
   }
@@ -265,6 +278,30 @@ const authSlice = createSlice({
       state.role = action.payload;
       state.user.role = action.payload;
       localStorage.setItem('userRole', action.payload);
+    },
+
+    // Update restaurant ID locally (useful for restaurant switching)
+    updateRestaurantId: (state, action) => {
+      const { restaurantId, restaurantName, token } = action.payload;
+      console.log('🔍 updateRestaurantId action called with:', { restaurantId, restaurantName, token: !!token });
+      console.log('🔍 Previous restaurantId:', state.restaurantId);
+      
+      state.restaurantId = restaurantId;
+      state.user.restaurantId = restaurantId;
+      localStorage.setItem('restaurantId', restaurantId);
+      
+      if (restaurantName) {
+        localStorage.setItem('selectedRestaurantName', restaurantName);
+      }
+      
+      if (token) {
+        state.token = token;
+        localStorage.setItem('authToken', token);
+        console.log('✅ Updated token in Redux store and localStorage');
+      }
+      
+      console.log('✅ Updated restaurantId in Redux store:', state.restaurantId);
+      console.log('✅ Updated user.restaurantId:', state.user.restaurantId);
     },
 
     // Clear error state
@@ -431,14 +468,19 @@ const authSlice = createSlice({
         state.loading = true;
         state.error = null;
       })
-      .addCase(logoutUser.fulfilled, (state) => {
+      .addCase(logoutUser.fulfilled, (state, action) => {
         state.loading = false;
         state.error = null;
+        
+        // Log the logout response for debugging
+        console.log('🔍 Logout fulfilled - Response data:', action.payload);
+        
         state.userId = null;
         state.token = null;
         state.restaurantId = null;
         state.categoryId = null;
         state.role = 'admin';
+        state.sessionStarted = false; // 🔥 Reset session started flag
         state.user = {
           id: null,
           name: null,
@@ -591,7 +633,7 @@ const authSlice = createSlice({
 });
 
 // Export actions
-export const { localLogout, updateCurrentUserRole, clearError, syncLocalStorage, setSessionStarted } = authSlice.actions;
+export const { localLogout, updateCurrentUserRole, updateRestaurantId, clearError, syncLocalStorage, setSessionStarted } = authSlice.actions;
 
 // Selectors
 export const selectAuth = (state) => ({

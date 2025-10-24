@@ -12,7 +12,7 @@ import { cilLockLocked, cilSettings, cilUser } from '@coreui/icons'
 import CIcon from '@coreui/icons-react'
 import { Link } from 'react-router-dom'
 import { useDispatch, useSelector, shallowEqual } from 'react-redux'
-import { localLogout, fetchRestaurantDetails } from '../../redux/slices/authSlice'
+import { localLogout, fetchRestaurantDetails, logoutUser } from '../../redux/slices/authSlice'
 import { fetchNotificationOrders } from '../../redux/slices/orderSlice'
 import { toast } from 'react-toastify'
 import useSound from 'use-sound'
@@ -75,35 +75,29 @@ const AppHeaderDropdown = () => {
 
   // 📌 Fetch restaurant details
   useEffect(() => {
+    console.log("=== AppHeaderDropdown: Fetching Restaurant Details ===");
+    console.log("Restaurant ID:", restaurantId);
+    console.log("Token:", token ? "Present" : "Not found");
+    console.log("Will call API:", !!(restaurantId && token));
+    
     if (restaurantId && token) {
+      console.log("Calling fetchRestaurantDetails with:", { restaurantId, token: token ? "Present" : "Not found" });
       dispatch(fetchRestaurantDetails({ restaurantId, token }))
       dispatch(getRestaurantProfile({  token })) // fetch profile
+    } else {
+      console.log("❌ Missing restaurantId or token, skipping API call");
     }
   }, [dispatch, restaurantId, token])
 
   const handleLogout = async () => {
     try {
-      // Get token from Redux or localStorage as fallback
-      const authToken = token || localStorage.getItem('authToken');
-      
-      // Record logout time in login activity
-      const response = await fetch(`${BASE_URL}/api/login-activity/logout`, {
-        method: 'PUT',
-        headers: {
-          'Authorization': `Bearer ${authToken}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (response.ok) {
-        console.log('Logout time recorded successfully');
-      } else {
-        console.log('Failed to record logout time, but continuing with logout');
-      }
+      console.log('🔍 Starting logout process...');
+      // Use the new logout API that handles superadmin restaurantId reset
+      await dispatch(logoutUser()).unwrap();
+      console.log('🔍 Logout completed successfully');
     } catch (error) {
-      console.error('Error recording logout time:', error);
-    } finally {
-      // Always proceed with the main logout
+      console.error('❌ Logout error:', error);
+      // Fallback to local logout if API fails
       dispatch(localLogout());
     }
   }

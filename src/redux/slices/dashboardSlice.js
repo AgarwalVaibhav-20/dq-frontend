@@ -14,10 +14,10 @@ export const fetchOverallReport = createAsyncThunk(
   'dashboard/fetchOverallReport',
   async ({ restaurantId, token }, { rejectWithValue }) => {
     try {
-      const token=localStorage.getItem('authToken');
+      const currentToken = token || localStorage.getItem('authToken');
       const response = await axios.get(
         `${BASE_URL}/reports/${restaurantId}`, 
-        configureHeaders(token)
+        configureHeaders(currentToken)
       );
       return response.data.data; // Extract the data property
     } catch (error) {
@@ -31,10 +31,10 @@ export const fetchChartData = createAsyncThunk(
   'dashboard/fetchChartData',
   async ({ year, restaurantId, token }, { rejectWithValue }) => {
     try {
-      const token=localStorage.getItem('authToken');
+      const currentToken = token || localStorage.getItem('authToken');
       const response = await axios.get(
         `${BASE_URL}/dashboard/chart-data?year=${year}&restaurantId=${restaurantId}`, 
-        configureHeaders(token)
+        configureHeaders(currentToken)
       );
       return response.data; // This should contain labels and datasets directly
     } catch (error) {
@@ -48,10 +48,10 @@ export const fetchWeeklyChartData = createAsyncThunk(
   'dashboard/fetchWeeklyChartData',
   async ({ year, restaurantId, token }, { rejectWithValue }) => {
     try {
-      const token=localStorage.getItem('authToken');
+      const currentToken = token || localStorage.getItem('authToken');
       const response = await axios.get(
         `${BASE_URL}/dashboard/weekly-chart-data?year=${year}&restaurantId=${restaurantId}`, 
-        configureHeaders(token)
+        configureHeaders(currentToken)
       );
       return response.data; // This should contain datasets directly
     } catch (error) {
@@ -65,6 +65,7 @@ export const fetchPaymentTypeStats = createAsyncThunk(
   'dashboard/fetchPaymentTypeStats',
   async ({ startDate, endDate, restaurantId, token }, { rejectWithValue }) => {
     try {
+      const currentToken = token || localStorage.getItem('authToken');
       const response = await axios.post(
         `${BASE_URL}/getReportPaymentType`, 
         {
@@ -72,7 +73,7 @@ export const fetchPaymentTypeStats = createAsyncThunk(
           endDate,
           restaurantId,
         },
-        configureHeaders(token) // Added authentication
+        configureHeaders(currentToken) // Added authentication
       );
       return response.data;
     } catch (error) {

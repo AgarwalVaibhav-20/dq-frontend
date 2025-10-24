@@ -19,6 +19,14 @@ export const AppSidebarNav = ({ items }) => {
     }),
     shallowEqual
   );
+
+  // Debug logging
+  console.log('🔍 AppSidebarNav Debug:', {
+    userRole,
+    reduxRole: useSelector((state) => state.auth.role),
+    localStorageRole: localStorage.getItem('userRole'),
+    userPermissions
+  });
   // const { restaurantPermission, userRole, userPermissions, sessionStarted } = useSelector(
   //   (state) => ({ 
   //     restaurantPermission: state.restaurantProfile.restaurantPermission,
@@ -52,8 +60,12 @@ export const AppSidebarNav = ({ items }) => {
   // Filter navigation items based on user permissions
   const filterItemsByPermissions = (items) => {
     return items.filter(item => {
-      // Admin always sees everything
-      if (userRole === 'admin') return true;
+      // Superadmin and Admin always see everything
+      if (userRole === 'superadmin' || userRole === 'admin') return true;
+      
+      // Also check if user object has superadmin or admin role
+      const currentUser = useSelector((state) => state.auth.user);
+      if (currentUser?.role === 'superadmin' || currentUser?.role === 'admin') return true;
 
       // For non-admin users, check if they have permission for this item
       if (userPermissions && Array.isArray(userPermissions) && userPermissions.length > 0) {
