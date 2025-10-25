@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import { useDispatch, useSelector } from 'react-redux';
 import {
@@ -57,12 +57,18 @@ const Reservation = () => {
   const [formErrors, setFormErrors] = useState({});
   const [submitLoading, setSubmitLoading] = useState(false);
 
+  // Refs for form inputs to avoid controlled component issues
+  const paymentRef = useRef(null);
+  const advanceRef = useRef(null);
+  const tableNumberRef = useRef(null);
+  const notesRef = useRef(null);
+
   // Initialize data on component mount
   useEffect(() => {
 
     if (restaurantId && token) {
       dispatch(fetchReservations({ restaurantId, token }));
-      dispatch(fetchCustomers({ restaurantId }));
+      dispatch(fetchCustomers({ restaurantId, token }));
     } else {
       console.error("No restaurantId found!");
     }
@@ -70,11 +76,18 @@ const Reservation = () => {
 
   // Debug logging for data changes
   useEffect(() => {
+    console.log('🔍 Reservation Debug:');
+    console.log('Reservations:', reservations);
+    console.log('Loading:', loading);
+    console.log('Error:', error);
+    console.log('RestaurantId:', restaurantId);
+    console.log('Token:', token ? 'Present' : 'Missing');
+    
     if (reservations && reservations.length > 0) {
       console.log("First reservation structure:", reservations[0]);
       console.log("Available keys in first reservation:", Object.keys(reservations[0]));
     }
-  }, [reservations, loading, customers, error]);
+  }, [reservations, loading, customers, error, restaurantId, token]);
 
   // Generic form input handler
   const handleChange = (e) => {
@@ -153,11 +166,34 @@ const Reservation = () => {
       tableNumber: '',
     });
     setFormErrors({});
+    
+    // Clear ref values
+    if (paymentRef.current) paymentRef.current.value = '';
+    if (advanceRef.current) advanceRef.current.value = '';
+    if (tableNumberRef.current) tableNumberRef.current.value = '';
+    if (notesRef.current) notesRef.current.value = '';
   };
 
   // Create new reservation
   const handleSaveReservation = async (e) => {
     e.preventDefault();
+
+    // Get values from refs
+    const paymentValue = paymentRef.current?.value || '';
+    const advanceValue = advanceRef.current?.value || '';
+    const tableNumberValue = tableNumberRef.current?.value || '';
+    const notesValue = notesRef.current?.value || '';
+
+    // Update formData with ref values
+    const updatedFormData = {
+      ...formData,
+      payment: paymentValue,
+      advance: advanceValue,
+      tableNumber: tableNumberValue,
+      notes: notesValue
+    };
+
+    setFormData(updatedFormData);
 
     if (!validateForm()) {
       return;
@@ -167,16 +203,16 @@ const Reservation = () => {
 
     try {
       const payload = {
-        ...formData,
+        ...updatedFormData,
         restaurantId,
-        startTime: new Date(formData.startTime).toISOString(),
-        endTime: new Date(formData.endTime).toISOString(),
-        payment: parseFloat(formData.payment),
-        advance: parseFloat(formData.advance) || 0,
+        startTime: new Date(updatedFormData.startTime).toISOString(),
+        endTime: new Date(updatedFormData.endTime).toISOString(),
+        payment: parseFloat(paymentValue),
+        advance: parseFloat(advanceValue) || 0,
       };
 
       await dispatch(addReservation(payload)).unwrap();
-      await dispatch(fetchReservations({ restaurantId }));
+      await dispatch(fetchReservations({ restaurantId, token }));
 
       resetForm();
       setModalVisible(false);
@@ -260,7 +296,7 @@ const Reservation = () => {
     try {
       const id = selectedReservation?._id;
       await dispatch(deleteReservation({ id })).unwrap();
-      await dispatch(fetchReservations({ restaurantId }));
+      await dispatch(fetchReservations({ restaurantId, token }));
 
       setDeleteModalVisible(false);
       setSelectedReservation(null);
@@ -630,7 +666,7 @@ const Reservation = () => {
         onChange={handleChange}
         placeholder={placeholder}
         invalid={!!formErrors[name]}
-        size={isMobile ? "sm" : ""}
+        size={isMobile ? "sm" : "sm"}
         className={isMobile ? "form-control-sm" : ""}
         style={isMobile ? { minHeight: '44px' } : {}}
         {...props}
@@ -721,45 +757,103 @@ const Reservation = () => {
 
           <div className="row g-2">
             <div className="col-12 col-md-6">
-              <FormField
-                label="Total Payment"
-                name="payment"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Enter total amount"
-                required
-              />
+              <div className="mb-3">
+                <CFormLabel htmlFor="payment" className={isMobile ? "small" : ""}>
+                  Total Payment <span className="text-danger">*</span>
+                </CFormLabel>
+                <CFormInput
+                  ref={paymentRef}
+                  type="number"
+                  id="payment"
+                  name="payment"
+                  min="0"
+                  step="0.01"
+                  placeholder="Enter total amount"
+                  invalid={!!formErrors.payment}
+                  size={isMobile ? "sm" : "sm"}
+                  className={isMobile ? "form-control-sm" : ""}
+                  style={isMobile ? { minHeight: '44px' } : {}}
+                />
+                {formErrors.payment && (
+                  <div className="invalid-feedback d-block small">
+                    {formErrors.payment}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="col-12 col-md-6">
-              <FormField
-                label="Advance Payment"
-                name="advance"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Enter advance amount"
-              />
+              <div className="mb-3">
+                <CFormLabel htmlFor="advance" className={isMobile ? "small" : ""}>
+                  Advance Payment
+                </CFormLabel>
+                <CFormInput
+                  ref={advanceRef}
+                  type="number"
+                  id="advance"
+                  name="advance"
+                  min="0"
+                  step="0.01"
+                  placeholder="Enter advance amount"
+                  invalid={!!formErrors.advance}
+                  size={isMobile ? "sm" : "sm"}
+                  className={isMobile ? "form-control-sm" : ""}
+                  style={isMobile ? { minHeight: '44px' } : {}}
+                />
+                {formErrors.advance && (
+                  <div className="invalid-feedback d-block small">
+                    {formErrors.advance}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
 
           <div className="row g-2">
             <div className="col-12 col-md-6">
-              <FormField
-                label="Table Number"
-                name="tableNumber"
-                placeholder="Enter table number"
-              />
+              <div className="mb-3">
+                <CFormLabel htmlFor="tableNumber" className={isMobile ? "small" : ""}>
+                  Table Number
+                </CFormLabel>
+                <CFormInput
+                  ref={tableNumberRef}
+                  type="text"
+                  id="tableNumber"
+                  name="tableNumber"
+                  placeholder="Enter table number"
+                  invalid={!!formErrors.tableNumber}
+                  size={isMobile ? "sm" : "sm"}
+                  className={isMobile ? "form-control-sm" : ""}
+                  style={isMobile ? { minHeight: '44px' } : {}}
+                />
+                {formErrors.tableNumber && (
+                  <div className="invalid-feedback d-block small">
+                    {formErrors.tableNumber}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="col-12 col-md-6">
-              <FormField
-                label="Notes"
-                name="notes"
-                placeholder="Additional notes"
-                value={formData.notes}
-                onChange={handleChange}
-                // error={formErrors.notes}
-              />
+              <div className="mb-3">
+                <CFormLabel htmlFor="notes" className={isMobile ? "small" : ""}>
+                  Notes
+                </CFormLabel>
+                <CFormInput
+                  ref={notesRef}
+                  type="text"
+                  id="notes"
+                  name="notes"
+                  placeholder="Additional notes"
+                  invalid={!!formErrors.notes}
+                  size={isMobile ? "sm" : "sm"}
+                  className={isMobile ? "form-control-sm" : ""}
+                  style={isMobile ? { minHeight: '44px' } : {}}
+                />
+                {formErrors.notes && (
+                  <div className="invalid-feedback d-block small">
+                    {formErrors.notes}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </CForm>
@@ -774,7 +868,7 @@ const Reservation = () => {
             }}
             disabled={submitLoading}
             className={isMobile ? "w-100" : ""}
-            size={isMobile ? "sm" : ""}
+            size={isMobile ? "sm" : "sm"}
           >
             Cancel
           </CButton>
@@ -783,7 +877,7 @@ const Reservation = () => {
             onClick={handleSaveReservation}
             disabled={submitLoading}
             className={isMobile ? "w-100" : ""}
-            size={isMobile ? "sm" : ""}
+            size={isMobile ? "sm" : "sm"}
           >
             {submitLoading ? (
               <>
@@ -927,7 +1021,7 @@ const Reservation = () => {
             }}
             disabled={submitLoading}
             className={isMobile ? "w-100" : ""}
-            size={isMobile ? "sm" : ""}
+            size={isMobile ? "sm" : "sm"}
           >
             Cancel
           </CButton>
@@ -936,7 +1030,7 @@ const Reservation = () => {
             onClick={handleUpdateReservation}
             disabled={submitLoading}
             className={isMobile ? "w-100" : ""}
-            size={isMobile ? "sm" : ""}
+            size={isMobile ? "sm" : "sm"}
           >
             {submitLoading ? (
               <>
@@ -960,7 +1054,7 @@ const Reservation = () => {
         setDeleteModalVisible(false);
         setSelectedReservation(null);
       }}
-      size={isMobile ? "sm" : ""}
+            size={isMobile ? "sm" : "sm"}
       className={isMobile ? "modal-mobile-responsive" : ""}
     >
       <CModalHeader className={isMobile ? "pb-2" : ""}>
@@ -992,7 +1086,7 @@ const Reservation = () => {
             }}
             disabled={submitLoading}
             className={isMobile ? "w-100" : ""}
-            size={isMobile ? "sm" : ""}
+            size={isMobile ? "sm" : "sm"}
           >
             Cancel
           </CButton>
@@ -1001,7 +1095,7 @@ const Reservation = () => {
             onClick={handleDeleteReservation}
             disabled={submitLoading}
             className={isMobile ? "w-100" : ""}
-            size={isMobile ? "sm" : ""}
+            size={isMobile ? "sm" : "sm"}
           >
             {submitLoading ? (
               <>
@@ -1106,7 +1200,7 @@ const Reservation = () => {
           color="secondary"
           onClick={() => setHistoryModalVisible(false)}
           className={isMobile ? "w-100" : ""}
-          size={isMobile ? "sm" : ""}
+          size={isMobile ? "sm" : "sm"}
         >
           Close
         </CButton>
@@ -1220,7 +1314,7 @@ const Reservation = () => {
           {loading ? (
             <div className="d-flex justify-content-center align-items-center" style={{ height: '400px' }}>
               <div className="text-center">
-                <CSpinner size="lg" className="mb-3" />
+                <CSpinner size="sm" className="mb-3" />
                 <p>Loading reservations...</p>
               </div>
             </div>

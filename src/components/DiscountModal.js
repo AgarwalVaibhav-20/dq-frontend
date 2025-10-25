@@ -26,6 +26,7 @@ const DiscountModal = ({
   const [couponCode, setCouponCode] = useState('');
   const [couponDiscount, setCouponDiscount] = useState(0);
   const [useRewardPoints, setUseRewardPoints] = useState(false); // Reward points checkbox
+  const [couponError, setCouponError] = useState(''); // Error message for coupon
 
   useEffect(() => {
     if (showDiscountModal) {
@@ -35,6 +36,7 @@ const DiscountModal = ({
       setCouponCode('');
       setCouponDiscount(0);
       setUseRewardPoints(false);
+      setCouponError(''); // Reset error message
     }
   }, [showDiscountModal, cart]);
 
@@ -87,6 +89,14 @@ const DiscountModal = ({
 
       if (response.data.success) {
         const coupon = response.data.coupon;
+        
+        // Check max usage before applying
+        if (coupon.maxUsage && coupon.usageCount >= coupon.maxUsage) {
+          setCouponDiscount(0);
+          setCouponError(`Coupon usage limit exceeded. Used: ${coupon.usageCount}/${coupon.maxUsage}`);
+          return;
+        }
+
         setCouponDiscount({
           type: coupon.discountType,
           value: coupon.discountValue,
@@ -100,6 +110,7 @@ const DiscountModal = ({
           maxUsage: coupon.maxUsage,
           description: coupon.description
         });
+        setCouponError(''); // Clear error message on success
       } else {
         setCouponDiscount(0);
       }
@@ -135,7 +146,7 @@ const DiscountModal = ({
     return cart.reduce((sum, item) => sum + (item.adjustedPrice * item.quantity), 0);
   };
 
-  const onSubmit = () => {
+  const onSubmit = async () => {
     if (
       (selectedItemIds.length === 0 && !couponDiscount.value && !useRewardPoints) ||
       (!discountValue && !couponDiscount.value && !useRewardPoints)
@@ -143,6 +154,9 @@ const DiscountModal = ({
       console.warn('Invalid submission: No discount applied');
       return;
     }
+
+    // Note: Usage count will be incremented only after successful payment
+    // This is just applying the coupon to the cart, not finalizing the order
 
     const discounts = {
       selectedItemDiscount: {
@@ -168,6 +182,7 @@ const DiscountModal = ({
     setCouponCode('');
     setCouponDiscount(0);
     setUseRewardPoints(false);
+    setCouponError(''); // Reset error message
     setShowDiscountModal(false);
   };
 
@@ -194,9 +209,21 @@ const DiscountModal = ({
     if (couponDiscount.value) {
       if (couponDiscount.type === 'percentage') {
         const subtotal = calculateCartSubtotal();
-        totalDiscount += (subtotal * couponDiscount.value) / 100;
+        const calculatedDiscountAmount = (subtotal * couponDiscount.value) / 100;
+        
+        // Check if max discount limit exists and apply it
+        if (couponDiscount.maxDiscountAmount && calculatedDiscountAmount > couponDiscount.maxDiscountAmount) {
+          totalDiscount += couponDiscount.maxDiscountAmount;
+        } else {
+          totalDiscount += calculatedDiscountAmount;
+        }
       } else if (couponDiscount.type === 'fixed') {
-        totalDiscount += couponDiscount.value;
+        // For fixed discount, check if it exceeds max discount limit
+        if (couponDiscount.maxDiscountAmount && couponDiscount.value > couponDiscount.maxDiscountAmount) {
+          totalDiscount += couponDiscount.maxDiscountAmount;
+        } else {
+          totalDiscount += couponDiscount.value;
+        }
       }
     }
 
@@ -355,7 +382,25 @@ const DiscountModal = ({
                   </div>
                   <div className="mb-2">
                     <strong>Discount Amount:</strong>
-                    <span className="text-success ms-1">₹{couponDiscount.amount?.toFixed(2) || '0.00'}</span>
+                    <span className="text-success ms-1">
+                      ₹{(() => {
+                        const subtotal = calculateCartSubtotal();
+                        let actualDiscount = 0;
+                        
+                        if (couponDiscount.type === 'percentage') {
+                          const calculatedDiscount = (subtotal * couponDiscount.value) / 100;
+                          actualDiscount = couponDiscount.maxDiscountAmount && calculatedDiscount > couponDiscount.maxDiscountAmount 
+                            ? couponDiscount.maxDiscountAmount 
+                            : calculatedDiscount;
+                        } else if (couponDiscount.type === 'fixed') {
+                          actualDiscount = couponDiscount.maxDiscountAmount && couponDiscount.value > couponDiscount.maxDiscountAmount 
+                            ? couponDiscount.maxDiscountAmount 
+                            : couponDiscount.value;
+                        }
+                        
+                        return actualDiscount.toFixed(2);
+                      })()}
+                    </span>
                   </div>
                 </div>
 
@@ -374,6 +419,16 @@ const DiscountModal = ({
                       {couponDiscount.expiryDate ? new Date(couponDiscount.expiryDate).toLocaleDateString() : 'N/A'}
                     </span>
                   </div>
+                  <div className="mb-2">
+                    <strong>Usage:</strong>
+                    <span className="text-info ms-1">
+                      {couponDiscount.usageCount || 0}
+                      {couponDiscount.maxUsage ? `/${couponDiscount.maxUsage}` : ''}
+                      {couponDiscount.maxUsage && couponDiscount.usageCount >= couponDiscount.maxUsage ? 
+                        ' (Limit Reached)' : ''
+                      }
+                    </span>
+                  </div>
                 </div>
               </div>
 
@@ -383,12 +438,53 @@ const DiscountModal = ({
                   <span className="text-muted ms-1">{couponDiscount.description}</span>
                 </div>
               )}
+
+              {/* Max Discount Warning */}
+              {(() => {
+                const subtotal = calculateCartSubtotal();
+                let showWarning = false;
+                let warningMessage = '';
+                
+                if (couponDiscount.type === 'percentage') {
+                  const calculatedDiscount = (subtotal * couponDiscount.value) / 100;
+                  if (couponDiscount.maxDiscountAmount && calculatedDiscount > couponDiscount.maxDiscountAmount) {
+                    showWarning = true;
+                    warningMessage = `Max discount limit of ₹${couponDiscount.maxDiscountAmount} applied instead of calculated ₹${calculatedDiscount.toFixed(2)}`;
+                  }
+                } else if (couponDiscount.type === 'fixed') {
+                  if (couponDiscount.maxDiscountAmount && couponDiscount.value > couponDiscount.maxDiscountAmount) {
+                    showWarning = true;
+                    warningMessage = `Max discount limit of ₹${couponDiscount.maxDiscountAmount} applied instead of ₹${couponDiscount.value}`;
+                  }
+                }
+                
+                return showWarning ? (
+                  <div className="mt-2">
+                    <div className="alert alert-warning py-2 mb-0">
+                      <small>
+                        <strong>⚠️ Max Discount Applied:</strong> {warningMessage}
+                      </small>
+                    </div>
+                  </div>
+                ) : null;
+              })()}
             </div>
           ) : couponCode ? (
             <small className="text-danger d-block mt-2">
               ❌ Invalid Coupon
             </small>
           ) : null}
+          
+          {/* Coupon Error Message */}
+          {couponError && (
+            <div className="mt-2">
+              <div className="alert alert-danger py-2 mb-0">
+                <small>
+                  <strong>❌ Error:</strong> {couponError}
+                </small>
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Select Items */}

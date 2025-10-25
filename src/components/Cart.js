@@ -401,17 +401,7 @@ const Cart = ({
                 <span>System Charge ({selectedSystem.systemName})</span>
                 <div className="d-flex align-items-center">
                   <span className="text-info me-2">₹{Number(selectedSystem.chargeOfSystem || 0).toFixed(2)}</span>
-                  {onSystemChange && (
-                    <CButton
-                      color="outline-primary"
-                      size="sm"
-                      onClick={onSystemChange}
-                      className="p-1"
-                      style={{ fontSize: '0.7rem' }}
-                    >
-                      Change
-                    </CButton>
-                  )}
+                  {/* Change button hidden - system selection moved to dropdown */}
                 </div>
               </div>
             )}

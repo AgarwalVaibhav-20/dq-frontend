@@ -13,12 +13,13 @@ export const fetchReservations = createAsyncThunk(
   "reservations/fetchReservations",
   async ({ restaurantId, token }, { rejectWithValue }) => {
     try {
-      const response = await axios.get( `${BASE_URL}/reservations/debug/all`,
+      const response = await axios.get( `${BASE_URL}/reservations/all`,
         {
           params: { restaurantId },
           ...configureHeaders(token),
         });
-      return response.data.reservations;
+      console.log('✅ Reservations fetched:', response.data);
+      return response.data.reservations || response.data;
     } catch (error) {
       console.log(error)
       console.error("❌ API Error:", error);

@@ -3,6 +3,8 @@ import { CContainer, CRow, CCol, CButton, CCardFooter } from '@coreui/react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useDispatch, useSelector } from 'react-redux'
+import axios from 'axios'
+import { BASE_URL } from '../../utils/constants'
 import { fetchMenuItems } from '../../redux/slices/menuSlice'
 import {
   fetchCustomers,
@@ -22,7 +24,6 @@ import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 import { createOrder } from '../../redux/slices/orderSlice'
 import CustomerModal from '../../components/CustomerModal'
-import { BASE_URL } from '../../utils/constants'
 import ProductList from '../../components/ProductList'
 import Cart from '../../components/Cart'
 import Invoice from '../../components/Invoice'
@@ -46,6 +47,7 @@ const POSTableContent = () => {
   const kotRef = useRef(null)
   const { tableNumber } = useParams()
   const [appliedDiscounts, setAppliedDiscounts] = useState(null);
+  const [appliedCoupon, setAppliedCoupon] = useState(null); // Store coupon data for max discount check
   const { customers, loading: customerLoading } = useSelector((state) => state.customers)
   const { menuItems, loading: menuItemsLoading } = useSelector((state) => state.menuItems)
   const { categories, loading: categoryLoading } = useSelector((state) => state.category)
@@ -126,6 +128,7 @@ const POSTableContent = () => {
   const [showSubCategoryModal, setShowSubCategoryModal] = useState(false)
   const [selectedMenuItemForSubcategory, setSelectedMenuItemForSubcategory] = useState(null)
   const [showSystemModal, setShowSystemModal] = useState(false)
+  const [systems, setSystems] = useState([]); // Add systems state
   const [selectedSystem, setSelectedSystem] = useState(() => {
     const savedSystem = localStorage.getItem(`selectedSystem_${tableId}`)
     if (savedSystem) {
@@ -257,6 +260,7 @@ const POSTableContent = () => {
           }))
 
         console.log('Filtered systems (willOccupy: true):', transformedSystems)
+        setSystems(transformedSystems); // Store systems for dropdown
 
         // Handle system selection based on count
         if (!selectedSystem) {
@@ -498,6 +502,17 @@ const POSTableContent = () => {
     setShowSystemModal(false)
   }
 
+  const handleSystemDropdownChange = (e) => {
+    const selectedSystemId = e.target.value;
+    if (selectedSystemId) {
+      const system = systems.find(s => s._id === selectedSystemId);
+      if (system) {
+        setSelectedSystem(system);
+        localStorage.setItem(`selectedSystem_${tableId}`, JSON.stringify(system));
+      }
+    }
+  }
+
   const handleSearchProduct = (e) => {
     setSearchProduct(e.target.value)
   }
@@ -580,6 +595,7 @@ const POSTableContent = () => {
     setElapsedTime(0)
     setSelectedCustomer(null);
     setSelectedCustomerName('');
+    setAppliedCoupon(null); // Reset applied coupon
     localStorage.removeItem(`cart_${tableId}_${userId}`)
     localStorage.removeItem(`start_time_${tableId}_${userId}`)
 
@@ -725,7 +741,18 @@ const POSTableContent = () => {
     }
 
     if (discounts.coupon && discounts.coupon.value) {
-      const { value, type } = discounts.coupon;
+      const { value, type, maxDiscountAmount } = discounts.coupon;
+      
+      // Store coupon data for max discount checks in calculateDiscountAmount
+      setAppliedCoupon({
+        id: discounts.coupon.id, // Add coupon ID for usage count increment
+        value,
+        type,
+        maxDiscountAmount,
+        code: discounts.coupon.code
+      });
+      
+      // Set the base discount percentage (max discount will be handled in calculateDiscountAmount)
       if (type === 'percentage') {
         setDiscount(value);
         toast.success(`Coupon discount of ${value}% applied to entire order!`);
@@ -799,7 +826,19 @@ const POSTableContent = () => {
         totalDiscount = (subtotal * membershipDiscount.value) / 100;
       }
     } else {
-      totalDiscount = (subtotal * discount) / 100;
+      // Apply coupon discount with max discount check
+      if (appliedCoupon && appliedCoupon.maxDiscountAmount) {
+        if (appliedCoupon.type === 'percentage') {
+          const calculatedDiscountAmount = (subtotal * appliedCoupon.value) / 100;
+          totalDiscount = Math.min(calculatedDiscountAmount, appliedCoupon.maxDiscountAmount);
+        } else if (appliedCoupon.type === 'fixed') {
+          totalDiscount = Math.min(appliedCoupon.value, appliedCoupon.maxDiscountAmount);
+        }
+      } else {
+        // Fallback to regular discount calculation
+        totalDiscount = (subtotal * discount) / 100;
+      }
+      
       cart.forEach(item => {
         if (item.discountAmount) totalDiscount += Number(item.discountAmount);
       });
@@ -812,7 +851,7 @@ const POSTableContent = () => {
 
     console.log('Total Discount:', totalDiscount);
     return totalDiscount;
-  }, [calculateSubtotal, discount, cart, membershipDiscount, appliedDiscounts]);
+  }, [calculateSubtotal, discount, cart, membershipDiscount, appliedDiscounts, appliedCoupon]);
 
   const calculateTotal = useCallback(() => {
     const subtotal = calculateSubtotal();
@@ -976,7 +1015,11 @@ const POSTableContent = () => {
       }
       return item;
     });
+    
     setCart(updatedCart);
+    
+    // Note: Max discount check is now handled in calculateDiscountAmount function
+    // No need to manually adjust discount here as it will be calculated automatically
   };
 
   const handleAddCustomer = (formValues) => {
@@ -1104,14 +1147,42 @@ const POSTableContent = () => {
         }
       }
 
-      // 🔥 NEW: 5. DEDUCT STOCK FROM INVENTORY (FIFO METHOD)
+      // 🔥 NEW: 5. INCREMENT COUPON USAGE COUNT (only after successful payment)
+      if (appliedCoupon && appliedCoupon.id) {
+        console.log('🎫 Attempting to increment coupon usage count:', appliedCoupon);
+        try {
+          const orderTotal = calculateSubtotal();
+          console.log('📊 Order total for coupon usage:', orderTotal);
+          
+          const response = await axios.post(`${BASE_URL}/api/coupon/apply`, {
+            couponId: appliedCoupon.id,
+            orderTotal: orderTotal
+          }, {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+          
+          console.log('✅ Coupon usage count incremented successfully:', response.data);
+          toast.success(`🎫 Coupon ${appliedCoupon.code} usage count updated!`);
+        } catch (error) {
+          console.error('❌ Error incrementing coupon usage:', error);
+          console.error('❌ Error response:', error.response?.data);
+          // Don't fail the payment if coupon usage increment fails
+          toast.warning('⚠️ Payment successful but coupon usage count update failed');
+        }
+      } else {
+        console.log('⚠️ No coupon applied or coupon ID missing:', appliedCoupon);
+      }
+
+      // 🔥 NEW: 6. DEDUCT STOCK FROM INVENTORY (FIFO METHOD)
       console.log('📦 Starting stock deduction...');
 
       // Prepare stock deduction data from cart
       // ✅ REMOVED: Manual stock deduction - automatic deduction already happens in InventoryService
       console.log('📦 Stock deduction will be handled automatically by InventoryService');
 
-      // 6. Handle unmerge logic if needed
+      // 🔥 NEW: 6. Handle unmerge logic if needed
       if (tableId.startsWith('merged_')) {
         const allMergedTables = JSON.parse(localStorage.getItem('mergedTables') || '[]');
         const updatedMergedTables = allMergedTables.filter(m => `merged_${m.id}` !== tableId);
@@ -1120,10 +1191,11 @@ const POSTableContent = () => {
         localStorage.removeItem(`start_time_${tableId}`);
       }
 
-      // 7. Success - clear cart and navigate
+      // 🔥 NEW: 7. Success - clear cart and navigate
       setShowPaymentModal(false);
       clearCart();
       setAppliedDiscounts(null);
+      setAppliedCoupon(null); // Reset applied coupon
       toast.success('✅ Payment processed successfully!');
       navigate('/pos');
 
@@ -1676,6 +1748,9 @@ const POSTableContent = () => {
             categories={categories}
             selectedCategoryId={selectedCategoryId}
             setSelectedCategoryId={setSelectedCategoryId}
+            systems={systems}
+            selectedSystem={selectedSystem}
+            handleSystemDropdownChange={handleSystemDropdownChange}
           />
         </CCol>
         <CCol md={5} lg={4}>

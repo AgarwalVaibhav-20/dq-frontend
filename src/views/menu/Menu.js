@@ -57,6 +57,36 @@ const Menu = () => {
   const [previewImage, setPreviewImage] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Helper function to get compatible units based on inventory item unit
+  const getCompatibleUnits = (inventoryUnit) => {
+    if (!inventoryUnit) return [];
+    
+    const unit = inventoryUnit.toLowerCase().trim();
+    
+    // Weight units (kg, gm, mg)
+    if (['kg', 'gm', 'mg'].includes(unit)) {
+      return ['kg', 'gm', 'mg'];
+    }
+    
+    // Volume units (litre, ltr, ml)
+    if (['litre', 'ltr', 'ml'].includes(unit)) {
+      return ['litre', 'ml'];
+    }
+    
+    // Count units (pcs)
+    if (['pcs'].includes(unit)) {
+      return ['pcs'];
+    }
+    
+    // Default fallback
+    return ['kg', 'gm', 'mg', 'litre', 'ml', 'pcs'];
+  };
+
+  // Helper function to get selected inventory item
+  const getSelectedInventoryItem = (stockId) => {
+    return inventories?.find(inv => inv._id === stockId);
+  };
+
   // ------------------ Fetch Data ------------------
   useEffect(() => {
     const fetchData = async () => {
@@ -891,12 +921,30 @@ const Menu = () => {
                       style={{ fontSize: '14px' }}
                     >
                       <option value="">Select Unit</option>
-                      <option value="kg">kg</option>
-                      <option value="gm">gm</option>
-                      <option value="litre">litre</option>
-                      <option value="ml">ml</option>
-                      <option value="pcs">pcs</option>
-                      <option value="mg">mg</option>
+                      {(() => {
+                        const selectedInventory = getSelectedInventoryItem(stockItem.stockId);
+                        const compatibleUnits = getCompatibleUnits(selectedInventory?.unit);
+                        
+                        if (compatibleUnits.length === 0) {
+                          // Show all units if no inventory selected
+                          return (
+                            <>
+                              <option value="kg">kg</option>
+                              <option value="gm">gm</option>
+                              <option value="litre">litre</option>
+                              <option value="ml">ml</option>
+                              <option value="pcs">pcs</option>
+                              <option value="mg">mg</option>
+                            </>
+                          );
+                        }
+                        
+                        return compatibleUnits.map(unit => (
+                          <option key={unit} value={unit}>
+                            {unit}
+                          </option>
+                        ));
+                      })()}
                     </select>
 
                     {/* Price Input for this size - HIDDEN */}

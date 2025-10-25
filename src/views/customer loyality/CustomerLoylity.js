@@ -111,20 +111,43 @@ function CustomerLoyalty() {
 
   // Validate form
   const validateForm = () => {
-    if (discountType === 'percentage' && discountPercentage && (discountPercentage < 1 || discountPercentage > 100)) {
+    // Required field validations
+    if (!discountPercentage || discountPercentage === '') {
+      setSnackbar({ open: true, message: 'Discount value is required', severity: 'error' });
+      return false;
+    }
+    if (!minOrderValue || minOrderValue === '') {
+      setSnackbar({ open: true, message: 'Minimum order value is required', severity: 'error' });
+      return false;
+    }
+    if (!maxUsage || maxUsage === '') {
+      setSnackbar({ open: true, message: 'Maximum usage count is required', severity: 'error' });
+      return false;
+    }
+    if (discountType === 'percentage' && (!maxDiscountAmount || maxDiscountAmount === '')) {
+      setSnackbar({ open: true, message: 'Maximum discount amount is required for percentage coupons', severity: 'error' });
+      return false;
+    }
+
+    // Value range validations
+    if (discountType === 'percentage' && (discountPercentage < 1 || discountPercentage > 100)) {
       setSnackbar({ open: true, message: 'Discount percentage must be between 1 and 100', severity: 'error' });
       return false;
     }
-    if (discountType === 'fixed' && discountPercentage && discountPercentage < 1) {
+    if (discountType === 'fixed' && discountPercentage < 1) {
       setSnackbar({ open: true, message: 'Discount amount must be at least 1', severity: 'error' });
       return false;
     }
-    if (minOrderValue && parseFloat(minOrderValue) < 0) {
+    if (parseFloat(minOrderValue) < 0) {
       setSnackbar({ open: true, message: 'Minimum order value cannot be negative', severity: 'error' });
       return false;
     }
-    if (maxUsage && parseInt(maxUsage) < 1) {
+    if (parseInt(maxUsage) < 1) {
       setSnackbar({ open: true, message: 'Maximum usage must be at least 1', severity: 'error' });
+      return false;
+    }
+    if (discountType === 'percentage' && parseFloat(maxDiscountAmount) <= 0) {
+      setSnackbar({ open: true, message: 'Maximum discount amount must be greater than 0', severity: 'error' });
       return false;
     }
     if (expiryDate && new Date(expiryDate) <= new Date()) {
@@ -141,11 +164,11 @@ function CustomerLoyalty() {
     const couponData = {
       code: couponCode || generateCouponCode(),
       discountType,
-      discountValue: parseFloat(discountPercentage) || 10,
+      discountValue: parseFloat(discountPercentage),
       expiryDate: expiryDate || getDefaultExpiryDate(),
-      minOrderValue: parseFloat(minOrderValue) || 0,
-      maxDiscountAmount: maxDiscountAmount ? parseFloat(maxDiscountAmount) : null,
-      maxUsage: maxUsage ? parseInt(maxUsage) : null,
+      minOrderValue: parseFloat(minOrderValue),
+      maxDiscountAmount: discountType === 'percentage' ? parseFloat(maxDiscountAmount) : null,
+      maxUsage: parseInt(maxUsage),
       description: description.trim(),
       isActive
     };
@@ -323,7 +346,7 @@ function CustomerLoyalty() {
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
-                    label={`Discount ${discountType === 'percentage' ? 'Percentage' : 'Amount (₹)'}`}
+                    label={`Discount ${discountType === 'percentage' ? 'Percentage' : 'Amount (₹)'} *`}
                     type="number"
                     value={discountPercentage}
                     onChange={(e) => setDiscountPercentage(e.target.value)}
@@ -334,6 +357,8 @@ function CustomerLoyalty() {
                     }}
                     helperText={`${discountType === 'percentage' ? '1-100%' : 'Minimum ₹1'} (default: 10${discountType === 'percentage' ? '%' : ' ₹'})`}
                     size="small"
+                    required
+                    error={!discountPercentage && discountPercentage !== ''}
                   />
                 </Grid>
 
@@ -355,26 +380,30 @@ function CustomerLoyalty() {
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
-                    label="Min Order Value (₹)"
+                    label="Min Order Value (₹) *"
                     type="number"
                     value={minOrderValue}
                     onChange={(e) => setMinOrderValue(e.target.value)}
                     inputProps={{ min: 0, step: 0.01 }}
                     helperText="Minimum cart value to apply coupon"
                     size="small"
+                    required
+                    error={!minOrderValue && minOrderValue !== ''}
                   />
                 </Grid>
 
                 <Grid item xs={12} sm={6}>
                   <TextField
                     fullWidth
-                    label="Max Usage Count"
+                    label="Max Usage Count *"
                     type="number"
                     value={maxUsage}
                     onChange={(e) => setMaxUsage(e.target.value)}
                     inputProps={{ min: 1 }}
-                    helperText="Leave empty for unlimited usage"
+                    helperText="Maximum number of times this coupon can be used"
                     size="small"
+                    required
+                    error={!maxUsage && maxUsage !== ''}
                   />
                 </Grid>
 
@@ -383,13 +412,15 @@ function CustomerLoyalty() {
                   <Grid item xs={12}>
                     <TextField
                       fullWidth
-                      label="Max Discount Amount (₹)"
+                      label="Max Discount Amount (₹) *"
                       type="number"
                       value={maxDiscountAmount}
                       onChange={(e) => setMaxDiscountAmount(e.target.value)}
                       inputProps={{ min: 0, step: 0.01 }}
                       helperText="Maximum discount cap for percentage coupons"
                       size="small"
+                      required
+                      error={!maxDiscountAmount && maxDiscountAmount !== ''}
                     />
                   </Grid>
                 )}

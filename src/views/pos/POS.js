@@ -72,8 +72,8 @@ const POS = () => {
 
   // Table merging states
   const [showMergeModal, setShowMergeModal] = useState(false)
-  // const [tableOccupyColor, setTableOccupyColor] = useState('')
-  let tableOccupyColor = ''
+  const [tableOccupyColor, setTableOccupyColor] = useState('')
+  const [forceRerender, setForceRerender] = useState(0)
   const [mergedTables, setMergedTables] = useState(() => {
     const saved = localStorage.getItem('mergedTables')
     return saved ? JSON.parse(saved) : []
@@ -399,6 +399,52 @@ const POS = () => {
     localStorage.setItem('mergedTables', JSON.stringify(mergedTables))
   }, [mergedTables])
 
+  // Update table colors when cart changes
+  useEffect(() => {
+    // Force re-render of tables when cart changes
+    // This will trigger getTableColor function to recalculate colors
+  }, [cart])
+
+  // Debug: Log all localStorage system selections on component mount
+  useEffect(() => {
+    console.log('🔍 DEBUG - All system selections in localStorage:')
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i)
+      if (key && key.startsWith('selectedSystem_')) {
+        const value = localStorage.getItem(key)
+        console.log(`${key}:`, value)
+      }
+    }
+  }, [forceRerender])
+
+  // Listen for system selection changes in localStorage
+  useEffect(() => {
+    const handleStorageChange = (e) => {
+      if (e.key && e.key.startsWith('selectedSystem_')) {
+        // Force re-render when system selection changes
+        console.log('🔄 System selection changed, forcing re-render')
+        setForceRerender(prev => prev + 1)
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    
+    // Also listen for same-tab changes (when localStorage is updated in same tab)
+    const originalSetItem = localStorage.setItem
+    localStorage.setItem = function(key, value) {
+      originalSetItem.apply(this, arguments)
+      if (key && key.startsWith('selectedSystem_')) {
+        // Force re-render when system selection changes
+        console.log('🔄 System selection changed in same tab, forcing re-render')
+        setForceRerender(prev => prev + 1)
+      }
+    }
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange)
+      localStorage.setItem = originalSetItem
+    }
+  }, [])
 
   const  handleQrClick = (qr) => {
     navigate(`/pos/system/tableNumber/${qr.tableNumber}`)
@@ -442,7 +488,6 @@ const POS = () => {
 
     if (savedSystem) {
       const system = JSON.parse(savedSystem)
-      tableOccupyColor = system.color
       try {
         systemWillOccupy = system.willOccupy === true && cart[qr.tableNumber]?.length
         // console.log("system, =>",cart[qr.tableNumber])
@@ -454,6 +499,36 @@ const POS = () => {
 
     // Table should be red only if willOccupy is true, regardless of cart items
     return systemWillOccupy
+  }
+
+  // Function to get table color based on selected system
+  const getTableColor = (qr) => {
+    const savedSystem = localStorage.getItem(`selectedSystem_${qr.tableNumber}`)
+    console.log(`🔍 DEBUG - getTableColor for table ${qr.tableNumber}:`)
+    console.log('savedSystem:', savedSystem)
+    
+    if (savedSystem) {
+      try {
+        const system = JSON.parse(savedSystem)
+        console.log('parsed system:', system)
+        console.log('system.willOccupy:', system.willOccupy)
+        console.log('system.color:', system.color)
+        
+        if (system.willOccupy === true) {
+          const color = system.color || '#ff0000'
+          console.log(`✅ Returning color: ${color} for table ${qr.tableNumber}`)
+          return color
+        } else {
+          console.log(`❌ willOccupy is false for table ${qr.tableNumber}`)
+        }
+      } catch (error) {
+        console.error('Error parsing saved system for table', qr.tableNumber, ':', error)
+      }
+    } else {
+      console.log(`❌ No saved system found for table ${qr.tableNumber}`)
+    }
+    console.log(`❌ Returning empty color for table ${qr.tableNumber}`)
+    return ''
   }
 
   const isTableMerged = (tableNumber) => {
@@ -796,7 +871,7 @@ const POS = () => {
                   variant="btn-group"
                   onMouseEnter={() => setIsDropdownOpen(true)}
                   onMouseLeave={() => setIsDropdownOpen(false)}
-                  show={isDropdownOpen ? true : undefined} // Mouse over पर show होगा
+                  show={isDropdownOpen ? "true" : undefined} // Mouse over पर show होगा
               >
                   <CDropdownToggle
                       color="info"
@@ -811,7 +886,7 @@ const POS = () => {
                   </CDropdownToggle>
 
                   <CDropdownMenu className='p-2'>
-                      <CDropdownItem header className='fw-bold'>Cash Breakdown</CDropdownItem>
+                      <CDropdownItem header="true" className='fw-bold'>Cash Breakdown</CDropdownItem>
                       <hr className="dropdown-divider" />
                       {cashLoading ? (
                           <CDropdownItem disabled>
@@ -876,7 +951,7 @@ const POS = () => {
               variant="btn-group"
               onMouseEnter={() => setIsDropdownOpen(true)}
               onMouseLeave={() => setIsDropdownOpen(false)}
-              show={isDropdownOpen ? true : undefined}
+              show={isDropdownOpen ? "true" : undefined}
           >
               <CDropdownToggle
                   color="info"
@@ -891,7 +966,7 @@ const POS = () => {
               </CDropdownToggle>
 
               <CDropdownMenu className='p-2'>
-                  <CDropdownItem header className='fw-bold'>Cash Breakdown</CDropdownItem>
+                  <CDropdownItem header="true" className='fw-bold'>Cash Breakdown</CDropdownItem>
                   <hr className="dropdown-divider" />
                   {cashLoading ? (
                       <CDropdownItem disabled>
@@ -994,6 +1069,7 @@ const POS = () => {
                   <CRow className="justify-content-center justify-content-md-start">
                     {availableFloorTables.map((qr, index) => {
                       const floorName = getFloorNameFromQr(qr);
+                      const tableColor = getTableColor(qr); // Get color once per render
                       return (
                         <CCol
                           key={index}
@@ -1002,8 +1078,8 @@ const POS = () => {
                         >
                           <div
                             className={`table-card d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-2 p-md-3 w-100 ${
-                              shouldTableBeRed(qr)
-                                ? ' text-dark'
+                              tableColor 
+                                ? 'text-dark' 
                                 : theme === 'dark'
                                 ? 'bg-secondary text-white'
                                 : 'bg-white text-dark'
@@ -1013,7 +1089,7 @@ const POS = () => {
                               cursor: 'pointer', 
                               width: '100%', 
                               position: 'relative', 
-                              backgroundColor: shouldTableBeRed(qr) ? tableOccupyColor : '',
+                              backgroundColor: tableColor || (theme === 'dark' ? '' : ''),
                               minHeight: '8rem'
                             }}
                           >
@@ -1041,29 +1117,37 @@ const POS = () => {
             );
           })}
 
-          {/* Takeaway Section - Mobile Responsive */}
-          <div className="mb-5">
+          {/* Takeaway Section - Mobile Responsive - COMMENTED OUT */}
+          {/* <div className="mb-5">
               <h4 className="fw-bold mb-3 border-bottom pb-2 text-center text-md-start">Other Options</h4>
               <CRow className="justify-content-center justify-content-md-start">
                 <CCol xs="6" sm="4" md="3" lg="2" xl="2" className="mb-3 mb-md-4 d-flex justify-content-center">
-                    <div
-                      className={`table-card d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-2 p-md-3 w-100 ${
-                        theme === 'dark' ? 'bg-secondary text-white' : 'bg-white text-dark'
-                      }`}
-                      onClick={() => navigate('/pos/system/tableNumber/0')}
-                      style={{ 
-                        cursor: 'pointer', 
-                        width: '100%',
-                        minHeight: '8rem'
-                      }}
-                    >
-                      <div className="fw-bold text-center table-title">
-                        Takeaway
-                      </div>
-                    </div>
+                    {(() => {
+                      const takeawayColor = getTableColor({ tableNumber: 0 });
+                      return (
+                        <div
+                          className={`table-card d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-2 p-md-3 w-100 ${
+                            takeawayColor
+                              ? 'text-dark'
+                              : theme === 'dark' ? 'bg-secondary text-white' : 'bg-white text-dark'
+                          }`}
+                          onClick={() => navigate('/pos/system/tableNumber/0')}
+                          style={{ 
+                            cursor: 'pointer', 
+                            width: '100%',
+                            backgroundColor: takeawayColor || (theme === 'dark' ? '' : ''),
+                            minHeight: '8rem'
+                          }}
+                        >
+                          <div className="fw-bold text-center table-title">
+                            Takeaway
+                          </div>
+                        </div>
+                      );
+                    })()}
                 </CCol>
               </CRow>
-          </div>
+          </div> */}
         </>
       )}
 
@@ -1075,7 +1159,7 @@ const POS = () => {
           setCashAmount('')
           setCashAmountNotes('')
         }}
-        size="md"
+        size="lg"
         backdrop="static"
         className="modal-mobile-responsive"
       >
@@ -1153,7 +1237,7 @@ const POS = () => {
           setCashAmount('')
           setCashAmountNotes('')
         }}
-        size="md"
+        size="lg"
         backdrop="static"
         className="modal-mobile-responsive"
       >
@@ -1235,7 +1319,7 @@ const POS = () => {
           setBankAmount('')
           setBankAmountNotes('')
         }}
-        size="md"
+        size="lg"
         backdrop="static"
         className="modal-mobile-responsive"
       >

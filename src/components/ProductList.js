@@ -30,6 +30,9 @@ const ProductList = ({
   categories = [],
   selectedCategoryId,
   setSelectedCategoryId,
+  systems = [],
+  selectedSystem,
+  handleSystemDropdownChange,
 }) => {
   const theme = useSelector((state) => state.theme.theme);
   const isDarkMode = theme === 'dark';
@@ -140,14 +143,20 @@ const ProductList = ({
             />
             <CFormSelect
               className={`rounded-pill px-2 px-md-3 py-2 ${isDarkMode ? 'bg-secondary text-light border-0' : 'border'}`}
-              disabled
+              value={selectedSystem?._id || ''}
+              onChange={handleSystemDropdownChange}
               style={{
                 fontSize: '14px',
                 minHeight: '40px',
                 minWidth: '120px'
               }}
             >
-              <option>Table #{tableNumber}</option>
+              <option value="">Select System</option>
+              {systems.map(system => (
+                <option key={system._id} value={system._id}>
+                  {system.systemName} - ₹{system.chargeOfSystem}
+                </option>
+              ))}
             </CFormSelect>
           </CInputGroup>
         </div>
