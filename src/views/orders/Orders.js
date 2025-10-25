@@ -993,18 +993,18 @@ const Order = () => {
         </CModal>
       )}
 
-      {selectedOrder && (
+     {selectedOrder && (
         <div
+          className="bg-theme-aware custom-scrollbar"
           style={{
             position: 'fixed',
             top: '0',
             right: '0',
             height: '100vh',
             width: '30%',
-            backgroundColor: '#f9f9f9',
             boxShadow: '0 4px 8px rgba(0, 0, 0, 0.5)',
             zIndex: 1050,
-            borderLeft: '1px solid #ccc',
+            borderLeft: '1px solid var(--cui-border-color)',
             overflowY: 'auto',
             padding: '20px',
             ...(window.innerWidth <= 500 && { width: '70%' }),
@@ -1016,7 +1016,7 @@ const Order = () => {
               display: 'flex',
               justifyContent: 'space-between',
               alignItems: 'center',
-              borderBottom: '1px solid #ddd',
+              borderBottom: '1px solid var(--cui-border-color)',
               paddingBottom: '10px',
               marginBottom: '20px',
             }}
@@ -1032,6 +1032,7 @@ const Order = () => {
                 fontSize: '1.5rem',
                 fontWeight: 'bold',
                 cursor: 'pointer',
+                color: 'var(--cui-body-color)',
               }}
             >
               &times;
@@ -1042,7 +1043,7 @@ const Order = () => {
               <strong>Order Number:</strong> {selectedOrder.orderId}
             </p>
             <p>
-              <strong>Customer Name:</strong> {selectedOrder.customerName|| 'N/A'}
+              <strong>Customer Name:</strong> {selectedOrder.customerName || 'N/A'}
             </p>
             <p>
               <strong>Customer Address:</strong> {selectedOrder.customerAddress || selectedOrder.customerId?.address || 'N/A'}
@@ -1119,6 +1120,8 @@ const Order = () => {
           </div>
         </div>
       )}
+
+
 
       {/* Hidden KOT and Invoice components for generation */}
       {selectedOrder && (

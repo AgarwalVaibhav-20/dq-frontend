@@ -283,52 +283,45 @@ const Dashboard = () => {
   };
 
   // Mock data for payment type report (for testing purposes)
-  const mockPaymentTypeData = {
-    data: [
-      {
-        payment_type: 'Cash',
-        total_count: 125,
-        total_amount: '15750.50'
-      },
-      {
-        payment_type: 'Credit Card',
-        total_count: 89,
-        total_amount: '22340.75'
-      },
-      {
-        payment_type: 'Debit Card',
-        total_count: 67,
-        total_amount: '8920.25'
-      },
-      {
-        payment_type: 'UPI',
-        total_count: 156,
-        total_amount: '18650.00'
-      },
-      {
-        payment_type: 'Net Banking',
-        total_count: 34,
-        total_amount: '12890.80'
-      },
-      {
-        payment_type: 'Wallet',
-        total_count: 43,
-        total_amount: '5670.45'
-      }
-    ]
-  };
+  // const mockPaymentTypeData = {
+  //   data: [
+  //     {
+  //       payment_type: 'Cash',
+  //       total_count: 125,
+  //       total_amount: '15750.50'
+  //     },
+  //     {
+  //       payment_type: 'Credit Card',
+  //       total_count: 89,
+  //       total_amount: '22340.75'
+  //     },
+  //     {
+  //       payment_type: 'Debit Card',
+  //       total_count: 67,
+  //       total_amount: '8920.25'
+  //     },
+  //     {
+  //       payment_type: 'UPI',
+  //       total_count: 156,
+  //       total_amount: '18650.00'
+  //     },
+  //     {
+  //       payment_type: 'Net Banking',
+  //       total_count: 34,
+  //       total_amount: '12890.80'
+  //     },
+  //     {
+  //       payment_type: 'Wallet',
+  //       total_count: 43,
+  //       total_amount: '5670.45'
+  //     }
+  //   ]
+  // };
 
   // Safe data transformation for payment report
   const getPaymentReportData = () => {
     // Use mock data if no real data is available and dates are selected (for testing)
-    if ((!paymentTypeStats?.data || !Array.isArray(paymentTypeStats.data)) && startDate && endDate) {
-      console.log('No payment stats data available, using mock payment data');
-      return mockPaymentTypeData.data.map((item) => ({
-        label: item.payment_type || 'Unknown',
-        count: parseInt(item.total_count) || 0,
-        amount: parseFloat(item.total_amount) || 0,
-      }));
-    }
+   
 
     if (!paymentTypeStats?.data || !Array.isArray(paymentTypeStats.data)) {
       console.log('No payment stats data available');
@@ -416,142 +409,137 @@ const Dashboard = () => {
   // };
   console.log(dailyCashBalance, "dailyCashBalance")
   // Mock data for yearly chart (for testing purposes)
-  const mockYearlyData = {
-    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
-    datasets: [
-      {
-        label: 'Revenue (₹)',
-        data: [12000, 19000, 15000, 25000, 22000, 30000, 28000, 35000, 32000, 40000, 38000, 45000],
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-        tension: 0.1,
-      },
-      {
-        label: 'Orders',
-        data: [6005, 8005, 7000, 9005, 8008, 7000, 10005, 12005, 40015, 14000, 90035, 8055],
-        borderColor: 'rgb(255, 99, 132)',
-        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-        tension: 0.1,
-      },
-      {
-        label: 'Customers',
-        data: [4500, 6200, 5800, 7002, 6900, 8500, 8200, 9005, 9001, 10800, 7030, 9720],
-        borderColor: 'rgb(54, 162, 235)',
-        backgroundColor: 'rgba(54, 162, 235, 0.2)',
-        tension: 0.1,
-      }
-    ],
-  };
+  // const mockYearlyData = {
+  //   labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'],
+  //   datasets: [
+  //     {
+  //       label: 'Revenue (₹)',
+  //       data: [12000, 19000, 15000, 25000, 22000, 30000, 28000, 35000, 32000, 40000, 38000, 45000],
+  //       borderColor: 'rgb(75, 192, 192)',
+  //       backgroundColor: 'rgba(75, 192, 192, 0.2)',
+  //       tension: 0.1,
+  //     },
+  //     {
+  //       label: 'Orders',
+  //       data: [6005, 8005, 7000, 9005, 8008, 7000, 10005, 12005, 40015, 14000, 90035, 8055],
+  //       borderColor: 'rgb(255, 99, 132)',
+  //       backgroundColor: 'rgba(255, 99, 132, 0.2)',
+  //       tension: 0.1,
+  //     },
+  //     {
+  //       label: 'Customers',
+  //       data: [4500, 6200, 5800, 7002, 6900, 8500, 8200, 9005, 9001, 10800, 7030, 9720],
+  //       borderColor: 'rgb(54, 162, 235)',
+  //       backgroundColor: 'rgba(54, 162, 235, 0.2)',
+  //       tension: 0.1,
+  //     }
+  //   ],
+  // };
 
   // Mock data for weekly chart (for testing purposes)
-  const mockWeeklyData = {
-    datasets: [
-      {
-        label: 'Monday',
-        data: [2500, 1800, 3200, 2100], // Sample weekly data for different weeks
-        backgroundColor: '#FF6384',
-        borderColor: '#FF6384',
-      },
-      {
-        label: 'Tuesday',
-        data: [2800, 2200, 3500, 2400],
-        backgroundColor: '#36A2EB',
-        borderColor: '#36A2EB',
-      },
-      {
-        label: 'Wednesday',
-        data: [3200, 2600, 3800, 2900],
-        backgroundColor: '#FFCE56',
-        borderColor: '#FFCE56',
-      },
-      {
-        label: 'Thursday',
-        data: [3500, 2900, 4100, 3200],
-        backgroundColor: '#4BC0C0',
-        borderColor: '#4BC0C0',
-      },
-      {
-        label: 'Friday',
-        data: [4200, 3800, 4800, 4100],
-        backgroundColor: '#9966FF',
-        borderColor: '#9966FF',
-      },
-      {
-        label: 'Saturday',
-        data: [5200, 4900, 5800, 5100],
-        backgroundColor: '#FF9F40',
-        borderColor: '#FF9F40',
-      },
-      {
-        label: 'Sunday',
-        data: [4800, 4200, 5200, 4600],
-        backgroundColor: '#FF6B6B',
-        borderColor: '#FF6B6B',
-      }
-    ],
-  };
+  // const mockWeeklyData = {
+  //   datasets: [
+  //     {
+  //       label: 'Monday',
+  //       data: [2500, 1800, 3200, 2100], // Sample weekly data for different weeks
+  //       backgroundColor: '#FF6384',
+  //       borderColor: '#FF6384',
+  //     },
+  //     {
+  //       label: 'Tuesday',
+  //       data: [2800, 2200, 3500, 2400],
+  //       backgroundColor: '#36A2EB',
+  //       borderColor: '#36A2EB',
+  //     },
+  //     {
+  //       label: 'Wednesday',
+  //       data: [3200, 2600, 3800, 2900],
+  //       backgroundColor: '#FFCE56',
+  //       borderColor: '#FFCE56',
+  //     },
+  //     {
+  //       label: 'Thursday',
+  //       data: [3500, 2900, 4100, 3200],
+  //       backgroundColor: '#4BC0C0',
+  //       borderColor: '#4BC0C0',
+  //     },
+  //     {
+  //       label: 'Friday',
+  //       data: [4200, 3800, 4800, 4100],
+  //       backgroundColor: '#9966FF',
+  //       borderColor: '#9966FF',
+  //     },
+  //     {
+  //       label: 'Saturday',
+  //       data: [5200, 4900, 5800, 5100],
+  //       backgroundColor: '#FF9F40',
+  //       borderColor: '#FF9F40',
+  //     },
+  //     {
+  //       label: 'Sunday',
+  //       data: [4800, 4200, 5200, 4600],
+  //       backgroundColor: '#FF6B6B',
+  //       borderColor: '#FF6B6B',
+  //     }
+  //   ],
+  // };
 
   // Safe chart data preparation
   const getLineChartData = () => {
     // Use mock data if no real data is available (for testing)
     if (!chartData || !chartData.labels || !chartData.datasets) {
       console.log('No line chart data available, using mock data');
-      return mockYearlyData;
+      return { labels: [], datasets: [] };
     }
     return chartData;
   };
 
-  const getPieChartData = () => {
-    // Use mock data if no real data is available (for testing)
-    if (!weeklyChartData?.datasets || !Array.isArray(weeklyChartData.datasets)) {
-      console.log('No pie chart data available, using mock weekly data');
+const getPieChartData = () => {
+  
+  if (!weeklyChartData?.datasets || !Array.isArray(weeklyChartData.datasets)) {
+    console.log('No weekly chart data available from API.'); 
+    return { 
+      labels: [], 
+      datasets: [{ 
+        data: [], 
+        backgroundColor: [], 
+        borderColor: [] 
+      }] 
+    };
+  }
 
-      const labels = mockWeeklyData.datasets.map((ds) => ds.label);
-      const data = mockWeeklyData.datasets.map((ds) => {
-        return ds.data.reduce((acc, val) => acc + parseFloat(val || 0), 0);
-      });
-      const backgroundColor = mockWeeklyData.datasets.map((ds) => ds.backgroundColor);
-      const borderColor = mockWeeklyData.datasets.map((ds) => ds.borderColor);
+  try {
+ 
+    const labels = weeklyChartData.datasets.map((ds) => ds.label || 'Unknown');
+    const data = weeklyChartData.datasets.map((ds) => {
+      if (!Array.isArray(ds.data)) return 0;
+     
+      return ds.data.reduce((acc, val) => acc + parseFloat(val || 0), 0);
+    });
+    const backgroundColor = weeklyChartData.datasets.map((ds) => ds.backgroundColor || '#ccc');
+    const borderColor = weeklyChartData.datasets.map((ds) => ds.borderColor || '#999');
 
-      return {
-        labels,
-        datasets: [{
-          data,
-          backgroundColor,
-          borderColor,
-        }],
-      };
-    }
-
-    try {
-      const labels = weeklyChartData.datasets.map((ds) => ds.label || 'Unknown');
-      const data = weeklyChartData.datasets.map((ds) => {
-        if (!Array.isArray(ds.data)) return 0;
-        return ds.data.reduce((acc, val) => acc + parseFloat(val || 0), 0);
-      });
-      const backgroundColor = weeklyChartData.datasets.map((ds) => ds.backgroundColor || '#ccc');
-      const borderColor = weeklyChartData.datasets.map((ds) => ds.borderColor || '#999');
-
-      return {
-        labels,
-        datasets: [{
-          data,
-          backgroundColor,
-          borderColor,
-        }],
-      };
-    } catch (error) {
-      console.error('Error processing pie chart data:', error);
-      return {
-        labels: [],
-        datasets: [{
-          data: [],
-          backgroundColor: [],
-          borderColor: [],
-        }],
-      };
-    }
-  };
+    return {
+      labels,
+      datasets: [{
+        data,
+        backgroundColor,
+        borderColor,
+      }],
+    };
+  } catch (error) {
+    console.error('Error processing pie chart data:', error);
+  
+    return {
+      labels: [],
+      datasets: [{
+        data: [],
+        backgroundColor: [],
+        borderColor: [],
+      }],
+    };
+  }
+};
 
   const renderReportCard = (title, key) => (
     <CCol md={3} key={key}>
@@ -563,7 +551,11 @@ const Dashboard = () => {
             onChange={(e) => handleDropdownChange(key, e.target.value)}
             style={{ width: '120px' }}
           >
-            <option value="today">Today</option>
+            {key === 'collection' ? (
+              <option value="today">Today</option>
+            ) : (
+              <option value="daily">Daily</option>
+            )}
             <option value="weekly">Weekly</option>
             <option value="monthly">Monthly</option>
           </CFormSelect>
@@ -884,5 +876,6 @@ const Dashboard = () => {
     </div>
   );
 };
+
 
 export default Dashboard;

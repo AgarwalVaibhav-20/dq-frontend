@@ -10,6 +10,8 @@ import {
   createCashInTransaction,
   createCashOutTransaction,
   createBankInTransaction,
+  // 👇 ADDED: Bank Out Transaction Import
+  createBankOutTransaction,
   getDailyCashBalance
 } from '../../redux/slices/transactionSlice'
 import {
@@ -42,7 +44,6 @@ import {
   CFormTextarea,
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-// cilBank is not available in @coreui/icons, using cilMoney or cilNotes for visual representation
 import { cilBuilding, cilMoney, cilPlus, cilMinus, cilCash, cilNotes } from '@coreui/icons'
 
 const POS = () => {
@@ -56,24 +57,17 @@ const POS = () => {
   const resturantIdLocalStorage = localStorage.getItem('restaurantId')
   const userId = useSelector((state) => state.auth.userId)
   const username = useSelector((state) => state.auth.username)
-  // const authToken = useSelector((state) => state.auth.authToken)
   const theme = useSelector((state) => state.theme.theme)
   const token = localStorage.getItem('authToken')
-  // Get cash management state from Redux
-  // const { dailyCashBalance, cashLoading } = useSelector((state) => state.transactions)
 
   const [cart, setCart] = useState({})
   const [showCombinedModal, setShowCombinedModal] = useState(false)
   const [activeOrders, setActiveOrders] = useState([])
   const [selectedTables, setSelectedTables] = useState([])
 
-  // Floor management states
-  // const [selectedFloor, setSelectedFloor] = useState('all')
-
   // Table merging states
   const [showMergeModal, setShowMergeModal] = useState(false)
-  const [tableOccupyColor, setTableOccupyColor] = useState('')
-  const [forceRerender, setForceRerender] = useState(0)
+  let tableOccupyColor = ''
   const [mergedTables, setMergedTables] = useState(() => {
     const saved = localStorage.getItem('mergedTables')
     return saved ? JSON.parse(saved) : []
@@ -88,10 +82,15 @@ const POS = () => {
   const [cashAmount, setCashAmount] = useState('')
   const [cashAmountNotes, setCashAmountNotes] = useState('')
 
-  // 👇 UPDATED: Bank Balance States
+  // Bank Balance States (In)
   const [showBankInModal, setShowBankInModal] = useState(false);
   const [bankAmount, setBankAmount] = useState('');
   const [bankAmountNotes, setBankAmountNotes] = useState('');
+  
+  // 👇 ADDED: Bank Out States
+  const [showBankOutModal, setShowBankOutModal] = useState(false);
+  const [bankOutAmount, setBankOutAmount] = useState(''); 
+  const [bankOutNotes, setBankOutNotes] = useState(''); 
 
   const [paymentBreakdown, setPaymentBreakdown] = useState({});
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -131,6 +130,7 @@ const POS = () => {
     const breakdown = transactions.reduce((acc, transaction) => {
         // Updated to handle 'bank_in' and 'bank_out' types
         const type = transaction.type; 
+        // Note: For cash_out/bank_out, amount might be stored as positive total/amount in DB.
         const amount = transaction.total || transaction.amount || 0; 
         
         let cleanType;
@@ -148,9 +148,9 @@ const POS = () => {
             cleanType = type; 
         }
 
-        // Add to accumulator only if amount is positive (or it's a cash_out/bank_out)
-        if (amount > 0 || type.includes('out')) { 
-             acc[cleanType] = (acc[cleanType] || 0) + amount;
+        // Use Math.abs() to ensure the value is added correctly in the breakdown object
+        if (Math.abs(amount) > 0) { 
+             acc[cleanType] = (acc[cleanType] || 0) + Math.abs(amount);
         }
        
         return acc;
@@ -236,7 +236,7 @@ const POS = () => {
     }
   }
 
-  // 👇 UPDATED: Bank In Function using createBankInTransaction
+  // Bank In Function
   const handleBankIn = async () => {
     if (!bankAmount || parseFloat(bankAmount) <= 0) {
       alert('Please enter a valid amount')
@@ -270,7 +270,43 @@ const POS = () => {
       console.error('Bank In error:', error)
     }
   }
-  // 👆 END UPDATED
+  
+  // 👇 ADDED: Bank Out Function
+  const handleBankOut = async () => {
+    if (!bankOutAmount || parseFloat(bankOutAmount) <= 0) {
+      alert('Please enter a valid amount')
+      return
+    }
+
+    try {
+      // ✅ Using the dedicated Redux action for Bank Out
+      await dispatch(createBankOutTransaction({
+        amount: parseFloat(bankOutAmount),
+        token,
+        userId,
+        restaurantId,
+        username,
+        notes: bankOutNotes,
+        type: 'bank_out' 
+      })).unwrap()
+
+      // Reset form
+      setBankOutAmount('');
+      setBankOutNotes('');
+      setShowBankOutModal(false);
+
+      // IMPORTANT: Refresh the daily cash balance from server
+      await dispatch(getDailyCashBalance({
+        token,
+        restaurantId
+      }))
+
+    } catch (error) {
+      console.error('Bank Out error:', error)
+      alert(`Bank Out Failed: ${error.message || 'Check console.'}`)
+    }
+  }
+  // 👆 END ADDED
   
   const formatBalance = (balance) => {
     if (balance === null || balance === undefined || isNaN(balance)) {
@@ -399,53 +435,6 @@ const POS = () => {
     localStorage.setItem('mergedTables', JSON.stringify(mergedTables))
   }, [mergedTables])
 
-  // Update table colors when cart changes
-  useEffect(() => {
-    // Force re-render of tables when cart changes
-    // This will trigger getTableColor function to recalculate colors
-  }, [cart])
-
-  // Debug: Log all localStorage system selections on component mount
-  useEffect(() => {
-    console.log('🔍 DEBUG - All system selections in localStorage:')
-    for (let i = 0; i < localStorage.length; i++) {
-      const key = localStorage.key(i)
-      if (key && key.startsWith('selectedSystem_')) {
-        const value = localStorage.getItem(key)
-        console.log(`${key}:`, value)
-      }
-    }
-  }, [forceRerender])
-
-  // Listen for system selection changes in localStorage
-  useEffect(() => {
-    const handleStorageChange = (e) => {
-      if (e.key && e.key.startsWith('selectedSystem_')) {
-        // Force re-render when system selection changes
-        console.log('🔄 System selection changed, forcing re-render')
-        setForceRerender(prev => prev + 1)
-      }
-    }
-
-    window.addEventListener('storage', handleStorageChange)
-    
-    // Also listen for same-tab changes (when localStorage is updated in same tab)
-    const originalSetItem = localStorage.setItem
-    localStorage.setItem = function(key, value) {
-      originalSetItem.apply(this, arguments)
-      if (key && key.startsWith('selectedSystem_')) {
-        // Force re-render when system selection changes
-        console.log('🔄 System selection changed in same tab, forcing re-render')
-        setForceRerender(prev => prev + 1)
-      }
-    }
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange)
-      localStorage.setItem = originalSetItem
-    }
-  }, [])
-
   const  handleQrClick = (qr) => {
     navigate(`/pos/system/tableNumber/${qr.tableNumber}`)
   }
@@ -488,6 +477,7 @@ const POS = () => {
 
     if (savedSystem) {
       const system = JSON.parse(savedSystem)
+      tableOccupyColor = system.color
       try {
         systemWillOccupy = system.willOccupy === true && cart[qr.tableNumber]?.length
         // console.log("system, =>",cart[qr.tableNumber])
@@ -499,36 +489,6 @@ const POS = () => {
 
     // Table should be red only if willOccupy is true, regardless of cart items
     return systemWillOccupy
-  }
-
-  // Function to get table color based on selected system
-  const getTableColor = (qr) => {
-    const savedSystem = localStorage.getItem(`selectedSystem_${qr.tableNumber}`)
-    console.log(`🔍 DEBUG - getTableColor for table ${qr.tableNumber}:`)
-    console.log('savedSystem:', savedSystem)
-    
-    if (savedSystem) {
-      try {
-        const system = JSON.parse(savedSystem)
-        console.log('parsed system:', system)
-        console.log('system.willOccupy:', system.willOccupy)
-        console.log('system.color:', system.color)
-        
-        if (system.willOccupy === true) {
-          const color = system.color || '#ff0000'
-          console.log(`✅ Returning color: ${color} for table ${qr.tableNumber}`)
-          return color
-        } else {
-          console.log(`❌ willOccupy is false for table ${qr.tableNumber}`)
-        }
-      } catch (error) {
-        console.error('Error parsing saved system for table', qr.tableNumber, ':', error)
-      }
-    } else {
-      console.log(`❌ No saved system found for table ${qr.tableNumber}`)
-    }
-    console.log(`❌ Returning empty color for table ${qr.tableNumber}`)
-    return ''
   }
 
   const isTableMerged = (tableNumber) => {
@@ -830,6 +790,20 @@ const POS = () => {
                   <span className="d-none d-sm-inline">Bank In</span>
                   <span className="d-sm-none">Bank</span>
                 </CButton>
+                
+                {/* Bank Out Button (Mobile) */}
+                <CButton
+                  color="info"
+                  variant="outline"
+                  onClick={() => setShowBankOutModal(true)}
+                  className="d-flex align-items-center gap-1 flex-fill"
+                  disabled={cashLoading}
+                  size="sm"
+                >
+                  <CIcon icon={cilMinus} size="sm" />
+                  <span className="d-none d-sm-inline">Bank Out</span>
+                  <span className="d-sm-none">B. Out</span>
+                </CButton>
 
                 <CButton 
                   color="primary" 
@@ -871,7 +845,7 @@ const POS = () => {
                   variant="btn-group"
                   onMouseEnter={() => setIsDropdownOpen(true)}
                   onMouseLeave={() => setIsDropdownOpen(false)}
-                  show={isDropdownOpen ? "true" : undefined} // Mouse over पर show होगा
+                  show={isDropdownOpen} // Mouse over पर show होगा
               >
                   <CDropdownToggle
                       color="info"
@@ -886,7 +860,7 @@ const POS = () => {
                   </CDropdownToggle>
 
                   <CDropdownMenu className='p-2'>
-                      <CDropdownItem header="true" className='fw-bold'>Cash Breakdown</CDropdownItem>
+                      <CDropdownItem header className='fw-bold'>Cash Breakdown</CDropdownItem>
                       <hr className="dropdown-divider" />
                       {cashLoading ? (
                           <CDropdownItem disabled>
@@ -930,6 +904,18 @@ const POS = () => {
                   <CIcon icon={cilMoney} size="sm" />
                   Bank In
                 </CButton>
+                
+                {/* Bank Out Button (Desktop) */}
+                <CButton
+                  color="info"
+                  variant="outline"
+                  onClick={() => setShowBankOutModal(true)}
+                  className="d-flex align-items-center gap-1"
+                  disabled={cashLoading}
+                >
+                  <CIcon icon={cilMinus} size="sm" />
+                  Bank Out
+                </CButton>
 
               <CButton color="primary" onClick={fetchActiveOrders}>
                 All Orders
@@ -951,7 +937,7 @@ const POS = () => {
               variant="btn-group"
               onMouseEnter={() => setIsDropdownOpen(true)}
               onMouseLeave={() => setIsDropdownOpen(false)}
-              show={isDropdownOpen ? "true" : undefined}
+              show={isDropdownOpen}
           >
               <CDropdownToggle
                   color="info"
@@ -966,7 +952,7 @@ const POS = () => {
               </CDropdownToggle>
 
               <CDropdownMenu className='p-2'>
-                  <CDropdownItem header="true" className='fw-bold'>Cash Breakdown</CDropdownItem>
+                  <CDropdownItem header className='fw-bold'>Cash Breakdown</CDropdownItem>
                   <hr className="dropdown-divider" />
                   {cashLoading ? (
                       <CDropdownItem disabled>
@@ -1069,7 +1055,6 @@ const POS = () => {
                   <CRow className="justify-content-center justify-content-md-start">
                     {availableFloorTables.map((qr, index) => {
                       const floorName = getFloorNameFromQr(qr);
-                      const tableColor = getTableColor(qr); // Get color once per render
                       return (
                         <CCol
                           key={index}
@@ -1078,8 +1063,8 @@ const POS = () => {
                         >
                           <div
                             className={`table-card d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-2 p-md-3 w-100 ${
-                              tableColor 
-                                ? 'text-dark' 
+                              shouldTableBeRed(qr)
+                                ? ' text-dark'
                                 : theme === 'dark'
                                 ? 'bg-secondary text-white'
                                 : 'bg-white text-dark'
@@ -1089,7 +1074,7 @@ const POS = () => {
                               cursor: 'pointer', 
                               width: '100%', 
                               position: 'relative', 
-                              backgroundColor: tableColor || (theme === 'dark' ? '' : ''),
+                              backgroundColor: shouldTableBeRed(qr) ? tableOccupyColor : '',
                               minHeight: '8rem'
                             }}
                           >
@@ -1117,41 +1102,33 @@ const POS = () => {
             );
           })}
 
-          {/* Takeaway Section - Mobile Responsive - COMMENTED OUT */}
-          {/* <div className="mb-5">
+          {/* Takeaway Section - Mobile Responsive */}
+          <div className="mb-5">
               <h4 className="fw-bold mb-3 border-bottom pb-2 text-center text-md-start">Other Options</h4>
               <CRow className="justify-content-center justify-content-md-start">
                 <CCol xs="6" sm="4" md="3" lg="2" xl="2" className="mb-3 mb-md-4 d-flex justify-content-center">
-                    {(() => {
-                      const takeawayColor = getTableColor({ tableNumber: 0 });
-                      return (
-                        <div
-                          className={`table-card d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-2 p-md-3 w-100 ${
-                            takeawayColor
-                              ? 'text-dark'
-                              : theme === 'dark' ? 'bg-secondary text-white' : 'bg-white text-dark'
-                          }`}
-                          onClick={() => navigate('/pos/system/tableNumber/0')}
-                          style={{ 
-                            cursor: 'pointer', 
-                            width: '100%',
-                            backgroundColor: takeawayColor || (theme === 'dark' ? '' : ''),
-                            minHeight: '8rem'
-                          }}
-                        >
-                          <div className="fw-bold text-center table-title">
-                            Takeaway
-                          </div>
-                        </div>
-                      );
-                    })()}
+                    <div
+                      className={`table-card d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-2 p-md-3 w-100 ${
+                        theme === 'dark' ? 'bg-secondary text-white' : 'bg-white text-dark'
+                      }`}
+                      onClick={() => navigate('/pos/system/tableNumber/0')}
+                      style={{ 
+                        cursor: 'pointer', 
+                        width: '100%',
+                        minHeight: '8rem'
+                      }}
+                    >
+                      <div className="fw-bold text-center table-title">
+                        Takeaway
+                      </div>
+                    </div>
                 </CCol>
               </CRow>
-          </div> */}
+          </div>
         </>
       )}
 
-      {/* Cash In Modal - Mobile Responsive */}
+      
       <CModal
         visible={showCashInModal}
         onClose={() => {
@@ -1159,7 +1136,7 @@ const POS = () => {
           setCashAmount('')
           setCashAmountNotes('')
         }}
-        size="lg"
+        size="md"
         backdrop="static"
         className="modal-mobile-responsive"
       >
@@ -1228,8 +1205,7 @@ const POS = () => {
           </CButton>
         </CModalFooter>
       </CModal>
-
-      {/* Cash Out Modal - Mobile Responsive */}
+ 
       <CModal
         visible={showCashOutModal}
         onClose={() => {
@@ -1237,7 +1213,7 @@ const POS = () => {
           setCashAmount('')
           setCashAmountNotes('')
         }}
-        size="lg"
+        size="md"
         backdrop="static"
         className="modal-mobile-responsive"
       >
@@ -1310,8 +1286,7 @@ const POS = () => {
           </CButton>
         </CModalFooter>
       </CModal>
-
-      {/* Bank In Modal - Mobile Responsive */}
+ 
       <CModal
         visible={showBankInModal}
         onClose={() => {
@@ -1319,7 +1294,7 @@ const POS = () => {
           setBankAmount('')
           setBankAmountNotes('')
         }}
-        size="lg"
+        size="md"
         backdrop="static"
         className="modal-mobile-responsive"
       >
@@ -1389,7 +1364,83 @@ const POS = () => {
         </CModalFooter>
       </CModal>
 
-      {/* Combined Order Modal - Mobile Responsive */}
+      <CModal
+        visible={showBankOutModal}
+        onClose={() => {
+          setShowBankOutModal(false)
+          setBankOutAmount('')
+          setBankOutNotes('')
+        }}
+        size="md"
+        backdrop="static"
+        className="modal-mobile-responsive"
+      >
+        <CModalHeader>
+          <CModalTitle className="d-flex align-items-center gap-2">
+            <CIcon icon={cilMinus} />
+            Bank Withdrawal (Bank Out)
+          </CModalTitle>
+        </CModalHeader>
+        <CModalBody>
+          <CForm>
+            <div className="mb-3">
+              <CFormLabel htmlFor="bankOutAmount">Amount to Withdraw *</CFormLabel>
+              <CFormInput
+                type="number"
+                id="bankOutAmount"
+                placeholder="Enter bank withdrawal amount"
+                value={bankOutAmount}
+                onChange={(e) => setBankOutAmount(e.target.value)}
+                min="0"
+                step="0.01"
+                disabled={cashLoading}
+              />
+            </div>
+            <div className="mb-3">
+              <CFormLabel htmlFor="bankOutNotes">Notes (e.g., ATM withdrawal, Vendor payment)</CFormLabel>
+              <CFormInput
+                type="string"
+                id="bankOutNotes"
+                placeholder="Enter payment reason/note"
+                value={bankOutNotes}
+                onChange={(e) => setBankOutNotes(e.target.value)}
+                disabled={cashLoading}
+              />
+            </div>
+            <CAlert color="warning">
+              This amount will be tracked as a Bank withdrawal/expense.
+            </CAlert>
+          </CForm>
+        </CModalBody>
+        <CModalFooter>
+          <CButton
+            color="secondary"
+            onClick={() => {
+              setShowBankOutModal(false)
+              setBankOutAmount('')
+              setBankOutNotes('')
+            }}
+            disabled={cashLoading}
+          >
+            Cancel
+          </CButton>
+          <CButton
+            color="info" // या कोई और रंग
+            onClick={handleBankOut}
+            disabled={!bankOutAmount || parseFloat(bankOutAmount) <= 0 || cashLoading}
+          >
+            {cashLoading ? (
+              <>
+                <CSpinner size="sm" className="me-2" />
+                Processing...
+              </>
+            ) : (
+              'Withdraw from Bank'
+            )}
+          </CButton>
+        </CModalFooter>
+      </CModal>
+ 
       <CModal
         visible={showCombinedModal}
         onClose={() => setShowCombinedModal(false)}
@@ -1452,8 +1503,7 @@ const POS = () => {
           )}
         </CModalBody>
       </CModal>
-
-      {/* Merge Tables Modal - Mobile Responsive */}
+ 
       <CModal
         visible={showMergeModal}
         onClose={() => {

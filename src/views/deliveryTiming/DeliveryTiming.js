@@ -29,7 +29,7 @@ const DeliveryTiming = () => {
 
   // Pagination states
   const [page, setPage] = useState(1);
-  const rowsPerPage = 5; // change as needed
+  const rowsPerPage = 5;
 
   useEffect(() => {
     if (restaurantId) {
@@ -82,7 +82,6 @@ const DeliveryTiming = () => {
     }
   };
 
-  // Pagination logic
   const handleChangePage = (event, value) => {
     setPage(value);
   };
@@ -93,9 +92,11 @@ const DeliveryTiming = () => {
   );
 
   return (
-    <div className="px-2 sm:px-5">
+    <div className="px-2 sm:px-5" style={{ backgroundColor: 'var(--cui-body-bg)', minHeight: '100vh' }}>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-3">
-        <h2 className="text-xl sm:text-2xl font-semibold">Delivery Timings</h2>
+        <h2 className="text-xl sm:text-2xl font-semibold" style={{ color: 'var(--cui-body-color)' }}>
+          Delivery Timings
+        </h2>
         <CButton 
           color="primary" 
           onClick={() => setModalVisible(true)} 
@@ -105,11 +106,6 @@ const DeliveryTiming = () => {
             fontSize: '0.875rem',
             padding: '8px 16px',
             minWidth: '120px',
-            '@media (max-width: 640px)': {
-              fontSize: '0.8rem',
-              padding: '6px 12px',
-              minWidth: '100px',
-            }
           }}
         >
           Add Timing
@@ -122,41 +118,97 @@ const DeliveryTiming = () => {
         <div className="flex justify-center"><CSpinner /></div>
       ) : (
         <>
-          <div className="overflow-x-auto rounded-lg shadow-md border border-gray-200">
+          <div 
+            className="overflow-x-auto rounded-lg shadow-md" 
+            style={{ 
+              backgroundColor: 'var(--cui-card-bg)',
+              border: '1px solid var(--cui-border-color)'
+            }}
+          >
             <table className="table-auto w-full border-collapse">
-              <thead className="bg-gray-100 text-gray-700">
+              <thead style={{ backgroundColor: 'var(--cui-gray-100)' }}>
                 <tr>
-                  <th className="border px-2 sm:px-4 py-2 text-xs sm:text-sm">Start Time</th>
-                  <th className="border px-2 sm:px-4 py-2 text-xs sm:text-sm">End Time</th>
-                  <th className="border px-2 sm:px-4 py-2 text-xs sm:text-sm">Status</th>
-                  <th className="border px-2 sm:px-4 py-2 text-xs sm:text-sm">Actions</th>
+                  <th 
+                    className="px-2 sm:px-4 py-2 text-xs sm:text-sm" 
+                    style={{ 
+                      borderBottom: '1px solid var(--cui-border-color)',
+                      color: 'var(--cui-body-color)'
+                    }}
+                  >
+                    Start Time
+                  </th>
+                  <th 
+                    className="px-2 sm:px-4 py-2 text-xs sm:text-sm" 
+                    style={{ 
+                      borderBottom: '1px solid var(--cui-border-color)',
+                      color: 'var(--cui-body-color)'
+                    }}
+                  >
+                    End Time
+                  </th>
+                  <th 
+                    className="px-2 sm:px-4 py-2 text-xs sm:text-sm" 
+                    style={{ 
+                      borderBottom: '1px solid var(--cui-border-color)',
+                      color: 'var(--cui-body-color)'
+                    }}
+                  >
+                    Status
+                  </th>
+                  <th 
+                    className="px-2 sm:px-4 py-2 text-xs sm:text-sm" 
+                    style={{ 
+                      borderBottom: '1px solid var(--cui-border-color)',
+                      color: 'var(--cui-body-color)'
+                    }}
+                  >
+                    Actions
+                  </th>
                 </tr>
               </thead>
               <tbody>
                 {paginatedData?.map((timing) => (
-                  <tr key={timing._id} className="hover:bg-gray-50">
-                    <td className="border px-2 sm:px-4 py-2 text-xs sm:text-sm">{timing.start_time}</td>
-                    <td className="border px-2 sm:px-4 py-2 text-xs sm:text-sm">{timing.end_time}</td>
-                    <td className="border px-2 sm:px-4 py-2 text-center">
+                  <tr 
+                    key={timing._id} 
+                    style={{ backgroundColor: 'var(--cui-card-bg)' }}
+                    className="hover:bg-opacity-80"
+                  >
+                    <td 
+                      className="px-2 sm:px-4 py-2 text-xs sm:text-sm" 
+                      style={{ 
+                        borderBottom: '1px solid var(--cui-border-color)',
+                        color: 'var(--cui-body-color)'
+                      }}
+                    >
+                      {timing.start_time}
+                    </td>
+                    <td 
+                      className="px-2 sm:px-4 py-2 text-xs sm:text-sm" 
+                      style={{ 
+                        borderBottom: '1px solid var(--cui-border-color)',
+                        color: 'var(--cui-body-color)'
+                      }}
+                    >
+                      {timing.end_time}
+                    </td>
+                    <td 
+                      className="px-2 sm:px-4 py-2 text-center" 
+                      style={{ borderBottom: '1px solid var(--cui-border-color)' }}
+                    >
                       <CButton
                         color={timing.delivery_status ? 'success' : 'danger'}
                         onClick={() => handleStatusToggle(timing._id, timing.delivery_status)}
                         disabled={isLoading}
                         size="sm"
                         className="text-xs sm:text-sm px-2 sm:px-3 py-1"
-                        style={{
-                          fontSize: '0.75rem',
-                          padding: '4px 8px',
-                          '@media (min-width: 640px)': {
-                            fontSize: '0.875rem',
-                            padding: '6px 12px',
-                          }
-                        }}
                       >
                         {timing.delivery_status ? 'Active' : 'Inactive'}
                       </CButton>
                     </td>
-                    <td className="border px-2 sm:px-4 py-2 text-center">
+                    <td 
+                      className="px-2 sm:px-4 py-2 text-center" 
+                      style={{ borderBottom: '1px solid var(--cui-border-color)' }}
+                    >
                       <CButton
                         color="danger"
                         onClick={() => {
@@ -166,14 +218,6 @@ const DeliveryTiming = () => {
                         disabled={isLoading}
                         size="sm"
                         className="text-xs sm:text-sm px-2 sm:px-3 py-1"
-                        style={{
-                          fontSize: '0.75rem',
-                          padding: '4px 8px',
-                          '@media (min-width: 640px)': {
-                            fontSize: '0.875rem',
-                            padding: '6px 12px',
-                          }
-                        }}
                       >
                         Delete
                       </CButton>
@@ -195,6 +239,7 @@ const DeliveryTiming = () => {
                 size="small"
                 sx={{
                   '& .MuiPaginationItem-root': {
+                    color: 'var(--cui-body-color)',
                     fontSize: '0.75rem',
                     minWidth: '32px',
                     height: '32px',

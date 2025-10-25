@@ -1,6 +1,7 @@
 @import "tailwindcss";
 
 /* MUI DataGrid Width Fix */
+
 .MuiDataGrid-root {
   width: 100% !important;
   min-width: 100% !important;
@@ -30,68 +31,582 @@
   width: auto !important;
 }
 
+/* ✅ Theme Variables - Add this at the top after tailwind import */
+:root {
+  /* Light Mode Variables */
+  --cui-body-bg: #ffffff;
+  --cui-body-color: #212529;
+  --cui-card-bg: #ffffff;
+  --cui-input-bg: #ffffff;
+  --cui-input-color: #212529;
+  --cui-input-border-color: #ced4da;
+  --cui-border-color: #ced4da;
+  --cui-gray-100: #f8f9fa;
+  --cui-gray-200: #e9ecef;
+  --cui-gray-300: #dee2e6;
+  --cui-gray-400: #ced4da;
+  --cui-gray-500: #adb5bd;
+  --cui-gray-600: #6c757d;
+  --cui-gray-700: #495057;
+  --cui-gray-800: #343a40;
+  --cui-gray-900: #212529;
+  --cui-primary: #0d6efd;
+  --cui-secondary-color: #6c757d;
+  --cui-secondary-bg: #f8f9fa;
+}
+
+/* Dark Mode Variables */
+[data-coreui-theme="dark"], 
+html[data-coreui-theme="dark"],
+body[data-coreui-theme="dark"] {
+  --cui-body-bg: #212529;
+  --cui-body-color: #ffffff;
+  --cui-card-bg: #343a40;
+  --cui-input-bg: #495057;
+  --cui-input-color: #ffffff;
+  --cui-input-border-color: #6c757d;
+  --cui-border-color: #6c757d;
+  --cui-gray-100: #343a40;
+  --cui-gray-200: #495057;
+  --cui-gray-300: #6c757d;
+  --cui-gray-400: #adb5bd;
+  --cui-gray-500: #ced4da;
+  --cui-gray-600: #dee2e6;
+  --cui-gray-700: #e9ecef;
+  --cui-gray-800: #f8f9fa;
+  --cui-gray-900: #ffffff;
+  --cui-primary: #0d6efd;
+  --cui-secondary-color: #adb5bd;
+  --cui-secondary-bg: #495057;
+}
+
+/* Global Theme Classes for Components */
+.theme-aware {
+  background-color: var(--cui-card-bg) !important;
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+.input-theme-aware {
+  background-color: var(--cui-input-bg) !important;
+  color: var(--cui-input-color) !important;
+  border-color: var(--cui-input-border-color) !important;
+}
+
+.text-theme-aware {
+  color: var(--cui-body-color) !important;
+}
+
+.card-theme-aware {
+  background-color: var(--cui-card-bg) !important;
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+.bg-theme-aware {
+  background-color: var(--cui-body-bg) !important;
+}
+
+/* Force theme variables inheritance */
+* {
+  box-sizing: border-box;
+}
+
+html, body {
+  background-color: var(--cui-body-bg);
+  color: var(--cui-body-color);
+}
+
+/* ✅ ENHANCED Material-UI Components Theme Override */
+/* MUI Card Components */
+.MuiCard-root,
+.MuiPaper-root {
+  background-color: var(--cui-card-bg) !important;
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+.MuiCardContent-root {
+  color: var(--cui-body-color) !important;
+}
+
+.MuiCardHeader-root {
+  background-color: var(--cui-gray-100) !important;
+  color: var(--cui-body-color) !important;
+  border-bottom-color: var(--cui-border-color) !important;
+}
+
+/* MUI Typography */
+.MuiTypography-root {
+  color: var(--cui-body-color) !important;
+}
+
+.MuiTypography-colorTextSecondary {
+  color: var(--cui-secondary-color) !important;
+}
+
+/* MUI TextField & Inputs */
+.MuiTextField-root,
+.MuiOutlinedInput-root,
+.MuiInputBase-root {
+  background-color: var(--cui-input-bg) !important;
+  color: var(--cui-input-color) !important;
+}
+
+.MuiOutlinedInput-notchedOutline {
+  border-color: var(--cui-input-border-color) !important;
+}
+
+.MuiOutlinedInput-root:hover .MuiOutlinedInput-notchedOutline {
+  border-color: var(--cui-border-color) !important;
+}
+
+.MuiOutlinedInput-root.Mui-focused .MuiOutlinedInput-notchedOutline {
+  border-color: var(--cui-primary) !important;
+}
+
+.MuiInputLabel-root {
+  color: var(--cui-body-color) !important;
+}
+
+.MuiInputBase-input {
+  color: var(--cui-input-color) !important;
+}
+
+.MuiFormHelperText-root {
+  color: var(--cui-secondary-color) !important;
+}
+
+/* MUI Select */
+.MuiSelect-root,
+.MuiSelect-select {
+  background-color: var(--cui-input-bg) !important;
+  color: var(--cui-input-color) !important;
+}
+
+.MuiMenu-paper,
+.MuiPopover-paper {
+  background-color: var(--cui-card-bg) !important;
+  color: var(--cui-body-color) !important;
+}
+
+.MuiMenuItem-root {
+  color: var(--cui-body-color) !important;
+}
+
+.MuiMenuItem-root:hover {
+  background-color: var(--cui-gray-100) !important;
+}
+
+/* MUI Chip */
+.MuiChip-root {
+  background-color: var(--cui-gray-200) !important;
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+.MuiChip-outlined {
+  border-color: var(--cui-border-color) !important;
+}
+
+/* MUI Divider */
+.MuiDivider-root {
+  background-color: var(--cui-border-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+/* MUI Dialog */
+.MuiDialog-paper {
+  background-color: var(--cui-card-bg) !important;
+  color: var(--cui-body-color) !important;
+}
+
+.MuiDialogTitle-root {
+  color: var(--cui-body-color) !important;
+  border-bottom: 1px solid var(--cui-border-color) !important;
+}
+
+.MuiDialogContent-root {
+  color: var(--cui-body-color) !important;
+}
+
+.MuiDialogActions-root {
+  border-top: 1px solid var(--cui-border-color) !important;
+}
+
+/* MUI DataGrid */
+.MuiDataGrid-root {
+  background-color: var(--cui-card-bg) !important;
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+.MuiDataGrid-columnHeaders {
+  background-color: var(--cui-gray-100) !important;
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+.MuiDataGrid-columnHeader {
+  color: var(--cui-body-color) !important;
+}
+
+.MuiDataGrid-columnHeaderTitle {
+  color: var(--cui-body-color) !important;
+  font-weight: 600 !important;
+}
+
+.MuiDataGrid-cell {
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+.MuiDataGrid-row {
+  background-color: var(--cui-card-bg) !important;
+}
+
+.MuiDataGrid-row:hover {
+  background-color: var(--cui-gray-100) !important;
+}
+
+.MuiDataGrid-footerContainer {
+  background-color: var(--cui-card-bg) !important;
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+/* MUI DataGrid - Existing styles */
+.MuiDataGrid-root {
+  background-color: var(--cui-card-bg) !important;
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+/* ✅ ADD THESE BELOW */
+/* MUI DataGrid Toolbar Icons Color Fix */
+.MuiDataGrid-toolbarContainer .MuiButtonBase-root,
+.MuiDataGrid-toolbarContainer .MuiIconButton-root {
+  color: var(--cui-body-color) !important;
+}
+
+.MuiDataGrid-toolbarContainer .MuiButton-text {
+  color: var(--cui-body-color) !important;
+}
+
+.MuiDataGrid-menuIcon,
+.MuiDataGrid-menuIconButton {
+  color: var(--cui-body-color) !important;
+}
+
+.MuiTablePagination-root {
+  color: var(--cui-body-color) !important;
+}
+
+.MuiTablePagination-selectLabel,
+.MuiTablePagination-displayedRows {
+  color: var(--cui-body-color) !important;
+}
+
+.MuiDataGrid-iconSeparator {
+  color: var(--cui-border-color) !important;
+}
+
+.MuiDataGrid-sortIcon,
+.MuiDataGrid-filterIcon,
+.MuiDataGrid-menuIcon {
+  color: var(--cui-body-color) !important;
+}
+
+/* MUI IconButton */
+.MuiIconButton-root {
+  color: var(--cui-body-color) !important;
+}
+
+.MuiIconButton-root:hover {
+  background-color: var(--cui-gray-100) !important;
+}
+
+/* MUI Tooltip */
+.MuiTooltip-tooltip {
+  background-color: var(--cui-gray-800) !important;
+  color: var(--cui-body-color) !important;
+}
+
+/* MUI Alert */
+.MuiAlert-root {
+  border-color: var(--cui-border-color) !important;
+}
+
+.MuiAlert-standardInfo {
+  background-color: var(--cui-gray-100) !important;
+  color: var(--cui-body-color) !important;
+}
+
+/* MUI Switch */
+.MuiSwitch-track {
+  background-color: var(--cui-gray-400) !important;
+}
+
+.MuiSwitch-thumb {
+  color: var(--cui-body-color) !important;
+}
+
+/* ✅ CoreUI Components Theme Override */
+.card, .modal-content, .dropdown-menu {
+  background-color: var(--cui-card-bg) !important;
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+.card-header,
+.card-footer {
+  background-color: var(--cui-gray-100) !important;
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+.card-body {
+  color: var(--cui-body-color) !important;
+}
+
+.form-control, .form-select, input, textarea, select {
+  background-color: var(--cui-input-bg) !important;
+  color: var(--cui-input-color) !important;
+  border-color: var(--cui-input-border-color) !important;
+}
+
+.form-control::placeholder,
+.form-select::placeholder,
+input::placeholder,
+textarea::placeholder {
+  color: var(--cui-secondary-color) !important;
+  opacity: 0.7;
+}
+
+.form-control:focus, .form-select:focus {
+  background-color: var(--cui-input-bg) !important;
+  color: var(--cui-input-color) !important;
+  border-color: var(--cui-primary) !important;
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25) !important;
+}
+
+.form-label, label {
+  color: var(--cui-body-color) !important;
+}
+
+.text-muted,
+.text-secondary {
+  color: var(--cui-secondary-color) !important;
+}
+
+/* Modal Theme Support */
+.modal-header, .modal-footer {
+  background-color: var(--cui-card-bg) !important;
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+.modal-body {
+  background-color: var(--cui-card-bg) !important;
+  color: var(--cui-body-color) !important;
+}
+
+.modal-title {
+  color: var(--cui-body-color) !important;
+}
+
+/* Nav Tabs Theme Support */
+.nav-tabs .nav-link {
+  background-color: transparent !important;
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+.nav-tabs .nav-link.active {
+  background-color: var(--cui-card-bg) !important;
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+/* Alert Theme Support */
+.alert {
+  border-color: var(--cui-border-color) !important;
+  color: var(--cui-body-color) !important;
+}
+
+/* Badge Theme Support */
+.badge {
+  color: #ffffff !important; /* Keep white for visibility */
+}
+
+/* ✅ Table Theme Support */
+.table {
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+.table thead th {
+  background-color: var(--cui-gray-100) !important;
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+.table tbody td {
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+.table-striped tbody tr:nth-of-type(odd) {
+  background-color: var(--cui-gray-100) !important;
+}
+
+.table-hover tbody tr:hover {
+  background-color: var(--cui-gray-100) !important;
+  color: var(--cui-body-color) !important;
+}
+
+/* ✅ List Group Theme Support */
+.list-group-item {
+  background-color: var(--cui-card-bg) !important;
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+.list-group-item:hover {
+  background-color: var(--cui-gray-100) !important;
+}
+
+/* ✅ Dropdown Theme Support */
+.dropdown-menu {
+  background-color: var(--cui-card-bg) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+.dropdown-item {
+  color: var(--cui-body-color) !important;
+}
+
+.dropdown-item:hover {
+  background-color: var(--cui-gray-100) !important;
+  color: var(--cui-body-color) !important;
+}
+
+.dropdown-divider {
+  border-color: var(--cui-border-color) !important;
+}
+
+/* ✅ Accordion Theme Support */
+.accordion-item {
+  background-color: var(--cui-card-bg) !important;
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+.accordion-button {
+  background-color: var(--cui-card-bg) !important;
+  color: var(--cui-body-color) !important;
+}
+
+.accordion-button:not(.collapsed) {
+  background-color: var(--cui-gray-100) !important;
+  color: var(--cui-body-color) !important;
+}
+
+.accordion-body {
+  background-color: var(--cui-card-bg) !important;
+  color: var(--cui-body-color) !important;
+}
+
 .sidebar-backdrop {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    background-color: rgba(0, 0, 0, 0.5); /* Adjust opacity for backdrop */
-    z-index: 1030; /* Ensure it's below the sidebar */
-  }
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 1030;
+}
 
-  .sidebar-backdrop.show {
-    display: block;
-  }
+.sidebar-backdrop.show {
+  display: block;
+}
 
-  .sidebar-backdrop.fade {
-    transition: opacity 0.3s ease;
-  }
+.sidebar-backdrop.fade {
+  transition: opacity 0.3s ease;
+}
 
-  .sidebar-backdrop:not(.show) {
-    display: none;
-    opacity: 0;
-  }
+.sidebar-backdrop:not(.show) {
+  display: none;
+  opacity: 0;
+}
 
-  .basic-single .select__menu {
-    max-height: 200px; /* Adjust the height as needed */
-    overflow-y: auto;
+.basic-single .select__menu {
+  max-height: 200px;
+  overflow-y: auto;
+  background-color: var(--cui-card-bg) !important;
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
+}
+
+.basic-single .select__control {
+  background-color: var(--cui-input-bg) !important;
+  color: var(--cui-input-color) !important;
+  border-color: var(--cui-input-border-color) !important;
+}
+
+.basic-single .select__single-value {
+  color: var(--cui-input-color) !important;
+}
+
+.basic-single .select__option {
+  background-color: var(--cui-card-bg) !important;
+  color: var(--cui-body-color) !important;
+}
+
+.basic-single .select__option:hover {
+  background-color: var(--cui-gray-100) !important;
+}
+
+.basic-single .select__placeholder {
+  color: var(--cui-secondary-color) !important;
+}
+
+.basic-single .select__input-container {
+  color: var(--cui-input-color) !important;
 }
 
 /* Custom scrollbar for WebKit browsers (Chrome, Safari, Edge) */
 .custom-scrollbar::-webkit-scrollbar {
-  width: 3px; /* Decrease scrollbar width */
+  width: 3px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-track {
-  background: #f1f1f1; /* Track color */
-  border-radius: 3px; /* Rounded corners */
+  background: var(--cui-gray-100);
+  border-radius: 3px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb {
-  background: #888; /* Thumb color */
-  border-radius: 3px; /* Rounded corners */
+  background: var(--cui-gray-500);
+  border-radius: 3px;
 }
 
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: #555; /* Thumb color on hover */
+  background: var(--cui-gray-700);
 }
 
 /* Custom scrollbar for Firefox */
 .custom-scrollbar {
-  scrollbar-width: thin; /* Decrease scrollbar width */
-  scrollbar-color: #888 #f1f1f1; /* Thumb and track color */
+  scrollbar-width: thin;
+  scrollbar-color: var(--cui-gray-500) var(--cui-gray-100);
 }
 
 /* Mobile Responsive Styles for POS */
 @media (max-width: 768px) {
-  /* Container padding adjustments */
   .container, .container-fluid {
     padding-left: 0.5rem !important;
     padding-right: 0.5rem !important;
   }
   
-  /* Modal responsive adjustments */
   .modal-mobile-responsive .modal-dialog {
     margin: 0.5rem !important;
     max-width: calc(100% - 1rem) !important;
@@ -99,9 +614,10 @@
   
   .modal-mobile-responsive .modal-content {
     border-radius: 0.5rem !important;
+    background-color: var(--cui-card-bg) !important;
+    color: var(--cui-body-color) !important;
   }
   
-  /* Table responsive adjustments */
   .modal-mobile-responsive .table-responsive {
     font-size: 0.8rem;
   }
@@ -110,40 +626,40 @@
   .modal-mobile-responsive .table td {
     padding: 0.3rem !important;
     white-space: nowrap;
+    color: var(--cui-body-color) !important;
   }
   
-  /* Button adjustments for mobile */
   .modal-mobile-responsive .btn {
     font-size: 0.8rem;
     padding: 0.375rem 0.75rem;
   }
   
-  /* Form adjustments */
   .modal-mobile-responsive .form-label {
     font-size: 0.9rem;
     margin-bottom: 0.25rem;
+    color: var(--cui-body-color) !important;
   }
   
   .modal-mobile-responsive .form-control {
     font-size: 0.9rem;
     padding: 0.5rem;
+    background-color: var(--cui-input-bg) !important;
+    color: var(--cui-input-color) !important;
+    border-color: var(--cui-input-border-color) !important;
   }
   
-  /* Alert adjustments */
   .modal-mobile-responsive .alert {
     font-size: 0.8rem;
     padding: 0.5rem;
+    border-color: var(--cui-border-color) !important;
   }
   
-  /* Badge adjustments */
   .modal-mobile-responsive .badge {
     font-size: 0.7rem;
   }
 }
 
-/* Extra small devices (phones, 576px and down) */
 @media (max-width: 576px) {
-  /* Even smaller adjustments for very small screens */
   .modal-mobile-responsive .modal-dialog {
     margin: 0.25rem !important;
     max-width: calc(100% - 0.5rem) !important;
@@ -153,6 +669,7 @@
   .modal-mobile-responsive .table td {
     padding: 0.2rem !important;
     font-size: 0.7rem;
+    color: var(--cui-body-color) !important;
   }
   
   .modal-mobile-responsive .btn {
@@ -160,7 +677,6 @@
     padding: 0.25rem 0.5rem;
   }
   
-  /* Stack buttons vertically on very small screens */
   .modal-mobile-responsive .modal-footer .btn {
     width: 100%;
     margin-bottom: 0.25rem;
@@ -171,10 +687,12 @@
   }
 }
 
-/* Table card hover effects for mobile */
 @media (max-width: 768px) {
   .table-card {
     transition: transform 0.2s ease, box-shadow 0.2s ease;
+    background-color: var(--cui-card-bg) !important;
+    color: var(--cui-body-color) !important;
+    border-color: var(--cui-border-color) !important;
   }
   
   .table-card:active {
@@ -183,7 +701,6 @@
   }
 }
 
-/* Ensure proper touch targets on mobile */
 @media (max-width: 768px) {
   .btn, .table-card, .modal-close {
     min-height: 44px;
@@ -191,10 +708,12 @@
   }
 }
 
-/* Table card responsive styles */
 .table-card {
   height: 10rem;
   transition: transform 0.2s ease, box-shadow 0.2s ease;
+  background-color: var(--cui-card-bg) !important;
+  color: var(--cui-body-color) !important;
+  border-color: var(--cui-border-color) !important;
 }
 
 @media (max-width: 768px) {
@@ -208,13 +727,14 @@
   }
 }
 
-/* Table content responsive styles */
 .table-title {
   font-size: 1rem;
+  color: var(--cui-body-color) !important;
 }
 
 .table-subtitle {
   font-size: 0.8rem;
+  color: var(--cui-secondary-color) !important;
 }
 
 .badge-mobile {
@@ -235,7 +755,6 @@
   }
 }
 
-/* Category buttons responsive styles */
 @media (max-width: 768px) {
   .category-buttons {
     overflow-x: auto;
@@ -249,21 +768,20 @@
   }
   
   .category-buttons::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: var(--cui-gray-100);
     border-radius: 2px;
   }
   
   .category-buttons::-webkit-scrollbar-thumb {
-    background: #c1c1c1;
+    background: var(--cui-gray-500);
     border-radius: 2px;
   }
   
   .category-buttons::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8;
+    background: var(--cui-gray-700);
   }
 }
 
-/* Mobile responsive button styles */
 @media (max-width: 768px) {
   .btn-mobile-responsive {
     font-size: 0.8rem !important;
@@ -282,7 +800,6 @@
   }
 }
 
-/* Extra small devices */
 @media (max-width: 576px) {
   .btn-mobile-responsive {
     font-size: 0.75rem !important;
@@ -299,11 +816,11 @@
   }
 }
 
-/* Reservation Page Mobile Responsive Styles */
+/* Reservation Page Mobile Responsive Styles with Theme Support */
 @media (max-width: 768px) {
-  /* Reservation page specific mobile styles */
   .reservation-mobile-container {
     padding: 0.5rem !important;
+    background-color: var(--cui-body-bg) !important;
   }
   
   .reservation-mobile-header {
@@ -314,6 +831,7 @@
     font-size: 1.25rem !important;
     text-align: center !important;
     margin-bottom: 1rem !important;
+    color: var(--cui-body-color) !important;
   }
   
   .reservation-mobile-buttons {
@@ -334,6 +852,9 @@
   
   .reservation-mobile-stats .card {
     margin-bottom: 0.5rem !important;
+    background-color: var(--cui-card-bg) !important;
+    color: var(--cui-body-color) !important;
+    border-color: var(--cui-border-color) !important;
   }
   
   .reservation-mobile-stats .card-body {
@@ -344,13 +865,14 @@
   .reservation-mobile-stats .card-title {
     font-size: 0.875rem !important;
     margin-bottom: 0.5rem !important;
+    color: var(--cui-body-color) !important;
   }
   
   .reservation-mobile-stats h2 {
     font-size: 1.5rem !important;
+    color: var(--cui-body-color) !important;
   }
   
-  /* DataGrid mobile styles */
   .reservation-mobile-datagrid {
     overflow-x: auto !important;
     -webkit-overflow-scrolling: touch !important;
@@ -358,12 +880,15 @@
   
   .reservation-mobile-datagrid .MuiDataGrid-root {
     min-width: 600px !important;
+    background-color: var(--cui-card-bg) !important;
+    color: var(--cui-body-color) !important;
   }
 
-  /* Fix MUI DataGrid width issues */
   .MuiDataGrid-root {
     width: 100% !important;
     min-width: 600px !important;
+    background-color: var(--cui-card-bg) !important;
+    color: var(--cui-body-color) !important;
   }
   
   .MuiDataGrid-container--top {
@@ -374,7 +899,6 @@
     width: 100% !important;
   }
   
-  /* Modal mobile styles */
   .reservation-mobile-modal .modal-dialog {
     margin: 0 !important;
     max-width: 100% !important;
@@ -386,6 +910,8 @@
     border-radius: 0 !important;
     display: flex !important;
     flex-direction: column !important;
+    background-color: var(--cui-card-bg) !important;
+    color: var(--cui-body-color) !important;
   }
   
   .reservation-mobile-modal .modal-body {
@@ -396,42 +922,51 @@
   
   .reservation-mobile-modal .modal-footer {
     padding: 1rem !important;
-    border-top: 1px solid #dee2e6 !important;
+    border-top: 1px solid var(--cui-border-color) !important;
   }
   
-  /* Form mobile styles */
   .reservation-mobile-form .form-label {
     font-size: 0.875rem !important;
     margin-bottom: 0.25rem !important;
+    color: var(--cui-body-color) !important;
   }
   
   .reservation-mobile-form .form-control {
     font-size: 0.875rem !important;
     padding: 0.5rem !important;
     min-height: 44px !important;
+    background-color: var(--cui-input-bg) !important;
+    color: var(--cui-input-color) !important;
+    border-color: var(--cui-input-border-color) !important;
   }
   
   .reservation-mobile-form .form-control-sm {
     font-size: 0.8rem !important;
     padding: 0.375rem 0.5rem !important;
     min-height: 40px !important;
+    background-color: var(--cui-input-bg) !important;
+    color: var(--cui-input-color) !important;
+    border-color: var(--cui-input-border-color) !important;
   }
   
-  /* Select dropdown mobile styles */
   .reservation-mobile-select .select__control {
     min-height: 44px !important;
     font-size: 0.875rem !important;
+    background-color: var(--cui-input-bg) !important;
+    color: var(--cui-input-color) !important;
+    border-color: var(--cui-input-border-color) !important;
   }
   
   .reservation-mobile-select .select__menu {
     font-size: 0.875rem !important;
+    background-color: var(--cui-card-bg) !important;
   }
   
   .reservation-mobile-select .select__option {
     padding: 0.5rem 0.75rem !important;
+    color: var(--cui-body-color) !important;
   }
   
-  /* Button mobile styles */
   .reservation-mobile-actions .btn {
     min-height: 44px !important;
     font-size: 0.875rem !important;
@@ -444,14 +979,13 @@
     padding: 0.375rem 0.75rem !important;
   }
   
-  /* Alert mobile styles */
   .reservation-mobile-alert {
     font-size: 0.875rem !important;
     padding: 0.75rem !important;
     margin-bottom: 1rem !important;
+    border-color: var(--cui-border-color) !important;
   }
   
-  /* Table mobile styles */
   .reservation-mobile-table {
     font-size: 0.75rem !important;
   }
@@ -459,11 +993,14 @@
   .reservation-mobile-table .MuiDataGrid-cell {
     padding: 4px 8px !important;
     font-size: 0.75rem !important;
+    color: var(--cui-body-color) !important;
   }
   
   .reservation-mobile-table .MuiDataGrid-columnHeaders {
     font-size: 0.75rem !important;
     padding: 4px 8px !important;
+    background-color: var(--cui-gray-100) !important;
+    color: var(--cui-body-color) !important;
   }
   
   .reservation-mobile-table .MuiDataGrid-row {
@@ -471,7 +1008,6 @@
   }
 }
 
-/* Extra small devices for reservations */
 @media (max-width: 576px) {
   .reservation-mobile-container {
     padding: 0.25rem !important;
@@ -522,14 +1058,13 @@
   }
 }
 
-/* Customer Report Mobile Responsive Styles */
+/* Customer Report Mobile Responsive Styles with Theme Support */
 @media (max-width: 768px) {
-  /* Customer Report mobile container */
   .customer-report-mobile-container {
     padding: 0.5rem !important;
+    background-color: var(--cui-body-bg) !important;
   }
   
-  /* Customer Report mobile header */
   .customer-report-mobile-header {
     margin-bottom: 1rem !important;
     text-align: center !important;
@@ -538,20 +1073,23 @@
   .customer-report-mobile-title {
     font-size: 1.25rem !important;
     margin-bottom: 0.5rem !important;
+    color: var(--cui-body-color) !important;
   }
   
   .customer-report-mobile-subtitle {
     font-size: 0.875rem !important;
-    color: #6c757d !important;
+    color: var(--cui-secondary-color) !important;
   }
   
-  /* Customer Report mobile filter section */
   .customer-report-mobile-filters {
     margin-bottom: 1rem !important;
   }
   
   .customer-report-mobile-filters .card {
     border-radius: 0.5rem !important;
+    background-color: var(--cui-card-bg) !important;
+    color: var(--cui-body-color) !important;
+    border-color: var(--cui-border-color) !important;
   }
   
   .customer-report-mobile-filters .card-body {
@@ -563,6 +1101,9 @@
     font-size: 0.875rem !important;
     padding: 0.5rem !important;
     min-height: 44px !important;
+    background-color: var(--cui-input-bg) !important;
+    color: var(--cui-input-color) !important;
+    border-color: var(--cui-input-border-color) !important;
   }
   
   .customer-report-mobile-filters .btn {
@@ -571,7 +1112,6 @@
     min-height: 44px !important;
   }
   
-  /* Customer Report mobile cards */
   .mobile-cards-container {
     padding: 0 !important;
   }
@@ -581,6 +1121,9 @@
     margin-bottom: 0.75rem !important;
     box-shadow: 0 2px 4px rgba(0,0,0,0.1) !important;
     transition: transform 0.2s ease, box-shadow 0.2s ease !important;
+    background-color: var(--cui-card-bg) !important;
+    color: var(--cui-body-color) !important;
+    border-color: var(--cui-border-color) !important;
   }
   
   .mobile-cards-container .card:active {
@@ -590,8 +1133,9 @@
   
   .mobile-cards-container .card-header {
     padding: 0.75rem !important;
-    background-color: #f8f9fa !important;
-    border-bottom: 1px solid #dee2e6 !important;
+    background-color: var(--cui-gray-100) !important;
+    border-bottom: 1px solid var(--cui-border-color) !important;
+    color: var(--cui-body-color) !important;
   }
   
   .mobile-cards-container .card-body {
@@ -602,6 +1146,7 @@
     font-size: 0.9rem !important;
     font-weight: 600 !important;
     margin-bottom: 0 !important;
+    color: var(--cui-body-color) !important;
   }
   
   .mobile-cards-container .badge {
@@ -612,10 +1157,12 @@
   .mobile-cards-container .text-muted {
     font-size: 0.75rem !important;
     margin-bottom: 0.25rem !important;
+    color: var(--cui-secondary-color) !important;
   }
   
   .mobile-cards-container .fw-bold {
     font-size: 0.875rem !important;
+    color: var(--cui-body-color) !important;
   }
   
   .mobile-cards-container .text-success {
@@ -623,7 +1170,6 @@
     font-weight: 600 !important;
   }
   
-  /* Customer Report mobile empty state */
   .customer-report-mobile-empty {
     text-align: center !important;
     padding: 2rem 1rem !important;
@@ -631,24 +1177,22 @@
   
   .customer-report-mobile-empty i {
     font-size: 3rem !important;
-    color: #6c757d !important;
+    color: var(--cui-secondary-color) !important;
     margin-bottom: 1rem !important;
   }
   
   .customer-report-mobile-empty p {
     font-size: 0.875rem !important;
-    color: #6c757d !important;
+    color: var(--cui-secondary-color) !important;
     margin-bottom: 0 !important;
   }
   
-  /* Customer Report mobile loading */
   .customer-report-mobile-loading {
     padding: 3rem 1rem !important;
     text-align: center !important;
   }
 }
 
-/* Extra small devices for Customer Report */
 @media (max-width: 576px) {
   .customer-report-mobile-container {
     padding: 0.25rem !important;
@@ -719,6 +1263,7 @@
   .customer-report-mobile-empty p {
     font-size: 0.8rem !important;
   }
-}
 
- 
+  
+  
+}

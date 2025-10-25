@@ -593,7 +593,8 @@ export default function PurchaseAnalytics() {
       console.error("Error in menu items transformation with unit conversion:", error);
     }
   }, [menuItems, inventories, restaurantId]);
-  // useEffect(() => {
+ 
+   // useEffect(() => {
   //   try {
   //     // Validate data before processing
   //     const inventoriesValid = validateDataStructure(inventories, 'inventories');

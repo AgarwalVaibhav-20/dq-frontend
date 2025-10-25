@@ -36,7 +36,7 @@ export const fetchChartData = createAsyncThunk(
         `${BASE_URL}/dashboard/chart-data?year=${year}&restaurantId=${restaurantId}`, 
         configureHeaders(currentToken)
       );
-      return response.data; // This should contain labels and datasets directly
+      return response.data.data; // This should contain labels and datasets directly
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
@@ -53,7 +53,7 @@ export const fetchWeeklyChartData = createAsyncThunk(
         `${BASE_URL}/dashboard/weekly-chart-data?year=${year}&restaurantId=${restaurantId}`, 
         configureHeaders(currentToken)
       );
-      return response.data; // This should contain datasets directly
+      return response.data.data; // This should contain datasets directly
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }

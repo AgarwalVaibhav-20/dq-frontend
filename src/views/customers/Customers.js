@@ -10,6 +10,9 @@ import {
   updateCustomerFrequency,
 } from '../../redux/slices/customerSlice';
 import {
+  fetchCoupons,
+} from '../../redux/slices/coupenSlice';
+import {
   CButton,
   CSpinner,
   CModal,
@@ -61,6 +64,11 @@ const Customer = () => {
   const [title, setTitle] = useState('');
   const [body, setBody] = useState('');
 
+  // Send Message Modal States
+  const [sendMessageModalVisible, setSendMessageModalVisible] = useState(false);
+  const [messageText, setMessageText] = useState('');
+  const [selectedCoupon, setSelectedCoupon] = useState('');
+
   const [addCustomerModalVisible, setAddCustomerModalVisible] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -110,6 +118,22 @@ const Customer = () => {
     { value: 'Lost Customer', label: 'Lost Customer' },
     { value: 'High Spender', label: 'High Spender' },
   ];
+
+  // ✅ Get coupons from Redux
+  const { coupons } = useSelector(state => state.coupons);
+
+  // ✅ Fetch coupons on mount
+  useEffect(() => {
+    if (restaurantId && token) {
+      dispatch(fetchCustomers({ token, restaurantId }));
+      dispatch(fetchMembers(token));
+      dispatch(fetchCoupons({ restaurantId }));
+      fetchCustomerSettings();
+    } else {
+      console.error('Missing token or restaurantId');
+      toast.error('Authentication error: Please log in again.');
+    }
+  }, [dispatch, restaurantId, token]);
 
   // Calculate days since customer was created
   const daysSinceCreation = (createdAt) => {
@@ -164,19 +188,6 @@ const Customer = () => {
     }
   };
 
-  // Load data on component mount
-  useEffect(() => {
-    console.log('Initial load - Token:', token, 'RestaurantId:', restaurantId);
-    if (restaurantId && token) {
-      dispatch(fetchCustomers({ token, restaurantId }));
-      dispatch(fetchMembers(token));
-      fetchCustomerSettings();
-    } else {
-      console.error('Missing token or restaurantId');
-      toast.error('Authentication error: Please log in again.');
-    }
-  }, [dispatch, restaurantId, token]);
-
   // Get customers with dynamic classification
   const getClassifiedCustomers = () => {
     return customers.map((customer) => ({
@@ -226,6 +237,42 @@ const Customer = () => {
     window.open(`https://wa.me/${sanitizedPhone}?text=Hi!`, '_blank');
   };
 
+  // Send Message Modal Functions
+  const openSendMessageModal = () => {
+    setSendMessageModalVisible(true);
+  };
+
+  const handleSendMessage = async () => {
+    if (!messageText.trim()) {
+      toast.error('Please enter a message');
+      return;
+    }
+    
+    try {
+      const response = await axiosInstance.post('/api/send-message', {
+        message: messageText,
+        restaurantId,
+        couponId: selectedCoupon || null,
+      });
+      
+      if (response.data.success) {
+        toast.success('Message sent successfully');
+        setSendMessageModalVisible(false);
+        setMessageText('');
+        setSelectedCoupon('');
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      toast.error('Failed to send message');
+    }
+  };
+
+  const closeSendMessageModal = () => {
+    setSendMessageModalVisible(false);
+    setMessageText('');
+    setSelectedCoupon('');
+  };
+
   const handleDelete = () => {
     if (selectedCustomerId) {
       dispatch(deleteCustomer({ _id: selectedCustomerId })).then(() => {
@@ -246,7 +293,7 @@ const Customer = () => {
     return serialCounter++;
   };
 
-  const sendBulkEmail = () => {
+  const sendBulkEmailHandler = () => {
     setBulkEmailModalVisible(true);
   };
 
@@ -536,7 +583,7 @@ const Customer = () => {
     {
       field: 'actions',
       headerName: 'Actions',
-      width: isMobile ? 280 : 350,
+      width: isMobile ? 150 : 200,
       headerAlign: 'center',
       align: 'center',
       sortable: false,
@@ -580,45 +627,54 @@ const Customer = () => {
   ];
 
   return (
-    <div className="p-4 bg-gray-50 min-h-screen">
-      <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-3 sm:mb-0">Customers</h2>
-        <div className="flex gap-2">
-          <CButton
-            color="success"
-            onClick={() => setAddCustomerModalVisible(true)}
-            className="shadow-sm"
-          >
-            <CIcon icon={cilPlus} className="me-2" /> Add Customer
-          </CButton>
-          <CButton color="primary" onClick={sendBulkEmail} className="shadow-sm">
-            <CIcon icon={cilEnvelopeOpen} className="me-2" /> Send Bulk Emails
-          </CButton>
-        </div>
+   
+  <div className="p-4 min-h-screen" style={{ backgroundColor: 'var(--cui-body-bg)', color: 'var(--cui-body-color)' }}>
+    <div className="flex flex-col sm:flex-row justify-between items-center mb-6">
+      <h2 className="text-2xl font-bold mb-3 sm:mb-0" style={{ color: 'var(--cui-body-color)' }}>Customers</h2>
+      <div className="flex gap-2">
+        <CButton
+          color="info"
+          onClick={openSendMessageModal}
+          className="shadow-sm"
+        >
+          <CIcon icon={cilChatBubble} className="me-2" /> Send Message
+        </CButton>
+        <CButton
+          color="success"
+          onClick={() => setAddCustomerModalVisible(true)}
+          className="shadow-sm"
+        >
+          <CIcon icon={cilPlus} className="me-2" /> Add Customer
+        </CButton>
+        <CButton color="primary" onClick={sendBulkEmailHandler} className="shadow-sm">
+          <CIcon icon={cilEnvelopeOpen} className="me-2" /> Send Bulk Emails
+        </CButton>
       </div>
+    </div>
 
-      {/* Customer Type Filter with Counts */}
-      <div className="mb-4">
-        <div className="flex items-center gap-3">
-          <CIcon icon={cilFilter} className="text-gray-600" />
-          <label className="text-sm font-medium text-gray-700">Filter by Customer Type:</label>
-          <CFormSelect
-            value={selectedCustomerType}
-            onChange={handleCustomerTypeChange}
-            style={{ width: '250px' }}
-            className="shadow-sm"
-          >
-            {customerTypeOptions.map((option) => {
-              const count = getCustomerTypeCount(option.value);
-              return (
-                <option key={option.value} value={option.value}>
-                  {option.label} ({count})
-                </option>
-              );
-            })}
-          </CFormSelect>
-        </div>
+    {/* Customer Type Filter with Counts */}
+    <div className="mb-4">
+      <div className="flex items-center gap-3">
+        <CIcon icon={cilFilter} style={{ color: 'var(--cui-secondary-color)' }} />
+        <label className="text-sm font-medium" style={{ color: 'var(--cui-body-color)' }}>Filter by Customer Type:</label>
+        <CFormSelect
+          value={selectedCustomerType}
+          onChange={handleCustomerTypeChange}
+          style={{ width: '250px' }}
+          className="shadow-sm"
+        >
+          {customerTypeOptions.map((option) => {
+            const count = getCustomerTypeCount(option.value);
+            return (
+              <option key={option.value} value={option.value}>
+                {option.label} ({count})
+              </option>
+            );
+          })}
+        </CFormSelect>
       </div>
+    </div>
+
 
       {loading ? (
         <div className="flex justify-center my-6">
@@ -643,11 +699,11 @@ const Customer = () => {
               {filteredCustomers?.map((customer) => (
                 <div
                   key={customer._id}
-                  className="p-4 bg-white rounded-lg shadow-sm border border-gray-200"
+                  className="p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700"
                 >
                   <div className="mb-3">
                     <div className="flex justify-between items-center">
-                      <h3 className="text-lg font-semibold text-gray-900">{customer.name}</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{customer.name}</h3>
                       <span
                         style={{
                           backgroundColor:
@@ -673,38 +729,38 @@ const Customer = () => {
                     {customer.email && (
                       <div className="flex items-center gap-2 mt-2">
                         <CIcon icon={cilEnvelopeOpen} size="sm" />
-                        <span className="text-sm text-gray-600">{customer.email}</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">{customer.email}</span>
                       </div>
                     )}
                     {customer.phoneNumber && (
                       <div className="flex items-center gap-2 mt-1">
                         <CIcon icon={cilChatBubble} size="sm" />
-                        <span className="text-sm text-gray-600">{customer.phoneNumber}</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400">{customer.phoneNumber}</span>
                       </div>
                     )}
                     {customer.address && (
                       <div className="flex items-start mt-1">
-                        <span className="text-sm text-gray-600 flex-1">{customer.address}</span>
+                        <span className="text-sm text-gray-600 dark:text-gray-400 flex-1">{customer.address}</span>
                       </div>
                     )}
                   </div>
                   <div className="flex justify-between items-center mb-4 text-sm">
                     <div className="text-center">
-                      <div className="font-semibold text-gray-900">{customer.frequency || 0}</div>
-                      <div className="text-gray-500">Visits</div>
+                      <div className="font-semibold text-gray-900 dark:text-gray-100">{customer.frequency || 0}</div>
+                      <div className="text-gray-500 dark:text-gray-400">Visits</div>
                     </div>
                     <div className="text-center">
                       <div className="font-semibold text-green-600">
                         ₹{customer.totalSpent || 0}
                       </div>
-                      <div className="text-gray-500">Total Spent</div>
+                      <div className="text-gray-500 dark:text-gray-400">Total Spent</div>
                     </div>
                     {customer.membership?.membershipName && (
                       <div className="text-center">
                         <div className="font-semibold text-blue-600">
                           {customer.membership.membershipName}
                         </div>
-                        <div className="text-gray-500">Membership</div>
+                        <div className="text-gray-500 dark:text-gray-400">Membership</div>
                       </div>
                     )}
                   </div>
@@ -752,11 +808,11 @@ const Customer = () => {
               ))}
               {filteredCustomers?.length === 0 && (
                 <div className="text-center py-8">
-                  <div className="text-gray-500 mb-2">
+                  <div className="text-gray-500 dark:text-gray-400 mb-2">
                     <CIcon icon={cilPeople} size="3xl" />
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900 mb-1">No customers found</h3>
-                  <p className="text-gray-500">Try adjusting your filters or add new customers.</p>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-1">No customers found</h3>
+                  <p className="text-gray-500 dark:text-gray-400">Try adjusting your filters or add new customers.</p>
                 </div>
               )}
             </div>
@@ -766,8 +822,8 @@ const Customer = () => {
 
       {/* Delete Confirmation Modal */}
       <CModal visible={deleteModalVisible} onClose={() => setDeleteModalVisible(false)} backdrop="static">
-        <CModalHeader className="fw-bold">Confirm Deletion</CModalHeader>
-        <CModalBody className="text-gray-700">
+        <CModalHeader className="fw-bold dark:text-gray-100">Confirm Deletion</CModalHeader>
+        <CModalBody className="text-gray-700 dark:text-gray-300">
           Are you sure you want to delete this customer? This action cannot be undone.
         </CModalBody>
         <CModalFooter>
@@ -786,7 +842,7 @@ const Customer = () => {
         onClose={() => setBulkEmailModalVisible(false)}
         backdrop="static"
       >
-        <CModalHeader className="fw-bold">Send Bulk Email</CModalHeader>
+        <CModalHeader className="fw-bold dark:text-gray-100">Send Bulk Email</CModalHeader>
         <CModalBody>
           <CForm className="space-y-3">
             <CFormInput
@@ -829,6 +885,83 @@ const Customer = () => {
         </CModalFooter>
       </CModal>
 
+      {/* Send Message Modal with Coupon Selection - ✅ FIXED */}
+      <CModal
+        visible={sendMessageModalVisible}
+        onClose={closeSendMessageModal}
+        backdrop="static"
+      >
+        <CModalHeader className="fw-bold dark:text-gray-100">
+          Send Message to All Customers
+        </CModalHeader>
+        <CModalBody>
+          <CForm>
+            {/* Coupon Selection Dropdown */}
+            <div className="mb-3">
+              <CFormLabel htmlFor="couponSelect" className="fw-semibold dark:text-gray-200">
+                Attach Coupon (Optional)
+              </CFormLabel>
+              <CFormSelect
+                id="couponSelect"
+                value={selectedCoupon}
+                onChange={(e) => setSelectedCoupon(e.target.value)}
+                className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+              >
+                <option value="">-- No Coupon --</option>
+                {coupons?.map((coupon) => (
+                  <option key={coupon._id} value={coupon._id}>
+                    {coupon.code} - {coupon.discountValue}
+                    {coupon.discountType === 'percentage' ? '%' : '₹'} OFF
+                    {coupon.minOrderValue > 0 && ` (Min: ₹${coupon.minOrderValue})`}
+                  </option>
+                ))}
+              </CFormSelect>
+              <small className="text-muted dark:text-gray-400">
+                Select a coupon to include with the message
+              </small>
+            </div>
+
+            {/* Message Text Area */}
+            <div className="mb-3">
+              <CFormLabel htmlFor="messageText" className="fw-semibold dark:text-gray-200">
+                Message <span className="text-danger">*</span>
+              </CFormLabel>
+              <CFormTextarea
+                id="messageText"
+                rows="4"
+                value={messageText}
+                onChange={(e) => setMessageText(e.target.value)}
+                placeholder="Type your message here..."
+                required
+                className="dark:bg-gray-700 dark:text-gray-100 dark:border-gray-600"
+              />
+            </div>
+
+            {/* Coupon Preview - ✅ FIXED: Using coupons instead of availableCoupons */}
+            {selectedCoupon && (
+              <div className="alert alert-info mb-3" style={{ backgroundColor: '#d1ecf1', borderColor: '#bee5eb', color: '#0c5460', padding: '12px', borderRadius: '4px' }}>
+                <strong>Selected Coupon:</strong>
+                <br />
+                <span style={{ fontFamily: 'monospace', fontWeight: 'bold' }}>
+                  {coupons?.find(c => c._id === selectedCoupon)?.code}
+                </span>
+                {' - '}
+                {coupons?.find(c => c._id === selectedCoupon)?.description || 'No description'}
+              </div>
+            )}
+          </CForm>
+        </CModalBody>
+        <CModalFooter>
+          <CButton color="secondary" onClick={closeSendMessageModal}>
+            Cancel
+          </CButton>
+          <CButton color="primary" onClick={handleSendMessage}>
+            <CIcon icon={cilChatBubble} className="me-2" />
+            Send Message
+          </CButton>
+        </CModalFooter>
+      </CModal>
+
       {/* Add Customer Modal */}
       <CModal
         visible={addCustomerModalVisible}
@@ -836,7 +969,7 @@ const Customer = () => {
         backdrop="static"
         size="lg"
       >
-        <CModalHeader className="fw-bold">Add New Customer</CModalHeader>
+        <CModalHeader className="fw-bold dark:text-gray-100">Add New Customer</CModalHeader>
         <CModalBody>
           {Object.keys(formErrors).length > 0 && (
             <CAlert color="warning" className="mb-3">
@@ -854,7 +987,7 @@ const Customer = () => {
             <div className="row">
               <div className="col-md-6">
                 <div className="mb-3">
-                  <CFormLabel htmlFor="name" className="fw-semibold">
+                  <CFormLabel htmlFor="name" className="fw-semibold dark:text-gray-200">
                     Customer Name <span className="text-danger">*</span>
                   </CFormLabel>
                   <CFormInput
@@ -871,7 +1004,7 @@ const Customer = () => {
               </div>
               <div className="col-md-6">
                 <div className="mb-3">
-                  <CFormLabel htmlFor="email" className="fw-semibold">
+                  <CFormLabel htmlFor="email" className="fw-semibold dark:text-gray-200">
                     Email Address
                   </CFormLabel>
                   <CFormInput
@@ -889,7 +1022,7 @@ const Customer = () => {
             <div className="row">
               <div className="col-md-6">
                 <div className="mb-3">
-                  <CFormLabel htmlFor="phoneNumber" className="fw-semibold">
+                  <CFormLabel htmlFor="phoneNumber" className="fw-semibold dark:text-gray-200">
                     Phone Number
                   </CFormLabel>
                   <CFormInput
@@ -905,7 +1038,7 @@ const Customer = () => {
               </div>
               <div className="col-md-6">
                 <div className="mb-3">
-                  <CFormLabel htmlFor="address" className="fw-semibold">
+                  <CFormLabel htmlFor="address" className="fw-semibold dark:text-gray-200">
                     Address
                   </CFormLabel>
                   <CFormTextarea
@@ -922,7 +1055,7 @@ const Customer = () => {
             <div className="row">
               <div className="col-md-6">
                 <div className="mb-3">
-                  <CFormLabel htmlFor="birthday" className="fw-semibold">
+                  <CFormLabel htmlFor="birthday" className="fw-semibold dark:text-gray-200">
                     Birthday
                   </CFormLabel>
                   <CFormInput
@@ -936,7 +1069,7 @@ const Customer = () => {
               </div>
               <div className="col-md-6">
                 <div className="mb-3">
-                  <CFormLabel htmlFor="anniversary" className="fw-semibold">
+                  <CFormLabel htmlFor="anniversary" className="fw-semibold dark:text-gray-200">
                     Anniversary
                   </CFormLabel>
                   <CFormInput
@@ -965,7 +1098,7 @@ const Customer = () => {
             <div className="row">
               <div className="col-md-6">
                 <div className="mb-3">
-                  <CFormLabel htmlFor="membershipId" className="fw-semibold">
+                  <CFormLabel htmlFor="membershipId" className="fw-semibold dark:text-gray-200">
                     Membership Plan
                   </CFormLabel>
                   <CFormSelect
@@ -1016,13 +1149,13 @@ const Customer = () => {
         backdrop="static"
         size="lg"
       >
-        <CModalHeader className="fw-bold">Update Customer</CModalHeader>
+        <CModalHeader className="fw-bold dark:text-gray-100">Update Customer</CModalHeader>
         <CModalBody>
           <CForm>
             <div className="row">
               <div className="col-md-6">
                 <div className="mb-3">
-                  <CFormLabel htmlFor="update-name" className="fw-semibold">
+                  <CFormLabel htmlFor="update-name" className="fw-semibold dark:text-gray-200">
                     Customer Name <span className="text-danger">*</span>
                   </CFormLabel>
                   <CFormInput
@@ -1038,7 +1171,7 @@ const Customer = () => {
               </div>
               <div className="col-md-6">
                 <div className="mb-3">
-                  <CFormLabel htmlFor="update-email" className="fw-semibold">
+                  <CFormLabel htmlFor="update-email" className="fw-semibold dark:text-gray-200">
                     Email Address
                   </CFormLabel>
                   <CFormInput
@@ -1055,7 +1188,7 @@ const Customer = () => {
             <div className="row">
               <div className="col-md-6">
                 <div className="mb-3">
-                  <CFormLabel htmlFor="update-phoneNumber" className="fw-semibold">
+                  <CFormLabel htmlFor="update-phoneNumber" className="fw-semibold dark:text-gray-200">
                     Phone Number
                   </CFormLabel>
                   <CFormInput
@@ -1070,7 +1203,7 @@ const Customer = () => {
               </div>
               <div className="col-md-6">
                 <div className="mb-3">
-                  <CFormLabel htmlFor="update-address" className="fw-semibold">
+                  <CFormLabel htmlFor="update-address" className="fw-semibold dark:text-gray-200">
                     Address
                   </CFormLabel>
                   <CFormTextarea
@@ -1087,7 +1220,7 @@ const Customer = () => {
             <div className="row">
               <div className="col-md-6">
                 <div className="mb-3">
-                  <CFormLabel htmlFor="update-birthday" className="fw-semibold">
+                  <CFormLabel htmlFor="update-birthday" className="fw-semibold dark:text-gray-200">
                     Birthday
                   </CFormLabel>
                   <CFormInput
@@ -1101,7 +1234,7 @@ const Customer = () => {
               </div>
               <div className="col-md-6">
                 <div className="mb-3">
-                  <CFormLabel htmlFor="update-anniversary" className="fw-semibold">
+                  <CFormLabel htmlFor="update-anniversary" className="fw-semibold dark:text-gray-200">
                     Anniversary
                   </CFormLabel>
                   <CFormInput
@@ -1117,7 +1250,7 @@ const Customer = () => {
             <div className="row">
               <div className="col-md-6">
                 <div className="mb-3">
-                  <CFormLabel htmlFor="update-membershipId" className="fw-semibold">
+                  <CFormLabel htmlFor="update-membershipId" className="fw-semibold dark:text-gray-200">
                     Membership Plan
                   </CFormLabel>
                   <CFormSelect

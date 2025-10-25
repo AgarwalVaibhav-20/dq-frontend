@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { LineChart } from "@mui/x-charts/LineChart";
 import {
   Box,
@@ -14,12 +14,10 @@ import {
   Button,
   Stack,
   Chip,
-  useTheme,
 } from "@mui/material";
 import { jsPDF } from "jspdf";
 import "jspdf-autotable";
 
-// Dummy feedback data
 const dummyFeedback = Array.from({ length: 30 }, (_, i) => ({
   id: i + 1,
   user: `User ${i + 1}`,
@@ -30,26 +28,52 @@ const dummyFeedback = Array.from({ length: 30 }, (_, i) => ({
 
 export default function FeedbackPage() {
   const [feedbacks] = useState(dummyFeedback);
-
-  // Pagination state
   const [page, setPage] = useState(0);
   const [rowsPerPage, setRowsPerPage] = useState(5);
+  const [isDark, setIsDark] = useState(false);
+
+  // ✅ Theme detection with observer
+  useEffect(() => {
+    const checkTheme = () => {
+      const darkMode = 
+        document.documentElement.getAttribute('data-coreui-theme') === 'dark' ||
+        document.body.getAttribute('data-coreui-theme') === 'dark';
+      setIsDark(darkMode);
+    };
+
+    // Initial check
+    checkTheme();
+
+    // Observer for theme changes
+    const observer = new MutationObserver(checkTheme);
+    
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-coreui-theme']
+    });
+    
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['data-coreui-theme']
+    });
+
+    return () => observer.disconnect();
+  }, []);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
   };
+  
   const handleChangeRowsPerPage = (event) => {
     setRowsPerPage(parseInt(event.target.value, 10));
     setPage(0);
   };
 
-  // Chart Data
   const chartData = feedbacks.map((f, index) => ({
     x: index + 1,
     y: f.rating,
   }));
 
-  // CSV Export
   const exportCSV = () => {
     const csvRows = [
       ["User", "Rating", "Comment", "Date"],
@@ -65,7 +89,6 @@ export default function FeedbackPage() {
     link.click();
   };
 
-  // PDF Export
   const exportPDF = () => {
     const doc = new jsPDF();
     doc.setFontSize(16);
@@ -80,24 +103,28 @@ export default function FeedbackPage() {
     doc.save("feedbacks.pdf");
   };
 
-  // Rating chip color logic
   const getRatingColor = (rating) => {
     if (rating >= 4) return "success";
     if (rating === 3) return "warning";
     return "error";
   };
 
-  // Theme-aware styling
-  const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
-
   return (
-    <Box sx={{ p: 3 }}>
-      <Typography variant="h4" gutterBottom>
+    <Box 
+      sx={{ 
+        p: 3, 
+        bgcolor: isDark ? '#212529' : '#f8f9fa',
+        minHeight: '100vh'
+      }}
+    >
+      <Typography 
+        variant="h4" 
+        gutterBottom 
+        sx={{ color: isDark ? '#ffffff' : '#212529' }}
+      >
         Customer Feedback
       </Typography>
 
-      {/* Export Buttons */}
       <Stack 
         direction={{ xs: "column", sm: "row" }} 
         spacing={{ xs: 1, sm: 2 }} 
@@ -129,9 +156,20 @@ export default function FeedbackPage() {
         </Button>
       </Stack>
 
-      {/* Chart Section */}
-      <Paper sx={{ p: 2, mb: 3, borderRadius: 3, boxShadow: 3 }}>
-        <Typography variant="h6" gutterBottom>
+      <Paper 
+        sx={{ 
+          p: 2, 
+          mb: 3, 
+          borderRadius: 3, 
+          boxShadow: 3,
+          bgcolor: isDark ? '#343a40' : '#ffffff'
+        }}
+      >
+        <Typography 
+          variant="h6" 
+          gutterBottom 
+          sx={{ color: isDark ? '#ffffff' : '#212529' }}
+        >
           Feedback Ratings Trend
         </Typography>
         <LineChart
@@ -143,21 +181,36 @@ export default function FeedbackPage() {
         />
       </Paper>
 
-      {/* Feedback Table */}
-      <Paper sx={{ p: 2, borderRadius: 3, boxShadow: 3 }}>
-        <Typography variant="h6" gutterBottom>
+      <Paper 
+        sx={{ 
+          p: 2, 
+          borderRadius: 3, 
+          boxShadow: 3,
+          bgcolor: isDark ? '#343a40' : '#ffffff'
+        }}
+      >
+        <Typography 
+          variant="h6" 
+          gutterBottom 
+          sx={{ color: isDark ? '#ffffff' : '#212529' }}
+        >
           Feedback List
         </Typography>
         <TableContainer>
-          <Table sx={{ borderRadius: 2, overflow: "hidden" }}>
+          <Table>
             <TableHead>
-              <TableRow>
+              <TableRow 
+                sx={{ 
+                  bgcolor: isDark ? '#212529' : '#e9ecef'
+                }}
+              >
                 {["Customer", "Rating", "Comment", "Date"].map((header) => (
-                  <TableCell
-                    key={header}
-                    sx={{
+                  <TableCell 
+                    key={header} 
+                    sx={{ 
                       fontWeight: "bold",
-                      color: theme.palette.text.primary, // auto adapts to dark/light
+                      color: isDark ? '#ffffff !important' : '#212529 !important',
+                      bgcolor: 'transparent !important'
                     }}
                   >
                     {header}
@@ -168,26 +221,22 @@ export default function FeedbackPage() {
             <TableBody>
               {feedbacks
                 .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
-                .map((fb, idx) => (
-                  <TableRow
+                .map((fb, index) => (
+                  <TableRow 
                     key={fb.id}
                     sx={{
-                      backgroundColor: isDark
-                        ? idx % 2 === 0
-                          ? theme.palette.grey[900]
-                          : theme.palette.grey[800]
-                        : idx % 2 === 0
-                          ? "#f9f9f9"
-                          : "white",
-                      "&:hover": {
-                        backgroundColor: isDark
-                          ? theme.palette.action.hover
-                          : "#e3f2fd",
+                      bgcolor: isDark 
+                        ? (index % 2 === 0 ? '#495057' : '#343a40')
+                        : (index % 2 === 0 ? '#ffffff' : '#f8f9fa'),
+                      '&:hover': {
+                        bgcolor: isDark ? '#6c757d !important' : '#e9ecef !important',
                       },
                     }}
                   >
-                    <TableCell>{fb.user}</TableCell>
-                    <TableCell>
+                    <TableCell sx={{ color: isDark ? '#ffffff !important' : '#212529 !important', bgcolor: 'transparent !important' }}>
+                      {fb.user}
+                    </TableCell>
+                    <TableCell sx={{ bgcolor: 'transparent !important' }}>
                       <Chip
                         label={`${fb.rating} ⭐`}
                         color={getRatingColor(fb.rating)}
@@ -195,15 +244,18 @@ export default function FeedbackPage() {
                         size="small"
                       />
                     </TableCell>
-                    <TableCell>{fb.comment}</TableCell>
-                    <TableCell>{fb.date}</TableCell>
+                    <TableCell sx={{ color: isDark ? '#ffffff !important' : '#212529 !important', bgcolor: 'transparent !important' }}>
+                      {fb.comment}
+                    </TableCell>
+                    <TableCell sx={{ color: isDark ? '#ffffff !important' : '#212529 !important', bgcolor: 'transparent !important' }}>
+                      {fb.date}
+                    </TableCell>
                   </TableRow>
                 ))}
             </TableBody>
           </Table>
         </TableContainer>
 
-        {/* Pagination */}
         <TablePagination
           component="div"
           count={feedbacks.length}
@@ -212,11 +264,21 @@ export default function FeedbackPage() {
           rowsPerPage={rowsPerPage}
           onRowsPerPageChange={handleChangeRowsPerPage}
           rowsPerPageOptions={[5, 10, 20]}
+          sx={{ 
+            color: isDark ? '#ffffff !important' : '#212529 !important',
+            '.MuiTablePagination-selectLabel, .MuiTablePagination-displayedRows, .MuiTablePagination-select, .MuiIconButton-root': {
+              color: isDark ? '#ffffff !important' : '#212529 !important',
+            }
+          }}
         />
       </Paper>
     </Box>
   );
 }
+
+
+
+
 
 
 // import React, { useEffect } from 'react';

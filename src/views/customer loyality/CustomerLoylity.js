@@ -70,7 +70,7 @@ function CustomerLoyalty() {
   // Redux
   const dispatch = useDispatch();
   const { coupons, loading, error, successMessage } = useSelector(state => state.coupons);
-
+console.log('coupon for customer:', coupons);
   // Load coupons on component mount
   useEffect(() => {
     dispatch(fetchCoupons());
