@@ -1,36 +1,52 @@
-import React from 'react';
-import { 
-  CModal, 
-  CModalHeader, 
-  CModalTitle, 
-  CModalBody, 
-  CModalFooter, 
-  CButton, 
+import React, { useRef } from 'react';
+import {
+  CModal,
+  CModalHeader,
+  CModalTitle,
+  CModalBody,
+  CModalFooter,
+  CButton,
   CInputGroup,
   CRow,
   CCol,
   CFormInput
 } from '@coreui/react';
-
-const RoundOffAmountModal = ({ 
-  showRoundOffModal, 
-  setShowRoundOffModal, 
-  inputValue, 
-  setInputValue, 
+import { useSelector } from 'react-redux';
+import { useHotkeys } from 'react-hotkeys-hook';
+const RoundOffAmountModal = ({
+  showRoundOffModal,
+  setShowRoundOffModal,
+  inputValue,
+  setInputValue,
   roundOff,
   setRoundOff,
   handleRoundOffSubmit,
-  subtotal = 0,        
-  tax = 0,              
+  subtotal = 0,
+  tax = 0,
   discount = 0,
-  cart = []          
+  cart = []
 }) => {
+  const decrementBtnRef = useRef(null);
+  const incrementBtnRef = useRef(null);
+  const manualInputRef = useRef(null);
+  const resetBtnRef = useRef(null);
+  const cancelBtnRef = useRef(null);
+  const applyBtnRef = useRef(null);
+
+  const focusableElements = [
+    decrementBtnRef,
+    incrementBtnRef,
+    manualInputRef,
+    resetBtnRef,
+    cancelBtnRef,
+    applyBtnRef,
+  ];
   // Get tax display name
   const getTaxDisplayName = () => {
     const taxNames = cart
       .filter(item => item.taxName && item.taxAmount > 0)
       .map(item => item.taxName);
-    
+
     if (taxNames.length > 0) {
       const uniqueTaxNames = [...new Set(taxNames)];
       if (uniqueTaxNames.length === 1) {
@@ -90,7 +106,41 @@ const RoundOffAmountModal = ({
     handleRoundOffSubmit(roundOffValue);
     setShowRoundOffModal(false);
   };
+  useHotkeys('arrowup, arrowdown', (e) => {
+    const currentIndex = focusableElements.findIndex(ref => ref.current === document.activeElement);
+    console.log('Current focus index:', currentIndex);
 
+    if (currentIndex === -1) {
+      // If no element is focused, focus the first one
+      focusableElements[0].current?.focus();
+      return;
+    }
+
+    let nextIndex;
+    if (e.key === 'ArrowDown') {
+      nextIndex = (currentIndex + 1) % focusableElements.length;
+    } else if (e.key === 'ArrowUp') {
+      nextIndex = (currentIndex - 1 + focusableElements.length) % focusableElements.length;
+    }
+
+    focusableElements[nextIndex].current?.focus();
+    e.preventDefault();
+  }, { enableOnFormTags: true }, [focusableElements]); // Re-run if refs change
+
+  // Handle Enter key to trigger button actions
+  useHotkeys('enter', (e) => {
+    const currentFocused = document.activeElement;
+    console.log('Focused element:', currentFocused);
+
+    if (currentFocused === applyBtnRef.current) {
+      handleApply();
+    } else if (currentFocused === cancelBtnRef.current) {
+      setShowRoundOffModal(false);
+    } else if (currentFocused === resetBtnRef.current) {
+      handleReset();
+    }
+    e.preventDefault();
+  }, { enableOnFormTags: true });
   return (
     <CModal visible={showRoundOffModal} onClose={() => setShowRoundOffModal(false)} size="lg">
       <CModalHeader>
@@ -102,7 +152,7 @@ const RoundOffAmountModal = ({
           <div className="mb-4">
             <h6 className="mb-3 text-primary">Cart Items:</h6>
             <div style={{ maxHeight: '200px', overflowY: 'auto' }} className="border rounded p-2">
-                {cart.map((item) => { // No longer need 'index'
+              {cart.map((item) => { // No longer need 'index'
                 // const itemId = item._id || item.id || index; // This line is removed
                 const itemPrice = parseFloat(item.adjustedPrice || item.price || 0);
                 const itemSubtotal = itemPrice * (item.quantity || 1);
@@ -157,7 +207,7 @@ const RoundOffAmountModal = ({
             <span className="fw-bold">Total Before Round Off:</span>
             <span className="fw-bold fs-5 text-primary">₹{originalTotal.toFixed(2)}</span>
           </div>
-          
+
           {getRoundedValue() > 0 && (
             <>
               <div className="d-flex justify-content-between mb-2">
@@ -178,11 +228,12 @@ const RoundOffAmountModal = ({
           <CCol>
             <label className="form-label fw-semibold">Set Round Off Amount:</label>
             <CInputGroup className="mb-2">
-              <CButton 
-                type="button" 
-                color="outline-danger" 
+              <CButton
+                type="button"
+                color="outline-danger"
                 onClick={handleDecrement}
                 disabled={parseFloat(inputValue) <= 0}
+                ref={decrementBtnRef}
               >
                 -
               </CButton>
@@ -194,10 +245,11 @@ const RoundOffAmountModal = ({
                 className="text-center fw-bold fs-5 bg-white text-primary"
               />
 
-              <CButton 
-                type="button" 
-                color="outline-success" 
+              <CButton
+                type="button"
+                color="outline-success"
                 onClick={handleIncrement}
+                ref={incrementBtnRef}
               >
                 +
               </CButton>
@@ -214,15 +266,17 @@ const RoundOffAmountModal = ({
                 step="0.01"
                 min="0"
                 className="text-center"
+                ref={manualInputRef}
               />
             </div>
 
             <div className="d-flex justify-content-between">
               <small className="text-muted">Use +/- buttons or enter amount manually</small>
-              <CButton 
-                color="outline-secondary" 
+              <CButton
+                color="outline-secondary"
                 size="sm"
                 onClick={handleReset}
+                ref={resetBtnRef}
               >
                 Reset
               </CButton>
@@ -262,27 +316,29 @@ const RoundOffAmountModal = ({
           </div>
         )}
       </CModalBody>
-      
+
       <CModalFooter className="d-flex justify-content-between">
         <div>
           <small className="text-muted">
-            {getRoundedValue() > 0 
-              ? `Applying round off of ₹${getRoundedValue().toFixed(2)}` 
+            {getRoundedValue() > 0
+              ? `Applying round off of ₹${getRoundedValue().toFixed(2)}`
               : 'No round off will be applied'
             }
           </small>
         </div>
         <div>
-          <CButton 
-            color="secondary" 
+          <CButton
+            color="secondary"
             className="me-2"
             onClick={() => setShowRoundOffModal(false)}
+            ref={cancelBtnRef}
           >
             Cancel
           </CButton>
-          <CButton 
-            color="primary" 
+          <CButton
+            color="primary"
             onClick={handleApply}
+            ref={applyBtnRef}
           >
             {getRoundedValue() > 0 ? 'Apply Round Off' : 'Keep Original Total'}
           </CButton>

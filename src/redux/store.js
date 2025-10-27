@@ -28,9 +28,11 @@ import memeberSlice from './slices/memberSlice'
 // import floorRedux from './slices/FloorRedux'
 import tableReducer from './slices/tableSlice'
 import wasteSlice from './slices/wasteSlice';
+import shortcutsReducer from './slices/keyboardShortcutSlice';
 // Configure the Redux store
 const store = configureStore({
   reducer: {
+    shortcuts: shortcutsReducer,
     members:memeberSlice,
     floors: floorSlices,
     tables: tableReducer,

@@ -32,7 +32,7 @@ const Dues = () => {
   const dispatch = useDispatch();
   const { dues, loading, error } = useSelector((state) => state.dues);
   const { customers, loading: customersLoading, error: customersError } = useSelector((state) => state.customers);
-  const restaurantId = useSelector((state) => state.auth.restaurantId);
+  const restaurantId = localStorage.getItem('restaurantId');
 
   const isMobile = useMediaQuery('(max-width:768px)');
 

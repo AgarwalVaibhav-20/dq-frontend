@@ -1,17 +1,48 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { CContainer, CRow, CCol, CButton, CCardFooter } from '@coreui/react'
+import {
+  CContainer,
+  CCol,
+  CRow,
+  CSpinner,
+  CButton,
+  CModal,
+  CModalHeader,
+  CModalTitle,
+  CModalBody,
+  CModalFooter,
+  CTable,
+  CTableHead,
+  CTableRow,
+  CTableHeaderCell,
+  CTableBody,
+  CTableDataCell,
+  CFormCheck,
+  CBadge,
+  CAlert,
+  CDropdown,
+  CDropdownToggle,
+  CDropdownMenu,
+  CDropdownItem,
+  CForm,
+  CFormInput,
+  CFormLabel,
+  CFormTextarea,
+  CCardFooter,
+} from '@coreui/react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useDispatch, useSelector } from 'react-redux'
 import axios from 'axios'
 import { BASE_URL } from '../../utils/constants'
 import { fetchMenuItems } from '../../redux/slices/menuSlice'
+import { useHotkeys } from 'react-hotkeys-hook';
+import { FocusTrap } from 'focus-trap-react';
 import {
   fetchCustomers,
   updateCustomerFrequency,
   addCustomer,
-  addRewardPoints,      // ADD THIS
-  deductRewardPoints    // ADD THIS
+  addRewardPoints,
+  deductRewardPoints
 } from '../../redux/slices/customerSlice'
 import { createTransaction } from '../../redux/slices/transactionSlice'
 import {
@@ -40,6 +71,9 @@ import SystemSelectionModal from '../../components/SystemSelectionModal'
 // import { jwtDecode } from "jwt-decode";
 
 const POSTableContent = () => {
+  const productListRef = useRef(null);  // For the entire ProductList container
+  const cartRef = useRef(null);         // For the entire Cart container (pass to Cart)
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const { tableNumber: tableId } = useParams();
   const navigate = useNavigate()
   const dispatch = useDispatch()
@@ -62,7 +96,6 @@ const POSTableContent = () => {
     try {
       if (!token) return null
       const payload = JSON.parse(atob(token.split('.')[1]))
-      console.log('🔍 Token payload:', payload)
       return payload.restaurantId || payload.restaurant_id
     } catch (error) {
       console.error('Error decoding token:', error)
@@ -71,21 +104,10 @@ const POSTableContent = () => {
   }
 
   const restaurantId = getRestaurantIdFromToken() || localStorage.getItem('restaurantId')
-
-  // Debug: Log restaurantId to console (commented for production)
-  // console.log('POSTableContent - restaurantId:', restaurantId)
-  // console.log('POSTableContent - localStorage restaurantId:', localStorage.getItem('restaurantId'))
-  // console.log('POSTableContent - authState:', authState)
-
-
-  // Debug: Log restaurantId to console
-  console.log('🔍 POSTableContent Debug:', {
-    restaurantId,
-    tokenFromLocalStorage: localStorage.getItem('restaurantId'),
-    authState,
-    tokenExists: !!token
-  })
-
+  const handleProductClick = useCallback((product) => {
+    // This will trigger the size selection modal in ProductList
+    // We’ll rely on ProductList’s internal handleProductClick for modal logic
+  }, []);
   // Fallback: If restaurantId is missing, try to get it from user profile or redirect
   useEffect(() => {
     if (!localStorage.getItem('restaurantId') && token && authState.restaurantId) {
@@ -97,6 +119,8 @@ const POSTableContent = () => {
       localStorage.setItem('restaurantId', '68d23850f227fcf59cfacf80')
     }
   }, [token, authState.restaurantId])
+
+
 
   const [showKOTModal, setShowKOTModal] = useState(false)
   const [kotImage, setKOTImage] = useState('')
@@ -136,13 +160,11 @@ const POSTableContent = () => {
         const system = JSON.parse(savedSystem)
         // Validate system data - reject if it's invalid dine-in data or missing required fields
         if (system.systemName === 'dine-in' || system.systemName === 'Dine in' || system.systemName === 'Dine-in' || !system._id || !system.systemName || !system.chargeOfSystem) {
-          console.log('Invalid system data found, clearing:', system)
           localStorage.removeItem(`selectedSystem_${tableId}`)
           return null
         }
         return system
       } catch (error) {
-        console.log('Corrupted system data found, clearing')
         localStorage.removeItem(`selectedSystem_${tableId}`)
         return null
       }
@@ -152,15 +174,11 @@ const POSTableContent = () => {
 
   // Get userId from Redux state or localStorage
   const userId = useSelector((state) => state.auth.userId) || localStorage.getItem('userId')
-
+  const searchInputRef = useRef(null);
   const [cart, setCart] = useState(() => {
     // Make cart data user-specific by including userId in the key
     const currentUserId = userId || localStorage.getItem('userId')
-    console.log('🔍 User Debug:', {
-      tableId,
-      currentUserId,
-      authState: { userId, restaurantId }
-    })
+
 
     const savedCart = localStorage.getItem(`cart_${tableId}_${currentUserId}`)
 
@@ -168,19 +186,11 @@ const POSTableContent = () => {
     if (!savedCart) {
       const generalCart = localStorage.getItem(`cart_${tableId}`)
       if (generalCart) {
-        console.log('🔍 Found general cart, migrating to user-specific:', generalCart)
         // Migrate to user-specific storage
         localStorage.setItem(`cart_${tableId}_${currentUserId}`, generalCart)
         return JSON.parse(generalCart)
       }
     }
-
-    console.log('🔍 Cart Debug:', {
-      tableId,
-      currentUserId,
-      savedCart,
-      parsedCart: savedCart ? JSON.parse(savedCart) : null
-    })
     return savedCart ? JSON.parse(savedCart) : []
   })
 
@@ -193,7 +203,6 @@ const POSTableContent = () => {
     if (!savedStartTime) {
       const generalStartTime = localStorage.getItem(`start_time_${tableId}`)
       if (generalStartTime) {
-        console.log('🔍 Found general start time, migrating to user-specific:', generalStartTime)
         // Migrate to user-specific storage
         localStorage.setItem(`start_time_${tableId}_${currentUserId}`, generalStartTime)
         return new Date(generalStartTime)
@@ -207,7 +216,9 @@ const POSTableContent = () => {
     pdfUrl: null,
     message: '',
   })
-
+  useEffect(() => {
+    searchInputRef.current?.focus();
+  }, []);
   useEffect(() => {
     if (startTime) {
       const interval = setInterval(() => {
@@ -266,12 +277,10 @@ const POSTableContent = () => {
         if (!selectedSystem) {
           if (transformedSystems.length === 1 && transformedSystems[0].chargeOfSystem > 0) {
             // Only one system - auto-select it
-            console.log('Auto-selecting single system:', transformedSystems[0])
             setSelectedSystem(transformedSystems[0])
             localStorage.setItem(`selectedSystem_${tableId}`, JSON.stringify(transformedSystems[0]))
           } else if (transformedSystems.length > 1) {
             // Multiple systems - show selection modal
-            console.log('Multiple systems found, showing selection modal')
             setShowSystemModal(true)
           }
         }
@@ -421,7 +430,6 @@ const POSTableContent = () => {
   }, [cart, startTime, tableNumber]);
 
   const handleMenuItemClick = useCallback((product) => {
-    console.log('handleMenuItemClick called with:', product.itemName);
 
     // Skip subcategory check for now - direct add to cart
     // const relevantSubcategoriesExist = subCategories.some(sub => sub.category_id === product.categoryId);
@@ -707,7 +715,25 @@ const POSTableContent = () => {
   //   setShowDiscountModal(false);
   // };
   const handleDiscountSubmit = (discounts) => {
-    console.log('Received discounts:', discounts);
+    if (!discounts) {
+      toast.error('Invalid discount data');
+      return;
+    }
+    setAppliedDiscounts(discounts);
+    // let totalDiscount = 0;
+    // if (discounts.manualRewardPoints && discounts.manualRewardPoints.enabled) {
+    //   totalDiscount += discounts.manualRewardPoints.discountAmount;
+    // }
+    // if (discounts.rewardPoints && discounts.rewardPoints.enabled) {
+    //   totalDiscount += discounts.rewardPoints.discountAmount;
+    // }
+    // if (discounts.selectedItemDiscount && discounts.selectedItemDiscount.value) {
+    //   totalDiscount += calculateItemSpecificDiscount(discounts.selectedItemDiscount);
+    // }
+    // if (discounts.coupon && discounts.coupon.value) {
+    //   totalDiscount += discounts.coupon.amount;
+    // }
+    // setDiscount(totalDiscount);
 
     if (discounts.selectedItemDiscount && discounts.selectedItemDiscount.ids && discounts.selectedItemDiscount.ids.length > 0) {
       const { ids, value, type } = discounts.selectedItemDiscount;
@@ -740,8 +766,8 @@ const POSTableContent = () => {
       toast.success(`${type === 'percentage' ? 'Percentage' : 'Fixed'} discount applied to ${ids.length} item(s)!`);
     }
 
-    if (discounts.coupon && discounts.coupon.value) {
-      const { value, type, maxDiscountAmount } = discounts.coupon;
+    // if (discounts.coupon && discounts.coupon.value) {
+    //   const { value, type, maxDiscountAmount } = discounts.coupon;
       
       // Store coupon data for max discount checks in calculateDiscountAmount
       setAppliedCoupon({
@@ -753,20 +779,19 @@ const POSTableContent = () => {
       });
       
       // Set the base discount percentage (max discount will be handled in calculateDiscountAmount)
-      if (type === 'percentage') {
-        setDiscount(value);
-        toast.success(`Coupon discount of ${value}% applied to entire order!`);
-      } else if (type === 'fixed') {
-        const subtotal = calculateSubtotal();
-        const percentageEquivalent = (value / subtotal) * 100;
-        setDiscount(percentageEquivalent);
-        toast.success(`Fixed coupon discount of ₹${value} applied!`);
-      }
-    }
+    //   if (type === 'percentage') {
+    //     setDiscount(value);
+    //     toast.success(`Coupon discount of ${value}% applied to entire order!`);
+    //   } else if (type === 'fixed') {
+    //     const subtotal = calculateSubtotal();
+    //     const percentageEquivalent = (value / subtotal) * 100;
+    //     setDiscount(percentageEquivalent);
+    //     toast.success(`Fixed coupon discount of ₹${value} applied!`);
+    //   }
+    // }
 
     if (discounts.rewardPoints && discounts.rewardPoints.enabled) {
       const { pointsUsed, discountAmount } = discounts.rewardPoints;
-      console.log('🎁 Setting Reward Points Discount:', { pointsUsed, discountAmount });
       setAppliedDiscounts(prev => ({
         ...prev,
         rewardPoints: {
@@ -819,13 +844,14 @@ const POSTableContent = () => {
     const subtotal = calculateSubtotal();
     let totalDiscount = 0;
 
+    // 1. Check for Membership Discount FIRST
+    // We assume membership discount overrides all other discounts.
     if (membershipDiscount && membershipDiscount.value > 0) {
       if (membershipDiscount.type === 'fixed') {
         totalDiscount = membershipDiscount.value;
-      } else {
+      } else { // 'percentage'
         totalDiscount = (subtotal * membershipDiscount.value) / 100;
       }
-    } else {
       // Apply coupon discount with max discount check
       if (appliedCoupon && appliedCoupon.maxDiscountAmount) {
         if (appliedCoupon.type === 'percentage') {
@@ -836,22 +862,32 @@ const POSTableContent = () => {
         }
       } else {
         // Fallback to regular discount calculation
-        totalDiscount = (subtotal * discount) / 100;
-      }
-      
-      cart.forEach(item => {
-        if (item.discountAmount) totalDiscount += Number(item.discountAmount);
-      });
+        return totalDiscount; // Return only membership discount
     }
 
+    // 2. If NO membership discount, calculate other discounts
+
+    // Add item-specific discounts (which are stored in the cart items)
+      }
+      
+    cart.forEach(item => {
+      if (item.discountAmount) {
+        totalDiscount += Number(item.discountAmount);
+      }
+    });
+
+    // Add coupon discount (if it exists)
+    if (appliedDiscounts?.coupon?.amount) {
+      totalDiscount += Number(appliedDiscounts.coupon.amount);
+    }
+
+    // Add reward points discount (if it exists)
     if (appliedDiscounts?.rewardPoints?.discountAmount) {
-      console.log('🎁 Reward Points Discount:', appliedDiscounts.rewardPoints.discountAmount);
       totalDiscount += Number(appliedDiscounts.rewardPoints.discountAmount);
     }
 
-    console.log('Total Discount:', totalDiscount);
     return totalDiscount;
-  }, [calculateSubtotal, discount, cart, membershipDiscount, appliedDiscounts, appliedCoupon]);
+  }, [calculateSubtotal, cart, membershipDiscount, appliedDiscounts, appliedCoupon]);
 
   const calculateTotal = useCallback(() => {
     const subtotal = calculateSubtotal();
@@ -860,14 +896,7 @@ const POSTableContent = () => {
     const systemCharge = (selectedSystem && selectedSystem._id && selectedSystem.systemName && selectedSystem.chargeOfSystem > 0) ? Number(selectedSystem.chargeOfSystem || 0) : 0;
     const total = subtotal + totalTaxAmount + systemCharge - discountAmount - roundOff;
 
-    console.log('🧮 Total Calculation:', {
-      subtotal,
-      totalTaxAmount,
-      discountAmount,
-      systemCharge,
-      roundOff,
-      total
-    });
+
 
     return total;
   }, [calculateSubtotal, calculateTotalTaxAmount, calculateDiscountAmount, roundOff, selectedSystem]);
@@ -1064,7 +1093,6 @@ const POSTableContent = () => {
       return total + (itemRewardPoints * item.quantity);
     }, 0);
 
-    console.log('🎁 Total Reward Points to be added:', totalRewardPointsEarned);
 
     const payload = {
       token,
@@ -1111,7 +1139,6 @@ const POSTableContent = () => {
     try {
       // 1. Create transaction
       const result = await dispatch(createTransaction(payload)).unwrap();
-      console.log('✅ Transaction created:', result);
 
       // 2. Update customer frequency and total spent
       if (selectedCustomer) {
@@ -1120,7 +1147,6 @@ const POSTableContent = () => {
           frequency: freq,
           totalSpent: updatedTotalSpent
         })).unwrap();
-        console.log('✅ Customer frequency updated');
 
         // 3. Deduct reward points if customer used them
         if (appliedDiscounts?.rewardPoints?.pointsUsed > 0) {
@@ -1129,7 +1155,6 @@ const POSTableContent = () => {
             pointsToDeduct: appliedDiscounts.rewardPoints.pointsUsed
           })).unwrap();
 
-          console.log(`✅ Deducted ${appliedDiscounts.rewardPoints.pointsUsed} points`);
         }
 
         // 4. Add reward points earned from menu items
@@ -1139,7 +1164,6 @@ const POSTableContent = () => {
             pointsToAdd: totalRewardPointsEarned
           })).unwrap();
 
-          console.log(`✅ Added ${totalRewardPointsEarned} points`);
           toast.success(
             `🎉 Customer earned ${totalRewardPointsEarned} reward points from this order!`,
             { autoClose: 4000 }
@@ -1176,11 +1200,9 @@ const POSTableContent = () => {
       }
 
       // 🔥 NEW: 6. DEDUCT STOCK FROM INVENTORY (FIFO METHOD)
-      console.log('📦 Starting stock deduction...');
 
       // Prepare stock deduction data from cart
       // ✅ REMOVED: Manual stock deduction - automatic deduction already happens in InventoryService
-      console.log('📦 Stock deduction will be handled automatically by InventoryService');
 
       // 🔥 NEW: 6. Handle unmerge logic if needed
       if (tableId.startsWith('merged_')) {
@@ -1538,7 +1560,6 @@ const POSTableContent = () => {
       const kotTaxAmount = newItems.reduce((total, item) => total + (Number(item.taxAmount) || 0), 0);
       const kotDiscountAmount = (kotSubtotal * discount) / 100;
       const kotTotal = kotSubtotal + kotTaxAmount - kotDiscountAmount;
-      // console.log("opprotypo", selectedCustomerName)
       const orderData = {
         token: localStorage.getItem('authToken'),
         restaurantId: localStorage.getItem('restaurantId'),
@@ -1566,7 +1587,6 @@ const POSTableContent = () => {
       }
 
       const result = await dispatch(createOrder(orderData)).unwrap()
-      // console.log('Order created successfully:', result)
       toast.success('Order saved successfully!', { autoClose: 3000 })
 
       setKotItems((prevKotItems) => [...prevKotItems, ...newItems])
@@ -1733,7 +1753,162 @@ const POSTableContent = () => {
       </div>
     )
   }
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Prevent default browser behavior
+      if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) {
+        e.preventDefault();
+      }
 
+      // Shortcuts for modals
+      if (e.ctrlKey && e.key === 'k') {
+        generateKOT(); // Ctrl + K: Generate KOT
+      }
+      if (e.ctrlKey && e.key === 'b') {
+        generateInvoice(); // Ctrl + B: Generate Invoice
+      }
+      if (e.ctrlKey && e.key === 'p') {
+        setShowPaymentModal(true); // Ctrl + P: Open Payment Modal
+      }
+      if (e.ctrlKey && e.key === 't') {
+        setShowTaxModal(true); // Ctrl + T: Open Tax Modal
+      }
+      if (e.ctrlKey && e.key === 'd') {
+        setShowDiscountModal(true); // Ctrl + D: Open Discount Modal
+      }
+      if (e.ctrlKey && e.key === 'c') {
+        setShowCustomerModal(true); // Ctrl + C: Open Customer Modal
+      }
+      if (e.ctrlKey && e.key === 'x') {
+        clearCart(); // Ctrl + X: Clear Cart
+      }
+
+      // Product navigation
+      const products = document.querySelectorAll('.product-item');
+      const currentFocused = document.activeElement;
+      let index = Array.from(products).indexOf(currentFocused);
+
+      if (e.key === 'ArrowDown') {
+        index = index < products.length - 1 ? index + 1 : 0;
+        products[index].focus();
+      }
+      if (e.key === 'ArrowUp') {
+        index = index > 0 ? index - 1 : products.length - 1;
+        products[index].focus();
+      }
+      if (e.key === 'Enter' && currentFocused.classList.contains('product-item')) {
+        const productId = currentFocused.dataset.id;
+        const product = filteredMenuItems.find(p => p._id === productId);
+        if (product) handleMenuItemClick(product);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [filteredMenuItems, generateKOT, generateInvoice, clearCart, handleMenuItemClick]);
+
+  // useEffect(() => {
+  //   window.addEventListener('focusin');  // Logs on focus change
+  //   return () => window.removeEventListener('focusin');
+  // }, []);
+  // import { useHotkeys } from 'react-hotkeys-hook';
+
+  // Inside POSTableContent component
+  // Ctrl shortcuts - enable globally but only if not in cart
+  useHotkeys('ctrl+k', () => generateKOT(), {
+    preventDefault: true,
+    enable: () => !cartRef.current?.contains(document.activeElement)  // Disable if focused in cart
+  });
+  useHotkeys('ctrl+b', () => generateInvoice(), {
+    preventDefault: true,
+    enable: () => !cartRef.current?.contains(document.activeElement)
+  });
+  useHotkeys('ctrl+p', () => setShowPaymentModal(true), {
+    preventDefault: true,
+    enable: () => !cartRef.current?.contains(document.activeElement)
+  });
+  useHotkeys('ctrl+t', () => setShowTaxModal(true), {
+    preventDefault: true,
+    enable: () => !cartRef.current?.contains(document.activeElement)
+  });
+  useHotkeys('ctrl+d', () => setShowDiscountModal(true), {
+    preventDefault: true,
+    enable: () => !cartRef.current?.contains(document.activeElement)
+  });
+  useHotkeys('ctrl+c', () => setShowCustomerModal(true), {
+    preventDefault: true,
+    enable: () => !cartRef.current?.contains(document.activeElement)
+  });
+  useHotkeys('ctrl+x', () => clearCart(), {
+    preventDefault: true,
+    enable: () => !cartRef.current?.contains(document.activeElement)
+  });
+  useHotkeys('ctrl+h', () => setShowHelpModal(true), {
+    preventDefault: true,
+    enable: () => !document.activeElement.tagName.match(/INPUT|SELECT|TEXTAREA/)
+  });
+  useHotkeys('ctrl+shift+r', () => setShowRoundOffModal(true), { preventDefault: true });
+  useHotkeys('arrowleft, arrowright', (e) => {
+    const categoryButtons = document.querySelectorAll('.category-button');
+    if (categoryButtons.length === 0) {
+      return;
+    }
+
+    let index = Array.from(categoryButtons).indexOf(document.activeElement);
+    if (index === -1) {
+      categoryButtons[0]?.focus();
+      return;
+    }
+
+    if (e.key === 'ArrowRight') {
+      index = index < categoryButtons.length - 1 ? index + 1 : 0; // Wrap around
+      categoryButtons[index]?.focus();
+    } else if (e.key === 'ArrowLeft') {
+      index = index > 0 ? index - 1 : categoryButtons.length - 1; // Wrap around
+      categoryButtons[index]?.focus();
+    }
+    e.preventDefault();
+  }, { preventDefault: true, enable: () => productListRef.current?.contains(document.activeElement) });
+
+  useHotkeys('arrowup, arrowdown', (e) => {
+    const productCards = document.querySelectorAll('.product-card');
+    if (productCards.length === 0) {
+      return;
+    }
+
+    let index = Array.from(productCards).indexOf(document.activeElement);
+    if (index === -1) {
+      productCards[0]?.focus();
+      return;
+    }
+
+    if (e.key === 'ArrowDown') {
+      index = index < productCards.length - 1 ? index + 1 : 0; // Wrap around
+      productCards[index]?.focus();
+    } else if (e.key === 'ArrowUp') {
+      index = index > 0 ? index - 1 : productCards.length - 1; // Wrap around
+      productCards[index]?.focus();
+    }
+    e.preventDefault();
+  }, {
+    preventDefault: true,
+    enable: () => productListRef.current?.contains(document.activeElement)
+  });
+
+  useHotkeys('enter', (e) => {
+    const currentFocused = document.activeElement;
+    if (currentFocused?.className.includes('product-card')) {
+      const productId = currentFocused.getAttribute('data-id');
+      const product = filteredMenuItems.find((item) => item._id === productId);
+      if (product) {
+        handleProductClick(product); // Use the handler from ProductList
+      }
+    }
+    e.preventDefault();
+  }, {
+    preventDefault: true,
+    enable: () => productListRef.current?.contains(document.activeElement)
+  });
   return (
     <CContainer fluid className="p-3" style={{ backgroundColor: '#f0f2f5' }}>
       <CRow>
@@ -1748,6 +1923,8 @@ const POSTableContent = () => {
             categories={categories}
             selectedCategoryId={selectedCategoryId}
             setSelectedCategoryId={setSelectedCategoryId}
+            handleProductClick={handleProductClick}
+            ref={productListRef}
             systems={systems}
             selectedSystem={selectedSystem}
             handleSystemDropdownChange={handleSystemDropdownChange}
@@ -1782,6 +1959,7 @@ const POSTableContent = () => {
             setShowRoundOffModal={setShowRoundOffModal}
             selectedSystem={selectedSystem}
             onSystemChange={handleSystemChange}
+            ref={cartRef}
           />
         </CCol>
       </CRow>
@@ -1838,155 +2016,202 @@ const POSTableContent = () => {
       </CCardFooter>
 
       {/* Modals and hidden components */}
-      <SubCategorySelectionModal
-        visible={showSubCategoryModal}
-        onClose={() => setShowSubCategoryModal(false)}
-        menuItem={selectedMenuItemForSubcategory}
-        subCategories={subCategories}
-        onAddToCartWithSubcategory={handleAddToCartWithSubcategory}
-      />
-
-      {/* System Selection Modal */}
-      <SystemSelectionModal
-        showSystemModal={showSystemModal}
-        setShowSystemModal={setShowSystemModal}
-        onSystemSelect={handleSystemSelect}
-        selectedSystem={selectedSystem}
-      />
-
-      <KOTModal isVisible={showKOTModal} onClose={() => setShowKOTModal(false)}>
-        <div style={{ textAlign: 'center' }}>
-          <h3>KOT Preview</h3>
-          {kotImage && (
-            <img
-              src={kotImage}
-              alt="KOT Preview"
-              style={{ width: '100%', marginBottom: '10px' }}
-            />
-          )}
-          <button
-            onClick={handlePrint}
-            style={{
-              margin: '0 10px',
-              padding: '10px 20px',
-              backgroundColor: '#28a745',
-              color: '#fff',
-              border: 'none',
-              borderRadius: '5px',
-              cursor: 'pointer',
+      <FocusTrap active={showSubCategoryModal}>
+        <SubCategorySelectionModal
+          visible={showSubCategoryModal}
+          onClose={() => setShowSubCategoryModal(false)}
+          menuItem={selectedMenuItemForSubcategory}
+          subCategories={subCategories}
+          onAddToCartWithSubcategory={handleAddToCartWithSubcategory}
+        />
+      </FocusTrap>
+      <FocusTrap active={showSystemModal}>
+        <SystemSelectionModal
+          showSystemModal={showSystemModal}
+          setShowSystemModal={setShowSystemModal}
+          onSystemSelect={handleSystemSelect}
+          selectedSystem={selectedSystem}
+        />
+      </FocusTrap>
+      <FocusTrap active={showKOTModal}>
+        <KOTModal isVisible={showKOTModal} onClose={() => setShowKOTModal(false)}>
+          <div
+            style={{ textAlign: 'center' }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handlePrint();
+              if (e.key === 'Escape') setShowKOTModal(false);
             }}
           >
-            Print
-          </button>
-        </div>
-      </KOTModal>
-
-      <InvoiceModal isVisible={showInvoiceModal} onClose={() => setShowInvoiceModal(false)}>
-        <div style={{ textAlign: 'center' }}>
-          <h3>Invoice Preview</h3>
-          {invoiceImage && (
-            <img
-              src={invoiceImage}
-              alt="Invoice Preview"
-              style={{ width: '100%', marginBottom: '10px' }}
-            />
-          )}
-          <div style={{ marginTop: '10px' }}>
-            <button onClick={handleInvoicePrint}>Print</button>
-            <button onClick={handleSendEmail}>Send via Email</button>
+            <h3>KOT Preview</h3>
+            {kotImage && (
+              <img
+                src={kotImage}
+                alt="KOT Preview"
+                style={{ width: '100%', marginBottom: '10px' }}
+              />
+            )}
+            <button
+              onClick={handlePrint}
+              style={{
+                margin: '0 10px',
+                padding: '10px 20px',
+                backgroundColor: '#28a745',
+                color: '#fff',
+                border: 'none',
+                borderRadius: '5px',
+                cursor: 'pointer',
+              }}
+              aria-label="Print KOT"
+            >
+              Print
+            </button>
           </div>
-        </div>
-      </InvoiceModal>
-
+        </KOTModal>
+      </FocusTrap>
+      <FocusTrap active={showInvoiceModal}>
+        <InvoiceModal isVisible={showInvoiceModal} onClose={() => setShowInvoiceModal(false)}>
+          <div
+            style={{ textAlign: 'center' }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleInvoicePrint();
+              if (e.key === 'Escape') setShowInvoiceModal(false);
+            }}
+          >
+            <h3>Invoice Preview</h3>
+            {invoiceImage && (
+              <img
+                src={invoiceImage}
+                alt="Invoice Preview"
+                style={{ width: '100%', marginBottom: '10px' }}
+              />
+            )}
+            <div style={{ marginTop: '10px' }}>
+              <button onClick={handleInvoicePrint} aria-label="Print Invoice">
+                Print
+              </button>
+              <button onClick={handleSendEmail} aria-label="Send Invoice via Email">
+                Send via Email
+              </button>
+            </div>
+          </div>
+        </InvoiceModal>
+      </FocusTrap>
+      <FocusTrap active={showTaxModal}>
+        <TaxModal
+          showTaxModal={showTaxModal}
+          setShowTaxModal={setShowTaxModal}
+          cart={cart}
+          handleTaxSubmit={handleTaxSubmit}
+        />
+      </FocusTrap>
+      <FocusTrap active={showDiscountModal}>
+        <DiscountModal
+          showDiscountModal={showDiscountModal}
+          setShowDiscountModal={setShowDiscountModal}
+          cart={cart}
+          selectedCustomer={selectedCustomer}
+          handleDiscountSubmit={handleDiscountSubmit}
+        />
+      </FocusTrap>
+      <FocusTrap active={showRoundOffModal}>
+        <RoundOffAmountModal
+          showRoundOffModal={showRoundOffModal}
+          setShowRoundOffModal={setShowRoundOffModal}
+          inputValue={inputValue}
+          setInputValue={setInputValue}
+          roundOff={roundOff}
+          setRoundOff={setRoundOff}
+          handleRoundOffSubmit={handleRoundOffSubmit}
+          subtotal={calculateSubtotal()}
+          tax={calculateTotalTaxAmount()}
+          discount={calculateDiscountAmount()}
+          cart={cart}
+        />
+      </FocusTrap>
+      <FocusTrap active={showPaymentModal}>
+        <PaymentModal
+          showPaymentModal={showPaymentModal}
+          setShowPaymentModal={setShowPaymentModal}
+          paymentType={paymentType}
+          setPaymentType={setPaymentType}
+          splitPercentages={splitPercentages}
+          setSplitPercentages={setSplitPercentages}
+          handlePaymentSubmit={handlePaymentSubmit}
+        />
+      </FocusTrap>
+      <FocusTrap active={showCustomerModal}>
+        <CustomerModal
+          showCustomerModal={showCustomerModal}
+          setShowCustomerModal={setShowCustomerModal}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          filteredCustomers={filteredCustomers}
+          handleCustomerSelect={handleCustomerSelect}
+          customerLoading={customerLoading}
+          handleAddCustomer={handleAddCustomer}
+          restaurantId={restaurantId}
+        />
+      </FocusTrap>
+      <FocusTrap active={showDeleteModal}>
+        <DeleteModal
+          showDeleteModal={showDeleteModal}
+          cancelDelete={cancelDelete}
+          confirmDelete={confirmDelete}
+        />
+      </FocusTrap>
+      <FocusTrap active={showHelpModal}>
+        <CModal visible={showHelpModal} onClose={() => setShowHelpModal(false)}>
+          <CModalHeader>
+            <CModalTitle>Keyboard Shortcuts</CModalTitle>
+          </CModalHeader>
+          <CModalBody>
+            <ul>
+              <li><strong>Ctrl + Shift + K</strong>: Generate KOT</li>
+              <li><strong>Ctrl + Shift + B</strong>: Generate Invoice</li>
+              <li><strong>Ctrl + P</strong>: Open Payment Modal</li>
+              <li><strong>Ctrl + T</strong>: Open Tax Modal</li>
+              <li><strong>Ctrl + D</strong>: Open Discount Modal</li>
+              <li><strong>Ctrl + C</strong>: Open Customer Modal</li>
+              <li><strong>Ctrl + X</strong>: Clear Cart</li>
+              <li><strong>Ctrl + H</strong>: Show Help</li>
+              <li><strong>Ctrl + Shift + R</strong>: Open Round Off Modal</li>
+              <li><strong>Arrow Left/Right</strong>: Navigate Categories</li>
+              <li><strong>Arrow Up/Down</strong>: Navigate Products</li>
+              <li><strong>Enter</strong>: Add Product to Cart</li>
+            </ul>
+          </CModalBody>
+          <CModalFooter>
+            <CButton
+              color="secondary"
+              onClick={() => setShowHelpModal(false)}
+              aria-label="Close help modal"
+            >
+              Close
+            </CButton>
+          </CModalFooter>
+        </CModal>
+      </FocusTrap>
       <div style={{ position: 'absolute', left: '-9999px' }}>
         <Invoice
           ref={invoiceRef}
-          tableNumber={tableNumber}
+          tableNumber={tableId}
           selectedCustomerName={selectedCustomerName}
           cart={cart}
           calculateSubtotal={calculateSubtotal}
-          tax={calculateTotalTaxAmount()} // Pass total tax amount
-          calculateTaxAmount={calculateTotalTaxAmount} // Pass function
+          tax={calculateTotalTaxAmount()}
+          calculateTaxAmount={calculateTotalTaxAmount}
           discount={discount}
           calculateDiscountAmount={calculateDiscountAmount}
           calculateTotal={calculateTotal}
           selectedSystem={selectedSystem}
         />
-      </div>
-
-      <div style={{ position: 'absolute', left: '-9999px' }}>
         <KOT
           ref={kotRef}
-          tableNumber={tableNumber}
+          tableNumber={tableId}
           cart={cart.filter((item) => !kotItems.includes(item))}
           selectedSystem={selectedSystem}
         />
       </div>
-
-      {/* FIXED: TaxModal with proper props */}
-      <TaxModal
-        showTaxModal={showTaxModal}
-        setShowTaxModal={setShowTaxModal}
-        cart={cart}
-        handleTaxSubmit={handleTaxSubmit}
-      />
-
-      <DiscountModal
-        showDiscountModal={showDiscountModal}
-        setShowDiscountModal={setShowDiscountModal}
-        cart={cart}
-        selectedCustomer={selectedCustomer} // ADD THIS LINE
-        handleDiscountSubmit={handleDiscountSubmit}
-      />
-      <RoundOffAmountModal
-        showRoundOffModal={showRoundOffModal}
-        setShowRoundOffModal={setShowRoundOffModal}
-        inputValue={inputValue}
-        setInputValue={setInputValue}
-        roundOff={roundOff}
-        setRoundOff={setRoundOff}
-        handleRoundOffSubmit={handleRoundOffSubmit}
-        subtotal={calculateSubtotal()}
-        tax={calculateTotalTaxAmount()}
-        discount={calculateDiscountAmount()}
-        cart={cart}
-      />
-
-      <PaymentModal
-        showPaymentModal={showPaymentModal}
-        setShowPaymentModal={setShowPaymentModal}
-        paymentType={paymentType}
-        setPaymentType={setPaymentType}
-        splitPercentages={splitPercentages}
-        setSplitPercentages={setSplitPercentages}
-        handlePaymentSubmit={handlePaymentSubmit}
-
-
-      />
-
-      <DeleteModal
-        showDeleteModal={showDeleteModal}
-        cancelDelete={cancelDelete}
-        confirmDelete={confirmDelete}
-      />
-
-      <CustomerModal
-        showCustomerModal={showCustomerModal}
-        setShowCustomerModal={setShowCustomerModal}
-        searchTerm={searchTerm}
-        setSearchTerm={setSearchTerm}
-        filteredCustomers={filteredCustomers}
-        handleCustomerSelect={handleCustomerSelect}
-        customerLoading={customerLoading}
-        handleAddCustomer={handleAddCustomer}
-        restaurantId={localStorage.getItem('restaurantId')}
-      />
-
-      <MobilePrintOptionsModal
-        isVisible={mobilePrintOptions.show}
-        options={mobilePrintOptions}
-        onClose={() => setMobilePrintOptions({ ...mobilePrintOptions, show: false })}
-      />
     </CContainer>
   )
 }

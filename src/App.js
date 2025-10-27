@@ -14,6 +14,8 @@ import PrivateRoute from './components/PrivateRoute'
 import SessionGuard from './components/SessionGuard'
 import PermissionGuard from './components/PermissionGuard'
 import PermissionDebug from './components/PermissionDebug'
+import { fetchShortcuts } from './redux/slices/keyboardShortcutSlice';
+import GlobalShortcutListener from './components/GlobalShortcutListener'; 
 
 // Permission mapping helper - Updated to match exact permission names from the list
 const getPermissionForRoute = (routePath) => {
@@ -198,18 +200,21 @@ const App = () => {
     restaurantPermission: state.restaurantProfile.restaurantPermission,
   }))
 
+    useEffect(() => {
+    const restaurantId = localStorage.getItem('restaurantId');
+    const token = localStorage.getItem('authToken');
+    
+    if (restaurantId && token) {
+      dispatch(fetchShortcuts());
+    }
+  }, [dispatch]);
   const { role, user } = useSelector((state) => ({
     role: state.auth.role,
     user: state.auth.user
   }))
 
-  // Debug logging
-  console.log('🔍 App.js Debug:', {
-    role,
-    user,
-    userPermissions: user?.permissions
-  })
-
+  
+  
   const { restaurantId } = useSelector(
     (state) => ({
       restaurantId: state.auth.restaurantId,
@@ -331,6 +336,7 @@ const App = () => {
 
   return (
     <>
+    
       {audioPlayer}
       <BrowserRouter>
         <Suspense
@@ -348,6 +354,10 @@ const App = () => {
               <div className="mt-2">Checking permissions...</div>
             </div>
           ) : (
+
+            <>
+              <GlobalShortcutListener />
+
             <Routes>
               {/* Public Routes */}
               <Route path="/login" element={<Login />} />
@@ -374,6 +384,7 @@ const App = () => {
                 {role === 'admin' || role === 'superadmin' || role === 'manager' || role === 'waiter' || role === 'cashier' ? (
                   // सभी roles के लिए overview page allowed है
                   <>
+                  
                     <Route index element={<LoginActivity />} />
                     <Route path="dashboard" element={<Dashboard />} />
                     {role === 'superadmin' || role === 'admin' ? (
@@ -699,6 +710,8 @@ const App = () => {
                 )}
               </Route>
             </Routes>
+            </>
+            
           )}
         </Suspense>
       </BrowserRouter>

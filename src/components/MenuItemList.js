@@ -8,7 +8,7 @@ import { updateMenuItemStatus, fetchMenuItems } from '../redux/slices/menuSlice'
 import { toast } from 'react-toastify'
 import { useMediaQuery } from '@mui/material'
 import CustomToolbar from '../utils/CustomToolbar'
-
+import { useHotkeys } from 'react-hotkeys-hook'
 const MenuItemList = ({
   menuItems,
   menuItemsLoading,
@@ -184,7 +184,12 @@ const MenuItemList = ({
         <CRow className="g-3">
           {transformedMenuItems.map((item) => (
             <CCol key={item.id} xs={12} sm={6} md={6}>
-              <CCard className="h-100 shadow-sm border-0" style={{ borderRadius: '12px' }}>
+              <CCard className="menu-item-card h-100 shadow-sm border-0"
+                style={{ borderRadius: '12px' }}
+                tabIndex={0}
+                role="button"
+                aria-label={`Menu item ${item.itemName}`}
+                data-id={item.id}>
                 <CCardBody className="p-3">
                   <div className="d-flex align-items-start gap-3">
                     {/* Image */}
@@ -218,11 +223,11 @@ const MenuItemList = ({
                         </div>
                       )}
                     </div>
-                    
+
                     {/* Content */}
                     <div className="flex-grow-1" style={{ minWidth: 0 }}>
                       <div className="d-flex justify-content-between align-items-start mb-2">
-                        <h6 className="mb-1 fw-bold text-dark" style={{ 
+                        <h6 className="mb-1 fw-bold text-dark" style={{
                           maxWidth: '150px',
                           fontSize: '14px',
                           lineHeight: '1.3'
@@ -233,13 +238,13 @@ const MenuItemList = ({
                           ₹{item.price}
                         </span>
                       </div>
-                      
+
                       <div className="mb-2">
                         <small className="text-muted d-block" style={{ fontSize: '11px' }}>
                           Menu ID: {item.menuId}
                         </small>
                       </div>
-                      
+
                       <div className="d-flex flex-column gap-2">
                         {/* Status Toggle */}
                         <div className="d-flex align-items-center justify-content-between">
@@ -254,7 +259,7 @@ const MenuItemList = ({
                             label={item.status === 1 ? 'Active' : 'Inactive'}
                           />
                         </div>
-                        
+
                         {/* Actions */}
                         <div className="d-flex gap-2 justify-content-end">
                           <CButton
@@ -295,7 +300,32 @@ const MenuItemList = ({
       )}
     </div>
   )
+  useHotkeys('arrowup, arrowdown', (e) => {
+    const cards = document.querySelectorAll('.menu-item-card');
+    const currentFocused = document.activeElement;
+    let index = Array.from(cards).indexOf(currentFocused);
 
+    if (e.key === 'ArrowDown') {
+      index = index < cards.length - 1 ? index + 1 : 0;
+      cards[index].focus();
+    }
+    if (e.key === 'ArrowUp') {
+      index = index > 0 ? index - 1 : cards.length - 1;
+      cards[index].focus();
+    }
+  }, { preventDefault: true });
+
+  useHotkeys('enter', (e) => {
+    const currentFocused = document.activeElement;
+    if (currentFocused.classList.contains('menu-item-card')) {
+      const itemId = currentFocused.dataset.id;
+      const item = transformedMenuItems.find(i => i.id === itemId);
+      if (item) {
+        setSelectedMenu(item);
+        setEditModalVisible(true);
+      }
+    }
+  }, { preventDefault: true }, [transformedMenuItems]);
   return (
     <div style={{ width: '100%', backgroundColor: 'white' }}>
       {/* Desktop Table View */}

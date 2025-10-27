@@ -33,7 +33,6 @@ const CustomerModal = ({
   const { members } = useSelector((state) => state.members);
   const token = localStorage.getItem('authToken');
 
-  console.log("all customers from its modal : ", customers);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [formValues, setFormValues] = useState({
@@ -105,14 +104,12 @@ const CustomerModal = ({
     }
 
     setFormErrors(errors);
-    console.log("errors utomer memship",errors);
     return Object.keys(errors).length === 0;
   };
 
   // Handle form submission
   const handleSubmit = () => {
     if (validateForm()) {
-      console.log("the data of customer from customer modal", formValues);
       handleAddCustomer(formValues);
       setFormValues({
         name: "",

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import { AVAILABLE_SHORTCUTS, getShortcutsByCategory } from '../../utils/avaliableShortcuts';
+import { Search } from 'lucide-react'
 import { Tag } from 'lucide-react';
 import {
   CCard,
@@ -27,10 +29,11 @@ import {
   CNavLink,
   CTabContent,
   CTabPane,
-  CInputGroup,        // ADD THIS
+  CInputGroup,
   CInputGroupText,
-  // cilTag,
+  CFormCheck, // <-- IMPORT THIS
 } from '@coreui/react'
+import { Keyboard } from 'lucide-react';
 import {
   Box,
   Card,
@@ -74,6 +77,12 @@ import { toast } from 'react-toastify'
 import axiosInstance from '../../utils/axiosConfig'
 // import { BASE_URL } from '../../utils/constants'
 import { fetchCustomers } from '../../redux/slices/customerSlice';
+import {
+  fetchShortcuts,
+  createShortcut,
+  updateShortcut,
+  deleteShortcut,
+} from '../../redux/slices/keyboardShortcutSlice';
 import CIcon from '@coreui/icons-react'
 import { cilSettings, cilPlus, cilTrash, cilPencil, cilSave, cilMoney, cilUser } from '@coreui/icons'
 import { useDispatch, useSelector } from 'react-redux';
@@ -93,8 +102,18 @@ import {
   Award,
   X
 } from 'lucide-react';
+
 const Settings = () => {
-  // Tab state
+  const { shortcuts = [], loading: shortcutLoading, error: shortcutError } = useSelector(
+    state => state.shortcuts || { shortcuts: [], loading: false, error: null }
+  );
+  const [shortcutFormData, setShortcutFormData] = useState({
+    action: '',
+    keys: [{ combination: [], description: '' }]
+  });
+  const [editingShortcut, setEditingShortcut] = useState(null);
+  const [recordingKey, setRecordingKey] = useState(false);
+  const [recordingIndex, setRecordingIndex] = useState(null);
   const [activeTab, setActiveTab] = useState('system')
   const [memberForm, setMemberForm] = useState({
     // customerName: '',
@@ -120,6 +139,12 @@ const Settings = () => {
     willOccupy: false,
     color: '#ff0000',
   })
+  const [showShortcutModal, setShowShortcutModal] = useState(false);
+  const [selectedPredefinedShortcut, setSelectedPredefinedShortcut] = useState(null);
+  const [customKeyRecording, setCustomKeyRecording] = useState(false);
+  const [customKeyCombination, setCustomKeyCombination] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+
   const [systems, setSystems] = useState([])
   const [systemLoading, setSystemLoading] = useState(false)
   const [systemSaving, setSystemSaving] = useState(false)
@@ -192,7 +217,8 @@ const Settings = () => {
 
   // Fetch all systems and taxes on component mount
   useEffect(() => {
-    dispatch(fetchMembers({ token, restaurantId }));
+    dispatch(fetchShortcuts(restaurantId, token));
+    dispatch(fetchMembers(token, restaurantId));
     fetchSystems()
     fetchTaxes()
     fetchCustomerSettings()
@@ -217,6 +243,218 @@ const Settings = () => {
     return true;
   };
 
+  // Handler to open modal
+  const handleSelectFromPredefined = () => {
+    setShowShortcutModal(true);
+    setSelectedPredefinedShortcut(null);
+    setCustomKeyCombination([]);
+    setSearchQuery('');
+  };
+
+  // Handler for key recording in modal
+  const handleModalKeyDown = (e) => {
+    if (!customKeyRecording) return;
+
+    e.preventDefault();
+    const modifiers = [];
+
+    if (e.ctrlKey) modifiers.push('Ctrl');
+    if (e.shiftKey) modifiers.push('Shift');
+    if (e.altKey) modifiers.push('Alt');
+    if (e.metaKey) modifiers.push('Meta');
+
+    const key = e.key;
+    if (!['Control', 'Shift', 'Alt', 'Meta'].includes(key)) {
+      const displayKey = key.length === 1 ? key.toUpperCase() : key;
+      if (!modifiers.includes(displayKey)) {
+        modifiers.push(displayKey);
+      }
+    }
+
+    setCustomKeyCombination(modifiers);
+    setCustomKeyRecording(false);
+  };
+
+  // Handler to save selected shortcut
+  const handleSaveSelectedShortcut = async () => {
+    if (!selectedPredefinedShortcut) {
+      toast.error('Please select a shortcut');
+      return;
+    }
+
+    if (customKeyCombination.length === 0) {
+      toast.error('Please record a key combination');
+      return;
+    }
+
+    try {
+      const shortcutData = {
+        restaurantId,
+        action: selectedPredefinedShortcut.action,
+        keys: [{
+          combination: customKeyCombination,
+          description: selectedPredefinedShortcut.description
+        }],
+        isActive: true
+      };
+
+      await dispatch(createShortcut(shortcutData)).unwrap();
+      toast.success('Shortcut added successfully!');
+
+      // Reset and close modal
+      setShowShortcutModal(false);
+      setSelectedPredefinedShortcut(null);
+      setCustomKeyCombination([]);
+      setSearchQuery('');
+    } catch (error) {
+      toast.error(error || 'Failed to save shortcut');
+    }
+  };
+
+  // Filter shortcuts based on search
+  const getFilteredShortcuts = () => {
+    if (!searchQuery.trim()) {
+      return getShortcutsByCategory();
+    }
+
+    const query = searchQuery.toLowerCase();
+    const filtered = AVAILABLE_SHORTCUTS.filter(s =>
+      s.action.toLowerCase().includes(query) ||
+      s.description.toLowerCase().includes(query) ||
+      s.category.toLowerCase().includes(query)
+    );
+
+    return filtered.reduce((acc, shortcut) => {
+      if (!acc[shortcut.category]) {
+        acc[shortcut.category] = [];
+      }
+      acc[shortcut.category].push(shortcut);
+      return acc;
+    }, {});
+  };
+  const handleKeyDown = (e, keyIndex) => {
+    if (recordingIndex !== keyIndex) return;
+
+    e.preventDefault();
+    const key = e.key;
+    const modifiers = [];
+
+    if (e.ctrlKey) modifiers.push('Ctrl');
+    if (e.shiftKey) modifiers.push('Shift');
+    if (e.altKey) modifiers.push('Alt');
+    if (e.metaKey) modifiers.push('Meta');
+
+    // Add the actual key if it's not a modifier
+    if (!['Control', 'Shift', 'Alt', 'Meta'].includes(key)) {
+      const displayKey = key.length === 1 ? key.toUpperCase() : key;
+      if (!modifiers.includes(displayKey)) {
+        modifiers.push(displayKey);
+      }
+    }
+
+    const newKeys = [...shortcutFormData.keys];
+    newKeys[keyIndex].combination = modifiers;
+    setShortcutFormData({ ...shortcutFormData, keys: newKeys });
+    setRecordingIndex(null);
+  };
+
+  const handleShortcutSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!shortcutFormData.action.trim()) {
+      toast.error('Action name is required');
+      return;
+    }
+
+    if (shortcutFormData.keys[0].combination.length === 0) {
+      toast.error('Please record a key combination');
+      return;
+    }
+
+    try {
+      const shortcutData = {
+        restaurantId,
+        action: shortcutFormData.action.trim(),
+        keys: shortcutFormData.keys
+        // 'isActive' will be defaulted to true by the backend
+      };
+
+      if (editingShortcut) {
+        await dispatch(updateShortcut({
+          id: editingShortcut._id,
+          data: shortcutData
+        })).unwrap();
+        toast.success('Shortcut updated successfully!');
+      } else {
+        await dispatch(createShortcut(shortcutData)).unwrap();
+        toast.success('Shortcut added successfully!');
+      }
+
+      // Reset form
+      setShortcutFormData({
+        action: '',
+        keys: [{ combination: [], description: '' }]
+      });
+      setEditingShortcut(null);
+      // No need to dispatch fetchShortcuts, slice should be updated
+    } catch (error) {
+      toast.error(error || 'Failed to save shortcut');
+    }
+  };
+
+  // NEW HANDLER for toggling shortcut status
+  const handleShortcutToggle = (shortcut, newStatus) => {
+    dispatch(updateShortcut({
+      id: shortcut._id,
+      data: { isActive: newStatus } // Only send the field we want to change
+    })).unwrap()
+      .then(() => {
+        toast.success(`Shortcut ${newStatus ? 'activated' : 'deactivated'}`);
+      })
+      .catch((error) => {
+        toast.error(`Failed to update status: ${error}`);
+      });
+  };
+
+  const handleShortcutEdit = (shortcut) => {
+    setEditingShortcut(shortcut);
+    setShortcutFormData({
+      action: shortcut.action,
+      keys: shortcut.keys || [{ combination: [], description: '' }]
+    });
+    setActiveTab('shortcuts'); // Switch to shortcuts tab
+  };
+  const handleShortcutDelete = async (shortcutId) => {
+    if (window.confirm('Are you sure you want to delete this shortcut?')) {
+      try {
+        await dispatch(deleteShortcut(shortcutId)).unwrap();
+        toast.success('Shortcut deleted successfully!');
+        // No need to dispatch fetchShortcuts
+      } catch (error) {
+        toast.error('Failed to delete shortcut');
+      }
+    }
+  };
+  const handleShortcutCancel = () => {
+    setEditingShortcut(null);
+    setShortcutFormData({
+      action: '',
+      keys: [{ combination: [], description: '' }]
+    });
+    setRecordingIndex(null);
+  };
+
+  const addKeySlot = () => {
+    setShortcutFormData({
+      ...shortcutFormData,
+      keys: [...shortcutFormData.keys, { combination: [], description: '' }]
+    });
+  };
+
+  const removeKeySlot = (index) => {
+    const newKeys = shortcutFormData.keys.filter((_, i) => i !== index);
+    setShortcutFormData({ ...shortcutFormData, keys: newKeys });
+  };
   const handleDelete = async () => {
     if (deleteDialog.type === 'member' && deleteDialog.item) {
       try {
@@ -876,64 +1114,93 @@ const Settings = () => {
                     <CIcon icon={cilSettings} className="d-block mx-auto mb-1" size="sm" />
                     <span className="d-block">Inventory</span>
                   </button>
+                  <button
+                    className={`nav-link ${activeTab === 'shortcuts' ? 'active' : ''}`}
+                    onClick={() => setActiveTab('shortcuts')}
+                    style={{ minWidth: '120px', fontSize: '0.8rem' }}
+                  >
+                    <CIcon icon={cilSettings} className="d-block mx-auto mb-1" size="sm" />
+                    <span className="d-block">Shortcuts</span>
+                  </button>
                 </div>
               </div>
 
               {/* Desktop: Normal tabs */}
               <div className="d-none d-md-block">
-                <CNav variant="tabs" role="tablist">
+                <CNav
+                  variant="tabs"
+                  role="tablist"
+                  className="bg-light border-bottom rounded-top px-2 shadow-sm"
+                >
                   <CNavItem>
                     <CNavLink
                       active={activeTab === 'system'}
                       onClick={() => setActiveTab('system')}
                       style={{ cursor: 'pointer' }}
                     >
-                      <CIcon icon={cilSettings} className="me-2" />
+                      <CIcon icon={cilSettings} className="me-2 text-primary" />
                       System Settings
                     </CNavLink>
                   </CNavItem>
+
                   <CNavItem>
                     <CNavLink
                       active={activeTab === 'tax'}
                       onClick={() => setActiveTab('tax')}
                       style={{ cursor: 'pointer' }}
                     >
-                      <CIcon icon={cilMoney} className="me-2" />
+                      <CIcon icon={cilMoney} className="me-2 text-success" />
                       Tax Settings
                     </CNavLink>
                   </CNavItem>
+
                   <CNavItem>
                     <CNavLink
                       active={activeTab === 'customer'}
                       onClick={() => setActiveTab('customer')}
                       style={{ cursor: 'pointer' }}
                     >
-                      <CIcon icon={cilUser} className="me-2" />
+                      <CIcon icon={cilUser} className="me-2 text-warning" />
                       Customer Settings
                     </CNavLink>
                   </CNavItem>
+
                   <CNavItem>
                     <CNavLink
                       active={activeTab === 'membership'}
                       onClick={() => setActiveTab('membership')}
                       style={{ cursor: 'pointer' }}
                     >
-                      <CIcon icon={cilMoney} className="me-2" />
+                      <CIcon icon={cilMoney} className="me-2 text-danger" />
                       Membership Settings
                     </CNavLink>
                   </CNavItem>
+
                   <CNavItem>
                     <CNavLink
                       active={activeTab === 'inventory'}
                       onClick={() => setActiveTab('inventory')}
                       style={{ cursor: 'pointer' }}
                     >
-                      <CIcon icon={cilSettings} className="me-2" />
+                      <CIcon icon={cilSettings} className="me-2 text-info" />
                       Inventory Stock Settings
+                    </CNavLink>
+                  </CNavItem>
+
+                  <CNavItem>
+                    <CNavLink
+                      active={activeTab === 'shortcuts'}
+                      onClick={() => setActiveTab('shortcuts')}
+                      style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}
+                    >
+                      <Keyboard size={17} className="text-dark" />
+                      <span>Keyboard Shortcuts</span>
                     </CNavLink>
                   </CNavItem>
                 </CNav>
               </div>
+
+
             </CCardBody>
           </CCard>
         </CCol>
@@ -1932,7 +2199,7 @@ const Settings = () => {
                     value={memberForm.notes}
                     onChange={(e) => setMemberForm({ ...memberForm, notes: e.target.value })}
                   />
-                </Grid> 
+                </Grid>
               </div>
             </DialogContent>
             <DialogActions className="px-2 px-md-3 py-2 py-md-3">
@@ -2200,6 +2467,409 @@ const Settings = () => {
             </CCol>
           </CRow>
         </CTabPane>
+        {/* Shortcuts Tab */}
+        <CTabPane visible={activeTab === "shortcuts"}>
+          <CRow>
+            <CCol>
+              <CCard>
+                <CCardHeader>
+                  <CCardTitle className="h6 mb-0">
+                    <Keyboard className="me-2" /> Keyboard Shortcuts
+                  </CCardTitle>
+                </CCardHeader>
+
+                {/* Inside the Shortcuts CTabPane, BEFORE the form */}
+                
+                <CCardBody>
+                  <CRow className="mb-3">
+                  <CCol>
+                    <div className="d-flex gap-2">
+                      <CButton
+                        color="info"
+                        size="sm"
+                        onClick={handleSelectFromPredefined}
+                      >
+                        <CIcon icon={cilPlus} className="me-2" />
+                        Browse Available Shortcuts
+                      </CButton>
+
+                      <div className="ms-auto">
+                        <CBadge color="secondary" className="p-2">
+                          {shortcuts.length} / {AVAILABLE_SHORTCUTS.length} shortcuts configured
+                        </CBadge>
+                      </div>
+                    </div>
+                  </CCol>
+                </CRow>
+                  {/* <CForm onSubmit={handleShortcutSubmit}>
+                    <CRow className="mb-3">
+                      <CCol xs={12} md={6}>
+                        <CFormLabel>Action Name</CFormLabel>
+                        <CFormInput
+                          type="text"
+                          value={shortcutFormData.action}
+                          onChange={(e) =>
+                            setShortcutFormData({
+                              ...shortcutFormData,
+                              action: e.target.value,
+                            })
+                          }
+                          placeholder="e.g., Open Orders"
+                          required
+                        />
+                      </CCol>
+                    </CRow>
+
+                    {shortcutFormData.keys.map((key, index) => (
+                      <CRow key={index} className="mb-3 align-items-center">
+                        <CCol xs={12} md={5}>
+                          <CFormLabel>Key Combination</CFormLabel>
+                          <CFormInput
+                            type="text"
+                            readOnly
+                            value={key.combination.join(" + ")}
+                            onFocus={() => setRecordingIndex(index)}
+                            placeholder="Press keys..."
+                            onKeyDown={(e) => handleKeyDown(e, index)}
+                          />
+                        </CCol>
+                        <CCol xs={12} md={5}>
+                          <CFormLabel>Description</CFormLabel>
+                          <CFormInput
+                            type="text"
+                            value={key.description}
+                            onChange={(e) => {
+                              const newKeys = [...shortcutFormData.keys];
+                              newKeys[index].description = e.target.value;
+                              setShortcutFormData({
+                                ...shortcutFormData,
+                                keys: newKeys,
+                              });
+                            }}
+                            placeholder="What does this shortcut do?"
+                          />
+                        </CCol>
+                        <CCol xs={12} md={2} className="d-flex align-items-end">
+                          <CButton
+                            color="danger"
+                            size="sm"
+                            onClick={() => removeKeySlot(index)}
+                          >
+                            Remove
+                          </CButton>
+                        </CCol>
+                      </CRow>
+                    ))}
+
+                    <CButton
+                      type="button"
+                      color="info"
+                      size="sm"
+                      className="me-2"
+                      onClick={addKeySlot}
+                    >
+                      Add Key Combination
+                    </CButton>
+
+                    <CButton
+                      type="submit"
+                      color="primary"
+                      size="sm"
+                      disabled={shortcutLoading}
+                    >
+                      {shortcutLoading ? (
+                        <>
+                          <CSpinner size="sm" className="me-2" />
+                          {editingShortcut ? "Updating..." : "Adding..."}
+                        </>
+                      ) : (
+                        <>
+                          <CIcon icon={cilSave} className="me-2" />
+                          {editingShortcut ? "Update Shortcut" : "Add Shortcut"}
+                        </>
+                      )}
+                    </CButton>
+
+                    {editingShortcut && (
+                      <CButton
+                        color="secondary"
+                        size="sm"
+                        className="ms-2"
+                        onClick={handleShortcutCancel}
+                      >
+                        Cancel
+                      </CButton>
+                    )}
+                  </CForm> */}
+
+                  <Divider className="my-4" />
+
+                  {/* Table/List of Shortcuts */}
+                  {shortcutLoading ? (
+                    <div className="text-center py-4">
+                      <CSpinner />
+                      <p className="mt-2">Loading shortcuts...</p>
+                    </div>
+                  ) : (
+                    <CTable responsive>
+                      <CTableHead>
+                        <CTableRow>
+                          <CTableHeaderCell>Action</CTableHeaderCell>
+                          <CTableHeaderCell>Keys</CTableHeaderCell>
+                          <CTableHeaderCell>Description</CTableHeaderCell>
+                          {/* --- ADDED THIS --- */}
+                          <CTableHeaderCell>Active</CTableHeaderCell>
+                          <CTableHeaderCell>Actions</CTableHeaderCell>
+                        </CTableRow>
+                      </CTableHead>
+                      <CTableBody>
+                        {shortcuts.map((shortcut) => (
+                          <CTableRow key={shortcut._id}>
+                            <CTableDataCell>{shortcut.action}</CTableDataCell>
+                            <CTableDataCell>
+                              {shortcut.keys
+                                ?.map((k) => k.combination.join(" + "))
+                                .join(", ")}
+                            </CTableDataCell>
+                            <CTableDataCell>
+                              {shortcut.keys.map((k) => k.description).join(", ")}
+                            </CTableDataCell>
+
+                            {/* --- ADDED THIS CELL --- */}
+                            <CTableDataCell>
+                              <CFormCheck
+                                id={`shortcut-toggle-${shortcut._id}`}
+                                // Default to 'true' if 'isActive' is undefined
+                                checked={shortcut.isActive !== false}
+                                onChange={(e) => handleShortcutToggle(shortcut, e.target.checked)}
+                                disabled={shortcutLoading}
+                              />
+                            </CTableDataCell>
+
+                            <CTableDataCell>
+                              {/* <CButton
+                                color="warning"
+                                size="sm"
+                                className="me-2"
+                                onClick={() => handleShortcutEdit(shortcut)}
+                              >
+                                <CIcon icon={cilPencil} />
+                              </CButton> */}
+                              <CButton
+                                color="danger"
+                                size="sm"
+                                onClick={() => handleShortcutDelete(shortcut._id)}
+                              >
+                                <CIcon icon={cilTrash} />
+                              </CButton>
+                            </CTableDataCell>
+                          </CTableRow>
+                        ))}
+                      </CTableBody>
+                    </CTable>
+                  )}
+                  {/* Predefined Shortcuts Selection Modal */}
+                  <Dialog
+                    open={showShortcutModal}
+                    onClose={() => setShowShortcutModal(false)}
+                    maxWidth="md"
+                    fullWidth
+                    fullScreen={window.innerWidth < 600}
+                  >
+                    <DialogTitle>
+                      <div className="d-flex justify-content-between align-items-center">
+                        <div className="d-flex align-items-center">
+                          <Keyboard className="me-2" />
+                          Available Keyboard Shortcuts
+                        </div>
+                        <IconButton
+                          size="small"
+                          onClick={() => setShowShortcutModal(false)}
+                        >
+                          <X size={20} />
+                        </IconButton>
+                      </div>
+                    </DialogTitle>
+
+                    <DialogContent>
+                      {/* Search Bar */}
+                      <div className="mb-3">
+                        <CInputGroup size="sm">
+                          <CInputGroupText>
+                            <Search size={16} />
+                          </CInputGroupText>
+                          <CFormInput
+                            type="text"
+                            placeholder="Search shortcuts..."
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                          />
+                        </CInputGroup>
+                      </div>
+
+                      {/* Shortcut Selection List */}
+                      <div className="mb-4" style={{ maxHeight: '400px', overflowY: 'auto' }}>
+                        {Object.entries(getFilteredShortcuts()).map(([category, categoryShortcuts]) => (
+                          <div key={category} className="mb-3">
+                            <Typography variant="body2" className="fw-bold text-primary mb-2">
+                              {category} ({categoryShortcuts.length})
+                            </Typography>
+
+                            <div className="d-flex flex-column gap-2">
+                              {categoryShortcuts.map((shortcut) => {
+                                // Check if this shortcut is already added
+                                const isAlreadyAdded = shortcuts.some(
+                                  s => s.action === shortcut.action
+                                );
+
+                                const isSelected = selectedPredefinedShortcut?.action === shortcut.action;
+
+                                return (
+                                  <div
+                                    key={shortcut.action}
+                                    className={`p-3 border rounded ${isSelected ? 'border-primary bg-primary bg-opacity-10' : ''
+                                      } ${isAlreadyAdded ? 'opacity-50 bg-light' : 'cursor-pointer'}`}
+                                    onClick={() => {
+                                      if (!isAlreadyAdded) {
+                                        setSelectedPredefinedShortcut(shortcut);
+                                        setCustomKeyCombination(shortcut.suggestedKeys);
+                                      }
+                                    }}
+                                    style={{
+                                      cursor: isAlreadyAdded ? 'not-allowed' : 'pointer',
+                                      transition: 'all 0.2s'
+                                    }}
+                                  >
+                                    <div className="d-flex justify-content-between align-items-start">
+                                      <div className="flex-grow-1">
+                                        <div className="d-flex align-items-center gap-2 mb-1">
+                                          <strong>{shortcut.action}</strong>
+                                          {isAlreadyAdded && (
+                                            <CBadge color="success">
+                                              <CheckCircle size={12} className="me-1" />
+                                              Added
+                                            </CBadge>
+                                          )}
+                                        </div>
+                                        <div className="small text-muted">
+                                          {shortcut.description}
+                                        </div>
+                                        {shortcut.route && (
+                                          <div className="small text-info mt-1">
+                                            Route: {shortcut.route}
+                                          </div>
+                                        )}
+                                      </div>
+                                      <div>
+                                        <CBadge
+                                          color={isAlreadyAdded ? 'secondary' : 'info'}
+                                          className="text-white"
+                                        >
+                                          {shortcut.suggestedKeys.join(' + ')}
+                                        </CBadge>
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+
+                        {Object.keys(getFilteredShortcuts()).length === 0 && (
+                          <div className="text-center py-4">
+                            <AlertCircle size={48} className="text-muted mb-2" />
+                            <p className="text-muted">No shortcuts found matching "{searchQuery}"</p>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Key Recording Section */}
+                      {selectedPredefinedShortcut && (
+                        <div className="border rounded p-3 bg-light">
+                          <Typography variant="subtitle2" className="mb-2 fw-bold">
+                            Customize Key Combination:
+                          </Typography>
+
+                          <div className="d-flex gap-2 align-items-center mb-2">
+                            <CFormInput
+                              type="text"
+                              readOnly
+                              value={customKeyCombination.join(' + ') || 'Click and press keys...'}
+                              onFocus={() => setCustomKeyRecording(true)}
+                              onKeyDown={handleModalKeyDown}
+                              placeholder="Click and press keys..."
+                              className="form-control-sm"
+                              style={{
+                                backgroundColor: customKeyRecording ? '#fff3cd' : 'white',
+                                fontFamily: 'monospace',
+                                fontSize: '14px',
+                                fontWeight: 'bold'
+                              }}
+                            />
+
+                            <CButton
+                              color="secondary"
+                              size="sm"
+                              onClick={() => {
+                                setCustomKeyCombination([]);
+                                setCustomKeyRecording(true);
+                              }}
+                              title="Reset and record new combination"
+                            >
+                              <RefreshCw size={16} />
+                            </CButton>
+                          </div>
+
+                          {customKeyRecording && (
+                            <Alert severity="warning" className="py-1">
+                              <div className="d-flex align-items-center">
+                                <AlertCircle size={16} className="me-2" />
+                                <small>Press your desired key combination now...</small>
+                              </div>
+                            </Alert>
+                          )}
+
+                          <div className="mt-2">
+                            <small className="text-muted">
+                              <strong>Selected:</strong> {selectedPredefinedShortcut.action}
+                            </small>
+                          </div>
+                        </div>
+                      )}
+                    </DialogContent>
+
+                    <DialogActions className="p-3">
+                      <CButton
+                        color="secondary"
+                        size="sm"
+                        onClick={() => {
+                          setShowShortcutModal(false);
+                          setSelectedPredefinedShortcut(null);
+                          setCustomKeyCombination([]);
+                          setSearchQuery('');
+                        }}
+                      >
+                        Cancel
+                      </CButton>
+
+                      <CButton
+                        color="primary"
+                        size="sm"
+                        onClick={handleSaveSelectedShortcut}
+                        disabled={!selectedPredefinedShortcut || customKeyCombination.length === 0}
+                      >
+                        <CIcon icon={cilSave} className="me-2" />
+                        Add Shortcut
+                      </CButton>
+                    </DialogActions>
+                  </Dialog>
+                </CCardBody>
+              </CCard>
+            </CCol>
+          </CRow>
+        </CTabPane>
+
 
 
       </CTabContent>

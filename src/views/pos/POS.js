@@ -4,6 +4,8 @@ import { useNavigate } from 'react-router-dom'
 import { getQrs } from '../../redux/slices/qrSlice'
 import { getFloors } from '../../redux/slices/floorSlices'
 import { fetchCombinedOrders } from '../../redux/slices/orderSlice'
+import { useHotkeys } from 'react-hotkeys-hook';
+import FocusTrap from 'focus-trap-react';
 import {
   createTransaction,
   fetchTransactionDetails,
@@ -47,6 +49,9 @@ import CIcon from '@coreui/icons-react'
 import { cilBuilding, cilMoney, cilPlus, cilMinus, cilCash, cilNotes } from '@coreui/icons'
 
 const POS = () => {
+  const theme = useSelector((state) => state.theme.theme);
+  const isDarkMode = theme === 'dark';
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const { dailyCashBalance, transactions, dailyTransactionCount, cashLoading } = useSelector((state) => state.transactions);
@@ -57,7 +62,6 @@ const POS = () => {
   const resturantIdLocalStorage = localStorage.getItem('restaurantId')
   const userId = useSelector((state) => state.auth.userId)
   const username = useSelector((state) => state.auth.username)
-  const theme = useSelector((state) => state.theme.theme)
   const token = localStorage.getItem('authToken')
 
   const [cart, setCart] = useState({})
@@ -135,18 +139,18 @@ const POS = () => {
         
         let cleanType;
 
-        if (type === 'cash_in') {
-            cleanType = 'Cash In (Net)';
-        } else if (type === 'cash_out') {
-            cleanType = 'Cash Out (Net)';
-        } else if (type === 'bank_in') { 
-            cleanType = 'Bank In';
-        } else if (type === 'bank_out') { 
-            cleanType = 'Bank Out';
-        } 
-        else {
-            cleanType = type; 
-        }
+      if (type === 'cash_in') {
+        cleanType = 'Cash In (Net)';
+      } else if (type === 'cash_out') {
+        cleanType = 'Cash Out (Net)';
+      } else if (type === 'bank_in') {
+        cleanType = 'Bank In';
+      } else if (type === 'bank_out') {
+        cleanType = 'Bank Out';
+      }
+      else {
+        cleanType = type;
+      }
 
         // Use Math.abs() to ensure the value is added correctly in the breakdown object
         if (Math.abs(amount) > 0) { 
@@ -155,7 +159,7 @@ const POS = () => {
        
         return acc;
     }, {});
-    
+
     return breakdown;
   };
 
@@ -252,7 +256,7 @@ const POS = () => {
         restaurantId,
         username,
         notes: bankAmountNotes,
-        type: 'bank_in' 
+        type: 'bank_in'
       })).unwrap()
 
       // Reset form
@@ -326,14 +330,14 @@ const POS = () => {
     }
   }, [dispatch, restaurantId, token])
 
-   useEffect(() => {
+  useEffect(() => {
     if (transactions) {
-        const breakdown = calculatePaymentBreakdown(transactions);
-        setPaymentBreakdown(breakdown);
+      const breakdown = calculatePaymentBreakdown(transactions);
+      setPaymentBreakdown(breakdown);
     } else {
-        setPaymentBreakdown({});
+      setPaymentBreakdown({});
     }
-  }, [transactions]); 
+  }, [transactions]);
 
   useEffect(() => {
     dispatch(getFloors(resturantIdLocalStorage))
@@ -381,7 +385,7 @@ const POS = () => {
   // Fetch QR codes & restore carts
   useEffect(() => {
     if (qrList.length === 0) {
-      dispatch(getQrs({restaurantId:resturantIdLocalStorage}))
+      dispatch(getQrs({ restaurantId: resturantIdLocalStorage }))
 
     }
 
@@ -435,7 +439,7 @@ const POS = () => {
     localStorage.setItem('mergedTables', JSON.stringify(mergedTables))
   }, [mergedTables])
 
-  const  handleQrClick = (qr) => {
+  const handleQrClick = (qr) => {
     navigate(`/pos/system/tableNumber/${qr.tableNumber}`)
   }
 
@@ -705,12 +709,12 @@ const POS = () => {
     setShowCombinedModal(false)
   }
 
- const getAvailableTables = (floorId) => {
-  const floorTables = getTablesForFloor(floorId) // Now uses the passed floorId
-  // console.log("floor id here get available tables ", floorId)
-  // console.log("available tabkles =>", floorTables.filter(qr => !isTableMerged(qr.tableNumber)))
-  return floorTables.filter(qr => !isTableMerged(qr.tableNumber))
-}
+  const getAvailableTables = (floorId) => {
+    const floorTables = getTablesForFloor(floorId) // Now uses the passed floorId
+    // console.log("floor id here get available tables ", floorId)
+    // console.log("available tabkles =>", floorTables.filter(qr => !isTableMerged(qr.tableNumber)))
+    return floorTables.filter(qr => !isTableMerged(qr.tableNumber))
+  }
 
   const formatTime = (startTimeStr) => {
     if (!startTimeStr) return 'N/A'
@@ -732,7 +736,197 @@ const POS = () => {
     const minutes = Math.floor((diffSeconds % 3600) / 60)
     return `${hours}h ${minutes}m`
   }
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.ctrlKey && e.key === 'h') {
+        setShowHelpModal(true); // Ctrl + H: Show Help Modal
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      console.log('Key pressed:', e.key, 'Active element:', document.activeElement);
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Enter', 'Escape'].includes(e.key)) {
+        e.preventDefault();
+      }
+
+      if (e.ctrlKey && e.key === 'i') {
+        setShowCashInModal(true);
+      }
+      if (e.ctrlKey && e.key === 'o') {
+        setShowCashOutModal(true);
+      }
+      if (e.ctrlKey && e.key === 'b') {
+        setShowBankInModal(true);
+      }
+      if (e.ctrlKey && e.key === 'm') {
+        handleMergeTablesClick();
+      }
+      if (e.ctrlKey && e.key === 'a') {
+        fetchActiveOrders();
+      }
+
+      const tables = document.querySelectorAll('.table-card');
+      console.log('Table cards found:', tables.length);
+      const currentFocused = document.activeElement;
+      let index = Array.from(tables).indexOf(currentFocused);
+
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+        index = index < tables.length - 1 ? index + 1 : 0;
+        console.log('Moving to index:', index);
+        tables[index]?.focus();
+      }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        index = index > 0 ? index - 1 : tables.length - 1;
+        console.log('Moving to index:', index);
+        tables[index]?.focus();
+      }
+      if (e.key === 'Enter' && currentFocused.classList.contains('table-card')) {
+        console.log('Enter on table-card, Current focused:', currentFocused);
+        const tableNumber = currentFocused.textContent.trim().match(/\d+/) || currentFocused.getAttribute('data-id');
+        console.log('Extracted table number:', tableNumber);
+        const qr = qrList.find(q => q.tableNumber === parseInt(tableNumber));
+        if (qr) {
+          console.log('Navigating to QR:', qr.tableNumber);
+          handleQrClick(qr);
+        } else {
+          console.log('No matching QR found for table number:', tableNumber);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [qrList, handleMergeTablesClick, fetchActiveOrders]);
+  useHotkeys('ctrl+k', () => {
+    // Handle KOT generation
+  }, { preventDefault: true });
+
+  useHotkeys('ctrl+b', () => {
+    // Handle Invoice generation
+  }, { preventDefault: true });
+
+  useHotkeys('ctrl+p', () => {
+    // Open Payment Modal
+  }, { preventDefault: true });
+
+  useHotkeys('ctrl+t', () => {
+    // Open Tax Modal
+  }, { preventDefault: true });
+
+  useHotkeys('ctrl+d', () => {
+    // Open Discount Modal
+  }, { preventDefault: true });
+
+  useHotkeys('ctrl+c', () => {
+    // Open Customer Modal
+  }, { preventDefault: true });
+
+  useHotkeys('ctrl+x', () => {
+    // Clear Cart
+  }, { preventDefault: true });
+
+  useHotkeys('ctrl+h', () => {
+    setShowHelpModal(true);
+  }, { preventDefault: true, enabled: () => !document.activeElement.tagName.match(/INPUT|SELECT|TEXTAREA/) });
+
+  useHotkeys('arrowup, arrowdown', (e) => {
+    const tableCards = document.querySelectorAll('.table-card');
+    let index = Array.from(tableCards).indexOf(document.activeElement);
+
+    if (e.key === 'ArrowDown' && index < tableCards.length - 1) {
+      index++;
+      tableCards[index].focus();
+    }
+    if (e.key === 'ArrowUp' && index > 0) {
+      index--;
+      tableCards[index].focus();
+    }
+    e.preventDefault();
+  }, { preventDefault: true });
+
+  useHotkeys('enter', (e) => {
+    const currentFocused = document.activeElement;
+    console.log('Focused element:', currentFocused);
+    if (currentFocused.className.includes('table-card')) {
+      const tableId = currentFocused.getAttribute('data-id');
+      console.log('Navigating to:', `/pos/system/${tableId}`);
+      navigate(`/pos/system/tableNumber/${tableId}`);
+    }
+    e.preventDefault();
+  }, { preventDefault: true });
+
+  useHotkeys('ctrl+h', () => setShowHelpModal(true), { preventDefault: true });
+  useHotkeys(
+    'arrowup, arrowdown',
+    (e) => {
+      const cartItems = document.querySelectorAll('.cart-item');
+      const buttons = document.querySelectorAll('.cart-button');
+      const allFocusable = [...cartItems, ...buttons];
+      const currentFocused = document.activeElement;
+      let index = Array.from(allFocusable).indexOf(currentFocused);
+
+      if (e.key === 'ArrowDown') {
+        index = index < allFocusable.length - 1 ? index + 1 : 0;
+        allFocusable[index].focus();
+      }
+      if (e.key === 'ArrowUp') {
+        index = index > 0 ? index - 1 : allFocusable.length - 1;
+        allFocusable[index].focus();
+      }
+      e.preventDefault();
+    },
+    { enableOnTags: ['BUTTON', 'DIV'], preventDefault: true }
+  );
+  useHotkeys(
+    'enter',
+    (e) => {
+      const currentFocused = document.activeElement;
+      if (currentFocused.classList.contains('cart-item')) {
+        const itemId = currentFocused.getAttribute('data-id');
+        const item = cart.find((i) => i.id === itemId);
+        if (item) {
+          handleQuantityChange(item.id, item.quantity + 1);
+        }
+      } else if (currentFocused.classList.contains('cart-button')) {
+        if (currentFocused.textContent.includes('Select Customer')) {
+          setShowCustomerModal(true);
+        } else if (currentFocused.textContent.includes('Tax')) {
+          setShowTaxModal(true);
+        } else if (currentFocused.textContent.includes('Discount')) {
+          setShowDiscountModal(true);
+        } else if (currentFocused.textContent.includes('Round Off')) {
+          setShowRoundOffModal(true);
+          setLocalRoundOffModal(true);
+        }
+      }
+      e.preventDefault();
+    },
+    { enableOnTags: ['BUTTON', 'DIV'], preventDefault: true }
+  );
+  useHotkeys(
+    'arrowleft, arrowright',
+    (e) => {
+      const currentFocused = document.activeElement;
+      if (currentFocused.classList.contains('cart-item')) {
+        const itemId = currentFocused.getAttribute('data-id');
+        const item = cart.find((i) => i.id === itemId);
+        if (item) {
+          if (e.key === 'ArrowRight') {
+            handleQuantityChange(item.id, item.quantity + 1);
+          }
+          if (e.key === 'ArrowLeft' && item.quantity > 1) {
+            handleQuantityChange(item.id, item.quantity - 1);
+          }
+        }
+      }
+      e.preventDefault();
+    },
+    { enableOnTags: ['DIV'], preventDefault: true }
+  )
   return (
     <CContainer className="py-2 px-2 px-md-3">
       {/* Mobile Responsive Header */}
@@ -741,8 +935,8 @@ const POS = () => {
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
           <div className="mb-2 mb-md-0">
             <h3 className="mb-0 text-center text-md-start">Select Table To Generate Bill</h3>
-          </div> 
-          
+          </div>
+
           {/* Mobile Responsive Button Groups */}
           <div className="w-100 d-md-none">
             {/* Mobile: Stack buttons vertically */}
@@ -774,7 +968,7 @@ const POS = () => {
                   <span className="d-sm-none">Out</span>
                 </CButton>
               </div>
-              
+
               {/* Action Buttons Row */}
               <div className="d-flex gap-2">
                 {/* Bank In Button (Mobile) */}
@@ -805,8 +999,8 @@ const POS = () => {
                   <span className="d-sm-none">B. Out</span>
                 </CButton>
 
-                <CButton 
-                  color="primary" 
+                <CButton
+                  color="primary"
                   onClick={fetchActiveOrders}
                   className="flex-fill"
                   size="sm"
@@ -826,7 +1020,7 @@ const POS = () => {
               </div>
             </div>
           </div>
-          
+
           {/* Desktop: Original horizontal layout */}
           <div className="d-none d-md-flex flex-column gap-2">
             {/* Cash Management Buttons */}
@@ -841,45 +1035,45 @@ const POS = () => {
                 <CIcon icon={cilPlus} size="sm" />
                 Cash In
               </CButton>
-            <CDropdown
-                  variant="btn-group"
-                  onMouseEnter={() => setIsDropdownOpen(true)}
-                  onMouseLeave={() => setIsDropdownOpen(false)}
-                  show={isDropdownOpen} // Mouse over पर show होगा
+              <CDropdown
+                variant="btn-group"
+                onMouseEnter={() => setIsDropdownOpen(true)}
+                onMouseLeave={() => setIsDropdownOpen(false)}
+                show={isDropdownOpen} // Mouse over पर show होगा
               >
-                  <CDropdownToggle
-                      color="info"
-                      size="lg"
-                      className="d-flex align-items-center gap-1 p-2"
-                      caret={false} // Arrow हटा दें
-                      style={{ cursor: 'default' }}
-                  >
-                      <CIcon icon={cilCash} />
-                      Daily Balance: ₹{formatBalance(dailyCashBalance)}
-                      {cashLoading && <CSpinner size="sm" className="ms-1" />}
-                  </CDropdownToggle>
+                <CDropdownToggle
+                  color="info"
+                  size="lg"
+                  className="d-flex align-items-center gap-1 p-2"
+                  caret={false} // Arrow हटा दें
+                  style={{ cursor: 'default' }}
+                >
+                  <CIcon icon={cilCash} />
+                  Daily Balance: ₹{formatBalance(dailyCashBalance)}
+                  {cashLoading && <CSpinner size="sm" className="ms-1" />}
+                </CDropdownToggle>
 
-                  <CDropdownMenu className='p-2'>
-                      <CDropdownItem header className='fw-bold'>Cash Breakdown</CDropdownItem>
-                      <hr className="dropdown-divider" />
-                      {cashLoading ? (
-                          <CDropdownItem disabled>
-                              <CSpinner size="sm" className="me-2" /> Loading...
-                          </CDropdownItem>
-                      ) : (
-                          Object.entries(paymentBreakdown).map(([type, amount]) => (
-                              <CDropdownItem key={type} className={`text-${type.includes('In') ? 'success' : 'danger'}`}>
-                                  <div className="d-flex justify-content-between w-100">
-                                      <strong>{type}</strong>
-                                      <span>₹{formatBalance(amount)}</span>
-                                  </div>
-                              </CDropdownItem>
-                          ))
-                      )}
-                      {Object.keys(paymentBreakdown).length === 0 && (
-                          <CDropdownItem disabled>No transactions yet</CDropdownItem>
-                      )}
-                  </CDropdownMenu>
+                <CDropdownMenu className='p-2'>
+                  <CDropdownItem header className='fw-bold'>Cash Breakdown</CDropdownItem>
+                  <hr className="dropdown-divider" />
+                  {cashLoading ? (
+                    <CDropdownItem disabled>
+                      <CSpinner size="sm" className="me-2" /> Loading...
+                    </CDropdownItem>
+                  ) : (
+                    Object.entries(paymentBreakdown).map(([type, amount]) => (
+                      <CDropdownItem key={type} className={`text-${type.includes('In') ? 'success' : 'danger'}`}>
+                        <div className="d-flex justify-content-between w-100">
+                          <strong>{type}</strong>
+                          <span>₹{formatBalance(amount)}</span>
+                        </div>
+                      </CDropdownItem>
+                    ))
+                  )}
+                  {Object.keys(paymentBreakdown).length === 0 && (
+                    <CDropdownItem disabled>No transactions yet</CDropdownItem>
+                  )}
+                </CDropdownMenu>
               </CDropdown>
               <CButton
                 color="danger"
@@ -926,52 +1120,52 @@ const POS = () => {
               >
                 Merge Tables
               </CButton>
-              
+
             </div>
           </div>
         </div>
-        
+
         {/* Mobile: Daily Balance Badge */}
         <div className="d-md-none text-center mb-3">
-         <CDropdown
-              variant="btn-group"
-              onMouseEnter={() => setIsDropdownOpen(true)}
-              onMouseLeave={() => setIsDropdownOpen(false)}
-              show={isDropdownOpen}
+          <CDropdown
+            variant="btn-group"
+            onMouseEnter={() => setIsDropdownOpen(true)}
+            onMouseLeave={() => setIsDropdownOpen(false)}
+            show={isDropdownOpen}
           >
-              <CDropdownToggle
-                  color="info"
-                  size="lg"
-                  className="d-flex align-items-center gap-1 justify-content-center p-2"
-                  caret={false}
-                  style={{ cursor: 'default' }}
-              >
-                  <CIcon icon={cilCash} />
-                  Daily Balance: ₹{formatBalance(dailyCashBalance)}
-                  {cashLoading && <CSpinner size="sm" className="ms-1" />}
-              </CDropdownToggle>
+            <CDropdownToggle
+              color="info"
+              size="lg"
+              className="d-flex align-items-center gap-1 justify-content-center p-2"
+              caret={false}
+              style={{ cursor: 'default' }}
+            >
+              <CIcon icon={cilCash} />
+              Daily Balance: ₹{formatBalance(dailyCashBalance)}
+              {cashLoading && <CSpinner size="sm" className="ms-1" />}
+            </CDropdownToggle>
 
-              <CDropdownMenu className='p-2'>
-                  <CDropdownItem header className='fw-bold'>Cash Breakdown</CDropdownItem>
-                  <hr className="dropdown-divider" />
-                  {cashLoading ? (
-                      <CDropdownItem disabled>
-                          <CSpinner size="sm" className="me-2" /> Loading...
-                      </CDropdownItem>
-                  ) : (
-                      Object.entries(paymentBreakdown).map(([type, amount]) => (
-                          <CDropdownItem key={type} className={`text-${type.includes('In') ? 'success' : 'danger'}`}>
-                              <div className="d-flex justify-content-between w-100">
-                                  <strong>{type}</strong>
-                                  <span>₹{formatBalance(amount)}</span>
-                              </div>
-                          </CDropdownItem>
-                      ))
-                  )}
-                  {Object.keys(paymentBreakdown).length === 0 && (
-                      <CDropdownItem disabled>No transactions yet</CDropdownItem>
-                  )}
-              </CDropdownMenu>
+            <CDropdownMenu className='p-2'>
+              <CDropdownItem header className='fw-bold'>Cash Breakdown</CDropdownItem>
+              <hr className="dropdown-divider" />
+              {cashLoading ? (
+                <CDropdownItem disabled>
+                  <CSpinner size="sm" className="me-2" /> Loading...
+                </CDropdownItem>
+              ) : (
+                Object.entries(paymentBreakdown).map(([type, amount]) => (
+                  <CDropdownItem key={type} className={`text-${type.includes('In') ? 'success' : 'danger'}`}>
+                    <div className="d-flex justify-content-between w-100">
+                      <strong>{type}</strong>
+                      <span>₹{formatBalance(amount)}</span>
+                    </div>
+                  </CDropdownItem>
+                ))
+              )}
+              {Object.keys(paymentBreakdown).length === 0 && (
+                <CDropdownItem disabled>No transactions yet</CDropdownItem>
+              )}
+            </CDropdownMenu>
           </CDropdown>
         </div>
       </div>
@@ -1001,18 +1195,17 @@ const POS = () => {
                     className="mb-3 mb-md-4 d-flex justify-content-center"
                   >
                     <div
-                      className={`table-card d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-2 p-md-3 w-100 ${
-                        theme === 'dark' ? 'bg-secondary text-white' : 'bg-white text-dark'
-                      }`}
+                      className={`table-card d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-2 p-md-3 w-100 ${theme === 'dark' ? 'bg-secondary text-white' : 'bg-white text-dark'
+                        }`}
                       onClick={() => handleMergedTableClick(mergedTable)}
-                      style={{ 
-                        cursor: 'pointer', 
+                      style={{
+                        cursor: 'pointer',
                         position: 'relative',
                         minHeight: '8rem'
                       }}
                     >
-                      <CBadge 
-                        color="info" 
+                      <CBadge
+                        color="info"
                         className="position-absolute top-0 start-0 m-1 badge-mobile"
                       >
                         MERGED
@@ -1062,29 +1255,38 @@ const POS = () => {
                           className="mb-3 mb-md-4 d-flex justify-content-center"
                         >
                           <div
-                            className={`table-card d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-2 p-md-3 w-100 ${
-                              shouldTableBeRed(qr)
-                                ? ' text-dark'
-                                : theme === 'dark'
+                            className={`table-card d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-2 p-md-3 w-100 ${shouldTableBeRed(qr)
+                              ? ' text-dark'
+                              : theme === 'dark'
                                 ? 'bg-secondary text-white'
                                 : 'bg-white text-dark'
-                            }`}
+                              }`}
+
                             onClick={() => handleQrClick(qr)}
-                            style={{ 
-                              cursor: 'pointer', 
-                              width: '100%', 
-                              position: 'relative', 
+                            tabIndex={0}
+                            style={{
+                              cursor: 'pointer',
+                              width: '100%',
+                              position: 'relative',
                               backgroundColor: shouldTableBeRed(qr) ? tableOccupyColor : '',
                               minHeight: '8rem'
                             }}
                           >
-                            <CBadge 
-                              color="secondary" 
+                            <CBadge
+                              color="secondary"
                               className="position-absolute top-0 start-0 m-1 badge-mobile"
                             >
                               {floorName}
                             </CBadge>
-                            <div className="fw-bold text-center table-title">
+                            <div
+                              tabIndex={0}
+                              data-id={qr.tableNumber}
+                              onClick={() => navigate(`/pos/table/${qr.tableNumber}`)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') {
+                                  navigate(`/pos/table/${qr.tableNumber}`);
+                                }
+                              }}>
                               Table {qr.tableNumber}
                             </div>
                             {isItemInCart(qr) && (
@@ -1104,108 +1306,111 @@ const POS = () => {
 
           {/* Takeaway Section - Mobile Responsive */}
           <div className="mb-5">
-              <h4 className="fw-bold mb-3 border-bottom pb-2 text-center text-md-start">Other Options</h4>
-              <CRow className="justify-content-center justify-content-md-start">
-                <CCol xs="6" sm="4" md="3" lg="2" xl="2" className="mb-3 mb-md-4 d-flex justify-content-center">
-                    <div
-                      className={`table-card d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-2 p-md-3 w-100 ${
-                        theme === 'dark' ? 'bg-secondary text-white' : 'bg-white text-dark'
-                      }`}
-                      onClick={() => navigate('/pos/system/tableNumber/0')}
-                      style={{ 
-                        cursor: 'pointer', 
-                        width: '100%',
-                        minHeight: '8rem'
-                      }}
-                    >
-                      <div className="fw-bold text-center table-title">
-                        Takeaway
-                      </div>
-                    </div>
-                </CCol>
-              </CRow>
+            <h4 className="fw-bold mb-3 border-bottom pb-2 text-center text-md-start">Other Options</h4>
+            <CRow className="justify-content-center justify-content-md-start">
+              <CCol xs="6" sm="4" md="3" lg="2" xl="2" className="mb-3 mb-md-4 d-flex justify-content-center">
+                <div
+                  className={`table-card d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-2 p-md-3 w-100 ${theme === 'dark' ? 'bg-secondary text-white' : 'bg-white text-dark'
+                    }`}
+                  onClick={() => navigate('/pos/system/tableNumber/0')}
+                  style={{
+                    cursor: 'pointer',
+                    width: '100%',
+                    minHeight: '8rem'
+                  }}
+                >
+                  <div className="fw-bold text-center table-title">
+                    Takeaway
+                  </div>
+                </div>
+              </CCol>
+            </CRow>
           </div>
         </>
       )}
 
-      
-      <CModal
-        visible={showCashInModal}
-        onClose={() => {
-          setShowCashInModal(false)
-          setCashAmount('')
-          setCashAmountNotes('')
-        }}
-        size="md"
-        backdrop="static"
-        className="modal-mobile-responsive"
-      >
-        <CModalHeader>
-          <CModalTitle className="d-flex align-items-center gap-2">
-            <CIcon icon={cilPlus} />
-            Cash In
-          </CModalTitle>
-        </CModalHeader>
-        <CModalBody>
-          <CForm>
-            <div className="mb-3">
-              <CFormLabel htmlFor="cashInAmount">Amount *</CFormLabel>
-              <CFormInput
-                type="number"
-                id="cashInAmount"
-                placeholder="Enter amount"
-                value={cashAmount}
-                onChange={(e) => setCashAmount(e.target.value)}
-                min="0"
-                step="0.01"
-                disabled={cashLoading}
-              />
-            </div>
-            <div className="mb-3">
-              <CFormLabel htmlFor="cashInAmount">Notes </CFormLabel>
-              <CFormInput
-                type="string"
-                id="cashInAmountNotes"
-                placeholder="Enter any note"
-                value={cashAmountNotes}
-                onChange={(e) => setCashAmountNotes(e.target.value)}
-                disabled={cashLoading}
-              />
-            </div>
-            <CAlert color="info">
-              Current Daily Transaction: ₹{dailyCashBalance.toFixed(2)}
-            </CAlert>
-          </CForm>
-        </CModalBody>
-        <CModalFooter>
-          <CButton
-            color="secondary"
-            onClick={() => {
-              setShowCashInModal(false)
-              setCashAmount('')
-              setCashAmountNotes('')
-            }}
-            disabled={cashLoading}
-          >
-            Cancel
-          </CButton>
-          <CButton
-            color="success"
-            onClick={handleCashIn}
-            disabled={!cashAmount || parseFloat(cashAmount) <= 0 || cashLoading}
-          >
-            {cashLoading ? (
-              <>
-                <CSpinner size="sm" className="me-2" />
-                Processing...
-              </>
-            ) : (
-              'Add Cash In'
-            )}
-          </CButton>
-        </CModalFooter>
-      </CModal>
- 
+      {/* Cash In Modal - Mobile Responsive */}
+      <FocusTrap active={showCashInModal}>
+        <CModal
+          visible={showCashInModal}
+          onClose={() => {
+            setShowCashInModal(false)
+            setCashAmount('')
+            setCashAmountNotes('')
+          }}
+          size="md"
+          backdrop="static"
+          className="modal-mobile-responsive"
+        >
+          <CModalHeader>
+            <CModalTitle className="d-flex align-items-center gap-2">
+              <CIcon icon={cilPlus} />
+              Cash In
+            </CModalTitle>
+          </CModalHeader>
+          <CModalBody>
+            <CForm>
+              <div className="mb-3">
+                <CFormLabel htmlFor="cashInAmount">Amount *</CFormLabel>
+                <CFormInput
+                  type="number"
+                  id="cashInAmount"
+                  placeholder="Enter amount"
+                  value={cashAmount}
+                  onChange={(e) => setCashAmount(e.target.value)}
+                  min="0"
+                  step="0.01"
+                  disabled={cashLoading}
+                />
+              </div>
+              <div className="mb-3">
+                <CFormLabel htmlFor="cashInAmount">Notes </CFormLabel>
+                <CFormInput
+                  type="string"
+                  id="cashInAmountNotes"
+                  placeholder="Enter any note"
+                  value={cashAmountNotes}
+                  onChange={(e) => setCashAmountNotes(e.target.value)}
+                  disabled={cashLoading}
+                />
+              </div>
+              <CAlert color="info">
+                Current Daily Transaction: ₹{dailyCashBalance.toFixed(2)}
+              </CAlert>
+            </CForm>
+          </CModalBody>
+          <CModalFooter>
+            <CButton
+              color="secondary"
+              onClick={() => {
+                setShowCashInModal(false)
+                setCashAmount('')
+                setCashAmountNotes('')
+              }}
+              disabled={cashLoading}
+            >
+              Cancel
+            </CButton>
+            <CButton
+              color="success"
+              onClick={handleCashIn}
+              disabled={!cashAmount || parseFloat(cashAmount) <= 0 || cashLoading}
+            >
+              {cashLoading ? (
+                <>
+                  <CSpinner size="sm" className="me-2" />
+                  Processing...
+                </>
+              ) : (
+                'Add Cash In'
+              )}
+            </CButton>
+          </CModalFooter>
+        </CModal>
+      </FocusTrap>
+
+
+      {/* Cash Out Modal - Mobile Responsive */}
       <CModal
         visible={showCashOutModal}
         onClose={() => {
@@ -1224,7 +1429,16 @@ const POS = () => {
           </CModalTitle>
         </CModalHeader>
         <CModalBody>
-          <CForm>
+          <CForm onKeyDown={(e) => {
+            if (e.key === 'Enter' && !cashLoading) {
+              handleCashIn();
+            }
+            if (e.key === 'Escape') {
+              setShowCashInModal(false);
+              setCashAmount('');
+              setCashAmountNotes('');
+            }
+          }}>
             <div className="mb-3">
               <CFormLabel htmlFor="cashOutAmount">Amount *</CFormLabel>
               <CFormInput
@@ -1237,6 +1451,7 @@ const POS = () => {
                 max={dailyCashBalance}
                 step="0.01"
                 disabled={cashLoading}
+                autoFocus
               />
               <small className="text-muted">
                 Maximum available: ₹{dailyCashBalance.toFixed(2)}
@@ -1617,6 +1832,33 @@ const POS = () => {
           </CButton>
         </CModalFooter>
       </CModal>
+      <FocusTrap active={showHelpModal}>
+        <CModal visible={showHelpModal} onClose={() => setShowHelpModal(false)}>
+          <CModalHeader>
+            <CModalTitle>Keyboard Shortcuts</CModalTitle>
+          </CModalHeader>
+          <CModalBody>
+            <ul>
+              <li><strong>Ctrl + K</strong>: Generate KOT</li>
+              <li><strong>Ctrl + B</strong>: Generate Invoice</li>
+              <li><strong>Ctrl + P</strong>: Open Payment Modal</li>
+              <li><strong>Ctrl + T</strong>: Open Tax Modal</li>
+              <li><strong>Ctrl + D</strong>: Open Discount Modal</li>
+              <li><strong>Ctrl + C</strong>: Open Customer Modal</li>
+              <li><strong>Ctrl + X</strong>: Clear Cart</li>
+              <li><strong>Ctrl + H</strong>: Show Help</li>
+              <li><strong>Arrow Up/Down</strong>: Navigate Products</li>
+              <li><strong>Enter</strong>: Add Product to Cart</li>
+              <li><strong>Arrow Left/Right</strong>: Navigate Categories</li>
+            </ul>
+          </CModalBody>
+          <CModalFooter>
+            <CButton color="secondary" onClick={() => setShowHelpModal(false)}>
+              Close
+            </CButton>
+          </CModalFooter>
+        </CModal>
+      </FocusTrap>
     </CContainer>
   )
 }

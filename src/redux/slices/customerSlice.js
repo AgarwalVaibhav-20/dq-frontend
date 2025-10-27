@@ -20,13 +20,13 @@ export const fetchCustomers = createAsyncThunk(
       }
       const url = `${BASE_URL}/customer/all`;
       const config = {
-        params: { restaurantId },
+        // params: { restaurantId }, // Params are often not needed if handled by middleware
         headers: {
           Authorization: `Bearer ${token}`,
         },
       };
-      console.log('🚀 Fetching customers from:', url, 'with restaurantId:', restaurantId);
-      const response = await axios.get(url, config);
+      console.log('🚀 Fetching customers from:', url, 'for restaurantId:', restaurantId);
+      const response = await axios.get(url, config); // restaurantId is likely derived from token on backend
       console.log('✅ Customers fetched:', response.data?.data?.length || 0);
       return response.data.data || response.data;
     } catch (error) {
@@ -40,7 +40,7 @@ export const fetchCustomers = createAsyncThunk(
 export const addCustomer = createAsyncThunk(
   'customers/addCustomer',
   async (
-    { token, name, email, address, phoneNumber, birthday, anniversary, membershipId, membershipName, corporate, rewardCustomerPoints },
+    { token, name, email, address, phoneNumber, birthday, anniversary, membershipId, membershipName, corporate, rewardCustomerPoints, rewardByAdminPoints },
     { rejectWithValue, dispatch }
   ) => {
     try {
@@ -60,6 +60,8 @@ export const addCustomer = createAsyncThunk(
         corporate,
         membershipId,
         membershipName,
+        rewardCustomerPoints,
+        rewardByAdminPoints,
       });
       const response = await axios.post(
         `${BASE_URL}/customer/add`,
@@ -75,22 +77,17 @@ export const addCustomer = createAsyncThunk(
           membershipId,
           membershipName,
           rewardCustomerPoints,
+          rewardByAdminPoints,
         },
         configureHeaders(token)
       );
       console.log('Customer add response:', response.data);
-      // Optimistically add to state
       const newCustomer = response.data.customer;
-      if (newCustomer && newCustomer._id) {
-        // Optional delay to ensure DB sync
-        setTimeout(() => {
-          dispatch(fetchCustomers({ token, restaurantId })).unwrap().catch((err) => {
-            console.error('Failed to fetch customers after adding:', err);
-            toast.warn('Customer added, but failed to refresh customer list: ' + (err.message || 'Unknown error'));
-          });
-        }, 500);
-      }
-      return response.data;
+
+      // We no longer need to manually dispatch fetchCustomers,
+      // The reducer will add the new customer to the state directly.
+
+      return newCustomer; // Return just the customer object
     } catch (error) {
       console.error('Add customer error:', error.response?.data || error.message);
       return rejectWithValue(error.response?.data?.message || 'Failed to add customer');
@@ -98,7 +95,7 @@ export const addCustomer = createAsyncThunk(
   }
 );
 
-// Add reward points
+// Add reward points (earned from orders)
 export const addRewardPoints = createAsyncThunk(
   'customers/addRewardPoints',
   async ({ customerId, pointsToAdd }, { rejectWithValue }) => {
@@ -109,10 +106,29 @@ export const addRewardPoints = createAsyncThunk(
         { pointsToAdd },
         configureHeaders(token)
       );
-      return response.data;
+      return response.data.data; // Return the 'data' object from controller
     } catch (error) {
       console.error('Error adding reward points:', error);
       return rejectWithValue(error.response?.data?.message || 'Failed to add reward points');
+    }
+  }
+);
+
+// Add admin reward points (manually given by admin)
+export const addAdminRewardPoints = createAsyncThunk(
+  'customers/addAdminRewardPoints',
+  async ({ id, pointsToAdd }, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const response = await axios.patch(
+        `${BASE_URL}/customer/admin-reward-points/add/${id}`,
+        { pointsToAdd },
+        configureHeaders(token)
+      );
+      return response.data.data; // Return the 'data' object from controller
+    } catch (error) {
+      console.error('Error adding admin reward points:', error);
+      return rejectWithValue(error.response?.data?.message || 'Failed to add admin reward points');
     }
   }
 );
@@ -128,7 +144,7 @@ export const deductRewardPoints = createAsyncThunk(
         { pointsToDeduct },
         configureHeaders(token)
       );
-      return response.data;
+      return response.data.data; // Return the 'data' object from controller
     } catch (error) {
       console.error('Error deducting reward points:', error);
       return rejectWithValue(error.response?.data?.message || 'Failed to deduct reward points');
@@ -143,8 +159,8 @@ export const deleteCustomer = createAsyncThunk(
     try {
       const token = localStorage.getItem('authToken');
       const headers = { Authorization: `Bearer ${token}` };
-      const response = await axios.delete(`${BASE_URL}/customer/delete/${_id}`, { headers });
-      return response.data;
+      await axios.delete(`${BASE_URL}/customer/delete/${_id}`, { headers });
+      return _id; // Return the ID of the deleted customer
     } catch (error) {
       console.error('Delete customer error:', error.response?.data || error.message);
       return rejectWithValue(error.response?.data?.message || 'Failed to delete customer');
@@ -157,7 +173,7 @@ export const updateCustomer = createAsyncThunk(
   'customers/updateCustomer',
   async (
     { _id, token, name, email, address, phoneNumber, birthday, anniversary, membershipId, membershipName },
-    { rejectWithValue, dispatch }
+    { rejectWithValue }
   ) => {
     try {
       const restaurantId = localStorage.getItem('restaurantId');
@@ -192,11 +208,7 @@ export const updateCustomer = createAsyncThunk(
         configureHeaders(token)
       );
       console.log('Customer update response:', response.data);
-      dispatch(fetchCustomers({ token, restaurantId })).unwrap().catch((err) => {
-        console.error('Failed to fetch customers after updating:', err);
-        toast.warn('Customer updated, but failed to refresh customer list: ' + (err.message || 'Unknown error'));
-      });
-      return response.data;
+      return response.data.customer; // Return the updated customer object
     } catch (error) {
       console.error('Update customer error:', error.response?.data || error.message);
       return rejectWithValue(error.response?.data?.message || 'Failed to update customer');
@@ -229,13 +241,35 @@ export const updateCustomerFrequency = createAsyncThunk(
         { frequency, totalSpent },
         configureHeaders(token)
       );
-      return response.data;
+      return response.data.customer; // Return the updated customer object
     } catch (error) {
       console.error('Error updating customer frequency:', error.response?.data || error.message);
       return rejectWithValue(error.response?.data?.message || 'Failed to update customer frequency');
     }
   }
 );
+
+// Helper function to update customer state
+const updateCustomerInState = (state, customerData) => {
+  const index = state.customers.findIndex((c) => c._id === customerData.customerId);
+  if (index !== -1) {
+    if (customerData.totalPoints !== undefined) {
+      state.customers[index].rewardCustomerPoints = customerData.totalPoints;
+    }
+    if (customerData.totalAdminPoints !== undefined) {
+      state.customers[index].rewardByAdminPoints = customerData.totalAdminPoints;
+    }
+    if (customerData.remainingRewardPoints !== undefined) {
+      state.customers[index].rewardCustomerPoints = customerData.remainingRewardPoints;
+    }
+    if (customerData.remainingAdminPoints !== undefined) {
+      state.customers[index].rewardByAdminPoints = customerData.remainingAdminPoints;
+    }
+    if (customerData.totalReward !== undefined) {
+      state.customers[index].totalReward = customerData.totalReward;
+    }
+  }
+};
 
 const customerSlice = createSlice({
   name: 'customers',
@@ -273,18 +307,9 @@ const customerSlice = createSlice({
       })
       .addCase(addCustomer.fulfilled, (state, action) => {
         state.loading = false;
-        const newCustomer = action.payload.customer;
+        const newCustomer = action.payload; // Payload is just the customer
         if (newCustomer && newCustomer._id) {
-          const existingIndex = state.customers.findIndex(
-            (customer) => customer._id === newCustomer._id
-          );
-          if (existingIndex === -1) {
-            state.customers.unshift(newCustomer);
-            console.log('Customer added to state:', newCustomer);
-          } else {
-            state.customers[existingIndex] = newCustomer;
-            console.log('Customer updated in state:', newCustomer);
-          }
+          state.customers.unshift(newCustomer); // Add to beginning of list
           toast.success('Customer added successfully.');
         } else {
           console.error('Invalid customer data received:', action.payload);
@@ -302,14 +327,13 @@ const customerSlice = createSlice({
       })
       .addCase(updateCustomer.fulfilled, (state, action) => {
         state.loading = false;
-        const updatedCustomer = action.payload.customer;
+        const updatedCustomer = action.payload; // Payload is the updated customer
         if (updatedCustomer && updatedCustomer._id) {
           const index = state.customers.findIndex(
             (customer) => customer._id === updatedCustomer._id
           );
           if (index !== -1) {
-            state.customers[index] = updatedCustomer;
-            console.log('Customer updated in state:', updatedCustomer);
+            state.customers[index] = updatedCustomer; // Replace old object
           }
           toast.success('Customer updated successfully.');
         } else {
@@ -328,7 +352,7 @@ const customerSlice = createSlice({
       })
       .addCase(deleteCustomer.fulfilled, (state, action) => {
         state.loading = false;
-        const deletedCustomerId = action.meta.arg._id;
+        const deletedCustomerId = action.payload; // Payload is just the ID
         state.customers = state.customers.filter(
           (customer) => customer._id !== deletedCustomerId
         );
@@ -353,57 +377,60 @@ const customerSlice = createSlice({
         toast.error(`Failed to fetch customers by type: ${action.payload}`);
       })
       .addCase(updateCustomerFrequency.pending, (state) => {
-        state.loading = true;
+        state.loading = true; // You might not need a loading state for this
         state.error = null;
       })
       .addCase(updateCustomerFrequency.fulfilled, (state, action) => {
         state.loading = false;
-        const updatedCustomer = action.payload.customer;
+        const updatedCustomer = action.payload; // Payload is the updated customer
         const index = state.customers.findIndex((customer) => customer._id === updatedCustomer._id);
         if (index !== -1) {
-          state.customers[index] = updatedCustomer;
+          state.customers[index] = updatedCustomer; // Replace object
         }
-        toast.success('Customer frequency updated successfully.');
+        // No toast needed, this happens in the background
       })
       .addCase(updateCustomerFrequency.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
-        toast.error(`Failed to update customer frequency: ${action.payload}`);
+        // No toast needed
       })
+
+      // Reward Point Reducers
       .addCase(addRewardPoints.pending, (state) => {
         state.loading = true;
-        state.error = null;
       })
       .addCase(addRewardPoints.fulfilled, (state, action) => {
         state.loading = false;
-        const customerIndex = state.customers.findIndex(
-          (c) => c._id === action.payload.data.customerId
-        );
-        if (customerIndex !== -1) {
-          state.customers[customerIndex].rewardCustomerPoints =
-            action.payload.data.totalPoints;
-        }
-        toast.success(`Added ${action.payload.data.pointsAdded} reward points!`);
+        updateCustomerInState(state, action.payload);
+        toast.success(`Added ${action.payload.pointsAdded} reward points!`);
       })
       .addCase(addRewardPoints.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
         toast.error(`Failed to add reward points: ${action.payload}`);
       })
+
+      .addCase(addAdminRewardPoints.pending, (state) => {
+        state.loading = true;
+      })
+      .addCase(addAdminRewardPoints.fulfilled, (state, action) => {
+        state.loading = false;
+        updateCustomerInState(state, action.payload);
+        toast.success(`Added ${action.payload.pointsAdded} admin reward points!`);
+      })
+      .addCase(addAdminRewardPoints.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        toast.error(`Failed to add admin reward points: ${action.payload}`);
+      })
+
       .addCase(deductRewardPoints.pending, (state) => {
         state.loading = true;
-        state.error = null;
       })
       .addCase(deductRewardPoints.fulfilled, (state, action) => {
         state.loading = false;
-        const customerIndex = state.customers.findIndex(
-          (c) => c._id === action.payload.data.customerId
-        );
-        if (customerIndex !== -1) {
-          state.customers[customerIndex].rewardCustomerPoints =
-            action.payload.data.remainingPoints;
-        }
-        toast.success(`Deducted ${action.payload.data.pointsDeducted} reward points!`);
+        updateCustomerInState(state, action.payload);
+        toast.success(`Deducted ${action.payload.pointsDeducted} reward points!`);
       })
       .addCase(deductRewardPoints.rejected, (state, action) => {
         state.loading = false;

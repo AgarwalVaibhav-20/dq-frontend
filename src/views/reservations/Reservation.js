@@ -8,6 +8,7 @@ import {
   deleteReservation,
 } from '../../redux/slices/reservationSlice';
 import { fetchCustomers } from '../../redux/slices/customerSlice';
+import { getQrs } from '../../redux/slices/qrSlice';
 import CustomToolbar from '../../utils/CustomToolbar';
 import {
   CButton,
@@ -20,7 +21,7 @@ import {
   CSpinner,
   CForm,
   CAlert,
-  CFormLabel
+  CFormLabel,
 } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
 import { cilPencil, cilTrash, cilPlus, cilHistory } from '@coreui/icons';
@@ -31,17 +32,15 @@ const Reservation = () => {
   const dispatch = useDispatch();
   const { reservations, loading, error } = useSelector((state) => state.reservations);
   const { customers, loading: customerLoading } = useSelector((state) => state.customers);
+  const { qrList } = useSelector((state) => state.qr);
   const restaurantId = localStorage.getItem('restaurantId');
-  const token = localStorage.getItem('authToken')
+  const token = localStorage.getItem('authToken');
   const isMobile = useMediaQuery('(max-width:600px)');
 
-  // Modal states
   const [modalVisible, setModalVisible] = useState(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [historyModalVisible, setHistoryModalVisible] = useState(false);
-
-  // Form states
   const [formData, setFormData] = useState({
     startTime: '',
     endTime: '',
@@ -52,7 +51,6 @@ const Reservation = () => {
     notes: '',
     tableNumber: '',
   });
-
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [formErrors, setFormErrors] = useState({});
   const [submitLoading, setSubmitLoading] = useState(false);
@@ -63,18 +61,17 @@ const Reservation = () => {
   const tableNumberRef = useRef(null);
   const notesRef = useRef(null);
 
-  // Initialize data on component mount
   useEffect(() => {
-
-    if (restaurantId && token) {
-      dispatch(fetchReservations({ restaurantId, token }));
-      dispatch(fetchCustomers({ restaurantId, token }));
-    } else {
-      console.error("No restaurantId found!");
+    if (!restaurantId || !token) {
+      console.error('Missing restaurantId or token!');
+      setFormErrors({ general: 'Authentication details missing. Please log in again.' });
+      return;
     }
-  }, [dispatch, restaurantId, token]);
+    dispatch(fetchReservations({ restaurantId, token }));
+    dispatch(fetchCustomers({ restaurantId, token, token }));
+    dispatch(getQrs({ restaurantId }));
+  }, [dispatch, restaurantId]);
 
-  // Debug logging for data changes
   useEffect(() => {
     console.log('🔍 Reservation Debug:');
     console.log('Reservations:', reservations);
@@ -84,76 +81,61 @@ const Reservation = () => {
     console.log('Token:', token ? 'Present' : 'Missing');
     
     if (reservations && reservations.length > 0) {
-      console.log("First reservation structure:", reservations[0]);
-      console.log("Available keys in first reservation:", Object.keys(reservations[0]));
+      console.log('First reservation structure:', reservations[0]);
+      console.log('Available keys in first reservation:', Object.keys(reservations[0]));
     }
-  }, [reservations, loading, customers, error, restaurantId, token]);
+  }, [reservations, restaurantId, token]);
 
-  // Generic form input handler
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-
-    // Clear error for this field when user starts typing
+    setFormData((prev) => ({ ...prev, [name]: value }));
     if (formErrors[name]) {
-      setFormErrors(prev => ({ ...prev, [name]: '' }));
+      setFormErrors((prev) => ({ ...prev, [name]: '' }));
     }
   };
 
-  // Special handler for customer select dropdown
   const handleCustomerChange = (selectedOption) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       customerId: selectedOption?.value || '',
-      customerName: selectedOption?.label || ''
+      customerName: selectedOption?.label || '',
     }));
-
     if (formErrors.customerId) {
-      setFormErrors(prev => ({ ...prev, customerId: '' }));
+      setFormErrors((prev) => ({ ...prev, customerId: '' }));
     }
   };
 
-  // Form validation function
+  const handleTableChange = (selectedOption) => {
+    setFormData((prev) => ({
+      ...prev,
+      tableNumber: selectedOption?.value || '',
+    }));
+    if (formErrors.tableNumber) {
+      setFormErrors((prev) => ({ ...prev, tableNumber: '' }));
+    }
+  };
+
   const validateForm = () => {
     const errors = {};
-
-    // Required field validations
-    if (!formData.startTime) {
-      errors.startTime = 'Start time is required';
-    }
-
-    if (!formData.endTime) {
-      errors.endTime = 'End time is required';
-    }
-
-    if (!formData.customerId) {
-      errors.customerId = 'Customer selection is required';
-    }
-
-    // Business logic validations
-    if (!formData.payment || formData.payment <= 0) {
-      errors.payment = 'Valid payment amount is required';
-    }
-
+    if (!formData.startTime) errors.startTime = 'Start time is required';
+    if (!formData.endTime) errors.endTime = 'End time is required';
+    if (!formData.customerId) errors.customerId = 'Customer selection is required';
+    if (!formData.payment || formData.payment <= 0) errors.payment = 'Valid payment amount is required';
     if (formData.advance && parseFloat(formData.advance) > parseFloat(formData.payment)) {
       errors.advance = 'Advance cannot be greater than total payment';
     }
-
-    // Date/time validation
+    if (formData.tableNumber && !qrList.some((qr) => qr.tableNumber === formData.tableNumber)) {
+      errors.tableNumber = 'Invalid table number';
+    }
     if (formData.startTime && formData.endTime) {
       const startTime = new Date(formData.startTime);
       const endTime = new Date(formData.endTime);
-
-      if (startTime >= endTime) {
-        errors.endTime = 'End time must be after start time';
-      }
+      if (startTime >= endTime) errors.endTime = 'End time must be after start time';
     }
-
     setFormErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
-  // Reset form to initial state
   const resetForm = () => {
     setFormData({
       startTime: '',
@@ -166,15 +148,8 @@ const Reservation = () => {
       tableNumber: '',
     });
     setFormErrors({});
-    
-    // Clear ref values
-    if (paymentRef.current) paymentRef.current.value = '';
-    if (advanceRef.current) advanceRef.current.value = '';
-    if (tableNumberRef.current) tableNumberRef.current.value = '';
-    if (notesRef.current) notesRef.current.value = '';
   };
 
-  // Create new reservation
   const handleSaveReservation = async (e) => {
     e.preventDefault();
 
@@ -194,90 +169,47 @@ const Reservation = () => {
     };
 
     setFormData(updatedFormData);
-
-    if (!validateForm()) {
-      return;
-    }
-
+    if (!validateForm()) return;
     setSubmitLoading(true);
-
     try {
       const payload = {
         ...updatedFormData,
         restaurantId,
+        token,
         startTime: new Date(updatedFormData.startTime).toISOString(),
         endTime: new Date(updatedFormData.endTime).toISOString(),
         payment: parseFloat(paymentValue),
         advance: parseFloat(advanceValue) || 0,
       };
-
       await dispatch(addReservation(payload)).unwrap();
-      await dispatch(fetchReservations({ restaurantId, token }));
-
+      await dispatch(fetchReservations({ restaurantId, token, token }));
       resetForm();
       setModalVisible(false);
     } catch (error) {
       console.error('Error saving reservation:', error);
-      setFormErrors({ general: error.message || 'Failed to save reservation' });
+      setFormErrors({
+        general: error.message || 'Failed to save reservation. Please try again.',
+      });
     } finally {
       setSubmitLoading(false);
     }
   };
 
-  // Update existing reservation
-  // const handleUpdateReservation = async () => {
-  //   if (!validateForm()) {
-  //     return;
-  //   }
-
-  //   setSubmitLoading(true);
-
-  //   try {
-  //     const restaurantId = restaurantId || "68c80294c2283cb53671cde9";
-  //     const payload = {
-  //       id: selectedReservation?._id,
-  //       ...formData,
-  //       restaurantId: restaurantId,
-  //       startTime: new Date(formData.startTime).toISOString(),
-  //       endTime: new Date(formData.endTime).toISOString(),
-  //       payment: parseFloat(formData.payment),
-  //       advance: parseFloat(formData.advance) || 0,
-  //     };
-
-  //     await dispatch(updateReservation(payload)).unwrap();
-  //     await dispatch(fetchReservations({ restaurantId: restaurantId }));
-
-  //     resetForm();
-  //     setEditModalVisible(false);
-  //     setSelectedReservation(null);
-  //   } catch (error) {
-  //     console.error('Error updating reservation:', error);
-  //     setFormErrors({ general: error.message || 'Failed to update reservation' });
-  //   } finally {
-  //     setSubmitLoading(false);
-  //   }
-  // };
   const handleUpdateReservation = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
+    if (!validateForm()) return;
     setSubmitLoading(true);
-
     try {
       const payload = {
         id: selectedReservation?._id,
         ...formData,
-        restaurantId: restaurantId,
+        restaurantId,
         startTime: new Date(formData.startTime).toISOString(),
         endTime: new Date(formData.endTime).toISOString(),
         payment: parseFloat(formData.payment),
         advance: parseFloat(formData.advance) || 0,
       };
-
       await dispatch(updateReservation(payload)).unwrap();
       await dispatch(fetchReservations({ restaurantId, token }));
-
       resetForm();
       setEditModalVisible(false);
       setSelectedReservation(null);
@@ -289,34 +221,30 @@ const Reservation = () => {
     }
   };
 
-  // Delete reservation
   const handleDeleteReservation = async () => {
     setSubmitLoading(true);
-
     try {
       const id = selectedReservation?._id;
-      await dispatch(deleteReservation({ id })).unwrap();
-      await dispatch(fetchReservations({ restaurantId, token }));
-
+      await dispatch(deleteReservation({ id, token })).unwrap();
+      await dispatch(fetchReservations({ restaurantId, token, token }));
       setDeleteModalVisible(false);
       setSelectedReservation(null);
     } catch (error) {
       console.error('Error deleting reservation:', error);
+      setFormErrors({ general: error.message || 'Failed to delete reservation' });
     } finally {
       setSubmitLoading(false);
     }
   };
 
-  // Utility function to format time for input fields
-  function formatTimeForInput(dateString) {
-    if (!dateString) return "";
+  const formatTimeForInput = (dateString) => {
+    if (!dateString) return '';
     const date = new Date(dateString);
-    const hours = String(date.getHours()).padStart(2, "0");
-    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
     return `${hours}:${minutes}`;
-  }
+  };
 
-  // Utility function to format datetime for display
   const formatDateTime = (dateTime) => {
     if (!dateTime) return 'N/A';
     try {
@@ -325,14 +253,13 @@ const Reservation = () => {
         month: 'short',
         day: 'numeric',
         hour: '2-digit',
-        minute: '2-digit'
+        minute: '2-digit',
       });
     } catch (error) {
       return 'Invalid Date';
     }
   };
 
-  // Format datetime for datetime-local input
   const formatDateTimeForInput = (dateTime) => {
     if (!dateTime) return '';
     try {
@@ -343,17 +270,18 @@ const Reservation = () => {
     }
   };
 
-  // Get reservation ID from data structure
   const getReservationId = (row) => {
-    return row?._id || row?.id;
+    const id = row?._id || row?.id;
+    if (!id) console.warn('Invalid reservation ID:', row);
+    return id || 'N/A';
   };
 
-  // Get customer information from data structure
   const getCustomerInfo = (row, field) => {
-    return row[field] || 'N/A';
+    const value = row[field] || (row.customer && row.customer[field]) || 'N/A';
+    if (value === 'N/A') console.warn(`Missing ${field} in reservation:`, row);
+    return value;
   };
 
-  // Desktop DataGrid column definitions with full headers
   const columns = [
     {
       field: 'id',
@@ -362,7 +290,9 @@ const Reservation = () => {
       minWidth: 120,
       valueGetter: (params) => getReservationId(params.row),
       renderCell: (params) => (
-        <span title={params.value} className="text-truncate">{params.value}</span>
+        <span title={params.value} className="text-truncate">
+          {params.value}
+        </span>
       ),
     },
     {
@@ -375,80 +305,68 @@ const Reservation = () => {
         <div className="text-truncate" title={params.value}>
           {params.value}
         </div>
-      )
+      ),
     },
     {
       field: 'customerPhoneNumber',
       headerName: 'Mobile Number',
       flex: 1,
       minWidth: 120,
-      valueGetter: (params) => getCustomerInfo(params.row, 'customerPhoneNumber')
+      valueGetter: (params) => getCustomerInfo(params.row, 'customerPhoneNumber'),
     },
     {
       field: 'customerAddress',
       headerName: 'Customer Address',
       flex: 1,
       minWidth: 150,
-      valueGetter: (params) => getCustomerInfo(params.row, 'customerAddress')
+      valueGetter: (params) => getCustomerInfo(params.row, 'customerAddress'),
     },
     {
       field: 'startTime',
       headerName: 'Start Date & Time',
       flex: 1,
       minWidth: 150,
-      valueGetter: (params) => {
-        return formatDateTime(params.row?.startTime);
-      },
+      valueGetter: (params) => formatDateTime(params.row?.startTime),
       renderCell: (params) => (
         <div className="text-truncate" title={params.value}>
           {params.value}
         </div>
-      )
+      ),
     },
     {
       field: 'endTime',
       headerName: 'End Date & Time',
       flex: 1,
       minWidth: 150,
-      valueGetter: (params) => {
-        return formatDateTime(params.row?.endTime);
-      }
+      valueGetter: (params) => formatDateTime(params.row?.endTime),
     },
     {
       field: 'payment',
       headerName: 'Total Payment',
       flex: 0.5,
       minWidth: 100,
-      valueGetter: (params) => {
-        return params.row?.payment ? `₹${params.row.payment}` : 'N/A';
-      }
+      valueGetter: (params) => (params.row?.payment ? `₹${params.row.payment}` : 'N/A'),
     },
     {
       field: 'advance',
       headerName: 'Advance Payment',
       flex: 0.5,
       minWidth: 100,
-      valueGetter: (params) => {
-        return params.row?.advance ? `₹${params.row.advance}` : 'N/A';
-      }
+      valueGetter: (params) => (params.row?.advance ? `₹${params.row.advance}` : 'N/A'),
     },
     {
       field: 'tableNumber',
       headerName: 'Table Number',
       flex: 0.5,
       minWidth: 80,
-      valueGetter: (params) => {
-        return params.row?.tableNumber || 'N/A';
-      }
+      valueGetter: (params) => params.row?.tableNumber || 'N/A',
     },
     {
       field: 'notes',
       headerName: 'Special Notes',
       flex: 1,
       minWidth: 120,
-      valueGetter: (params) => {
-        return params.row?.notes || 'N/A';
-      }
+      valueGetter: (params) => params.row?.notes || 'N/A',
     },
     {
       field: 'actions',
@@ -465,18 +383,16 @@ const Reservation = () => {
             onClick={() => {
               const row = params.row;
               setSelectedReservation(row);
-
               setFormData({
                 startTime: formatDateTimeForInput(row.startTime),
                 endTime: formatDateTimeForInput(row.endTime),
-                customerId: row.customerId || "",
-                customerName: row.customerName || "",
-                payment: row.payment || "",
-                advance: row.advance || "",
-                notes: row.notes || "",
-                tableNumber: row.tableNumber || "",
+                customerId: row.customerId || '',
+                customerName: row.customerName || '',
+                payment: row.payment || '',
+                advance: row.advance || '',
+                notes: row.notes || '',
+                tableNumber: row.tableNumber || '',
               });
-
               setEditModalVisible(true);
             }}
             title="Edit Reservation"
@@ -499,10 +415,8 @@ const Reservation = () => {
     },
   ];
 
-  // History columns (read-only, no actions)
-  const historyColumns = columns.filter(col => col.field !== 'actions');
+  const historyColumns = columns.filter((col) => col.field !== 'actions');
 
-  // Mobile Card Component for reservations
   const ReservationCard = ({ reservation }) => (
     <div className="card mb-3 shadow-sm">
       <div className="card-body p-3">
@@ -519,12 +433,12 @@ const Reservation = () => {
                 setFormData({
                   startTime: formatDateTimeForInput(reservation.startTime),
                   endTime: formatDateTimeForInput(reservation.endTime),
-                  customerId: reservation.customerId || "",
-                  customerName: reservation.customerName || "",
-                  payment: reservation.payment || "",
-                  advance: reservation.advance || "",
-                  notes: reservation.notes || "",
-                  tableNumber: reservation.tableNumber || "",
+                  customerId: reservation.customerId || '',
+                  customerName: reservation.customerName || '',
+                  payment: reservation.payment || '',
+                  advance: reservation.advance || '',
+                  notes: reservation.notes || '',
+                  tableNumber: reservation.tableNumber || '',
                 });
                 setEditModalVisible(true);
               }}
@@ -545,7 +459,6 @@ const Reservation = () => {
             </CButton>
           </div>
         </div>
-        
         <div className="row g-2">
           <div className="col-6">
             <small className="text-muted">Mobile:</small>
@@ -556,7 +469,6 @@ const Reservation = () => {
             <div className="fw-medium">{reservation.tableNumber || 'N/A'}</div>
           </div>
         </div>
-        
         <div className="row g-2 mt-2">
           <div className="col-6">
             <small className="text-muted">Start Time:</small>
@@ -567,7 +479,6 @@ const Reservation = () => {
             <div className="fw-medium">{formatDateTime(reservation.endTime)}</div>
           </div>
         </div>
-        
         <div className="row g-2 mt-2">
           <div className="col-6">
             <small className="text-muted">Total Payment:</small>
@@ -582,14 +493,12 @@ const Reservation = () => {
             </div>
           </div>
         </div>
-        
         {reservation.notes && (
           <div className="mt-2">
             <small className="text-muted">Notes:</small>
             <div className="fw-medium">{reservation.notes}</div>
           </div>
         )}
-        
         {getCustomerInfo(reservation, 'customerAddress') !== 'N/A' && (
           <div className="mt-2">
             <small className="text-muted">Address:</small>
@@ -600,62 +509,58 @@ const Reservation = () => {
     </div>
   );
 
-  // Process reservations data - split into future and past
   const { futureReservations, pastReservations } = React.useMemo(() => {
     if (!Array.isArray(reservations)) {
       console.warn('Reservations is not an array:', reservations);
       return { futureReservations: [], pastReservations: [] };
     }
-
     const now = new Date();
-    const future = [];
-    const past = [];
-
-    reservations.forEach(reservation => {
-      const hasValidId = getReservationId(reservation);
-      if (!hasValidId) return;
-
-      const endTime = new Date(reservation.endTime);
-
-      if (endTime >= now) {
-        future.push(reservation);
-      } else {
-        past.push(reservation);
-      }
-    });
-
-    // Sort future reservations (upcoming first)
+    const future = reservations.filter((r) => new Date(r.endTime) >= now);
+    const past = reservations.filter((r) => new Date(r.endTime) < now);
     future.sort((a, b) => new Date(a.startTime) - new Date(b.startTime));
-
-    // Sort past reservations (most recent first)
     past.sort((a, b) => new Date(b.endTime) - new Date(a.endTime));
-
     return { futureReservations: future, pastReservations: past };
   }, [reservations]);
 
-  // Get customer options for Select dropdown
   const customerOptions = React.useMemo(() => {
-    if (!Array.isArray(customers)) return [];
-
-    return customers.map(customer => ({
+    if (customerLoading) return [];
+    if (!Array.isArray(customers)) {
+      console.warn('Customers is not an array:', customers);
+      return [];
+    }
+    return customers.map((customer) => ({
       value: customer._id || customer.id,
-      label: customer.name,
-      phoneNumber: customer.phoneNumber,
-      address: customer.address
+      label: customer.name || 'Unknown',
+      phoneNumber: customer.phoneNumber || 'N/A',
+      address: customer.address || 'N/A',
     }));
-  }, [customers]);
+  }, [customers, customerLoading]);
 
-  // Mobile responsive reusable form field component
-  const FormField = ({
-    label,
-    name,
-    type = 'text',
-    required = false,
-    placeholder = '',
-    ...props
-  }) => (
+  const tableOptions = React.useMemo(() => {
+    if (!Array.isArray(qrList)) return [];
+    return qrList.map((qr) => ({
+      value: qr.tableNumber,
+      label: `Table ${qr.tableNumber}`,
+    }));
+  }, [qrList]);
+
+  const selectStyles = {
+    control: (base) => ({
+      ...base,
+      fontSize: isMobile ? '0.875rem' : '1rem',
+      minHeight: '44px',
+    }),
+    menu: (base) => ({
+      ...base,
+      fontSize: isMobile ? '0.875rem' : '1rem',
+      maxHeight: isMobile ? '200px' : '300px',
+      overflowY: 'auto',
+    }),
+  };
+
+  const FormField = ({ label, name, type = 'text', required = false, placeholder = '', ...props }) => (
     <div className="mb-3">
-      <CFormLabel htmlFor={name} className={isMobile ? "small" : ""}>
+      <CFormLabel htmlFor={name} className={isMobile ? 'small' : ''}>
         {label} {required && <span className="text-danger">*</span>}
       </CFormLabel>
       <CFormInput
@@ -666,63 +571,46 @@ const Reservation = () => {
         onChange={handleChange}
         placeholder={placeholder}
         invalid={!!formErrors[name]}
-        size={isMobile ? "sm" : "sm"}
-        className={isMobile ? "form-control-sm" : ""}
+        size={isMobile ? 'sm' : ''}
+        className={isMobile ? 'form-control-sm' : ''}
         style={isMobile ? { minHeight: '44px' } : {}}
         {...props}
       />
-      {formErrors[name] && (
-        <div className="invalid-feedback d-block small">
-          {formErrors[name]}
-        </div>
-      )}
+      {formErrors[name] && <div className="invalid-feedback d-block small">{formErrors[name]}</div>}
     </div>
   );
 
-  // Mobile responsive Add reservation modal component
   const renderAddReservationModal = () => (
-    <CModal 
-      visible={modalVisible} 
+    <CModal
+      visible={modalVisible}
       onClose={() => {
         setModalVisible(false);
         resetForm();
-      }} 
-      size={isMobile ? "fullscreen" : "lg"}
-      className={isMobile ? "modal-mobile-responsive" : ""}
+      }}
+      size={isMobile ? 'fullscreen' : 'lg'}
+      className={isMobile ? 'modal-mobile-responsive' : ''}
     >
-      <CModalHeader className={isMobile ? "pb-2" : ""}>
-        <CModalTitle className={isMobile ? "h5" : ""}>
+      <CModalHeader className={isMobile ? 'pb-2' : ''}>
+        <CModalTitle className={isMobile ? 'h5' : ''}>
           <CIcon icon={cilPlus} className="me-2" />
           Add New Reservation
         </CModalTitle>
       </CModalHeader>
-      <CModalBody className={isMobile ? "px-3 py-2" : ""}>
+      <CModalBody className={isMobile ? 'px-3 py-2' : ''}>
         {formErrors.general && (
           <CAlert color="danger" className="mb-3">
             {formErrors.general}
           </CAlert>
         )}
-
         <CForm onSubmit={handleSaveReservation}>
           <div className="row g-2">
             <div className="col-12 col-md-6">
-              <FormField
-                label="Start Date & Time"
-                name="startTime"
-                type="datetime-local"
-                required
-              />
+              <FormField label="Start Date & Time" name="startTime" type="datetime-local" required />
             </div>
             <div className="col-12 col-md-6">
-              <FormField
-                label="End Date & Time"
-                name="endTime"
-                type="datetime-local"
-                required
-              />
+              <FormField label="End Date & Time" name="endTime" type="datetime-local" required />
             </div>
           </div>
-
           <div className="mb-3">
             <CFormLabel>
               Customer <span className="text-danger">*</span>
@@ -736,25 +624,30 @@ const Reservation = () => {
               classNamePrefix="select"
               isClearable
               isSearchable
-              styles={isMobile ? {
-                control: (base) => ({
-                  ...base,
-                  fontSize: '0.875rem',
-                  minHeight: '44px'
-                }),
-                menu: (base) => ({
-                  ...base,
-                  fontSize: '0.875rem'
-                })
-              } : {}}
+              styles={selectStyles}
             />
             {formErrors.customerId && (
-              <div className="invalid-feedback d-block">
-                {formErrors.customerId}
-              </div>
+              <div className="invalid-feedback d-block">{formErrors.customerId}</div>
             )}
           </div>
-
+          <div className="mb-3">
+            <CFormLabel>Table Number</CFormLabel>
+            <Select
+              options={tableOptions}
+              value={
+                tableOptions.find((option) => option.value === formData.tableNumber) || null
+              }
+              onChange={handleTableChange}
+              placeholder="Select a table"
+              isClearable
+              isSearchable
+              styles={selectStyles}
+              className={formErrors.tableNumber ? 'is-invalid' : ''}
+            />
+            {formErrors.tableNumber && (
+              <div className="invalid-feedback d-block">{formErrors.tableNumber}</div>
+            )}
+          </div>
           <div className="row g-2">
             <div className="col-12 col-md-6">
               <div className="mb-3">
@@ -782,84 +675,25 @@ const Reservation = () => {
               </div>
             </div>
             <div className="col-12 col-md-6">
-              <div className="mb-3">
-                <CFormLabel htmlFor="advance" className={isMobile ? "small" : ""}>
-                  Advance Payment
-                </CFormLabel>
-                <CFormInput
-                  ref={advanceRef}
-                  type="number"
-                  id="advance"
-                  name="advance"
-                  min="0"
-                  step="0.01"
-                  placeholder="Enter advance amount"
-                  invalid={!!formErrors.advance}
-                  size={isMobile ? "sm" : "sm"}
-                  className={isMobile ? "form-control-sm" : ""}
-                  style={isMobile ? { minHeight: '44px' } : {}}
-                />
-                {formErrors.advance && (
-                  <div className="invalid-feedback d-block small">
-                    {formErrors.advance}
-                  </div>
-                )}
-              </div>
+              <FormField
+                label="Advance Payment"
+                name="advance"
+                type="number"
+                min="0"
+                step="0.01"
+                placeholder="Enter advance amount"
+              />
             </div>
           </div>
-
           <div className="row g-2">
             <div className="col-12 col-md-6">
-              <div className="mb-3">
-                <CFormLabel htmlFor="tableNumber" className={isMobile ? "small" : ""}>
-                  Table Number
-                </CFormLabel>
-                <CFormInput
-                  ref={tableNumberRef}
-                  type="text"
-                  id="tableNumber"
-                  name="tableNumber"
-                  placeholder="Enter table number"
-                  invalid={!!formErrors.tableNumber}
-                  size={isMobile ? "sm" : "sm"}
-                  className={isMobile ? "form-control-sm" : ""}
-                  style={isMobile ? { minHeight: '44px' } : {}}
-                />
-                {formErrors.tableNumber && (
-                  <div className="invalid-feedback d-block small">
-                    {formErrors.tableNumber}
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className="col-12 col-md-6">
-              <div className="mb-3">
-                <CFormLabel htmlFor="notes" className={isMobile ? "small" : ""}>
-                  Notes
-                </CFormLabel>
-                <CFormInput
-                  ref={notesRef}
-                  type="text"
-                  id="notes"
-                  name="notes"
-                  placeholder="Additional notes"
-                  invalid={!!formErrors.notes}
-                  size={isMobile ? "sm" : "sm"}
-                  className={isMobile ? "form-control-sm" : ""}
-                  style={isMobile ? { minHeight: '44px' } : {}}
-                />
-                {formErrors.notes && (
-                  <div className="invalid-feedback d-block small">
-                    {formErrors.notes}
-                  </div>
-                )}
-              </div>
+              <FormField label="Notes" name="notes" placeholder="Additional notes" />
             </div>
           </div>
         </CForm>
       </CModalBody>
-      <CModalFooter className={isMobile ? "px-3 py-2" : ""}>
-        <div className={isMobile ? "d-flex flex-column w-100 gap-2" : "d-flex gap-2"}>
+      <CModalFooter className={isMobile ? 'px-3 py-2' : ''}>
+        <div className={isMobile ? 'd-flex flex-column w-100 gap-2' : 'd-flex gap-2'}>
           <CButton
             color="secondary"
             onClick={() => {
@@ -867,8 +701,8 @@ const Reservation = () => {
               resetForm();
             }}
             disabled={submitLoading}
-            className={isMobile ? "w-100" : ""}
-            size={isMobile ? "sm" : "sm"}
+            className={isMobile ? 'w-100' : ''}
+            size={isMobile ? 'sm' : ''}
           >
             Cancel
           </CButton>
@@ -876,8 +710,8 @@ const Reservation = () => {
             color="primary"
             onClick={handleSaveReservation}
             disabled={submitLoading}
-            className={isMobile ? "w-100" : ""}
-            size={isMobile ? "sm" : "sm"}
+            className={isMobile ? 'w-100' : ''}
+            size={isMobile ? 'sm' : ''}
           >
             {submitLoading ? (
               <>
@@ -893,57 +727,44 @@ const Reservation = () => {
     </CModal>
   );
 
-  // Mobile responsive Edit reservation modal component
   const renderEditReservationModal = () => (
-    <CModal 
-      visible={editModalVisible} 
+    <CModal
+      visible={editModalVisible}
       onClose={() => {
         setEditModalVisible(false);
         resetForm();
         setSelectedReservation(null);
-      }} 
-      size={isMobile ? "fullscreen" : "lg"}
-      className={isMobile ? "modal-mobile-responsive" : ""}
+      }}
+      size={isMobile ? 'fullscreen' : 'lg'}
+      className={isMobile ? 'modal-mobile-responsive' : ''}
     >
-      <CModalHeader className={isMobile ? "pb-2" : ""}>
-        <CModalTitle className={isMobile ? "h5" : ""}>
+      <CModalHeader className={isMobile ? 'pb-2' : ''}>
+        <CModalTitle className={isMobile ? 'h5' : ''}>
           <CIcon icon={cilPencil} className="me-2" />
           Edit Reservation
         </CModalTitle>
       </CModalHeader>
-      <CModalBody className={isMobile ? "px-3 py-2" : ""}>
+      <CModalBody className={isMobile ? 'px-3 py-2' : ''}>
         {formErrors.general && (
           <CAlert color="danger" className="mb-3">
             {formErrors.general}
           </CAlert>
         )}
-
         <div className="row g-2">
           <div className="col-12 col-md-6">
-            <FormField
-              label="Start Date & Time"
-              name="startTime"
-              type="datetime-local"
-              required
-            />
+            <FormField label="Start Date & Time" name="startTime" type="datetime-local" required />
           </div>
           <div className="col-12 col-md-6">
-            <FormField
-              label="End Date & Time"
-              name="endTime"
-              type="datetime-local"
-              required
-            />
+            <FormField label="End Date & Time" name="endTime" type="datetime-local" required />
           </div>
         </div>
-
         <div className="mb-3">
           <CFormLabel>
             Customer <span className="text-danger">*</span>
           </CFormLabel>
           <Select
             options={customerOptions}
-            value={customerOptions.find(option => option.value === formData.customerId)}
+            value={customerOptions.find((option) => option.value === formData.customerId)}
             onChange={handleCustomerChange}
             placeholder="Search or select a customer"
             isLoading={customerLoading}
@@ -951,25 +772,30 @@ const Reservation = () => {
             classNamePrefix="select"
             isClearable
             isSearchable
-            styles={isMobile ? {
-              control: (base) => ({
-                ...base,
-                fontSize: '0.875rem',
-                minHeight: '44px'
-              }),
-              menu: (base) => ({
-                ...base,
-                fontSize: '0.875rem'
-              })
-            } : {}}
+            styles={selectStyles}
           />
           {formErrors.customerId && (
-            <div className="invalid-feedback d-block">
-              {formErrors.customerId}
-            </div>
+            <div className="invalid-feedback d-block">{formErrors.customerId}</div>
           )}
         </div>
-
+        <div className="mb-3">
+          <CFormLabel>Table Number</CFormLabel>
+          <Select
+            options={tableOptions}
+            value={
+              tableOptions.find((option) => option.value === formData.tableNumber) || null
+            }
+            onChange={handleTableChange}
+            placeholder="Select a table"
+            isClearable
+            isSearchable
+            styles={selectStyles}
+            className={formErrors.tableNumber ? 'is-invalid' : ''}
+          />
+          {formErrors.tableNumber && (
+            <div className="invalid-feedback d-block">{formErrors.tableNumber}</div>
+          )}
+        </div>
         <div className="row g-2">
           <div className="col-12 col-md-6">
             <FormField
@@ -991,27 +817,14 @@ const Reservation = () => {
             />
           </div>
         </div>
-
         <div className="row g-2">
           <div className="col-12 col-md-6">
-            <FormField
-              label="Table Number"
-              name="tableNumber"
-              placeholder="Enter table number"
-            />
-          </div>
-          <div className="col-12 col-md-6">
-            <FormField
-              label="Notes"
-              name="notes"
-              placeholder="Additional notes"
-            />
+            <FormField label="Notes" name="notes" placeholder="Additional notes" />
           </div>
         </div>
-
       </CModalBody>
-      <CModalFooter className={isMobile ? "px-3 py-2" : ""}>
-        <div className={isMobile ? "d-flex flex-column w-100 gap-2" : "d-flex gap-2"}>
+      <CModalFooter className={isMobile ? 'px-3 py-2' : ''}>
+        <div className={isMobile ? 'd-flex flex-column w-100 gap-2' : 'd-flex gap-2'}>
           <CButton
             color="secondary"
             onClick={() => {
@@ -1020,8 +833,8 @@ const Reservation = () => {
               setSelectedReservation(null);
             }}
             disabled={submitLoading}
-            className={isMobile ? "w-100" : ""}
-            size={isMobile ? "sm" : "sm"}
+            className={isMobile ? 'w-100' : ''}
+            size={isMobile ? 'sm' : ''}
           >
             Cancel
           </CButton>
@@ -1029,8 +842,8 @@ const Reservation = () => {
             color="primary"
             onClick={handleUpdateReservation}
             disabled={submitLoading}
-            className={isMobile ? "w-100" : ""}
-            size={isMobile ? "sm" : "sm"}
+            className={isMobile ? 'w-100' : ''}
+            size={isMobile ? 'sm' : ''}
           >
             {submitLoading ? (
               <>
@@ -1046,25 +859,24 @@ const Reservation = () => {
     </CModal>
   );
 
-  // Mobile responsive Delete confirmation modal component
   const renderDeleteReservationModal = () => (
-    <CModal 
-      visible={deleteModalVisible} 
+    <CModal
+      visible={deleteModalVisible}
       onClose={() => {
         setDeleteModalVisible(false);
         setSelectedReservation(null);
       }}
-            size={isMobile ? "sm" : "sm"}
-      className={isMobile ? "modal-mobile-responsive" : ""}
+      size={isMobile ? 'sm' : ''}
+      className={isMobile ? 'modal-mobile-responsive' : ''}
     >
-      <CModalHeader className={isMobile ? "pb-2" : ""}>
-        <CModalTitle className={isMobile ? "h6" : ""}>
+      <CModalHeader className={isMobile ? 'pb-2' : ''}>
+        <CModalTitle className={isMobile ? 'h6' : ''}>
           <CIcon icon={cilTrash} className="me-2" />
           Delete Reservation
         </CModalTitle>
       </CModalHeader>
-      <CModalBody className={isMobile ? "px-3 py-2" : ""}>
-        <p className={isMobile ? "mb-3" : ""}>Are you sure you want to delete this reservation?</p>
+      <CModalBody className={isMobile ? 'px-3 py-2' : ''}>
+        <p className={isMobile ? 'mb-3' : ''}>Are you sure you want to delete this reservation?</p>
         {selectedReservation && (
           <div className="bg-light p-3 rounded">
             <div className="mb-2">
@@ -1076,8 +888,8 @@ const Reservation = () => {
           </div>
         )}
       </CModalBody>
-      <CModalFooter className={isMobile ? "px-3 py-2" : ""}>
-        <div className={isMobile ? "d-flex flex-column w-100 gap-2" : "d-flex gap-2"}>
+      <CModalFooter className={isMobile ? 'px-3 py-2' : ''}>
+        <div className={isMobile ? 'd-flex flex-column w-100 gap-2' : 'd-flex gap-2'}>
           <CButton
             color="secondary"
             onClick={() => {
@@ -1085,8 +897,8 @@ const Reservation = () => {
               setSelectedReservation(null);
             }}
             disabled={submitLoading}
-            className={isMobile ? "w-100" : ""}
-            size={isMobile ? "sm" : "sm"}
+            className={isMobile ? 'w-100' : ''}
+            size={isMobile ? 'sm' : ''}
           >
             Cancel
           </CButton>
@@ -1094,8 +906,8 @@ const Reservation = () => {
             color="danger"
             onClick={handleDeleteReservation}
             disabled={submitLoading}
-            className={isMobile ? "w-100" : ""}
-            size={isMobile ? "sm" : "sm"}
+            className={isMobile ? 'w-100' : ''}
+            size={isMobile ? 'sm' : ''}
           >
             {submitLoading ? (
               <>
@@ -1111,22 +923,21 @@ const Reservation = () => {
     </CModal>
   );
 
-  // Mobile responsive Reservation History Modal
   const renderHistoryModal = () => (
     <CModal
       visible={historyModalVisible}
       onClose={() => setHistoryModalVisible(false)}
-      size={isMobile ? "fullscreen" : "xl"}
+      size={isMobile ? 'fullscreen' : 'xl'}
       scrollable
-      className={isMobile ? "modal-mobile-responsive" : ""}
+      className={isMobile ? 'modal-mobile-responsive' : ''}
     >
-      <CModalHeader className={isMobile ? "pb-2" : ""}>
-        <CModalTitle className={isMobile ? "h5" : ""}>
+      <CModalHeader className={isMobile ? 'pb-2' : ''}>
+        <CModalTitle className={isMobile ? 'h5' : ''}>
           <CIcon icon={cilHistory} className="me-2" />
           Reservation History
         </CModalTitle>
       </CModalHeader>
-      <CModalBody className={isMobile ? "px-3 py-2" : ""}>
+      <CModalBody className={isMobile ? 'px-3 py-2' : ''}>
         {pastReservations.length === 0 ? (
           <div className="text-center py-5">
             <CIcon icon={cilHistory} size="3xl" className="text-muted mb-3" />
@@ -1134,59 +945,44 @@ const Reservation = () => {
           </div>
         ) : (
           <>
-            {/* Mobile View - Cards for History */}
             {isMobile ? (
               <div className="p-3">
                 {pastReservations.map((reservation) => (
-                  <ReservationCard 
-                    key={getReservationId(reservation)} 
-                    reservation={reservation} 
-                  />
+                  <ReservationCard key={getReservationId(reservation)} reservation={reservation} />
                 ))}
               </div>
             ) : (
-              /* Desktop View - DataGrid with full headers for History */
-              <div style={{ 
-                height: '500px', 
-                width: '100%',
-                minWidth: '800px',
-                overflow: 'visible'
-              }}>
+              <div style={{ height: 'auto', width: '100%' }}>
                 <DataGrid
                   style={{ width: '100%', minHeight: '400px' }}
                   rows={pastReservations}
                   columns={historyColumns}
                   getRowId={(row) => getReservationId(row)}
                   initialState={{
-                    pagination: {
-                      paginationModel: { page: 0, pageSize: 10 },
-                    },
+                    pagination: { paginationModel: { page: 0, pageSize: 10 } },
                   }}
                   pageSizeOptions={[5, 10, 20, 50]}
-                  slots={{
-                    toolbar: CustomToolbar,
-                  }}
+                  slots={{ toolbar: CustomToolbar }}
                   disableSelectionOnClick
                   autoHeight
                   sx={{
                     '& .MuiDataGrid-cell': {
                       borderBottom: '1px solid #f0f0f0',
-                      fontSize: '0.875rem',
-                      padding: '8px 16px',
+                      fontSize: isMobile ? '0.75rem' : '0.875rem',
+                      padding: isMobile ? '4px 8px' : '8px 16px',
                     },
                     '& .MuiDataGrid-columnHeaders': {
                       backgroundColor: '#f8f9fa',
                       borderBottom: '2px solid #dee2e6',
-                      fontSize: '0.875rem',
-                      padding: '8px 16px',
+                      fontSize: isMobile ? '0.75rem' : '0.875rem',
+                      padding: isMobile ? '4px 8px' : '8px 16px',
                       fontWeight: 'bold',
                     },
                     '& .MuiDataGrid-row': {
-                      backgroundColor: '#f9f9f9',
-                      minHeight: '52px',
+                      minHeight: isMobile ? '40px' : '52px',
                     },
                     '& .MuiDataGrid-footerContainer': {
-                      fontSize: '0.875rem',
+                      fontSize: isMobile ? '0.75rem' : '0.875rem',
                     },
                   }}
                 />
@@ -1195,12 +991,12 @@ const Reservation = () => {
           </>
         )}
       </CModalBody>
-      <CModalFooter className={isMobile ? "px-3 py-2" : ""}>
+      <CModalFooter className={isMobile ? 'px-3 py-2' : ''}>
         <CButton
           color="secondary"
           onClick={() => setHistoryModalVisible(false)}
-          className={isMobile ? "w-100" : ""}
-          size={isMobile ? "sm" : "sm"}
+          className={isMobile ? 'w-100' : ''}
+          size={isMobile ? 'sm' : ''}
         >
           Close
         </CButton>
@@ -1208,20 +1004,14 @@ const Reservation = () => {
     </CModal>
   );
 
-  // Main component render
   return (
     <div className="container-fluid px-2 px-md-3 py-2">
-      {/* Mobile Responsive Header */}
       <div className="mb-4">
-        {/* Title Section - Mobile Responsive */}
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
           <div className="mb-2 mb-md-0">
             <h2 className="mb-0 text-center text-md-start">Reservations Management</h2>
           </div>
-          
-          {/* Mobile Responsive Button Groups */}
           <div className="w-100 d-md-none">
-            {/* Mobile: Stack buttons vertically */}
             <div className="d-flex flex-column gap-2">
               <CButton
                 color="primary"
@@ -1245,8 +1035,6 @@ const Reservation = () => {
               </CButton>
             </div>
           </div>
-          
-          {/* Desktop: Horizontal buttons */}
           <div className="d-none d-md-flex gap-2">
             <CButton
               color="secondary"
@@ -1267,22 +1055,21 @@ const Reservation = () => {
           </div>
         </div>
       </div>
-
-      {/* Error Alert */}
       {error && (
         <CAlert color="danger" className="mb-4">
           Error: {error}
         </CAlert>
       )}
-
-      {/* No Restaurant ID Alert */}
+      {formErrors.general && (
+        <CAlert color="danger" className="mb-4">
+          {formErrors.general}
+        </CAlert>
+      )}
       {!restaurantId && (
         <CAlert color="warning" className="mb-4">
           No restaurant ID found. Please log in again.
         </CAlert>
       )}
-
-      {/* Mobile Responsive Stats Cards */}
       <div className="row mb-4 g-2">
         <div className="col-12 col-md-6">
           <div className="card bg-primary text-white h-100">
@@ -1307,8 +1094,6 @@ const Reservation = () => {
           </div>
         </div>
       </div>
-
-      {/* Mobile Responsive Data Grid Container */}
       <div className="card shadow-sm">
         <div className="card-body p-0">
           {loading ? (
@@ -1326,11 +1111,7 @@ const Reservation = () => {
                 color="primary"
                 onClick={() => setModalVisible(true)}
                 className="w-auto"
-                style={{ 
-                  fontSize: '0.875rem', 
-                  padding: '0.5rem 1.5rem',
-                  minWidth: 'auto'
-                }}
+                style={{ fontSize: '0.875rem', padding: '0.5rem 1.5rem', minWidth: 'auto' }}
               >
                 <CIcon icon={cilPlus} className="me-2" />
                 Create Your First Reservation
@@ -1338,58 +1119,44 @@ const Reservation = () => {
             </div>
           ) : (
             <>
-              {/* Mobile View - Cards */}
               {isMobile ? (
                 <div className="p-3">
                   {futureReservations.map((reservation) => (
-                    <ReservationCard 
-                      key={getReservationId(reservation)} 
-                      reservation={reservation} 
-                    />
+                    <ReservationCard key={getReservationId(reservation)} reservation={reservation} />
                   ))}
                 </div>
               ) : (
-                /* Desktop View - DataGrid with full headers */
-                <div style={{ 
-                  height: 'auto',
-                  width: '100%',
-                  minWidth: '800px',
-                  overflow: 'visible'
-                }}>
+                <div style={{ height: 'auto', width: '100%' }}>
                   <DataGrid
                     style={{ width: '100%', minHeight: '400px' }}
                     rows={futureReservations}
                     columns={columns}
                     getRowId={(row) => getReservationId(row)}
                     initialState={{
-                      pagination: {
-                        paginationModel: { page: 0, pageSize: 10 },
-                      },
+                      pagination: { paginationModel: { page: 0, pageSize: 10 } },
                     }}
                     pageSizeOptions={[5, 10, 20, 50]}
-                    slots={{
-                      toolbar: CustomToolbar,
-                    }}
+                    slots={{ toolbar: CustomToolbar }}
                     disableSelectionOnClick
                     autoHeight
                     sx={{
                       '& .MuiDataGrid-cell': {
                         borderBottom: '1px solid #f0f0f0',
-                        fontSize: '0.875rem',
-                        padding: '8px 16px',
+                        fontSize: isMobile ? '0.75rem' : '0.875rem',
+                        padding: isMobile ? '4px 8px' : '8px 16px',
                       },
                       '& .MuiDataGrid-columnHeaders': {
                         backgroundColor: '#f8f9fa',
                         borderBottom: '2px solid #dee2e6',
-                        fontSize: '0.875rem',
-                        padding: '8px 16px',
+                        fontSize: isMobile ? '0.75rem' : '0.875rem',
+                        padding: isMobile ? '4px 8px' : '8px 16px',
                         fontWeight: 'bold',
                       },
                       '& .MuiDataGrid-row': {
-                        minHeight: '52px',
+                        minHeight: isMobile ? '40px' : '52px',
                       },
                       '& .MuiDataGrid-footerContainer': {
-                        fontSize: '0.875rem',
+                        fontSize: isMobile ? '0.75rem' : '0.875rem',
                       },
                     }}
                   />
@@ -1399,8 +1166,6 @@ const Reservation = () => {
           )}
         </div>
       </div>
-
-      {/* Modal Components */}
       {renderAddReservationModal()}
       {renderEditReservationModal()}
       {renderDeleteReservationModal()}
