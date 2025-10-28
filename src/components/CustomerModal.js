@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useRef } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchCustomers } from "../../src/redux/slices/customerSlice";
 import { fetchMembers } from "../../src/redux/slices/memberSlice";
@@ -20,19 +20,28 @@ import {
 import CIcon from "@coreui/icons-react";
 import { cilSearch, cilPlus } from "@coreui/icons";
 
-const CustomerModal = ({
+const CustomerModal = React.forwardRef(({
   showCustomerModal,
   setShowCustomerModal,
   handleCustomerSelect,
   customerLoading,
   handleAddCustomer,
   restaurantId,
-}) => {
+}, ref) => {
   const dispatch = useDispatch();
   const { customers, loading, error } = useSelector((state) => state.customers);
   const { members } = useSelector((state) => state.members);
   const token = localStorage.getItem('authToken');
 
+  // Refs for input fields
+  const searchRef = useRef(null);
+  const nameRef = useRef(null);
+  const emailRef = useRef(null);
+  const phoneNumberRef = useRef(null);
+  const addressRef = useRef(null);
+  const birthdayRef = useRef(null);
+  const anniversaryRef = useRef(null);
+  const membershipRef = useRef(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [formValues, setFormValues] = useState({
@@ -47,14 +56,63 @@ const CustomerModal = ({
   });
   const [formErrors, setFormErrors] = useState({});
   const [selectedCustomer, setSelectedCustomer] = useState(null);
+  const [highlightedCustomerIndex, setHighlightedCustomerIndex] = useState(-1);
 
   // Fetch customers and members when modal opens
   useEffect(() => {
     if (showCustomerModal && restaurantId && token) {
       dispatch(fetchCustomers({ token, restaurantId }));
       dispatch(fetchMembers(token));
+      setHighlightedCustomerIndex(-1);
     }
   }, [showCustomerModal, restaurantId, dispatch, token]);
+
+  // Keyboard navigation handler for form inputs
+  const handleKeyDown = (e, currentRef) => {
+    if (!showCustomerModal) return;
+    
+    const inputs = [nameRef, emailRef, phoneNumberRef, addressRef, birthdayRef, anniversaryRef, membershipRef];
+    const currentIndex = inputs.findIndex(ref => ref.current === currentRef?.current);
+    
+    if (e.key === 'ArrowDown' && currentIndex < inputs.length - 1) {
+      e.preventDefault();
+      e.stopPropagation();
+      inputs[currentIndex + 1]?.current?.focus();
+    } else if (e.key === 'ArrowUp' && currentIndex > 0) {
+      e.preventDefault();
+      e.stopPropagation();
+      inputs[currentIndex - 1]?.current?.focus();
+    }
+  };
+
+  // Keyboard navigation for search bar and customer list
+  const handleSearchKeyDown = (e) => {
+    if (!showCustomerModal) return;
+    
+    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+      e.preventDefault();
+      if (filteredCustomers.length > 0) {
+        const nextIndex = Math.min(highlightedCustomerIndex + 1, filteredCustomers.length - 1);
+        setHighlightedCustomerIndex(nextIndex);
+        // Scroll to highlighted customer
+        const customerId = filteredCustomers[nextIndex]._id || filteredCustomers[nextIndex].id;
+        document.getElementById(`customer-${customerId}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+      e.preventDefault();
+      if (highlightedCustomerIndex > 0) {
+        const prevIndex = highlightedCustomerIndex - 1;
+        setHighlightedCustomerIndex(prevIndex);
+        // Scroll to highlighted customer
+        const customerId = filteredCustomers[prevIndex]._id || filteredCustomers[prevIndex].id;
+        document.getElementById(`customer-${customerId}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+      }
+    } else if (e.key === 'Enter' && highlightedCustomerIndex >= 0 && highlightedCustomerIndex < filteredCustomers.length) {
+      e.preventDefault();
+      const customer = filteredCustomers[highlightedCustomerIndex];
+      handleSelectCustomer(customer);
+    }
+  };
 
   // Handle input changes
   const handleInputChange = (e) => {
@@ -141,6 +199,7 @@ const CustomerModal = ({
     setFormErrors({});
     setSelectedCustomer(null);
     setSearchTerm("");
+    setHighlightedCustomerIndex(-1);
   };
 
   // Handle selecting an existing customer
@@ -172,9 +231,14 @@ const CustomerModal = ({
             </h5>
             <div className="input-group mb-3">
               <CFormInput
+                ref={searchRef}
                 placeholder="Search customers..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setHighlightedCustomerIndex(-1);
+                }}
+                onKeyDown={handleSearchKeyDown}
               />
               <span className="input-group-text">
                 <CIcon icon={cilSearch} />
@@ -196,13 +260,20 @@ const CustomerModal = ({
                   Failed to load customers
                 </div>
               ) : filteredCustomers.length > 0 ? (
-                filteredCustomers.map((customer) => (
+                filteredCustomers.map((customer, index) => (
                   <div
                     key={customer.id || customer._id}
-                    className={`d-flex justify-content-between align-items-center border rounded p-2 mb-2 ${selectedCustomer?._id === customer._id ? "bg-light" : ""
-                      }`}
+                    id={`customer-${customer.id || customer._id}`}
+                    className={`d-flex justify-content-between align-items-center border rounded p-2 mb-2 ${
+                      selectedCustomer?._id === customer._id ? "bg-light" : ""
+                    } ${
+                      highlightedCustomerIndex === index ? "border-primary border-2 shadow-sm" : ""
+                    }`}
                     onClick={() => handleSelectCustomer(customer)}
-                    style={{ cursor: "pointer" }}
+                    style={{ 
+                      cursor: "pointer",
+                      backgroundColor: highlightedCustomerIndex === index ? "#e7f3ff" : undefined
+                    }}
                   >
                     <div>
                       <div className="fw-bold">{customer.name}</div>
@@ -291,11 +362,13 @@ const CustomerModal = ({
                   Customer Name <span className="text-danger">*</span>
                 </CFormLabel>
                 <CFormInput
+                  ref={nameRef}
                   type="text"
                   id="name"
                   name="name"
                   value={formValues.name}
                   onChange={handleInputChange}
+                  onKeyDown={(e) => handleKeyDown(e, nameRef)}
                   invalid={!!formErrors.name}
                   placeholder="Enter customer name"
                   required
@@ -308,11 +381,13 @@ const CustomerModal = ({
                   Email Address
                 </CFormLabel>
                 <CFormInput
+                  ref={emailRef}
                   type="email"
                   id="email"
                   name="email"
                   value={formValues.email}
                   onChange={handleInputChange}
+                  onKeyDown={(e) => handleKeyDown(e, emailRef)}
                   invalid={!!formErrors.email}
                   placeholder="Enter email address"
                 />
@@ -324,11 +399,13 @@ const CustomerModal = ({
                   Phone Number
                 </CFormLabel>
                 <CFormInput
+                  ref={phoneNumberRef}
                   type="tel"
                   id="phoneNumber"
                   name="phoneNumber"
                   value={formValues.phoneNumber}
                   onChange={handleInputChange}
+                  onKeyDown={(e) => handleKeyDown(e, phoneNumberRef)}
                   invalid={!!formErrors.phoneNumber}
                   placeholder="Enter phone number"
                 />
@@ -340,11 +417,13 @@ const CustomerModal = ({
                   Address
                 </CFormLabel>
                 <CFormTextarea
+                  ref={addressRef}
                   id="address"
                   name="address"
                   rows="2"
                   value={formValues.address}
                   onChange={handleInputChange}
+                  onKeyDown={(e) => handleKeyDown(e, addressRef)}
                   placeholder="Enter address"
                 />
               </div>
@@ -355,11 +434,13 @@ const CustomerModal = ({
                   Birthday
                 </CFormLabel>
                 <CFormInput
+                  ref={birthdayRef}
                   type="date"
                   id="birthday"
                   name="birthday"
                   value={formValues.birthday}
                   onChange={handleInputChange}
+                  onKeyDown={(e) => handleKeyDown(e, birthdayRef)}
                 />
               </div>
 
@@ -369,11 +450,13 @@ const CustomerModal = ({
                   Anniversary
                 </CFormLabel>
                 <CFormInput
+                  ref={anniversaryRef}
                   type="date"
                   id="anniversary"
                   name="anniversary"
                   value={formValues.anniversary}
                   onChange={handleInputChange}
+                  onKeyDown={(e) => handleKeyDown(e, anniversaryRef)}
                 />
               </div>
 
@@ -383,10 +466,12 @@ const CustomerModal = ({
                   Membership Plan
                 </CFormLabel>
                 <CFormSelect
+                  ref={membershipRef}
                   id="membershipId"
                   name="membershipId"
                   value={formValues.membershipId}
                   onChange={handleMembershipChange}
+                  onKeyDown={(e) => handleKeyDown(e, membershipRef)}
                 >
                   <option value="">No Membership</option>
                   {members?.map((member) => (
@@ -456,6 +541,8 @@ const CustomerModal = ({
       </CModalFooter>
     </CModal>
   );
-};
+});
+
+CustomerModal.displayName = 'CustomerModal';
 
 export default CustomerModal;

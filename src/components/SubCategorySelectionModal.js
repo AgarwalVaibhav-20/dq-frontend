@@ -3,13 +3,13 @@
 import React, { useState, useEffect } from 'react';
 import { CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter, CButton, CFormSelect, CRow, CCol } from '@coreui/react';
 
-const SubCategorySelectionModal = ({
+const SubCategorySelectionModal = React.forwardRef(({
   visible,
   onClose,
   menuItem, // The menu item that was clicked (e.g., Pizza)
   subCategories, // All available subcategories (e.g., [{id: 1, sub_category_name: 'Small'}, {id: 2, sub_category_name: 'Medium'}])
   onAddToCartWithSubcategory, // Function to call when an item with subcategory is selected
-}) => {
+}, ref) => {
   const [selectedSubcategoryId, setSelectedSubcategoryId] = useState('');
 
   // Filter subcategories relevant to the current menuItem's category
@@ -94,6 +94,8 @@ const SubCategorySelectionModal = ({
       </CModalFooter>
     </CModal>
   );
-};
+});
+
+SubCategorySelectionModal.displayName = 'SubCategorySelectionModal';
 
 export default SubCategorySelectionModal;

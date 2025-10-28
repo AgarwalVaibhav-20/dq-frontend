@@ -47,6 +47,7 @@ import {
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
 import { cilBuilding, cilMoney, cilPlus, cilMinus, cilCash, cilNotes } from '@coreui/icons'
+import './POS.css'
 
 const POS = () => {
   const theme = useSelector((state) => state.theme.theme);
@@ -71,7 +72,6 @@ const POS = () => {
 
   // Table merging states
   const [showMergeModal, setShowMergeModal] = useState(false)
-  let tableOccupyColor = ''
   const [mergedTables, setMergedTables] = useState(() => {
     const saved = localStorage.getItem('mergedTables')
     return saved ? JSON.parse(saved) : []
@@ -475,24 +475,44 @@ const POS = () => {
     return cart[qr.tableNumber] && cart[qr.tableNumber].length > 0
   }
 
-  const shouldTableBeRed = (qr) => {
+  // Function to check if table should show occupied color
+  const shouldTableBeOccupied = (qr) => {
     const savedSystem = localStorage.getItem(`selectedSystem_${qr.tableNumber}`)
-    let systemWillOccupy = false // Default to false if no system
-
-    if (savedSystem) {
-      const system = JSON.parse(savedSystem)
-      tableOccupyColor = system.color
-      try {
-        systemWillOccupy = system.willOccupy === true && cart[qr.tableNumber]?.length
-        // console.log("system, =>",cart[qr.tableNumber])
-      } catch (error) {
-        console.error('Error parsing saved system for table', qr.tableNumber, ':', error)
-        systemWillOccupy = false // Default to false on parsing error
-      }
+    if (!savedSystem) {
+      console.log(`Table ${qr.tableNumber}: No system saved in localStorage`)
+      return false
     }
+    
+    try {
+      const system = JSON.parse(savedSystem)
+      const result = system.willOccupy === true
+      console.log(`Table ${qr.tableNumber}: System found, willOccupy=${system.willOccupy}, returning=${result}`)
+      return result
+    } catch (error) {
+      console.log(`Table ${qr.tableNumber}: Error parsing system`, error)
+      return false
+    }
+  }
 
-    // Table should be red only if willOccupy is true, regardless of cart items
-    return systemWillOccupy
+  // Function to get table color from system settings
+  const getTableOccupiedColor = (qr) => {
+    const savedSystem = localStorage.getItem(`selectedSystem_${qr.tableNumber}`)
+    if (!savedSystem) return null
+    
+    try {
+      const system = JSON.parse(savedSystem)
+      
+      if (system.willOccupy === true && system.color) {
+        console.log(`Table ${qr.tableNumber} - Color value: ${system.color}, will return: ${system.color}`)
+        return system.color
+      } else {
+        console.log(`Table ${qr.tableNumber} - willOccupy: ${system.willOccupy}, color: ${system.color}`)
+      }
+    } catch (error) {
+      console.error('Error parsing saved system:', error)
+    }
+    
+    return null
   }
 
   const isTableMerged = (tableNumber) => {
@@ -762,6 +782,9 @@ const POS = () => {
       if (e.ctrlKey && e.key === 'b') {
         setShowBankInModal(true);
       }
+      if (e.ctrlKey && e.shiftKey && e.key === 'B') {
+        setShowBankOutModal(true);
+      }
       if (e.ctrlKey && e.key === 'm') {
         handleMergeTablesClick();
       }
@@ -801,37 +824,9 @@ const POS = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [qrList, handleMergeTablesClick, fetchActiveOrders]);
-  useHotkeys('ctrl+k', () => {
-    // Handle KOT generation
-  }, { preventDefault: true });
-
-  useHotkeys('ctrl+b', () => {
-    // Handle Invoice generation
-  }, { preventDefault: true });
-
-  useHotkeys('ctrl+p', () => {
-    // Open Payment Modal
-  }, { preventDefault: true });
-
-  useHotkeys('ctrl+t', () => {
-    // Open Tax Modal
-  }, { preventDefault: true });
-
-  useHotkeys('ctrl+d', () => {
-    // Open Discount Modal
-  }, { preventDefault: true });
-
-  useHotkeys('ctrl+c', () => {
-    // Open Customer Modal
-  }, { preventDefault: true });
-
-  useHotkeys('ctrl+x', () => {
-    // Clear Cart
-  }, { preventDefault: true });
-
-  useHotkeys('ctrl+h', () => {
-    setShowHelpModal(true);
-  }, { preventDefault: true, enabled: () => !document.activeElement.tagName.match(/INPUT|SELECT|TEXTAREA/) });
+  // Note: Ctrl shortcuts for KOT, Invoice, Payment, Tax, Discount, Customer, and Cart 
+  // are handled in POSTableContent.js (individual table page)
+  // These shortcuts are only active when inside a specific table
 
   useHotkeys('arrowup, arrowdown', (e) => {
     const tableCards = document.querySelectorAll('.table-card');
@@ -950,6 +945,7 @@ const POS = () => {
                   className="d-flex align-items-center gap-1 flex-fill"
                   disabled={cashLoading}
                   size="sm"
+                  title="Add cash to register (Ctrl + I)"
                 >
                   <CIcon icon={cilPlus} size="sm" />
                   <span className="d-none d-sm-inline">Cash In</span>
@@ -962,6 +958,7 @@ const POS = () => {
                   className="d-flex align-items-center gap-1 flex-fill"
                   disabled={cashLoading}
                   size="sm"
+                  title="Remove cash from register (Ctrl + O)"
                 >
                   <CIcon icon={cilMinus} size="sm" />
                   <span className="d-none d-sm-inline">Cash Out</span>
@@ -979,6 +976,7 @@ const POS = () => {
                   className="d-flex align-items-center gap-1 flex-fill"
                   disabled={cashLoading}
                   size="sm"
+                  title="Add money to bank account (Ctrl + B)"
                 >
                   <CIcon icon={cilMoney} size="sm" />
                   <span className="d-none d-sm-inline">Bank In</span>
@@ -993,6 +991,7 @@ const POS = () => {
                   className="d-flex align-items-center gap-1 flex-fill"
                   disabled={cashLoading}
                   size="sm"
+                  title="Withdraw money from bank (Ctrl + Shift + B)"
                 >
                   <CIcon icon={cilMinus} size="sm" />
                   <span className="d-none d-sm-inline">Bank Out</span>
@@ -1004,6 +1003,7 @@ const POS = () => {
                   onClick={fetchActiveOrders}
                   className="flex-fill"
                   size="sm"
+                  title="View all active orders (Ctrl + A)"
                 >
                   <span className="d-none d-sm-inline">All Orders</span>
                   <span className="d-sm-none">Orders</span>
@@ -1013,6 +1013,7 @@ const POS = () => {
                   onClick={handleMergeTablesClick}
                   className="flex-fill"
                   size="sm"
+                  title="Merge multiple tables together (Ctrl + M)"
                 >
                   <span className="d-none d-sm-inline">Merge Tables</span>
                   <span className="d-sm-none">Merge</span>
@@ -1031,6 +1032,7 @@ const POS = () => {
                 onClick={() => setShowCashInModal(true)}
                 className="d-flex align-items-center gap-1"
                 disabled={cashLoading}
+                title="Add cash to register (Ctrl + I)"
               >
                 <CIcon icon={cilPlus} size="sm" />
                 Cash In
@@ -1047,6 +1049,7 @@ const POS = () => {
                   className="d-flex align-items-center gap-1 p-2"
                   caret={false} // Arrow हटा दें
                   style={{ cursor: 'default' }}
+                  title="View daily cash breakdown"
                 >
                   <CIcon icon={cilCash} />
                   Daily Balance: ₹{formatBalance(dailyCashBalance)}
@@ -1081,6 +1084,7 @@ const POS = () => {
                 onClick={() => setShowCashOutModal(true)}
                 className="d-flex align-items-center gap-1"
                 disabled={cashLoading}
+                title="Remove cash from register (Ctrl + O)"
               >
                 <CIcon icon={cilMinus} size="sm" />
                 Cash Out
@@ -1094,6 +1098,7 @@ const POS = () => {
                   onClick={() => setShowBankInModal(true)}
                   className="d-flex align-items-center gap-1"
                   disabled={cashLoading}
+                  title="Add money to bank account (Ctrl + B)"
                 >
                   <CIcon icon={cilMoney} size="sm" />
                   Bank In
@@ -1106,17 +1111,23 @@ const POS = () => {
                   onClick={() => setShowBankOutModal(true)}
                   className="d-flex align-items-center gap-1"
                   disabled={cashLoading}
+                  title="Withdraw money from bank (Ctrl + Shift + B)"
                 >
                   <CIcon icon={cilMinus} size="sm" />
                   Bank Out
                 </CButton>
 
-              <CButton color="primary" onClick={fetchActiveOrders}>
+              <CButton 
+                color="primary" 
+                onClick={fetchActiveOrders}
+                title="View all active orders (Ctrl + A)"
+              >
                 All Orders
               </CButton>
               <CButton
                 color="success"
                 onClick={handleMergeTablesClick}
+                title="Merge multiple tables together (Ctrl + M)"
               >
                 Merge Tables
               </CButton>
@@ -1248,6 +1259,10 @@ const POS = () => {
                   <CRow className="justify-content-center justify-content-md-start">
                     {availableFloorTables.map((qr, index) => {
                       const floorName = getFloorNameFromQr(qr);
+                      const occupied = shouldTableBeOccupied(qr);
+                      const color = getTableOccupiedColor(qr);
+                      const finalBgColor = occupied ? (color || '#00ff00') : (theme === 'dark' ? '#6c757d' : '#ffffff');
+                      console.log(`Rendering Table ${qr.tableNumber}: occupied=${occupied}, color=${color}, finalBgColor=${finalBgColor}`);
                       return (
                         <CCol
                           key={index}
@@ -1255,20 +1270,17 @@ const POS = () => {
                           className="mb-3 mb-md-4 d-flex justify-content-center"
                         >
                           <div
-                            className={`table-card d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-2 p-md-3 w-100 ${shouldTableBeRed(qr)
-                              ? ' text-dark'
-                              : theme === 'dark'
-                                ? 'bg-secondary text-white'
-                                : 'bg-white text-dark'
-                              }`}
-
+                            className={`table-card ${occupied ? 'table-occupied' : ''} d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-2 p-md-3 w-100`}
                             onClick={() => handleQrClick(qr)}
                             tabIndex={0}
+                            data-bg-color={finalBgColor}
                             style={{
                               cursor: 'pointer',
                               width: '100%',
                               position: 'relative',
-                              backgroundColor: shouldTableBeRed(qr) ? tableOccupyColor : '',
+                              '--bg-color': finalBgColor,
+                              backgroundColor: finalBgColor,
+                              color: shouldTableBeOccupied(qr) ? '#000000' : (theme === 'dark' ? '#ffffff' : '#000000'),
                               minHeight: '8rem'
                             }}
                           >
@@ -1305,7 +1317,7 @@ const POS = () => {
           })}
 
           {/* Takeaway Section - Mobile Responsive */}
-          <div className="mb-5">
+          {/* <div className="mb-5">
             <h4 className="fw-bold mb-3 border-bottom pb-2 text-center text-md-start">Other Options</h4>
             <CRow className="justify-content-center justify-content-md-start">
               <CCol xs="6" sm="4" md="3" lg="2" xl="2" className="mb-3 mb-md-4 d-flex justify-content-center">
@@ -1325,7 +1337,7 @@ const POS = () => {
                 </div>
               </CCol>
             </CRow>
-          </div>
+          </div> */}
         </>
       )}
 
@@ -1838,6 +1850,19 @@ const POS = () => {
             <CModalTitle>Keyboard Shortcuts</CModalTitle>
           </CModalHeader>
           <CModalBody>
+            <h6>Table Selection Page Shortcuts:</h6>
+            <ul>
+              <li><strong>Ctrl + H</strong>: Show Help</li>
+              <li><strong>Ctrl + I</strong>: Cash In</li>
+              <li><strong>Ctrl + O</strong>: Cash Out</li>
+              <li><strong>Ctrl + B</strong>: Bank In</li>
+              <li><strong>Ctrl + Shift + B</strong>: Bank Out</li>
+              <li><strong>Ctrl + M</strong>: Merge Tables</li>
+              <li><strong>Ctrl + A</strong>: All Orders</li>
+              <li><strong>Arrow Up/Down</strong>: Navigate Tables</li>
+              <li><strong>Enter</strong>: Open Selected Table</li>
+            </ul>
+            <h6 className="mt-3">Inside Table Page Shortcuts:</h6>
             <ul>
               <li><strong>Ctrl + K</strong>: Generate KOT</li>
               <li><strong>Ctrl + B</strong>: Generate Invoice</li>
@@ -1846,10 +1871,10 @@ const POS = () => {
               <li><strong>Ctrl + D</strong>: Open Discount Modal</li>
               <li><strong>Ctrl + C</strong>: Open Customer Modal</li>
               <li><strong>Ctrl + X</strong>: Clear Cart</li>
-              <li><strong>Ctrl + H</strong>: Show Help</li>
+              <li><strong>Ctrl + Shift + R</strong>: Open Round Off Modal</li>
+              <li><strong>Arrow Left/Right</strong>: Navigate Categories</li>
               <li><strong>Arrow Up/Down</strong>: Navigate Products</li>
               <li><strong>Enter</strong>: Add Product to Cart</li>
-              <li><strong>Arrow Left/Right</strong>: Navigate Categories</li>
             </ul>
           </CModalBody>
           <CModalFooter>

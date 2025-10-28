@@ -766,8 +766,9 @@ const POSTableContent = () => {
       toast.success(`${type === 'percentage' ? 'Percentage' : 'Fixed'} discount applied to ${ids.length} item(s)!`);
     }
 
-    // if (discounts.coupon && discounts.coupon.value) {
-    //   const { value, type, maxDiscountAmount } = discounts.coupon;
+    // Handle coupon discount
+    if (discounts.coupon && discounts.coupon.value) {
+      const { value, type, maxDiscountAmount } = discounts.coupon;
       
       // Store coupon data for max discount checks in calculateDiscountAmount
       setAppliedCoupon({
@@ -778,17 +779,8 @@ const POSTableContent = () => {
         code: discounts.coupon.code
       });
       
-      // Set the base discount percentage (max discount will be handled in calculateDiscountAmount)
-    //   if (type === 'percentage') {
-    //     setDiscount(value);
-    //     toast.success(`Coupon discount of ${value}% applied to entire order!`);
-    //   } else if (type === 'fixed') {
-    //     const subtotal = calculateSubtotal();
-    //     const percentageEquivalent = (value / subtotal) * 100;
-    //     setDiscount(percentageEquivalent);
-    //     toast.success(`Fixed coupon discount of ₹${value} applied!`);
-    //   }
-    // }
+      toast.success(`Coupon discount applied: ${type === 'percentage' ? `${value}%` : `₹${value}`}`);
+    }
 
     if (discounts.rewardPoints && discounts.rewardPoints.enabled) {
       const { pointsUsed, discountAmount } = discounts.rewardPoints;
@@ -1060,7 +1052,7 @@ const POSTableContent = () => {
     dispatch(addCustomer(customerData))
       .unwrap()
       .then((response) => {
-        setSelectedCustomerName(response.customer.name);
+        setSelectedCustomerName(response.name);
         setShowCustomerModal(false);
       })
       .catch((error) => {
@@ -1149,11 +1141,14 @@ const POSTableContent = () => {
         })).unwrap();
 
         // 3. Deduct reward points if customer used them
-        if (appliedDiscounts?.rewardPoints?.pointsUsed > 0) {
+        console.log('🔍 Checking reward points for deduction:', appliedDiscounts);
+        if (appliedDiscounts?.rewardPoints?.pointsUsed && appliedDiscounts.rewardPoints.pointsUsed > 0) {
+          console.log('💳 Deducting reward points:', appliedDiscounts.rewardPoints.pointsUsed);
           await dispatch(deductRewardPoints({
             customerId: _id,
             pointsToDeduct: appliedDiscounts.rewardPoints.pointsUsed
           })).unwrap();
+          toast.success(`Reward points deducted successfully!`, { autoClose: 3000 });
 
         }
 
@@ -1783,20 +1778,22 @@ const POSTableContent = () => {
         clearCart(); // Ctrl + X: Clear Cart
       }
 
-      // Product navigation
-      const products = document.querySelectorAll('.product-item');
+      // Product navigation - Use correct class name
+      const products = document.querySelectorAll('.product-card');
       const currentFocused = document.activeElement;
       let index = Array.from(products).indexOf(currentFocused);
 
-      if (e.key === 'ArrowDown') {
+      if (products.length === 0) return; // Safety check
+
+      if (e.key === 'ArrowDown' && index >= 0) {
         index = index < products.length - 1 ? index + 1 : 0;
-        products[index].focus();
+        products[index]?.focus();
       }
-      if (e.key === 'ArrowUp') {
+      if (e.key === 'ArrowUp' && index >= 0) {
         index = index > 0 ? index - 1 : products.length - 1;
-        products[index].focus();
+        products[index]?.focus();
       }
-      if (e.key === 'Enter' && currentFocused.classList.contains('product-item')) {
+      if (e.key === 'Enter' && currentFocused.classList.contains('product-card')) {
         const productId = currentFocused.dataset.id;
         const product = filteredMenuItems.find(p => p._id === productId);
         if (product) handleMenuItemClick(product);
@@ -1909,6 +1906,46 @@ const POSTableContent = () => {
     preventDefault: true,
     enable: () => productListRef.current?.contains(document.activeElement)
   });
+
+  // Focus management: Switch between ProductList and Cart sections
+  useHotkeys('arrowleft', (e) => {
+    // Left Arrow: Move to ProductList
+    const searchInput = document.querySelector('input[placeholder*="Search menu"]');
+    if (searchInput && cartRef.current?.contains(document.activeElement)) {
+      e.preventDefault();
+      searchInput.focus();
+    }
+  }, { preventDefault: true });
+
+  useHotkeys('arrowright', (e) => {
+    // Right Arrow: Move from ProductList to Cart
+    const searchInput = document.querySelector('input[placeholder*="Search menu"]');
+    const isInProductList = searchInput && (searchInput === document.activeElement || productListRef.current?.contains(document.activeElement));
+    
+    if (isInProductList && !cartRef.current?.contains(document.activeElement)) {
+      e.preventDefault();
+      // Focus first cart item or customer select button
+      const cartItem = document.querySelector('.cart-item');
+      if (cartItem) {
+        cartItem.focus();
+      } else {
+        // If no cart items, focus on customer select button
+        const customerButton = document.querySelector('[title*="Press \'C\' to select customer"]');
+        if (customerButton) {
+          customerButton.focus();
+        }
+      }
+    }
+  }, { preventDefault: true });
+
+  // Auto-focus on Categories when component mounts (as per requirement)
+  useEffect(() => {
+    const categoryButtons = document.querySelectorAll('.category-button');
+    if (categoryButtons.length > 0) {
+      categoryButtons[0].focus();
+    }
+  }, [categories]);
+
   return (
     <CContainer fluid className="p-3" style={{ backgroundColor: '#f0f2f5' }}>
       <CRow>
@@ -1977,8 +2014,29 @@ const POSTableContent = () => {
               variant="outline"
               size="lg"
               onClick={clearCart}
-              className="btn-mobile-responsive"
+              className="btn-mobile-responsive footer-button"
               style={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  clearCart();
+                } else if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  const buttons = document.querySelectorAll('.footer-button');
+                  const currentIndex = Array.from(buttons).indexOf(e.currentTarget);
+                  if (currentIndex > 0) {
+                    buttons[currentIndex - 1]?.focus();
+                  }
+                } else if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  const buttons = document.querySelectorAll('.footer-button');
+                  const currentIndex = Array.from(buttons).indexOf(e.currentTarget);
+                  if (currentIndex < buttons.length - 1) {
+                    buttons[currentIndex + 1]?.focus();
+                  }
+                }
+              }}
             >
               Cancel
             </CButton>
@@ -1987,8 +2045,29 @@ const POSTableContent = () => {
               variant="outline"
               size="lg"
               onClick={generateKOT}
-              className="btn-mobile-responsive"
+              className="btn-mobile-responsive footer-button"
               style={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  generateKOT();
+                } else if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  const buttons = document.querySelectorAll('.footer-button');
+                  const currentIndex = Array.from(buttons).indexOf(e.currentTarget);
+                  if (currentIndex > 0) {
+                    buttons[currentIndex - 1]?.focus();
+                  }
+                } else if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  const buttons = document.querySelectorAll('.footer-button');
+                  const currentIndex = Array.from(buttons).indexOf(e.currentTarget);
+                  if (currentIndex < buttons.length - 1) {
+                    buttons[currentIndex + 1]?.focus();
+                  }
+                }
+              }}
             >
               KOT
             </CButton>
@@ -1997,8 +2076,29 @@ const POSTableContent = () => {
               variant="outline"
               size="lg"
               onClick={generateInvoice}
-              className="btn-mobile-responsive"
+              className="btn-mobile-responsive footer-button"
               style={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  generateInvoice();
+                } else if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  const buttons = document.querySelectorAll('.footer-button');
+                  const currentIndex = Array.from(buttons).indexOf(e.currentTarget);
+                  if (currentIndex > 0) {
+                    buttons[currentIndex - 1]?.focus();
+                  }
+                } else if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  const buttons = document.querySelectorAll('.footer-button');
+                  const currentIndex = Array.from(buttons).indexOf(e.currentTarget);
+                  if (currentIndex < buttons.length - 1) {
+                    buttons[currentIndex + 1]?.focus();
+                  }
+                }
+              }}
             >
               Bill
             </CButton>
@@ -2006,8 +2106,29 @@ const POSTableContent = () => {
               color="success"
               size="lg"
               onClick={() => setShowPaymentModal(true)}
-              className="btn-mobile-responsive"
+              className="btn-mobile-responsive footer-button"
               style={{ minWidth: 'fit-content', whiteSpace: 'nowrap' }}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setShowPaymentModal(true);
+                } else if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  const buttons = document.querySelectorAll('.footer-button');
+                  const currentIndex = Array.from(buttons).indexOf(e.currentTarget);
+                  if (currentIndex > 0) {
+                    buttons[currentIndex - 1]?.focus();
+                  }
+                } else if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  const buttons = document.querySelectorAll('.footer-button');
+                  const currentIndex = Array.from(buttons).indexOf(e.currentTarget);
+                  if (currentIndex < buttons.length - 1) {
+                    buttons[currentIndex + 1]?.focus();
+                  }
+                }
+              }}
             >
               Pay Now
             </CButton>
@@ -2166,8 +2287,8 @@ const POSTableContent = () => {
           </CModalHeader>
           <CModalBody>
             <ul>
-              <li><strong>Ctrl + Shift + K</strong>: Generate KOT</li>
-              <li><strong>Ctrl + Shift + B</strong>: Generate Invoice</li>
+              <li><strong>Ctrl + K</strong>: Generate KOT</li>
+              <li><strong>Ctrl + B</strong>: Generate Invoice</li>
               <li><strong>Ctrl + P</strong>: Open Payment Modal</li>
               <li><strong>Ctrl + T</strong>: Open Tax Modal</li>
               <li><strong>Ctrl + D</strong>: Open Discount Modal</li>
@@ -2175,9 +2296,13 @@ const POSTableContent = () => {
               <li><strong>Ctrl + X</strong>: Clear Cart</li>
               <li><strong>Ctrl + H</strong>: Show Help</li>
               <li><strong>Ctrl + Shift + R</strong>: Open Round Off Modal</li>
-              <li><strong>Arrow Left/Right</strong>: Navigate Categories</li>
-              <li><strong>Arrow Up/Down</strong>: Navigate Products</li>
-              <li><strong>Enter</strong>: Add Product to Cart</li>
+              <li><strong>Search Bar</strong>: ←/→ Switch • ↓ Categories</li>
+              <li><strong>Categories</strong>: ←/→ Navigate • ↑ Search • ↓ Products</li>
+              <li><strong>Products</strong>: ↑ Categories • ←/→/↓ Navigate Rows • Enter Add</li>
+              <li><strong>Cart Items</strong>: ↑/↓ Navigate • ←/→ Adjust Qty • +/- Adjust Qty • Del Remove</li>
+              <li><strong>Section Switch</strong>: ← ProductList • → Cart</li>
+              <li><strong>Cart Buttons</strong>: ←/→ Navigate • T Tax • D Discount • R Round • C Customer</li>
+              <li><strong>Footer Buttons</strong>: ←/→ Navigate • Enter Activate</li>
             </ul>
           </CModalBody>
           <CModalFooter>

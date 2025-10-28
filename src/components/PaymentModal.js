@@ -11,13 +11,13 @@ import {
   CFormInput,
 } from "@coreui/react";
 
-const PaymentModal = ({
+const PaymentModal = React.forwardRef(({
   showPaymentModal,
   setShowPaymentModal,
   paymentType,
   setPaymentType,
   handlePaymentSubmit
-}) => {
+}, ref) => {
   const [showSplitModal, setShowSplitModal] = useState(false);
   const [numPeople, setNumPeople] = useState(2);
 
@@ -101,6 +101,8 @@ const PaymentModal = ({
       </CModal>
     </>
   );
-};
+});
+
+PaymentModal.displayName = 'PaymentModal';
 
 export default PaymentModal;

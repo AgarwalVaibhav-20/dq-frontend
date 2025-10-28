@@ -13,7 +13,7 @@ import {
 } from '@coreui/react';
 import { useSelector } from 'react-redux';
 import { useHotkeys } from 'react-hotkeys-hook';
-const RoundOffAmountModal = ({
+const RoundOffAmountModal = React.forwardRef(({
   showRoundOffModal,
   setShowRoundOffModal,
   inputValue,
@@ -25,7 +25,7 @@ const RoundOffAmountModal = ({
   tax = 0,
   discount = 0,
   cart = []
-}) => {
+}, ref) => {
   const decrementBtnRef = useRef(null);
   const incrementBtnRef = useRef(null);
   const manualInputRef = useRef(null);
@@ -346,6 +346,8 @@ const RoundOffAmountModal = ({
       </CModalFooter>
     </CModal>
   );
-};
+});
+
+RoundOffAmountModal.displayName = 'RoundOffAmountModal';
 
 export default RoundOffAmountModal;

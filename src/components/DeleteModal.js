@@ -1,7 +1,7 @@
 import React from 'react';
 import { CModal, CModalHeader, CModalTitle, CModalBody, CModalFooter, CButton } from '@coreui/react';
 
-const DeleteModal = ({ showDeleteModal, cancelDelete, confirmDelete }) => {
+const DeleteModal = React.forwardRef(({ showDeleteModal, cancelDelete, confirmDelete }, ref) => {
   return (
     <CModal visible={showDeleteModal} onClose={cancelDelete}>
       <CModalHeader>
@@ -18,6 +18,8 @@ const DeleteModal = ({ showDeleteModal, cancelDelete, confirmDelete }) => {
       </CModalFooter>
     </CModal>
   );
-};
+});
+
+DeleteModal.displayName = 'DeleteModal';
 
 export default DeleteModal;

@@ -16,13 +16,13 @@ import { BASE_URL } from '../utils/constants';
 // Import the thunk for deduction
 import { deductRewardPoints } from '../redux/slices/customerSlice'; 
 
-const DiscountModal = ({
+const DiscountModal = React.forwardRef(({
   showDiscountModal,
   setShowDiscountModal,
   cart = [],
   handleDiscountSubmit,
   selectedCustomer = null,
-}) => {
+}, ref) => {
   const dispatch = useDispatch();
   const { loading: customerLoading } = useSelector((state) => state.customers);
 
@@ -34,11 +34,17 @@ const DiscountModal = ({
   const [useRewardPoints, setUseRewardPoints] = useState(false);
   const [manualRewardPoints, setManualRewardPoints] = useState('');
 
-  // Use totalReward for customer's available points
-  const customerEarnedPoints = selectedCustomer ? Number(selectedCustomer.rewardCustomerPoints) || 0 : 0;
+  // Use earnedPoints for display
+  const customerEarnedPoints = selectedCustomer ? Number(selectedCustomer.earnedPoints) || 0 : 0;
+  const customerRewardCustomerPoints = selectedCustomer ? Number(selectedCustomer.rewardCustomerPoints) || 0 : 0;
   const customerAdminPoints = selectedCustomer ? Number(selectedCustomer.rewardByAdminPoints) || 0 : 0;
-  const customerTotalPoints = selectedCustomer ? Number(selectedCustomer.totalReward) || 0 : 0;
+  // Total Available = rewardCustomerPoints (current available points)
+  const customerTotalPoints = customerRewardCustomerPoints;
   const [couponError, setCouponError] = useState(''); // Error message for coupon
+  
+  // Refs for focus management
+  const modalRef = React.useRef(null);
+  const firstInputRef = React.useRef(null);
 
   useEffect(() => {
     if (showDiscountModal) {
@@ -64,6 +70,146 @@ const DiscountModal = ({
 
     return () => clearTimeout(timeoutId);
   }, [couponCode]);
+  
+  // Auto-focus on percentage button when modal opens
+  useEffect(() => {
+    if (showDiscountModal && modalRef.current) {
+      setTimeout(() => {
+        // Focus on percentage button first (default discount type)
+        const percentageBtn = modalRef.current?.querySelector('.discount-type-btn[data-type="percentage"]');
+        if (percentageBtn) {
+          percentageBtn.focus();
+        }
+      }, 100);
+    }
+  }, [showDiscountModal]);
+  
+  // Focus trapping - prevent focus from leaving modal
+  useEffect(() => {
+    if (!showDiscountModal) return;
+    
+    const isFocusInsideModal = () => {
+      if (!modalRef.current) return false;
+      const activeElement = document.activeElement;
+      return modalRef.current.contains(activeElement);
+    };
+    
+    const handleTabKey = (e) => {
+      if (e.key !== 'Tab') return;
+      
+      // Only trap if focus is inside modal
+      if (!isFocusInsideModal()) {
+        e.preventDefault();
+        const firstFocusable = modalRef.current?.querySelector(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        firstFocusable?.focus();
+        return;
+      }
+      
+      const focusableElements = modalRef.current?.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      
+      if (!focusableElements || focusableElements.length === 0) return;
+      
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      
+      if (e.shiftKey) {
+        // Shift + Tab
+        if (document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement?.focus();
+        }
+      } else {
+        // Tab
+        if (document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement?.focus();
+        }
+      }
+    };
+    
+    // Strict focus trap - ensure focus never leaves modal
+    const handleFocusTrap = (e) => {
+      if (!modalRef.current || !showDiscountModal) return;
+      
+      const activeElement = document.activeElement;
+      
+      // If focus is not inside modal, bring it back
+      if (!modalRef.current.contains(activeElement)) {
+        e.preventDefault();
+        const firstFocusable = modalRef.current?.querySelector(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        firstFocusable?.focus();
+      }
+    };
+    
+    // Prevent clicks on background and maintain focus
+    const handleClick = (e) => {
+      if (!modalRef.current?.contains(e.target)) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Keep focus inside modal
+        const firstFocusable = modalRef.current?.querySelector(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        firstFocusable?.focus();
+      }
+    };
+    
+    // Check focus on focusin event
+    const handleFocusIn = (e) => {
+      if (!modalRef.current || !showDiscountModal) return;
+      
+      // If focus moves to an element outside modal, bring it back
+      if (!modalRef.current.contains(e.target)) {
+        e.preventDefault();
+        e.stopPropagation();
+        const firstFocusable = modalRef.current?.querySelector(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        firstFocusable?.focus();
+      }
+    };
+    
+    document.addEventListener('keydown', handleTabKey);
+    document.addEventListener('mousedown', handleClick, true);
+    document.addEventListener('focusin', handleFocusIn, true);
+    
+    return () => {
+      document.removeEventListener('keydown', handleTabKey);
+      document.removeEventListener('mousedown', handleClick, true);
+      document.removeEventListener('focusin', handleFocusIn, true);
+    };
+  }, [showDiscountModal]);
+  
+  // Keyboard shortcuts - Enter to Apply, Escape to Close
+  useEffect(() => {
+    if (!showDiscountModal) return;
+    
+    const handleKeyDown = (e) => {
+      // Escape to close modal
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowDiscountModal(false);
+      }
+      // Enter to apply (if not in input field or textarea)
+      if (e.key === 'Enter' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+        const submitButton = modalRef.current?.querySelector('.apply-discount-btn');
+        if (submitButton && !submitButton.disabled) {
+          e.preventDefault();
+          // Trigger click event on the submit button
+          submitButton.click();
+        }
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showDiscountModal]);
 
   const toggleSelection = (itemId) => {
     setSelectedItemIds((prev) =>
@@ -293,9 +439,17 @@ const DiscountModal = ({
   const manualPointsEntered = Number(manualRewardPoints) || 0;
 
   return (
-    <CModal visible={showDiscountModal} onClose={() => setShowDiscountModal(false)} size="lg">
+    <CModal 
+      visible={showDiscountModal} 
+      onClose={() => setShowDiscountModal(false)} 
+      size="lg"
+      ref={modalRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="discount-modal-title"
+    >
       <CModalHeader>
-        <CModalTitle>Apply Discount / Coupon / Reward Points</CModalTitle>
+        <CModalTitle id="discount-modal-title">Apply Discount / Coupon / Reward Points</CModalTitle>
       </CModalHeader>
       <CModalBody style={{ maxHeight: '70vh', overflowY: 'auto' }}>
         {/* Manual Reward Points Section (Admin) */}
@@ -314,7 +468,9 @@ const DiscountModal = ({
               </div> */}
               <div className="col-4">
                 <small className="text-muted d-block mb-1">Total Available:</small>
-                <div className="fw-bold text-dark fs-5">{customerTotalPoints} pts</div>
+                <div className="fw-bold text-dark fs-5">
+                  {customerTotalPoints - manualPointsEntered} pts
+                </div>
               </div>
             </div>
 
@@ -389,15 +545,57 @@ const DiscountModal = ({
           <div className="btn-group w-100" role="group">
             <button
               type="button"
-              className={`btn ${discountType === 'percentage' ? 'btn-primary' : 'btn-outline-primary'}`}
+              className={`btn ${discountType === 'percentage' ? 'btn-primary' : 'btn-outline-primary'} discount-type-btn focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`}
+              data-type="percentage"
               onClick={() => setDiscountType('percentage')}
+              tabIndex={0}
+            onKeyDown={(e) => {
+              // Ensure focus stays in modal
+              if (!modalRef.current?.contains(e.target)) return;
+              
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setDiscountType('percentage');
+              } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                e.stopPropagation();
+                const fixedBtn = modalRef.current?.querySelector('.discount-type-btn[data-type="fixed"]');
+                if (fixedBtn) fixedBtn.focus();
+              } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                e.stopPropagation();
+                const input = modalRef.current?.querySelector('.discount-value-input');
+                if (input) input.focus();
+              }
+            }}
             >
               Percentage (%)
             </button>
             <button
               type="button"
-              className={`btn ${discountType === 'fixed' ? 'btn-primary' : 'btn-outline-primary'}`}
+              className={`btn ${discountType === 'fixed' ? 'btn-primary' : 'btn-outline-primary'} discount-type-btn focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`}
+              data-type="fixed"
               onClick={() => setDiscountType('fixed')}
+              tabIndex={0}
+            onKeyDown={(e) => {
+              // Ensure focus stays in modal
+              if (!modalRef.current?.contains(e.target)) return;
+              
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setDiscountType('fixed');
+              } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                e.stopPropagation();
+                const percentageBtn = modalRef.current?.querySelector('.discount-type-btn[data-type="percentage"]');
+                if (percentageBtn) percentageBtn.focus();
+              } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                e.stopPropagation();
+                const input = modalRef.current?.querySelector('.discount-value-input');
+                if (input) input.focus();
+              }
+            }}
             >
               Fixed (₹)
             </button>
@@ -414,6 +612,22 @@ const DiscountModal = ({
             placeholder={discountType === 'percentage' ? '10 (for 10%)' : '100 (for ₹100 off)'}
             value={discountValue}
             onChange={(e) => setDiscountValue(e.target.value)}
+            ref={firstInputRef}
+            className="discount-value-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (!modalRef.current?.contains(e.target)) return;
+              
+              if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                e.stopPropagation();
+                modalRef.current?.querySelector('.discount-type-btn')?.focus();
+              } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                e.stopPropagation();
+                modalRef.current?.querySelector('.coupon-code-input')?.focus();
+              }
+            }}
           />
         </div>
 
@@ -423,15 +637,55 @@ const DiscountModal = ({
           <div className="d-flex">
             <CFormInput
               type="text"
+              className="coupon-code-input"
               placeholder="Enter coupon code (e.g., BQHWM70)"
               value={couponCode}
               onChange={(e) => setCouponCode(e.target.value)}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (!modalRef.current?.contains(e.target)) return;
+                
+                if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  modalRef.current?.querySelector('.apply-coupon-btn')?.focus();
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  modalRef.current?.querySelector('.discount-value-input')?.focus();
+                } else if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  modalRef.current?.querySelector('.select-all-discount-btn')?.focus();
+                }
+              }}
             />
             <CButton
               color="success"
-              className="ms-2"
+              className="ms-2 apply-coupon-btn"
               onClick={handleApplyCoupon}
               disabled={!couponCode.trim()}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (!modalRef.current?.contains(e.target)) return;
+                
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleApplyCoupon();
+                } else if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  modalRef.current?.querySelector('.coupon-code-input')?.focus();
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  modalRef.current?.querySelector('.discount-value-input')?.focus();
+                } else if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  modalRef.current?.querySelector('.select-all-discount-btn')?.focus();
+                }
+              }}
             >
               Apply
             </CButton>
@@ -571,12 +825,30 @@ const DiscountModal = ({
               <CButton
                 size="sm"
                 color="secondary"
-                className="mb-2"
+                className="mb-2 select-all-discount-btn"
                 onClick={selectAll}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (!modalRef.current?.contains(e.target)) return;
+                  
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    selectAll();
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    modalRef.current?.querySelector('.apply-coupon-btn')?.focus();
+                  } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const firstCheckbox = modalRef.current?.querySelector('.item-discount-checkbox');
+                    if (firstCheckbox) firstCheckbox.focus();
+                  }
+                }}
               >
                 {selectedItemIds.length === validCart.length ? 'Deselect All' : 'Select All'}
               </CButton>
-              {validCart.map((item) => {
+              {validCart.map((item, index) => {
                 const itemRewardPoints = Number(item.rewardPoints) || 0;
                 return (
                   <div key={item.id} className="d-flex align-items-center border p-2 mb-2 rounded">
@@ -584,7 +856,34 @@ const DiscountModal = ({
                       type="checkbox"
                       checked={selectedItemIds.includes(item.id)}
                       onChange={() => toggleSelection(item.id)}
-                      className="me-2"
+                      className="me-2 item-discount-checkbox"
+                      tabIndex={0}
+                      onKeyDown={(e) => {
+                        if (!modalRef.current?.contains(e.target)) return;
+                        
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          toggleSelection(item.id);
+                        } else if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          if (index === 0) {
+                            modalRef.current?.querySelector('.select-all-discount-btn')?.focus();
+                          } else {
+                            const checkboxes = modalRef.current?.querySelectorAll('.item-discount-checkbox');
+                            if (checkboxes[index - 1]) checkboxes[index - 1].focus();
+                          }
+                        } else if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const checkboxes = modalRef.current?.querySelectorAll('.item-discount-checkbox');
+                          if (checkboxes[index + 1]) {
+                            checkboxes[index + 1].focus();
+                          } else {
+                            modalRef.current?.querySelector('.cancel-discount-btn')?.focus();
+                          }
+                        }
+                      }}
                     />
                     <div className="flex-grow-1">
                       <div className="d-flex justify-content-between align-items-start">
@@ -628,12 +927,50 @@ const DiscountModal = ({
         )}
       </CModalBody>
       <CModalFooter>
-        <CButton color="secondary" onClick={() => setShowDiscountModal(false)}>
+        <CButton 
+          color="secondary" 
+          className="cancel-discount-btn"
+          onClick={() => setShowDiscountModal(false)}
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (!modalRef.current?.contains(e.target)) return;
+            
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              setShowDiscountModal(false);
+            } else if (e.key === 'ArrowRight') {
+              e.preventDefault();
+              e.stopPropagation();
+              modalRef.current?.querySelector('.apply-discount-btn')?.focus();
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              e.stopPropagation();
+              const checkboxes = modalRef.current?.querySelectorAll('.item-discount-checkbox');
+              if (checkboxes.length > 0) {
+                checkboxes[checkboxes.length - 1].focus();
+              }
+            }
+          }}
+        >
           Cancel
         </CButton>
         <CButton
           color="primary"
+          className="apply-discount-btn focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           onClick={onSubmit}
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (!modalRef.current?.contains(e.target)) return;
+            
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onSubmit();
+            } else if (e.key === 'ArrowLeft') {
+              e.preventDefault();
+              e.stopPropagation();
+              modalRef.current?.querySelector('.cancel-discount-btn')?.focus();
+            }
+          }}
           disabled={
             customerLoading ||  // Existing: customer loading
             // *** NEW: Include thunk loading for deduction
@@ -647,7 +984,9 @@ const DiscountModal = ({
       </CModalFooter>
     </CModal>
   );
-};
+});
+
+DiscountModal.displayName = 'DiscountModal';
 
 export default DiscountModal;
 

@@ -1,0 +1,5 @@
+/* Maximum specificity to override global CSS */
+html body div.container .table-card.table-occupied {
+  background-color: var(--bg-color) !important;
+}
+

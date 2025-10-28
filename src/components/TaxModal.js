@@ -14,12 +14,12 @@ import {
 } from '@coreui/react';
 import axiosInstance from '../utils/axiosConfig';
 
-const TaxModal = ({
+const TaxModal = React.forwardRef(({
   showTaxModal,
   setShowTaxModal,
   cart = [],
   handleTaxSubmit,
-}) => {
+}, ref) => {
   const [selectedItemIds, setSelectedItemIds] = useState([]);
   const [selectedTax, setSelectedTax] = useState(null);
   const [taxes, setTaxes] = useState([]);
@@ -27,12 +27,155 @@ const TaxModal = ({
   const [error, setError] = useState('');
   const [taxValue, setTaxValue] = useState('');
   const [taxType, setTaxType] = useState('percentage'); // 'percentage' or 'fixed'
+  
+  // Refs for focus management
+  const modalRef = React.useRef(null);
+  const firstInputRef = React.useRef(null);
 
   // Fetch taxes from database when modal opens
   useEffect(() => {
     if (showTaxModal) {
       fetchTaxes();
     }
+  }, [showTaxModal]);
+  
+  // Auto-focus on percentage tax button when modal opens
+  useEffect(() => {
+    if (showTaxModal && modalRef.current) {
+      setTimeout(() => {
+        // Focus on percentage tax button first (default tax type)
+        const percentageBtn = modalRef.current?.querySelector('.tax-type-btn[data-type="percentage"]');
+        if (percentageBtn) {
+          percentageBtn.focus();
+        }
+      }, 100);
+    }
+  }, [showTaxModal]);
+  
+  // Focus trapping - prevent focus from leaving modal
+  useEffect(() => {
+    if (!showTaxModal) return;
+    
+    const isFocusInsideModal = () => {
+      if (!modalRef.current) return false;
+      const activeElement = document.activeElement;
+      return modalRef.current.contains(activeElement);
+    };
+    
+    const handleTabKey = (e) => {
+      if (e.key !== 'Tab') return;
+      
+      // Only trap if focus is inside modal
+      if (!isFocusInsideModal()) {
+        e.preventDefault();
+        const firstFocusable = modalRef.current?.querySelector(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        firstFocusable?.focus();
+        return;
+      }
+      
+      const focusableElements = modalRef.current?.querySelectorAll(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+      
+      if (!focusableElements || focusableElements.length === 0) return;
+      
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      
+      if (e.shiftKey) {
+        // Shift + Tab
+        if (document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement?.focus();
+        }
+      } else {
+        // Tab
+        if (document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement?.focus();
+        }
+      }
+    };
+    
+    // Strict focus trap - ensure focus never leaves modal
+    const handleFocusTrap = (e) => {
+      if (!modalRef.current || !showTaxModal) return;
+      
+      const activeElement = document.activeElement;
+      
+      // If focus is not inside modal, bring it back
+      if (!modalRef.current.contains(activeElement)) {
+        e.preventDefault();
+        const firstFocusable = modalRef.current?.querySelector(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        firstFocusable?.focus();
+      }
+    };
+    
+    // Prevent clicks on background and maintain focus
+    const handleClick = (e) => {
+      if (!modalRef.current?.contains(e.target)) {
+        e.preventDefault();
+        e.stopPropagation();
+        // Keep focus inside modal
+        const firstFocusable = modalRef.current?.querySelector(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        firstFocusable?.focus();
+      }
+    };
+    
+    // Check focus on focusin event
+    const handleFocusIn = (e) => {
+      if (!modalRef.current || !showTaxModal) return;
+      
+      // If focus moves to an element outside modal, bring it back
+      if (!modalRef.current.contains(e.target)) {
+        e.preventDefault();
+        e.stopPropagation();
+        const firstFocusable = modalRef.current?.querySelector(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        );
+        firstFocusable?.focus();
+      }
+    };
+    
+    document.addEventListener('keydown', handleTabKey);
+    document.addEventListener('mousedown', handleClick, true);
+    document.addEventListener('focusin', handleFocusIn, true);
+    
+    return () => {
+      document.removeEventListener('keydown', handleTabKey);
+      document.removeEventListener('mousedown', handleClick, true);
+      document.removeEventListener('focusin', handleFocusIn, true);
+    };
+  }, [showTaxModal]);
+  
+  // Keyboard shortcuts - Enter to Apply, Escape to Close
+  useEffect(() => {
+    if (!showTaxModal) return;
+    
+    const handleKeyDown = (e) => {
+      // Escape to close modal
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        handleClose();
+      }
+      // Enter to apply (if not in input field or textarea)
+      if (e.key === 'Enter' && !(e.target instanceof HTMLInputElement) && !(e.target instanceof HTMLTextAreaElement)) {
+        const submitButton = modalRef.current?.querySelector('.apply-tax-btn');
+        if (submitButton && !submitButton.disabled) {
+          e.preventDefault();
+          submitButton.click();
+        }
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
   }, [showTaxModal]);
 
   const fetchTaxes = async () => {
@@ -173,9 +316,17 @@ const TaxModal = ({
   };
 
   return (
-    <CModal visible={showTaxModal} onClose={handleClose} size="lg">
+    <CModal 
+      visible={showTaxModal} 
+      onClose={handleClose} 
+      size="lg"
+      ref={modalRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="tax-modal-title"
+    >
       <CModalHeader>
-        <CModalTitle>Apply Tax to Items</CModalTitle>
+        <CModalTitle id="tax-modal-title">Apply Tax to Items</CModalTitle>
       </CModalHeader>
       <CModalBody style={{ maxHeight: '70vh', overflowY: 'auto' }}>
         
@@ -221,17 +372,57 @@ const TaxModal = ({
           <div className="btn-group w-100" role="group">
             <button
               type="button"
-              className={`btn ${taxType === 'percentage' ? 'btn-primary' : 'btn-outline-primary'}`}
+              className={`btn ${taxType === 'percentage' ? 'btn-primary' : 'btn-outline-primary'} tax-type-btn focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`}
+              data-type="percentage"
               onClick={() => handleTaxTypeChange('percentage')}
               disabled={selectedTax ? true : false}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (!modalRef.current?.contains(e.target)) return;
+                
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleTaxTypeChange('percentage');
+                } else if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const fixedBtn = modalRef.current?.querySelector('.tax-type-btn[data-type="fixed"]');
+                  if (fixedBtn) fixedBtn.focus();
+                } else if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const input = modalRef.current?.querySelector('.tax-value-input');
+                  if (input) input.focus();
+                }
+              }}
             >
               Percentage Tax (%)
             </button>
             <button
               type="button"
-              className={`btn ${taxType === 'fixed' ? 'btn-primary' : 'btn-outline-primary'}`}
+              className={`btn ${taxType === 'fixed' ? 'btn-primary' : 'btn-outline-primary'} tax-type-btn focus:ring-2 focus:ring-blue-500 focus:ring-offset-2`}
+              data-type="fixed"
               onClick={() => handleTaxTypeChange('fixed')}
               disabled={selectedTax ? true : false}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (!modalRef.current?.contains(e.target)) return;
+                
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleTaxTypeChange('fixed');
+                } else if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const percentageBtn = modalRef.current?.querySelector('.tax-type-btn[data-type="percentage"]');
+                  if (percentageBtn) percentageBtn.focus();
+                } else if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const input = modalRef.current?.querySelector('.tax-value-input');
+                  if (input) input.focus();
+                }
+              }}
             >
               Fixed Amount Tax (₹)
             </button>
@@ -263,8 +454,23 @@ const TaxModal = ({
             onChange={(e) => setTaxValue(e.target.value)}
             step={taxType === 'percentage' ? '0.01' : '1'}
             min="0"
-            className="form-control-lg"
+            className="form-control-lg tax-value-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            ref={firstInputRef}
             disabled={selectedTax ? true : false}
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (!modalRef.current?.contains(e.target)) return;
+              
+              if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                e.stopPropagation();
+                modalRef.current?.querySelector('.tax-type-btn')?.focus();
+              } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                e.stopPropagation();
+                modalRef.current?.querySelector('.select-all-tax-btn')?.focus();
+              }
+            }}
           />
           <small className="text-muted mt-1">
             {taxType === 'percentage'
@@ -289,7 +495,26 @@ const TaxModal = ({
                 size="sm" 
                 variant="outline" 
                 color="primary"
+                className="select-all-tax-btn"
                 onClick={selectAll}
+                tabIndex={0}
+                onKeyDown={(e) => {
+                  if (!modalRef.current?.contains(e.target)) return;
+                  
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    selectAll();
+                  } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    modalRef.current?.querySelector('.tax-value-input')?.focus();
+                  } else if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const firstCheckbox = modalRef.current?.querySelector('.item-tax-checkbox');
+                    if (firstCheckbox) firstCheckbox.focus();
+                  }
+                }}
               >
                 {selectedItemIds.length === cart.length ? 'Deselect All' : 'Select All'}
               </CButton>
@@ -302,7 +527,7 @@ const TaxModal = ({
             </div>
           ) : (
             <div className="item-list">
-              {cart.map((item) => {
+              {cart.map((item, index) => {
                 const itemSubtotal = item.adjustedPrice * item.quantity;
                 const hasCurrentTax = (item.taxPercentage > 0) || (item.fixedTaxAmount > 0) || (item.taxAmount > 0);
                 const isSelected = selectedItemIds.includes(item.id);
@@ -317,7 +542,34 @@ const TaxModal = ({
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => toggleSelection(item.id)}
-                        className="me-3 mt-1"
+                        className="me-3 mt-1 item-tax-checkbox"
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (!modalRef.current?.contains(e.target)) return;
+                          
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            toggleSelection(item.id);
+                          } else if (e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            if (index === 0) {
+                              modalRef.current?.querySelector('.select-all-tax-btn')?.focus();
+                            } else {
+                              const checkboxes = modalRef.current?.querySelectorAll('.item-tax-checkbox');
+                              if (checkboxes[index - 1]) checkboxes[index - 1].focus();
+                            }
+                          } else if (e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            const checkboxes = modalRef.current?.querySelectorAll('.item-tax-checkbox');
+                            if (checkboxes[index + 1]) {
+                              checkboxes[index + 1].focus();
+                            } else {
+                              modalRef.current?.querySelector('.cancel-tax-btn')?.focus();
+                            }
+                          }
+                        }}
                       />
                       <div className="flex-grow-1">
                         <div className="fw-semibold text-dark">{item.itemName}</div>
@@ -380,22 +632,62 @@ const TaxModal = ({
 
       </CModalBody>
       <CModalFooter>
-        <CButton color="secondary" onClick={handleClose}>
+        <CButton 
+          color="secondary" 
+          className="cancel-tax-btn"
+          onClick={handleClose}
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (!modalRef.current?.contains(e.target)) return;
+            
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleClose();
+            } else if (e.key === 'ArrowRight') {
+              e.preventDefault();
+              e.stopPropagation();
+              modalRef.current?.querySelector('.apply-tax-btn')?.focus();
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              e.stopPropagation();
+              const checkboxes = modalRef.current?.querySelectorAll('.item-tax-checkbox');
+              if (checkboxes.length > 0) {
+                checkboxes[checkboxes.length - 1].focus();
+              }
+            }
+          }}
+        >
           Cancel
         </CButton>
         <CButton
           color="primary"
+          className="apply-tax-btn focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
           onClick={onSubmit}
           disabled={
             selectedItemIds.length === 0 || 
             (!selectedTax && (!taxValue || Number(taxValue) <= 0))
           }
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (!modalRef.current?.contains(e.target)) return;
+            
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              onSubmit();
+            } else if (e.key === 'ArrowLeft') {
+              e.preventDefault();
+              e.stopPropagation();
+              modalRef.current?.querySelector('.cancel-tax-btn')?.focus();
+            }
+          }}
         >
           Apply {selectedTax ? selectedTax.taxName : `${taxType === 'percentage' ? 'Percentage' : 'Fixed'} Tax`}
         </CButton>
       </CModalFooter>
     </CModal>
   );
-};
+});
+
+TaxModal.displayName = 'TaxModal';
 
 export default TaxModal;

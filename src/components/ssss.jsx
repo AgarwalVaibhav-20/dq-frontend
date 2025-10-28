@@ -1,1 +1,0 @@
-teru bhebewbd cw wkhbwcw

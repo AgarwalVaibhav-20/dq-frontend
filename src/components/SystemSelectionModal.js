@@ -13,12 +13,12 @@ import {
 import axios from 'axios'
 import { BASE_URL } from '../utils/constants'
 
-const SystemSelectionModal = ({
+const SystemSelectionModal = React.forwardRef(({
   showSystemModal,
   setShowSystemModal,
   onSystemSelect,
   selectedSystem,
-}) => {
+}, ref) => {
   const [systems, setSystems] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
@@ -150,6 +150,8 @@ const SystemSelectionModal = ({
       </CModalFooter>
     </CModal>
   )
-}
+})
+
+SystemSelectionModal.displayName = 'SystemSelectionModal'
 
 export default SystemSelectionModal

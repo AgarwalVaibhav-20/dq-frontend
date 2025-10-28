@@ -1,6 +1,6 @@
 import React from "react";
 
-const KOTModal = ({ isVisible, onClose, children }) => {
+const KOTModal = React.forwardRef(({ isVisible, onClose, children }, ref) => {
   if (!isVisible) return null;
 
   return (
@@ -48,6 +48,8 @@ const KOTModal = ({ isVisible, onClose, children }) => {
       </div>
     </div>
   );
-};
+});
+
+KOTModal.displayName = 'KOTModal';
 
 export default KOTModal;

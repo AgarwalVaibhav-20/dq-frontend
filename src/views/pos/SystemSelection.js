@@ -62,8 +62,10 @@ const SystemSelection = () => {
           systemName: setting.systemName,
           chargeOfSystem: parseInt(setting.chargeOfSystem) || 0,
           willOccupy: setting.willOccupy,
-          color:setting.color
+          color: setting.color
         }))
+        
+        console.log('Transformed systems with colors:', transformedSystems)
         
         setSystems(transformedSystems)
         // Auto-select if only one system
@@ -91,8 +93,10 @@ const SystemSelection = () => {
 
   const handleProceed = () => {
     if (selectedSystem) {
+      console.log('Saving system to localStorage for table', tableNumber, ':', selectedSystem)
       // Save selected system to localStorage
       localStorage.setItem(`selectedSystem_${tableNumber}`, JSON.stringify(selectedSystem))
+      console.log('System saved successfully. Color:', selectedSystem.color, 'WillOccupy:', selectedSystem.willOccupy)
       // Navigate to the table-specific POS page with system context
       navigate(`/pos/system/tableNumber/${tableNumber}`)
     }

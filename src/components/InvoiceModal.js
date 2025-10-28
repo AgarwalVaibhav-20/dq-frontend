@@ -1,6 +1,6 @@
 import React from "react";
 
-const InvoiceModal = ({ isVisible, onClose, children }) => {
+const InvoiceModal = React.forwardRef(({ isVisible, onClose, children }, ref) => {
   if (!isVisible) return null;
 
   return (
@@ -55,6 +55,8 @@ const InvoiceModal = ({ isVisible, onClose, children }) => {
       </div>
     </div>
   );
-};
+});
+
+InvoiceModal.displayName = 'InvoiceModal';
 
 export default InvoiceModal;

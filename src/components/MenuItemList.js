@@ -36,13 +36,22 @@ const MenuItemList = ({
 
   const handleToggleStatus = async (row) => {
     try {
+      const token = localStorage.getItem('authToken')
+      console.log('🔄 Toggling menu item status:', {
+        id: row._id || row.id,
+        currentStatus: row.status,
+        hasToken: !!token,
+        tokenLength: token?.length
+      })
+      
       const newStatus = row.status === 1 ? 0 : 1
       await dispatch(updateMenuItemStatus({ id: row._id || row.id, status: newStatus })).unwrap()
       const restaurantId = localStorage.getItem('restaurantId')
       if (restaurantId) await dispatch(fetchMenuItems({ restaurantId }))
       toast.success('Status updated!')
     } catch (err) {
-      toast.error('Failed to update status')
+      console.error('❌ Error in handleToggleStatus:', err)
+      toast.error(err || 'Failed to update status')
     }
   }
 

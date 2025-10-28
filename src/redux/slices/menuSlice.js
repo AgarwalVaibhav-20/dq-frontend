@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
 import { toast } from 'react-toastify';
 import { BASE_URL } from '../../utils/constants';
+import { getValidToken } from '../../utils/tokenUtils';
 
 const configureHeaders = (token) => ({
   headers: {
@@ -15,10 +16,21 @@ export const fetchMenuItems = createAsyncThunk(
   "menu/fetchMenuItems",
   async ({ restaurantId, token }, { rejectWithValue }) => {
     try {
-      console.log("🔍 fetchMenuItems called with:", { restaurantId, token: token ? "present" : "missing" });
+      // If token is not provided, get it from localStorage
+      const validToken = token || getValidToken();
+      
+      console.log("🔍 fetchMenuItems called with:", { 
+        restaurantId, 
+        hasToken: !!validToken,
+        tokenLength: validToken?.length 
+      });
+
+      if (!validToken) {
+        return rejectWithValue('No valid authentication token found. Please login again.');
+      }
 
       const headers = {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${validToken}`,
       };
 
       const url = restaurantId
@@ -253,20 +265,36 @@ export const updateMenuItemStatus = createAsyncThunk(
   'menu/updateMenuItemStatus',
   async ({ id, status }, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('authToken');
+      // Use getValidToken() which checks for token expiration
+      const token = getValidToken();
+      
+      // Check if token exists and is valid
+      if (!token) {
+        toast.error('Your session has expired. Please login again.');
+        // Clear old auth data
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userId');
+        localStorage.removeItem('restaurantId');
+        return rejectWithValue('No valid authentication token found. Please login again.');
+      }
+
       const headers = {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       };
 
-      const numericStatus = status === 'available' ? 1 : 0;
+      // Convert status to numeric (1 for available/active, 0 for unavailable/inactive)
+      const numericStatus = status === 'available' || status === 1 ? 1 : 0;
 
-      // 👇 FIX THIS ENTIRE BLOCK
+      console.log('🔄 Updating menu status:', { id, status: numericStatus });
+      
       const response = await axios.put(
         `${BASE_URL}/menus/status`,
         { id, status: numericStatus },
         { headers }
       );
+
+      console.log('✅ Menu status updated successfully:', response.data);
 
       return {
         _id: id,
@@ -274,8 +302,16 @@ export const updateMenuItemStatus = createAsyncThunk(
         data: response.data
       };
     } catch (error) {
+      console.error('❌ Error updating menu status:', error);
+      
+      // Check if it's a 403 Forbidden error
+      if (error.response?.status === 403) {
+        return rejectWithValue('Access forbidden. Your session may have expired. Please login again.');
+      }
+      
       return rejectWithValue(
         error.response?.data?.message ||
+        error.message ||
         'Failed to update menu status'
       );
     }

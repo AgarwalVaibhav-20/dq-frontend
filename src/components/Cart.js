@@ -19,7 +19,7 @@ import CIcon from '@coreui/icons-react';
 import { FocusTrap } from 'focus-trap-react';
 import { useHotkeys } from 'react-hotkeys-hook';
 
-const Cart = ({
+const Cart = React.forwardRef(({
   selectedCustomerName,
   setShowCustomerModal,
   startTime,
@@ -43,7 +43,7 @@ const Cart = ({
   onSystemChange,
   appliedDiscounts,
   setAppliedDiscounts,
-}) => {
+}, ref) => {
   const [tempDiscount, setTempDiscount] = useState(0);
   const [tempRoundOff, setTempRoundOff] = useState(roundOff || 0);
   const [localDiscountModal, setLocalDiscountModal] = useState(false);
@@ -269,24 +269,6 @@ const Cart = ({
     [cart, focusedItemIndex]
   );
 
-  // Enter for +1 quantity
-  useHotkeys(
-    'enter',
-    (e) => {
-      e.preventDefault();
-      if (focusedItemIndex >= 0 && focusedItemIndex < cart.length) {
-        const item = cart[focusedItemIndex];
-        handleQuantityChange(item.id, item.quantity + 1);
-      }
-    },
-    {
-      enableOnFormTags: false,
-      preventDefault: true,
-      enable: () => cartContainerRef.current?.contains(document.activeElement)
-    },
-    [cart, focusedItemIndex]
-  );
-
   // Single keys (T/D/R/C) - already somewhat scoped, but add enable for safety
   useHotkeys('t', () => setShowTaxModal?.(true), {
     enable: () => cartContainerRef.current?.contains(document.activeElement)
@@ -300,6 +282,53 @@ const Cart = ({
   useHotkeys('c', () => setShowCustomerModal?.(true), {
     enable: () => cartContainerRef.current?.contains(document.activeElement)
   });
+  
+  // + and - keys for quantity adjustment
+  const handleIncrement = () => {
+    // Find the currently focused cart item
+    const focusedElement = document.activeElement;
+    const cartItems = cartContainerRef.current?.querySelectorAll('.cart-item');
+    if (cartItems && cartItems.length > 0) {
+      const index = Array.from(cartItems).indexOf(focusedElement);
+      if (index >= 0 && index < cart.length) {
+        const item = cart[index];
+        handleQuantityChange(item.id, item.quantity + 1);
+      }
+    } else if (focusedItemIndex >= 0 && focusedItemIndex < cart.length) {
+      const item = cart[focusedItemIndex];
+      handleQuantityChange(item.id, item.quantity + 1);
+    }
+  };
+  
+  // + key requires Shift, and = key works with or without Shift
+  useHotkeys('shift+=,=', handleIncrement, {
+    enable: () => cart.length > 0 && cartContainerRef.current?.contains(document.activeElement)
+  });
+  
+  useHotkeys(
+    '-',
+    () => {
+      // Find the currently focused cart item
+      const focusedElement = document.activeElement;
+      const cartItems = cartContainerRef.current?.querySelectorAll('.cart-item');
+      if (cartItems && cartItems.length > 0) {
+        const index = Array.from(cartItems).indexOf(focusedElement);
+        if (index >= 0 && index < cart.length) {
+          const item = cart[index];
+          if (item.quantity > 1) {
+            handleQuantityChange(item.id, item.quantity - 1);
+          }
+        }
+      } else if (focusedItemIndex >= 0 && focusedItemIndex < cart.length) {
+        const item = cart[focusedItemIndex];
+        if (item.quantity > 1) {
+          handleQuantityChange(item.id, item.quantity - 1);
+        }
+      }
+    },
+    { enable: () => true } // Always enabled when cart exists
+  );
+  
   return (
     <>
       <CCard className="shadow-lg h-100" style={{ borderRadius: '15px' }}>
@@ -322,6 +351,13 @@ const Cart = ({
               size="sm"
               onClick={() => setShowCustomerModal(true)}
               title="Press 'C' to select customer"
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  setShowCustomerModal(true);
+                }
+              }}
             >
               <CIcon icon={cilPlus} />
             </CButton>
@@ -368,6 +404,144 @@ const Cart = ({
                     onClick={() => {
                       setFocusedItemIndex(index);
                       cartItemRefs.current[index]?.focus();
+                    }}
+                    onKeyDown={(e) => {
+                      // Clear any existing intervals
+                      const existingInterval = e.currentTarget.dataset.intervalId;
+                      if (existingInterval) {
+                        clearInterval(parseInt(existingInterval));
+                      }
+                      
+                      // Arrow Up/Down: Navigate between cart items
+                      if (e.key === 'ArrowUp') {
+                        e.preventDefault();
+                        if (index > 0) {
+                          cartItemRefs.current[index - 1]?.focus();
+                        }
+                      } else if (e.key === 'ArrowDown') {
+                        e.preventDefault();
+                        if (index < cart.length - 1) {
+                          cartItemRefs.current[index + 1]?.focus();
+                        }
+                      }
+                      // Arrow Right: Increment quantity (continuous while held)
+                      else if (e.key === 'ArrowRight') {
+                        e.preventDefault();
+                        e.repeat = true; // Allow key repeat
+                        
+                        // Trigger immediate increment
+                        handleQuantityChange(item.id, item.quantity + 1);
+                        
+                        // Set up for continuous increment while key is held
+                        const intervalId = setInterval(() => {
+                          setCart((prevCart) => {
+                            return prevCart.map((cartItem) => {
+                              const currentItemId = cartItem._id || cartItem.id;
+                              if (currentItemId === item.id) {
+                                const newQty = (cartItem.quantity || 1) + 1;
+                                const updatedItem = { ...cartItem, quantity: newQty };
+                                
+                                // Recalculate tax if applicable
+                                const itemPrice = cartItem.adjustedPrice ?? cartItem.price ?? 0;
+                                if (cartItem.taxPercentage) {
+                                  updatedItem.taxAmount = (itemPrice * newQty * cartItem.taxPercentage) / 100;
+                                }
+                                
+                                return updatedItem;
+                              }
+                              return cartItem;
+                            });
+                          });
+                        }, 150); // Repeat every 150ms
+                        
+                        // Store interval ID
+                        e.currentTarget.dataset.intervalId = intervalId;
+                        
+                        // Clear interval when key is released
+                        const handleKeyUp = (event) => {
+                          if (event.key === 'ArrowRight') {
+                            clearInterval(intervalId);
+                            window.removeEventListener('keyup', handleKeyUp);
+                            window.removeEventListener('blur', handleBlur);
+                          }
+                        };
+                        
+                        const handleBlur = () => {
+                          clearInterval(intervalId);
+                          window.removeEventListener('keyup', handleKeyUp);
+                          window.removeEventListener('blur', handleBlur);
+                        };
+                        
+                        window.addEventListener('keyup', handleKeyUp);
+                        window.addEventListener('blur', handleBlur);
+                      }
+                      // Arrow Left: Decrement quantity (continuous while held)
+                      else if (e.key === 'ArrowLeft') {
+                        e.preventDefault();
+                        e.repeat = true; // Allow key repeat
+                        
+                        // Trigger immediate decrement
+                        if (item.quantity > 1) {
+                          handleQuantityChange(item.id, item.quantity - 1);
+                          
+                          // Set up for continuous decrement while key is held
+                          const intervalId = setInterval(() => {
+                            setCart((prevCart) => {
+                              const cartItem = prevCart.find(c => (c._id || c.id) === item.id);
+                              if (cartItem && cartItem.quantity > 1) {
+                                const newQty = cartItem.quantity - 1;
+                                const updatedItem = { ...cartItem, quantity: newQty };
+                                
+                                // Recalculate tax if applicable
+                                const itemPrice = cartItem.adjustedPrice ?? cartItem.price ?? 0;
+                                if (cartItem.taxPercentage) {
+                                  updatedItem.taxAmount = (itemPrice * newQty * cartItem.taxPercentage) / 100;
+                                }
+                                
+                                return prevCart.map(c => (c._id || c.id) === item.id ? updatedItem : c);
+                              }
+                              return prevCart;
+                            });
+                          }, 150);
+                          
+                          // Store interval ID
+                          e.currentTarget.dataset.intervalId = intervalId;
+                          
+                          // Clear interval when key is released
+                          const handleKeyUp = (event) => {
+                            if (event.key === 'ArrowLeft') {
+                              clearInterval(intervalId);
+                              window.removeEventListener('keyup', handleKeyUp);
+                              window.removeEventListener('blur', handleBlur);
+                            }
+                          };
+                          
+                          const handleBlur = () => {
+                            clearInterval(intervalId);
+                            window.removeEventListener('keyup', handleKeyUp);
+                            window.removeEventListener('blur', handleBlur);
+                          };
+                          
+                          window.addEventListener('keyup', handleKeyUp);
+                          window.addEventListener('blur', handleBlur);
+                        }
+                      }
+                      // Enter: Select item
+                      else if (e.key === 'Enter') {
+                        e.preventDefault();
+                        cartItemRefs.current[index]?.focus();
+                      }
+                      // + and - keys for quantity adjustment
+                      else if (e.key === '+' || e.key === '=') {
+                        e.preventDefault();
+                        handleQuantityChange(item.id, item.quantity + 1);
+                      }
+                      else if (e.key === '-') {
+                        e.preventDefault();
+                        if (item.quantity > 1) {
+                          handleQuantityChange(item.id, item.quantity - 1);
+                        }
+                      }
                     }}
                   >
                     <div style={{ flex: '1 1 0%' }}>
@@ -528,9 +702,11 @@ const Cart = ({
 
             <hr />
 
-            <div className="alert alert-info py-2 mb-2 small">
-              <strong>Keyboard Shortcuts:</strong> ↑/↓ Navigate • ←/→ Qty • Enter +1 • Del Remove • T Tax • D Discount • R Round • C Customer
-            </div>
+            {/* <div className="alert alert-info py-2 mb-2 small">
+              <strong>Keyboard Shortcuts:</strong><br/>
+              <small>Click on cart item first, then: ←/→ Adjust Qty • +/- Adjust Qty</small><br/>
+              <small>↑/↓ Navigate Items • Enter +1 • Del Remove • T Tax • D Discount • R Round • C Customer</small>
+            </div> */}
 
             <CRow className="g-2 my-2">
               <CCol>
@@ -540,6 +716,27 @@ const Cart = ({
                   onClick={() => setShowTaxModal && setShowTaxModal(true)}
                   disabled={cart.length === 0}
                   title="Press 'T' for Tax"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      setShowTaxModal && setShowTaxModal(true);
+                    } else if (e.key === 'ArrowLeft') {
+                      e.preventDefault();
+                      const buttons = document.querySelectorAll('.cart-button');
+                      const currentIndex = Array.from(buttons).indexOf(e.currentTarget);
+                      if (currentIndex > 0) {
+                        buttons[currentIndex - 1]?.focus();
+                      }
+                    } else if (e.key === 'ArrowRight') {
+                      e.preventDefault();
+                      const buttons = document.querySelectorAll('.cart-button');
+                      const currentIndex = Array.from(buttons).indexOf(e.currentTarget);
+                      if (currentIndex < buttons.length - 1) {
+                        buttons[currentIndex + 1]?.focus();
+                      }
+                    }
+                  }}
                 >
                   Tax (T)
                 </CButton>
@@ -559,6 +756,31 @@ const Cart = ({
                       ? "Membership discount already applied"
                       : "Press 'D' for Discount"
                   }
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      if (setShowDiscountModal) {
+                        setShowDiscountModal(true);
+                      } else {
+                        setLocalDiscountModal(true);
+                      }
+                    } else if (e.key === 'ArrowLeft') {
+                      e.preventDefault();
+                      const buttons = document.querySelectorAll('.cart-button');
+                      const currentIndex = Array.from(buttons).indexOf(e.currentTarget);
+                      if (currentIndex > 0) {
+                        buttons[currentIndex - 1]?.focus();
+                      }
+                    } else if (e.key === 'ArrowRight') {
+                      e.preventDefault();
+                      const buttons = document.querySelectorAll('.cart-button');
+                      const currentIndex = Array.from(buttons).indexOf(e.currentTarget);
+                      if (currentIndex < buttons.length - 1) {
+                        buttons[currentIndex + 1]?.focus();
+                      }
+                    }
+                  }}
                 >
                   Discount (D)
                 </CButton>
@@ -576,6 +798,32 @@ const Cart = ({
                     }
                   }}
                   title="Press 'R' for Round Off"
+                  tabIndex={0}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault();
+                      if (setShowRoundOffModal) {
+                        setShowRoundOffModal(true);
+                      } else {
+                        setTempRoundOff(roundOff || 0);
+                        setLocalRoundOffModal(true);
+                      }
+                    } else if (e.key === 'ArrowLeft') {
+                      e.preventDefault();
+                      const buttons = document.querySelectorAll('.cart-button');
+                      const currentIndex = Array.from(buttons).indexOf(e.currentTarget);
+                      if (currentIndex > 0) {
+                        buttons[currentIndex - 1]?.focus();
+                      }
+                    } else if (e.key === 'ArrowRight') {
+                      e.preventDefault();
+                      const buttons = document.querySelectorAll('.cart-button');
+                      const currentIndex = Array.from(buttons).indexOf(e.currentTarget);
+                      if (currentIndex < buttons.length - 1) {
+                        buttons[currentIndex + 1]?.focus();
+                      }
+                    }
+                  }}
                 >
                   Round Off (R)
                 </CButton>
@@ -703,6 +951,8 @@ const Cart = ({
       )}
     </>
   );
-};
+});
+
+Cart.displayName = 'Cart';
 
 export default Cart;

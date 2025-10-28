@@ -68,7 +68,7 @@ const Reservation = () => {
       return;
     }
     dispatch(fetchReservations({ restaurantId, token }));
-    dispatch(fetchCustomers({ restaurantId, token, token }));
+    dispatch(fetchCustomers({ restaurantId, token }));
     dispatch(getQrs({ restaurantId }));
   }, [dispatch, restaurantId]);
 
@@ -182,7 +182,7 @@ const Reservation = () => {
         advance: parseFloat(advanceValue) || 0,
       };
       await dispatch(addReservation(payload)).unwrap();
-      await dispatch(fetchReservations({ restaurantId, token, token }));
+      await dispatch(fetchReservations({ restaurantId, token }));
       resetForm();
       setModalVisible(false);
     } catch (error) {
@@ -226,7 +226,7 @@ const Reservation = () => {
     try {
       const id = selectedReservation?._id;
       await dispatch(deleteReservation({ id, token })).unwrap();
-      await dispatch(fetchReservations({ restaurantId, token, token }));
+      await dispatch(fetchReservations({ restaurantId, token }));
       setDeleteModalVisible(false);
       setSelectedReservation(null);
     } catch (error) {

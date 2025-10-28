@@ -73,6 +73,7 @@ const ProductList = React.forwardRef(({
     }
   };
   const searchInputRef = useRef(null);
+  const selectSystemRef = useRef(null);
 
   useEffect(() => {
     searchInputRef.current?.focus();
@@ -155,7 +156,7 @@ const ProductList = React.forwardRef(({
   return (
     <>
       <CContainer ref={ref}
-        className={`product-list-container" rounded p-4 ${isDarkMode ? 'bg-dark text-light' : 'bg-white text-dark'} shadow-sm`}
+        className={`product-list-container rounded p-4 ${isDarkMode ? 'bg-dark text-light' : 'bg-white text-dark'} shadow-sm`}
       >
         {/* Search & Table Info - Mobile Responsive */}
         <div className="mb-4">
@@ -170,8 +171,38 @@ const ProductList = React.forwardRef(({
                 fontSize: '14px',
                 minHeight: '40px'
               }}
+              onKeyDown={(e) => {
+                // Right arrow: Move to Select System
+                if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  selectSystemRef.current?.focus();
+                }
+                // Left arrow: Stay or wrap to Select System (since it's circular)
+                else if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  selectSystemRef.current?.focus();
+                }
+                // Down arrow: Move focus to first category button
+                else if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const categoryButtons = document.querySelectorAll('.category-button');
+                  if (categoryButtons.length > 0) {
+                    categoryButtons[0].focus();
+                  } else {
+                    // If no categories, move to first product
+                    const productCards = document.querySelectorAll('.product-card');
+                    if (productCards.length > 0) {
+                      productCards[0].focus();
+                    }
+                  }
+                }
+              }}
             />
             <CFormSelect
+              ref={selectSystemRef}
               className={`rounded-pill px-2 px-md-3 py-2 ${isDarkMode ? 'bg-secondary text-light border-0' : 'border'}`}
               value={selectedSystem?._id || ''}
               onChange={handleSystemDropdownChange}
@@ -179,6 +210,33 @@ const ProductList = React.forwardRef(({
                 fontSize: '14px',
                 minHeight: '40px',
                 minWidth: '120px'
+              }}
+              onKeyDown={(e) => {
+                // Left arrow: Move back to search input
+                if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  searchInputRef.current?.focus();
+                }
+                // Right arrow: Move to Cart section
+                else if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  // Focus on first cart item or cart container
+                  const cartItem = document.querySelector('.cart-item');
+                  if (cartItem) {
+                    cartItem.focus();
+                  }
+                }
+                // Down arrow: Move to categories
+                else if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const categoryButtons = document.querySelectorAll('.category-button');
+                  if (categoryButtons.length > 0) {
+                    categoryButtons[0].focus();
+                  }
+                }
               }}
             >
               <option value="">Select System</option>
@@ -209,8 +267,16 @@ const ProductList = React.forwardRef(({
         >
           <CButton
             color={!selectedCategoryId ? 'primary' : isDarkMode ? 'secondary' : 'light'}
-            className={`category-button rounded-pill px-4 shadow-sm border-0 ${!selectedCategoryId ? '' : 'opacity-75'}`}
+            className="category-button rounded-pill px-4 shadow-sm border-0"
             onClick={() => setSelectedCategoryId(null)}
+            tabIndex={0}
+            onFocus={(e) => {
+              e.currentTarget.style.outline = '3px solid #0d6efd';
+              e.currentTarget.style.outlineOffset = '2px';
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.outline = 'none';
+            }}
             style={{
               fontWeight: !selectedCategoryId ? 600 : 400,
               boxShadow: !selectedCategoryId ? '0 0 0 0.2rem rgba(0,123,255,.15)' : undefined,
@@ -219,6 +285,60 @@ const ProductList = React.forwardRef(({
               fontSize: '0.8rem',
               minHeight: '40px',
               whiteSpace: 'nowrap'
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setSelectedCategoryId(null);
+              } else if (e.key === 'ArrowDown') {
+                // Move to first product
+                e.preventDefault();
+                const productCards = document.querySelectorAll('.product-card');
+                if (productCards.length > 0) {
+                  productCards[0].focus();
+                }
+              } else if (e.key === 'ArrowUp') {
+                // Move to search bar
+                e.preventDefault();
+                e.stopPropagation();
+                const searchInput = document.querySelector('input[placeholder*="Search menu"]');
+                if (searchInput) {
+                  searchInput.focus();
+                  searchInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                }
+              } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                e.stopPropagation();
+                const categoryButtons = document.querySelectorAll('.category-button');
+                const currentIndex = Array.from(categoryButtons).indexOf(e.currentTarget);
+                let targetButton;
+                if (currentIndex > 0) {
+                  targetButton = categoryButtons[currentIndex - 1];
+                } else {
+                  // Wrap to last button
+                  targetButton = categoryButtons[categoryButtons.length - 1];
+                }
+                if (targetButton) {
+                  targetButton.focus();
+                  targetButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+              } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                e.stopPropagation();
+                const categoryButtons = document.querySelectorAll('.category-button');
+                const currentIndex = Array.from(categoryButtons).indexOf(e.currentTarget);
+                let targetButton;
+                if (currentIndex < categoryButtons.length - 1) {
+                  targetButton = categoryButtons[currentIndex + 1];
+                } else {
+                  // Wrap to first button
+                  targetButton = categoryButtons[0];
+                }
+                if (targetButton) {
+                  targetButton.focus();
+                  targetButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                }
+              }
             }}
           >
             <i className="bi bi-grid me-1" style={{ fontSize: '12px' }} /> All
@@ -229,12 +349,68 @@ const ProductList = React.forwardRef(({
               <CButton
                 key={categoryId}
                 color={selectedCategoryId === categoryId ? 'primary' : isDarkMode ? 'secondary' : 'light'}
-                className={`rounded-pill px-4 shadow-sm border-0 ${selectedCategoryId === categoryId ? '' : 'opacity-75'}`}
+                className={`category-button rounded-pill px-4 shadow-sm border-0 ${selectedCategoryId === categoryId ? '' : 'opacity-75'}`}
                 onClick={() => setSelectedCategoryId(categoryId)}
                 tabIndex={0}
+                onFocus={(e) => {
+                  e.currentTarget.style.outline = '3px solid #0d6efd';
+                  e.currentTarget.style.outlineOffset = '2px';
+                }}
+                onBlur={(e) => {
+                  e.currentTarget.style.outline = 'none';
+                }}
                 onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    setSelectedCategoryId(category._id);
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedCategoryId(categoryId);
+                  } else if (e.key === 'ArrowDown') {
+                    // Move to first product
+                    e.preventDefault();
+                    const productCards = document.querySelectorAll('.product-card');
+                    if (productCards.length > 0) {
+                      productCards[0].focus();
+                    }
+                  } else if (e.key === 'ArrowUp') {
+                    // Move to search bar
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const searchInput = document.querySelector('input[placeholder*="Search menu"]');
+                    if (searchInput) {
+                      searchInput.focus();
+                      searchInput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    }
+                  } else if (e.key === 'ArrowLeft') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const categoryButtons = document.querySelectorAll('.category-button');
+                    const currentIndex = Array.from(categoryButtons).indexOf(e.currentTarget);
+                    let targetButton;
+                    if (currentIndex > 0) {
+                      targetButton = categoryButtons[currentIndex - 1];
+                    } else {
+                      // Wrap to last button
+                      targetButton = categoryButtons[categoryButtons.length - 1];
+                    }
+                    if (targetButton) {
+                      targetButton.focus();
+                      targetButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    }
+                  } else if (e.key === 'ArrowRight') {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    const categoryButtons = document.querySelectorAll('.category-button');
+                    const currentIndex = Array.from(categoryButtons).indexOf(e.currentTarget);
+                    let targetButton;
+                    if (currentIndex < categoryButtons.length - 1) {
+                      targetButton = categoryButtons[currentIndex + 1];
+                    } else {
+                      // Wrap to first button
+                      targetButton = categoryButtons[0];
+                    }
+                    if (targetButton) {
+                      targetButton.focus();
+                      targetButton.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    }
                   }
                 }}
                 style={{
@@ -338,9 +514,111 @@ const ProductList = React.forwardRef(({
                         e.currentTarget.style.transform = 'translateY(0)';
                         e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.06)';
                       }}
+                      onFocus={(e) => {
+                        e.currentTarget.style.outline = '3px solid #0d6efd';
+                        e.currentTarget.style.outlineOffset = '3px';
+                        e.currentTarget.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.outline = 'none';
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
+                          e.preventDefault();
                           handleProductClickInternal(product);
+                        }
+                        // Arrow key navigation
+                        else if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          // Move to categories when pressing Up arrow from products
+                          const categoryButtons = document.querySelectorAll('.category-button');
+                          if (categoryButtons.length > 0) {
+                            categoryButtons[0].focus();
+                            categoryButtons[0].scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                          }
+                        }
+                        else if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          const productCards = document.querySelectorAll('.product-card');
+                          const currentIndex = Array.from(productCards).indexOf(e.currentTarget);
+                          
+                          // Calculate cols based on screen width
+                          let colsPerRow = 2; // xs default
+                          if (window.innerWidth >= 1200) colsPerRow = 6; // lg
+                          else if (window.innerWidth >= 992) colsPerRow = 4; // md
+                          else if (window.innerWidth >= 576) colsPerRow = 3; // sm
+                          
+                          const newIndex = currentIndex + colsPerRow;
+                          if (newIndex < productCards.length) {
+                            productCards[newIndex]?.focus();
+                          }
+                        }
+                        else if (e.key === 'ArrowLeft') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const productCards = document.querySelectorAll('.product-card');
+                          const currentIndex = Array.from(productCards).indexOf(e.currentTarget);
+                          
+                          if (currentIndex === -1) return;
+                          
+                          // Calculate cols based on screen width
+                          let colsPerRow = 2; // xs default
+                          if (window.innerWidth >= 1200) colsPerRow = 6; // lg
+                          else if (window.innerWidth >= 992) colsPerRow = 4; // md
+                          else if (window.innerWidth >= 576) colsPerRow = 3; // sm
+                          
+                          // Calculate current position in grid
+                          const currentRow = Math.floor(currentIndex / colsPerRow);
+                          const currentCol = currentIndex % colsPerRow;
+                          
+                          let targetIndex;
+                          // Move to previous column in same row
+                          if (currentCol > 0) {
+                            // Normal: move to previous column
+                            targetIndex = currentRow * colsPerRow + (currentCol - 1);
+                          } else {
+                            // At start of row: move to last column of same row
+                            const lastColInRow = Math.min(colsPerRow - 1, (productCards.length - (currentRow * colsPerRow) - 1));
+                            targetIndex = currentRow * colsPerRow + lastColInRow;
+                          }
+                          
+                          if (targetIndex >= 0 && targetIndex < productCards.length) {
+                            productCards[targetIndex]?.focus();
+                          }
+                        }
+                        else if (e.key === 'ArrowRight') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const productCards = document.querySelectorAll('.product-card');
+                          const currentIndex = Array.from(productCards).indexOf(e.currentTarget);
+                          
+                          if (currentIndex === -1) return;
+                          
+                          // Calculate cols based on screen width
+                          let colsPerRow = 2; // xs default
+                          if (window.innerWidth >= 1200) colsPerRow = 6; // lg
+                          else if (window.innerWidth >= 992) colsPerRow = 4; // md
+                          else if (window.innerWidth >= 576) colsPerRow = 3; // sm
+                          
+                          // Calculate current position in grid
+                          const currentRow = Math.floor(currentIndex / colsPerRow);
+                          const currentCol = currentIndex % colsPerRow;
+                          const itemsInCurrentRow = Math.min(colsPerRow, productCards.length - (currentRow * colsPerRow));
+                          
+                          let targetIndex;
+                          // Move to next column in same row
+                          if (currentCol < itemsInCurrentRow - 1) {
+                            // Normal: move to next column
+                            targetIndex = currentRow * colsPerRow + (currentCol + 1);
+                          } else {
+                            // At end of row: move to first column of same row (wrap around)
+                            targetIndex = currentRow * colsPerRow;
+                          }
+                          
+                          if (targetIndex >= 0 && targetIndex < productCards.length) {
+                            productCards[targetIndex]?.focus();
+                          }
                         }
                       }}
                     >
@@ -370,12 +648,11 @@ const ProductList = React.forwardRef(({
       </CContainer>
 
       {/* Size Selection Modal - Simplified */}
-      <FocusTrap active={showSizeModal}>
-        <CModal
-          visible={showSizeModal}
-          onClose={handleCloseModal}
-          size="lg"
-        >
+      <CModal
+        visible={showSizeModal}
+        onClose={handleCloseModal}
+        size="lg"
+      >
           <CModalHeader className={isDarkMode ? 'bg-dark text-light border-secondary' : ''}>
             <CModalTitle style={{ fontSize: '16px' }}>Select Size</CModalTitle>
           </CModalHeader>
@@ -420,6 +697,13 @@ const ProductList = React.forwardRef(({
                           }`}
                         style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
                         onClick={() => setSelectedSize(size._id)}
+                        tabIndex={0}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.preventDefault();
+                            setSelectedSize(size._id);
+                          }
+                        }}
                       >
                         <CCardBody className="text-center p-3">
                           <h6 className="mb-2" style={{ fontSize: '14px' }}>{size.label}</h6>
@@ -483,9 +767,8 @@ const ProductList = React.forwardRef(({
               </span>
             )} */}
             </CButton>
-          </CModalFooter>
-        </CModal>
-      </FocusTrap>
+      </CModalFooter>
+    </CModal>
 
     </>
   );
