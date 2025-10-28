@@ -32,10 +32,18 @@ export const createOrder = createAsyncThunk(
     paymentStatus }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('authToken')
+      
+      // Make headers optional for public orders (customer menu)
       const headers = {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
       }
+      
+      // Only add Authorization header if token exists
+      if (token) {
+        headers.Authorization = `Bearer ${token}`;
+      }
+
+      console.log('🌐 Creating order - hasToken:', !!token, 'restaurantId:', restaurantId);
 
       const response = await axios.post(`${BASE_URL}/create/order`, {
         customerId,
@@ -55,9 +63,10 @@ export const createOrder = createAsyncThunk(
         paymentStatus,
         orderId
       }, { headers })
-      console.log("2min ruk yos iska create wala backend  kholo ")
+      console.log("✅ Order created successfully")
       return response.data
     } catch (error) {
+      console.error('❌ Order creation error:', error.response?.data || error.message);
       return rejectWithValue(error.response?.data?.error || 'Failed to create order')
     }
   }

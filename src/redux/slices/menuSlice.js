@@ -25,6 +25,22 @@ export const fetchMenuItems = createAsyncThunk(
         tokenLength: validToken?.length 
       });
 
+      // If no token, use public API for customer menu
+      if (!validToken && restaurantId) {
+        console.log("🌐 Using public API for customer menu");
+        const url = `${BASE_URL}/menu/public/allmenues?restaurantId=${restaurantId}`;
+        console.log("🔍 Public Menu API URL:", url);
+        
+        const response = await axios.get(url);
+        
+        console.log("🔍 Public API Response:", {
+          status: response.status,
+          dataLength: response.data?.length || 0
+        });
+
+        return response.data;
+      }
+
       if (!validToken) {
         return rejectWithValue('No valid authentication token found. Please login again.');
       }

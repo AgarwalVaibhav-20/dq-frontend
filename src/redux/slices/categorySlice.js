@@ -53,6 +53,24 @@ export const fetchCategories = createAsyncThunk(
     try {
       console.log('🔍 fetchCategories API Call:');
       console.log('restaurantId:', restaurantId);
+      console.log('hasToken:', !!token);
+      
+      // Use public API if no token provided (for customer menu)
+      if (!token && restaurantId) {
+        console.log('🌐 Using public API for categories');
+        const response = await axios.get(
+          `${BASE_URL}/public/categories`,
+          { params: { restaurantId } }
+        );
+        console.log('✅ Public Categories API Response:', response.data);
+        return response.data.data;
+      }
+      
+      if (!token || !restaurantId) {
+        console.log('❌ Missing token or restaurantId');
+        return rejectWithValue('Token or restaurantId is required');
+      }
+      
       console.log('API URL:', `${BASE_URL}/categories`);
       console.log('Params:', { restaurantId });
       

@@ -63,8 +63,22 @@ export const addCustomer = createAsyncThunk(
         rewardCustomerPoints,
         rewardByAdminPoints,
       });
+
+      // Use public API if no token (for customer menu orders)
+      let url = `${BASE_URL}/customer/add`;
+      let headers = {};
+      
+      if (!token && restaurantId) {
+        console.log('🌐 Using public API for customer creation');
+        url = `${BASE_URL}/customer/public/add`;
+      } else if (token) {
+        headers = configureHeaders(token);
+      } else {
+        return rejectWithValue('Token or restaurantId is required');
+      }
+
       const response = await axios.post(
-        `${BASE_URL}/customer/add`,
+        url,
         {
           name,
           email,
@@ -79,7 +93,7 @@ export const addCustomer = createAsyncThunk(
           rewardCustomerPoints,
           rewardByAdminPoints,
         },
-        configureHeaders(token)
+        headers
       );
       console.log('Customer add response:', response.data);
       const newCustomer = response.data.customer;

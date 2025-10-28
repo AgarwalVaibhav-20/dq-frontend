@@ -19,9 +19,23 @@ const configureFormDataHeaders = (token) => ({
 // Fetch banners for the specific restaurant
 export const fetchBanners = createAsyncThunk(
   'banner/fetchBanners',
-  async ({ token }, thunkAPI) => {
+  async ({ token, restaurantId: providedRestaurantId }, thunkAPI) => {
     try {
-      const restaurantId = localStorage.getItem('restaurantId');
+      const restaurantId = providedRestaurantId || localStorage.getItem('restaurantId');
+      
+      // Use public API if no token provided (for customer menu)
+      if (!token && restaurantId) {
+        console.log('🌐 Using public API for banners');
+        const response = await axios.get(`${BASE_URL}/public/banner`, {
+          params: { restaurantId }
+        });
+        return response.data.data;
+      }
+      
+      if (!token) {
+        return thunkAPI.rejectWithValue('Token or restaurantId is required');
+      }
+      
       // Remove restaurantId from query since it's handled by backend authentication
       const response = await axios.get(`${BASE_URL}/all/banner`, {
         params: { restaurantId },
@@ -30,7 +44,10 @@ export const fetchBanners = createAsyncThunk(
       return response.data.data
     } catch (error) {
       const errorMessage = error.response?.data?.message || 'Failed to fetch banners';
-      toast.error(errorMessage);
+      // Only show toast if token is present (admin side)
+      if (token) {
+        toast.error(errorMessage);
+      }
       return thunkAPI.rejectWithValue(errorMessage)
     }
   }

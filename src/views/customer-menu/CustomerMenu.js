@@ -33,11 +33,14 @@ const RestaurantOrderingApp = () => {
     const restaurantId = localStorage.getItem('restaurantId');
     useEffect(() => {
 
-        if (restaurantId && token) {
+        if (restaurantId) {
+            // Pass token if available, otherwise use public APIs
             dispatch(fetchBanners({ token, restaurantId }));
             dispatch(fetchMenuItems({ token, restaurantId }));
             // --> Fetch customers when the component loads
-            dispatch(fetchCustomers({ token, restaurantId }));
+            if (token) {
+                dispatch(fetchCustomers({ token, restaurantId }));
+            }
             dispatch(fetchCategories({ token, restaurantId }));
         }
     }, [dispatch, restaurantId, token]);
