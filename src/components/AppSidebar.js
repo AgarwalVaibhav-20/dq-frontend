@@ -55,10 +55,6 @@ const AppSidebar = () => {
         />
       </CSidebarHeader>
       <AppSidebarNav items={navigation} />
-      {/* Debug info */}
-      <div style={{ color: 'white', padding: '10px', fontSize: '12px' }}>
-        Debug: {navigation.length} nav items loaded
-      </div>
     </CSidebar>
   );
 };

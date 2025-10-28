@@ -78,7 +78,6 @@ const Reservation = () => {
     console.log('Loading:', loading);
     console.log('Error:', error);
     console.log('RestaurantId:', restaurantId);
-    console.log('Token:', token ? 'Present' : 'Missing');
     
     if (reservations && reservations.length > 0) {
       console.log('First reservation structure:', reservations[0]);

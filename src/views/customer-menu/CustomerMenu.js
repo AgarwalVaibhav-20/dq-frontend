@@ -8,7 +8,7 @@ import { fetchCategories } from '../../redux/slices/categorySlice';
 import { createOrder } from '../../redux/slices/orderSlice'; // <-- IMPORT createOrder
 import { useLocation } from 'react-router-dom';
 import {
-  useColorModes,
+    useColorModes,
 } from '@coreui/react';
 
 const RestaurantOrderingApp = () => {
@@ -33,14 +33,14 @@ const RestaurantOrderingApp = () => {
     const restaurantId = localStorage.getItem('restaurantId');
     useEffect(() => {
 
-        if (restaurantId) {
+        if (restaurantId && token) {
             dispatch(fetchBanners({ token, restaurantId }));
             dispatch(fetchMenuItems({ token, restaurantId }));
             // --> Fetch customers when the component loads
             dispatch(fetchCustomers({ token, restaurantId }));
-            dispatch(fetchCategories(token));
+            dispatch(fetchCategories({ token, restaurantId }));
         }
-    }, [dispatch, restaurantId]);
+    }, [dispatch, restaurantId, token]);
 
     const [cart, setCart] = useState([]);
     const [selectedCategory, setSelectedCategory] = useState('All');
@@ -78,10 +78,12 @@ const RestaurantOrderingApp = () => {
     }, [customers]); // Depend on customers to ensure the list is loaded
 
     const activeMenuItems = menuItems.filter(item => item.status === 1);
+    console.log('Active menuItems (status === 1):', activeMenuItems);
     const menuCategories = ['All', ...new Set(activeMenuItems.map(item => item.categoryName).filter(Boolean))];
     const filteredItems = selectedCategory === 'All' ?
         activeMenuItems :
         activeMenuItems.filter(item => item.categoryName === selectedCategory);
+    console.log('Filtered items to display:', filteredItems);
 
     const addToCart = (item, selectedSize = null) => {
         const itemKey = selectedSize ? `${item._id}-${selectedSize.size || selectedSize.price}` : item._id;
@@ -107,25 +109,25 @@ const RestaurantOrderingApp = () => {
     const getTotalItems = () => cart.reduce((total, item) => total + item.quantity, 0);
 
     // MODIFIED with the main logic change
-const handleCheckout = () => {
-    if (cart.length === 0) return;
+    const handleCheckout = () => {
+        if (cart.length === 0) return;
 
-    // Check if we already have customer details from a previous order in this session
-    const savedCustomer = localStorage.getItem('currentCustomer');
+        // Check if we already have customer details from a previous order in this session
+        const savedCustomer = localStorage.getItem('currentCustomer');
 
-    if (savedCustomer) {
-        // If customer exists, parse the data and place the order directly
-        console.log("Customer data found in session. Placing order directly.");
-        const customerData = JSON.parse(savedCustomer);
-        setCartOpen(false); // Close the cart
-        placeOrder(customerData); // Call our reusable order function
-    } else {
-        // If no customer data, open the form to collect details
-        console.log("No customer data in session. Opening checkout form.");
-        setCartOpen(false);
-        setCheckoutOpen(true);
-    }
-};
+        if (savedCustomer) {
+            // If customer exists, parse the data and place the order directly
+            console.log("Customer data found in session. Placing order directly.");
+            const customerData = JSON.parse(savedCustomer);
+            setCartOpen(false); // Close the cart
+            placeOrder(customerData); // Call our reusable order function
+        } else {
+            // If no customer data, open the form to collect details
+            console.log("No customer data in session. Opening checkout form.");
+            setCartOpen(false);
+            setCheckoutOpen(true);
+        }
+    };
 
     const handlePhoneChange = (e) => {
         const phone = e.target.value;
@@ -134,48 +136,48 @@ const handleCheckout = () => {
     };
 
     // NEW REUSABLE FUNCTION to handle the actual order creation
-const placeOrder = async (customerData) => {
-    try {
-        const restaurantId = localStorage.getItem('restaurantId');
-        const userId = localStorage.getItem('userId');
-        const totalAmount = getTotalPrice();
+    const placeOrder = async (customerData) => {
+        try {
+            const restaurantId = localStorage.getItem('restaurantId');
+            const userId = localStorage.getItem('userId');
+            const totalAmount = getTotalPrice();
 
-        const orderPayload = {
-            customerId: customerData._id,
-            restaurantId,
-            userId: userId || restaurantId,
-            items: cart.map(item => ({
-                itemId: item._id,
-                itemName: item.displayName,
-                price: item.price,
-                quantity: item.quantity,
-                size: item.selectedSize?.name || item.selectedSize || null, // ✅ ADD SIZE FIELD
-                subtotal: item.price * item.quantity,
-                selectedSubcategoryId: item.selectedSize?._id || null
-            })),
-            subtotal: totalAmount,
-            totalAmount: totalAmount,
-            tableNumber,
-            customerName: customerData.name,
-            customerAddress: customerData.address || '',
-        };
+            const orderPayload = {
+                customerId: customerData._id,
+                restaurantId,
+                userId: userId || restaurantId,
+                items: cart.map(item => ({
+                    itemId: item._id,
+                    itemName: item.displayName,
+                    price: item.price,
+                    quantity: item.quantity,
+                    size: item.selectedSize?.name || item.selectedSize || null, // ✅ ADD SIZE FIELD
+                    subtotal: item.price * item.quantity,
+                    selectedSubcategoryId: item.selectedSize?._id || null
+                })),
+                subtotal: totalAmount,
+                totalAmount: totalAmount,
+                tableNumber,
+                customerName: customerData.name,
+                customerAddress: customerData.address || '',
+            };
 
-        await dispatch(createOrder({ token, ...orderPayload })).unwrap();
+            await dispatch(createOrder({ token, ...orderPayload })).unwrap();
 
-        // Reset cart and close any open dialogs
-        setCart([]);
-        setCartOpen(false);
-        setCheckoutOpen(false);
+            // Reset cart and close any open dialogs
+            setCart([]);
+            setCartOpen(false);
+            setCheckoutOpen(false);
 
-        alert('Order placed successfully!');
+            alert('Order placed successfully!');
 
-    } catch (error) {
-        setCustomerError('Failed to process order. Please try again.');
-        console.error('Order submission error:', error);
-        // If it fails, we should probably show the checkout form again to allow correction
-        setCheckoutOpen(true);
-    }
-};
+        } catch (error) {
+            setCustomerError('Failed to process order. Please try again.');
+            console.error('Order submission error:', error);
+            // If it fails, we should probably show the checkout form again to allow correction
+            setCheckoutOpen(true);
+        }
+    };
 
     const checkExistingCustomer = (phone) => {
         if (phone.length >= 10) {
@@ -199,51 +201,47 @@ const placeOrder = async (customerData) => {
     };
 
     // MODIFIED to use the new placeOrder function
-const handleSubmitOrder = async () => {
-    if (!customerForm.name || !customerForm.phoneNumber) {
-        setCustomerError('Name and Phone Number are required');
-        return;
-    }
-    if (customerForm.phoneNumber.length < 10) {
-        setCustomerError('Please enter a valid phone number');
-        return;
-    }
-
-    try {
-        let customerData;
-
-        // Create or find the customer
-        if (!existingCustomer) {
-            const resultAction = await dispatch(addCustomer({ token, ...customerForm })).unwrap();
-            customerData = resultAction.customer;
-        } else {
-            customerData = existingCustomer;
+    const handleSubmitOrder = async () => {
+        if (!customerForm.name || !customerForm.phoneNumber) {
+            setCustomerError('Name and Phone Number are required');
+            return;
+        }
+        if (customerForm.phoneNumber.length < 10) {
+            setCustomerError('Please enter a valid phone number');
+            return;
         }
 
-        // Save customer details for the session. THIS IS KEY.
-        localStorage.setItem('currentCustomer', JSON.stringify({
-            _id: customerData._id, // Also save the ID!
-            name: customerData.name,
-            email: customerData.email,
-            phoneNumber: customerData.phoneNumber,
-            address: customerData.address,
-        }));
+        try {
+            let customerData;
 
-        // Reset form state for next time (optional but good practice)
-        setCustomerForm({ name: '', email: '', phoneNumber: '', address: '' });
-        setExistingCustomer(null);
-        setCustomerError('');
-        
-        // Call the reusable function to place the order
-        await placeOrder(customerData);
-        // DO NOT remove 'currentCustomer' from localStorage here anymore.
+            if (!existingCustomer) {
+                const resultAction = await dispatch(addCustomer({ token, ...customerForm })).unwrap();
+                customerData = resultAction.customer || resultAction;
+            } else {
+                customerData = existingCustomer;
+            }
 
-    } catch (error) {
-        // Error handling is now mostly inside placeOrder, but we can keep this for customer creation errors
-        setCustomerError('Failed to save customer details. Please try again.');
-        console.error('Customer submission error:', error);
-    }
-}; // --> UPDATED ORDER SUBMISSION LOGIC
+            if (!customerData || !customerData._id) {
+                console.error("Invalid customerData:", customerData);
+                throw new Error("Customer creation failed or returned invalid data");
+            }
+
+            localStorage.setItem('currentCustomer', JSON.stringify({
+                _id: customerData._id,
+                name: customerData.name,
+                email: customerData.email,
+                phoneNumber: customerData.phoneNumber,
+                address: customerData.address,
+            }));
+
+            await placeOrder(customerData);
+
+        } catch (error) {
+            setCustomerError('Failed to save customer details. Please try again.');
+            console.error('Customer submission error:', error);
+        }
+
+    }; // --> UPDATED ORDER SUBMISSION LOGIC
     // const handleSubmitOrder = async () => {
     //     if (!customerForm.name || !customerForm.phoneNumber) {
     //         setCustomerError('Name and Phone Number are required');
@@ -523,8 +521,8 @@ const handleSubmitOrder = async () => {
                                                 <img src={item.itemImage || 'https://via.placeholder.com/80x80'} alt={item.displayName} className="w-20 h-20 object-cover rounded-md" />
                                                 <div className="flex flex-col gap-1">
                                                     <h3 className="font-bold text-gray-800">
-                                                    {item.itemName}
-                                                    {item.selectedSize?.size && (<span className="text-sm font-medium text-gray-500"> ({item.selectedSize.size})</span>)}
+                                                        {item.itemName}
+                                                        {item.selectedSize?.size && (<span className="text-sm font-medium text-gray-500"> ({item.selectedSize.size})</span>)}
                                                     </h3>
                                                     <p className="text-sm text-gray-500">{item.categoryName}</p>
                                                     <p className="text-purple-600 font-semibold mt-1">

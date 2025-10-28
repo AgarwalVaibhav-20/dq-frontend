@@ -259,12 +259,6 @@ export default function QRCode() {
             )}
           </div>
         </div>
-
-
-        <div className="debug-info" style={{ fontSize: '0.75rem', color: '#666', marginBottom: '0.625rem' }}>
-          Debug: restaurantId = {restaurantId}, totalQRs = {qrList.length}, totalFloors = {floors.length}
-        </div>
-
         {!restaurantId ? (
           <CCard className="text-center my-5">
             <CCardHeader>

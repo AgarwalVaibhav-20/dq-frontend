@@ -350,6 +350,7 @@ const menuSlice = createSlice({
         state.loading = false;
         state.menuItems = Array.isArray(action.payload) ? action.payload : [];
         console.log("🔍 Final state.menuItems length:", state.menuItems.length);
+        console.log(action.payload[0] , "<<< Menu Items from backend");
       })
       .addCase(fetchMenuItems.rejected, (state, action) => {
         state.loading = false;
