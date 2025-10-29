@@ -51,20 +51,25 @@ export default function Account() {
   const [isMobile, setIsMobile] = useState(false)
   const [activeTab, setActiveTab] = useState(0)
 
-  // 💡 Dark Mode State (Added for toggling, though the implementation is hardcoded for dark mode styles)
-  const [isDarkMode, setIsDarkMode] = useState(true) 
+  // Dark Mode State
+  const [isDarkMode, setIsDarkMode] = useState(true)
   const darkModeClass = isDarkMode ? 'dark-mode' : ''
 
   const { restaurantProfile, loading } = useSelector((state) => state.restaurantProfile)
   const restaurantId = localStorage.getItem('restaurantId')
   const token = localStorage.getItem('authToken')
-  const id = restaurantProfile?.id
+  // const id = restaurantProfile?.id
 
   useEffect(() => {
-    dispatch(getRestaurantProfile({ restaurantId, token })).then(({ payload }) => {
-      setProfileData(payload || {})
-      setFormData(payload || {})
-    })
+    if (restaurantId && token) {
+      dispatch(getRestaurantProfile({ restaurantId, token })).then(({ payload }) => {
+        console.log('Profile loaded:', payload)
+        if (payload) {
+          setProfileData(payload)
+          setFormData(payload)
+        }
+      })
+    }
   }, [dispatch, restaurantId, token])
 
   useEffect(() => {
@@ -77,13 +82,17 @@ export default function Account() {
   }, [])
 
   const handleShowModal = () => {
-    setFormData({ ...profileData })
+    console.log('Opening modal with profileData:', profileData)
+    // Initialize formData with current profileData or empty object
+    const dataToEdit = profileData && Object.keys(profileData).length > 0 ? { ...profileData } : {}
+    setFormData(dataToEdit)
     setShowModal(true)
+    console.log('Modal should be visible now, showModal:', true)
   }
 
   const handleCloseModal = () => {
     setShowModal(false)
-    setFormData({ ...profileData })
+    setFormData(profileData || {})
   }
 
   const handleInputChange = (field, value) => {
@@ -111,7 +120,7 @@ export default function Account() {
     const updatedFeatures = currentFeatures.includes(feature)
       ? currentFeatures.filter((f) => f !== feature)
       : [...currentFeatures, feature]
-    
+
     setFormData((prev) => ({
       ...prev,
       features: updatedFeatures,
@@ -119,30 +128,52 @@ export default function Account() {
   }
 
   const handleUpdateProfile = async () => {
-    setIsUpdating(true)
+    let updateId = formData?.id || restaurantId;  // Fallback to restaurantId if id missing
+    console.log('Using updateId:', updateId);  // Debug log
+
+    if (!updateId) {
+      console.error('Error: Cannot update profile. No valid ID available.');
+      // Optional: Show user-facing alert
+      alert('Profile ID is missing. Please reload the page and try again.');
+      return;
+    }
+
+    setIsUpdating(true);
     try {
+      const {
+        id: formId,  // Ignore original id
+        rating,
+        totalReviews,
+        email,
+        ...dataToUpdate
+      } = formData;
+
       const updateData = {
-        ...formData,
+        ...dataToUpdate,
         restaurantId,
-      }
+      };
 
       await dispatch(
         updateRestaurantProfile({
-          id,
+          id: updateId,  // Use the fallback
           profileData: updateData,
         })
-      )
-      setProfileData(formData)
-      setShowModal(false)
-      setUpdateSuccess(true)
-      setTimeout(() => setUpdateSuccess(false), 3000)
-    } catch (error) {
-      console.error('Error updating profile:', error)
-    } finally {
-      setIsUpdating(false)
-    }
-  }
+      );
 
+      // Refresh profile after update
+      await dispatch(getRestaurantProfile({ restaurantId, token }));
+      setProfileData(formData);
+      setShowModal(false);
+      setUpdateSuccess(true);
+      setTimeout(() => setUpdateSuccess(false), 3000);
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      // Optional: Show user-facing error
+      alert('Failed to update profile. Please try again.');
+    } finally {
+      setIsUpdating(false);
+    }
+  };
   const handleImageUpload = async (e) => {
     const file = e.target.files[0]
     if (file) {
@@ -168,7 +199,6 @@ export default function Account() {
   const InfoRow = ({ icon, label, value, className = '' }) => (
     <div
       className={`d-flex flex-column flex-md-row align-items-start align-items-md-center py-2 py-md-3 ${className}`}
-      // 💡 Dark Mode: Changed border color to a dark gray
       style={{ borderColor: isDarkMode ? '#444' : '#f1f3f4', borderBottom: '1px solid ' + (isDarkMode ? '#444' : '#f1f3f4') }}
     >
       <div className="d-flex align-items-center mb-2 mb-md-0" style={{ minWidth: '40px' }}>
@@ -179,7 +209,6 @@ export default function Account() {
             style={{
               fontSize: '12px',
               fontWeight: '600',
-              // 💡 Dark Mode: Changed label text color to a lighter gray
               color: isDarkMode ? '#aaa' : '#5f6368',
               textTransform: 'uppercase',
               letterSpacing: '0.5px',
@@ -194,7 +223,6 @@ export default function Account() {
           className="small"
           style={{
             fontSize: '14px',
-            // 💡 Dark Mode: Changed value text color to white/light gray
             color: value ? (isDarkMode ? '#e8eaed' : '#202124') : '#9aa0a6',
             fontWeight: '400',
             wordBreak: 'break-word',
@@ -216,7 +244,6 @@ export default function Account() {
         case 'pending':
           return { bg: '#fef7e0', color: '#ea8600' }
         default:
-          // 💡 Dark Mode: Adjusted default status badge colors
           return isDarkMode ? { bg: '#3c4043', color: '#bdc1c6' } : { bg: '#e8eaed', color: '#5f6368' }
       }
     }
@@ -239,29 +266,31 @@ export default function Account() {
     )
   }
 
-  const RatingDisplay = ({ rating, totalReviews }) => (
-    <div className="d-flex align-items-center gap-2">
-      <div className="d-flex align-items-center">
-        <span style={{ fontSize: '20px', color: '#fbbc04' }}>⭐</span>
-        <span style={{ fontSize: '16px', fontWeight: '500', 
-              // 💡 Dark Mode: Changed rating text color
-              color: isDarkMode ? '#e8eaed' : '#202124', 
-              marginLeft: '4px' }}>
-          {rating?.toFixed(1) || '0.0'}
-        </span>
-      </div>
-      <span style={{ fontSize: '12px', 
-            // 💡 Dark Mode: Changed review count text color
-            color: isDarkMode ? '#aaa' : '#5f6368' }}>
-        ({totalReviews || 0} reviews)
-      </span>
-    </div>
-  )
+  // const RatingDisplay = ({ rating, totalReviews }) => (
+  //   <div className="d-flex align-items-center gap-2">
+  //     <div className="d-flex align-items-center">
+  //       <span style={{ fontSize: '20px', color: '#fbbc04' }}>⭐</span>
+  //       <span style={{
+  //         fontSize: '16px', fontWeight: '500',
+  //         color: isDarkMode ? '#e8eaed' : '#202124',
+  //         marginLeft: '4px'
+  //       }}>
+  //         {rating?.toFixed(1) || '0.0'}
+  //       </span>
+  //     </div>
+  //     <span style={{
+  //       fontSize: '12px',
+  //       color: isDarkMode ? '#aaa' : '#5f6368'
+  //     }}>
+  //       ({totalReviews || 0} reviews)
+  //     </span>
+  //   </div>
+  // )
 
   if (loading) {
     return (
-      <CContainer 
-        className={`d-flex justify-content-center align-items-center ${darkModeClass}`} 
+      <CContainer
+        className={`d-flex justify-content-center align-items-center ${darkModeClass}`}
         style={{ minHeight: '70vh', backgroundColor: isDarkMode ? '#202124' : '#f8f9fa' }}
       >
         <div className="text-center">
@@ -290,10 +319,9 @@ export default function Account() {
 
   return (
     <>
-      <CContainer 
-        fluid 
-        className={`py-2 py-md-4 px-2 px-md-4 ${darkModeClass}`} 
-        // 💡 Dark Mode: Changed main background color
+      <CContainer
+        fluid
+        className={`py-2 py-md-4 px-2 px-md-4 ${darkModeClass}`}
         style={{ backgroundColor: isDarkMode ? '#202124' : '#f8f9fa', minHeight: '100vh' }}
       >
         {updateSuccess && (
@@ -304,7 +332,6 @@ export default function Account() {
               maxWidth: '900px',
               border: 'none',
               borderRadius: '8px',
-              // 💡 Dark Mode: Adjusted success alert colors
               backgroundColor: isDarkMode ? '#38463e' : '#e8f5e8',
               borderLeft: '4px solid #34a853',
               color: isDarkMode ? '#b7e1c8' : '#137333',
@@ -322,7 +349,6 @@ export default function Account() {
             maxWidth: '1200px',
             margin: '0 auto',
             borderRadius: '12px',
-            // 💡 Dark Mode: Changed card border color and background
             border: isDarkMode ? '1px solid #3c4043' : '1px solid #dadce0',
             boxShadow: isDarkMode ? '0 1px 3px rgba(0,0,0,.5)' : '0 1px 3px rgba(60,64,67,.3)',
             backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
@@ -332,7 +358,6 @@ export default function Account() {
           <CCardHeader
             className="px-3 px-md-4 py-3 py-md-4"
             style={{
-              // 💡 Dark Mode: Changed header background and border color
               backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
               borderBottom: isDarkMode ? '1px solid #3c4043' : '1px solid #dadce0',
             }}
@@ -342,7 +367,6 @@ export default function Account() {
                 <CCardTitle
                   className="h4 h5-md"
                   style={{
-                    // 💡 Dark Mode: Changed title text color
                     color: isDarkMode ? '#e8eaed' : '#202124',
                     fontSize: '20px',
                     fontWeight: '500',
@@ -354,7 +378,6 @@ export default function Account() {
                 <p
                   className="d-none d-md-block"
                   style={{
-                    // 💡 Dark Mode: Changed description text color
                     color: isDarkMode ? '#bdc1c6' : '#5f6368',
                     margin: '4px 0 0 0',
                     fontSize: '14px',
@@ -367,7 +390,6 @@ export default function Account() {
                 onClick={handleShowModal}
                 className="w-20 w-md-auto"
                 style={{
-                  // 💡 Dark Mode: Button remains primary blue, but text is white
                   backgroundColor: '#8ab4f8',
                   border: 'none',
                   borderRadius: '6px',
@@ -390,7 +412,6 @@ export default function Account() {
                 <div
                   className="p-3 p-md-4"
                   style={{
-                    // 💡 Dark Mode: Changed image section background and border
                     backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                     borderRadius: '12px',
                     border: isDarkMode ? '1px solid #444' : '1px solid #e8eaed',
@@ -399,12 +420,11 @@ export default function Account() {
                   <div style={{ position: 'relative', display: 'inline-block' }}>
                     <CImage
                       rounded
-                      src={profileData?.profileImage}
+                      src={profileData?.profileImage || 'https://via.placeholder.com/140'}
                       alt="Restaurant Profile"
                       width={isMobile ? 100 : 140}
                       height={isMobile ? 100 : 140}
                       style={{
-                        // 💡 Dark Mode: Changed image border color
                         border: '4px solid ' + (isDarkMode ? '#2f3136' : '#ffffff'),
                         boxShadow: isDarkMode ? '0 2px 8px rgba(0,0,0,.3)' : '0 2px 8px rgba(60,64,67,.15)',
                         objectFit: 'cover',
@@ -430,7 +450,6 @@ export default function Account() {
                     <h5
                       className="h6 h5-md"
                       style={{
-                        // 💡 Dark Mode: Changed restaurant name text color
                         color: isDarkMode ? '#e8eaed' : '#202124',
                         fontSize: '16px',
                         fontWeight: '500',
@@ -442,7 +461,6 @@ export default function Account() {
                     <p
                       className="small"
                       style={{
-                        // 💡 Dark Mode: Changed owner name text color
                         color: isDarkMode ? '#bdc1c6' : '#5f6368',
                         fontSize: '12px',
                         margin: '0 0 8px 0',
@@ -450,9 +468,9 @@ export default function Account() {
                     >
                       {profileData?.ownerName || 'Owner Name'}
                     </p>
-                    <div className="mb-3">
+                    {/* <div className="mb-3">
                       <RatingDisplay rating={profileData?.rating} totalReviews={profileData?.totalReviews} />
-                    </div>
+                    </div> */}
                     <StatusBadge status={profileData?.status} />
                   </div>
                 </div>
@@ -464,7 +482,6 @@ export default function Account() {
                 <div
                   className="mb-3 mb-md-4"
                   style={{
-                    // 💡 Dark Mode: Changed section background and border
                     backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                     borderRadius: '12px',
                     border: isDarkMode ? '1px solid #3c4043' : '1px solid #e8eaed',
@@ -474,7 +491,6 @@ export default function Account() {
                   <div
                     className="px-3 px-md-4 py-2 py-md-3"
                     style={{
-                      // 💡 Dark Mode: Changed header background and border
                       backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                       borderBottom: isDarkMode ? '1px solid #444' : '1px solid #e8eaed',
                     }}
@@ -482,7 +498,6 @@ export default function Account() {
                     <h6
                       className="h6 mb-0"
                       style={{
-                        // 💡 Dark Mode: Changed header text color
                         color: isDarkMode ? '#e8eaed' : '#202124',
                         fontSize: '14px',
                         fontWeight: '500',
@@ -504,7 +519,6 @@ export default function Account() {
                 <div
                   className="mb-3 mb-md-4"
                   style={{
-                    // 💡 Dark Mode: Changed section background and border
                     backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                     borderRadius: '12px',
                     border: isDarkMode ? '1px solid #3c4043' : '1px solid #e8eaed',
@@ -514,7 +528,6 @@ export default function Account() {
                   <div
                     className="px-3 px-md-4 py-2 py-md-3"
                     style={{
-                      // 💡 Dark Mode: Changed header background and border
                       backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                       borderBottom: isDarkMode ? '1px solid #444' : '1px solid #e8eaed',
                     }}
@@ -522,7 +535,6 @@ export default function Account() {
                     <h6
                       className="h6 mb-0"
                       style={{
-                        // 💡 Dark Mode: Changed header text color
                         color: isDarkMode ? '#e8eaed' : '#202124',
                         fontSize: '14px',
                         fontWeight: '500',
@@ -548,7 +560,6 @@ export default function Account() {
                   <CCol xs={12} md={6}>
                     <div
                       style={{
-                        // 💡 Dark Mode: Changed section background and border
                         backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                         borderRadius: '12px',
                         border: isDarkMode ? '1px solid #3c4043' : '1px solid #e8eaed',
@@ -558,7 +569,6 @@ export default function Account() {
                       <div
                         className="px-3 px-md-4 py-2 py-md-3"
                         style={{
-                          // 💡 Dark Mode: Changed header background and border
                           backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                           borderBottom: isDarkMode ? '1px solid #444' : '1px solid #e8eaed',
                         }}
@@ -566,7 +576,6 @@ export default function Account() {
                         <h6
                           className="h6 mb-0"
                           style={{
-                            // 💡 Dark Mode: Changed header text color
                             color: isDarkMode ? '#e8eaed' : '#202124',
                             fontSize: '14px',
                             fontWeight: '500',
@@ -586,7 +595,6 @@ export default function Account() {
                                   padding: '6px 12px',
                                   borderRadius: '16px',
                                   fontWeight: '400',
-                                  // 💡 Dark Mode: Adjusted feature badge colors
                                   backgroundColor: isDarkMode ? '#1f2430' : '#e8f0fe',
                                   color: isDarkMode ? '#8ab4f8' : '#1a73e8',
                                 }}
@@ -596,7 +604,6 @@ export default function Account() {
                             ))}
                           </div>
                         ) : (
-                          // 💡 Dark Mode: Changed 'No features added' text color
                           <p style={{ color: isDarkMode ? '#aaa' : '#9aa0a6', fontSize: '14px' }}>No features added</p>
                         )}
                       </div>
@@ -606,7 +613,6 @@ export default function Account() {
                   <CCol xs={12} md={6}>
                     <div
                       style={{
-                        // 💡 Dark Mode: Changed section background and border
                         backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                         borderRadius: '12px',
                         border: isDarkMode ? '1px solid #3c4043' : '1px solid #e8eaed',
@@ -616,7 +622,6 @@ export default function Account() {
                       <div
                         className="px-3 px-md-4 py-2 py-md-3"
                         style={{
-                          // 💡 Dark Mode: Changed header background and border
                           backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                           borderBottom: isDarkMode ? '1px solid #444' : '1px solid #e8eaed',
                         }}
@@ -624,7 +629,6 @@ export default function Account() {
                         <h6
                           className="h6 mb-0"
                           style={{
-                            // 💡 Dark Mode: Changed header text color
                             color: isDarkMode ? '#e8eaed' : '#202124',
                             fontSize: '14px',
                             fontWeight: '500',
@@ -648,64 +652,53 @@ export default function Account() {
       </CContainer>
 
       {/* Edit Profile Modal */}
-      <CModal 
-        size="xl" 
-        visible={showModal} 
-        onClose={handleCloseModal} 
+      <CModal
+        size="xl"
+        visible={showModal}
+        onClose={handleCloseModal}
         backdrop="static"
-        // 💡 Dark Mode: Added class for modal styling
         className={darkModeClass}
-        // NOTE: CoreUI modal might need custom CSS override for backdrop/content. Adding a style here for content background.
-        style={{
-          '--cui-modal-bg': isDarkMode ? '#2f3136' : '#ffffff',
-          '--cui-modal-content-bg': isDarkMode ? '#2f3136' : '#ffffff',
-          color: isDarkMode ? '#e8eaed' : '#202124'
-        }}
       >
-        <CModalHeader 
+        <CModalHeader
           className="px-3 px-md-4 py-3"
           style={{
-            // 💡 Dark Mode: Changed modal header background and border
             backgroundColor: isDarkMode ? '#3c4043' : '#ffffff',
             borderBottom: isDarkMode ? '1px solid #444' : '1px solid #e8eaed',
           }}
         >
-          <CModalTitle 
-            className="h5 h4-md" 
-            style={{ 
-              color: isDarkMode ? '#e8eaed' : '#202124', 
-              fontSize: '18px', 
-              fontWeight: '500' 
+          <CModalTitle
+            className="h5 h4-md"
+            style={{
+              color: isDarkMode ? '#e8eaed' : '#202124',
+              fontSize: '18px',
+              fontWeight: '500'
             }}
           >
             Edit Profile Information
           </CModalTitle>
         </CModalHeader>
-        <CModalBody 
-          className="p-0" 
-          style={{ 
-            maxHeight: '70vh', 
+        <CModalBody
+          className="p-0"
+          style={{
+            maxHeight: '70vh',
             overflowY: 'auto',
-            // 💡 Dark Mode: Changed modal body background
-            backgroundColor: isDarkMode ? '#2f3136' : '#ffffff', 
+            backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
           }}
         >
-          <CNav 
-            variant="tabs" 
-            className="px-3 px-md-4" 
-            style={{ 
-              // 💡 Dark Mode: Changed tab border color
-              borderBottom: isDarkMode ? '2px solid #444' : '2px solid #e8eaed' 
+          <CNav
+            variant="tabs"
+            className="px-3 px-md-4"
+            style={{
+              borderBottom: isDarkMode ? '2px solid #444' : '2px solid #e8eaed'
             }}
           >
             <CNavItem>
               <CNavLink
                 active={activeTab === 0}
                 onClick={() => setActiveTab(0)}
-                style={{ 
-                  cursor: 'pointer', 
+                style={{
+                  cursor: 'pointer',
                   fontWeight: activeTab === 0 ? '500' : '400',
-                  // 💡 Dark Mode: Adjusted tab text and active indicator colors
                   color: activeTab === 0 ? (isDarkMode ? '#8ab4f8' : '#1a73e8') : (isDarkMode ? '#bdc1c6' : '#5f6368'),
                   borderBottom: activeTab === 0 ? '2px solid ' + (isDarkMode ? '#8ab4f8' : '#1a73e8') : 'none',
                   backgroundColor: 'transparent',
@@ -719,8 +712,8 @@ export default function Account() {
               <CNavLink
                 active={activeTab === 1}
                 onClick={() => setActiveTab(1)}
-                style={{ 
-                  cursor: 'pointer', 
+                style={{
+                  cursor: 'pointer',
                   fontWeight: activeTab === 1 ? '500' : '400',
                   color: activeTab === 1 ? (isDarkMode ? '#8ab4f8' : '#1a73e8') : (isDarkMode ? '#bdc1c6' : '#5f6368'),
                   borderBottom: activeTab === 1 ? '2px solid ' + (isDarkMode ? '#8ab4f8' : '#1a73e8') : 'none',
@@ -735,8 +728,8 @@ export default function Account() {
               <CNavLink
                 active={activeTab === 2}
                 onClick={() => setActiveTab(2)}
-                style={{ 
-                  cursor: 'pointer', 
+                style={{
+                  cursor: 'pointer',
                   fontWeight: activeTab === 2 ? '500' : '400',
                   color: activeTab === 2 ? (isDarkMode ? '#8ab4f8' : '#1a73e8') : (isDarkMode ? '#bdc1c6' : '#5f6368'),
                   borderBottom: activeTab === 2 ? '2px solid ' + (isDarkMode ? '#8ab4f8' : '#1a73e8') : 'none',
@@ -751,8 +744,8 @@ export default function Account() {
               <CNavLink
                 active={activeTab === 3}
                 onClick={() => setActiveTab(3)}
-                style={{ 
-                  cursor: 'pointer', 
+                style={{
+                  cursor: 'pointer',
                   fontWeight: activeTab === 3 ? '500' : '400',
                   color: activeTab === 3 ? (isDarkMode ? '#8ab4f8' : '#1a73e8') : (isDarkMode ? '#bdc1c6' : '#5f6368'),
                   borderBottom: activeTab === 3 ? '2px solid ' + (isDarkMode ? '#8ab4f8' : '#1a73e8') : 'none',
@@ -775,12 +768,11 @@ export default function Account() {
                       First Name
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{ 
-                          // 💡 Dark Mode: Input group text background/border
-                          backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa', 
-                          border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                          color: isDarkMode ? '#e8eaed' : '#5f6368'
-                        }}
+                      <CInputGroupText style={{
+                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
+                        border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
+                        color: isDarkMode ? '#e8eaed' : '#5f6368'
+                      }}
                       >
                         👤
                       </CInputGroupText>
@@ -788,8 +780,7 @@ export default function Account() {
                         value={formData?.firstName || ''}
                         onChange={(e) => handleInputChange('firstName', e.target.value)}
                         placeholder="Enter first name"
-                        style={{ 
-                          // 💡 Dark Mode: Input field background/text/border
+                        style={{
                           border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                           backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                           color: isDarkMode ? '#e8eaed' : '#202124'
@@ -803,8 +794,8 @@ export default function Account() {
                       Last Name
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{ 
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa', 
+                      <CInputGroupText style={{
+                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                         border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                         color: isDarkMode ? '#e8eaed' : '#5f6368'
                       }}>
@@ -814,7 +805,7 @@ export default function Account() {
                         value={formData?.lastName || ''}
                         onChange={(e) => handleInputChange('lastName', e.target.value)}
                         placeholder="Enter last name"
-                        style={{ 
+                        style={{
                           border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                           backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                           color: isDarkMode ? '#e8eaed' : '#202124'
@@ -828,8 +819,8 @@ export default function Account() {
                       Gender
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{ 
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa', 
+                      <CInputGroupText style={{
+                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                         border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                         color: isDarkMode ? '#e8eaed' : '#5f6368'
                       }}>
@@ -838,16 +829,16 @@ export default function Account() {
                       <CFormSelect
                         value={formData?.gender || ''}
                         onChange={(e) => handleInputChange('gender', e.target.value)}
-                        style={{ 
+                        style={{
                           border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                           backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                           color: isDarkMode ? '#e8eaed' : '#202124'
                         }}
                       >
-                        <option value="" style={{backgroundColor: isDarkMode ? '#2f3136' : '#ffffff'}}>Select gender</option>
-                        <option value="male" style={{backgroundColor: isDarkMode ? '#2f3136' : '#ffffff'}}>Male</option>
-                        <option value="female" style={{backgroundColor: isDarkMode ? '#2f3136' : '#ffffff'}}>Female</option>
-                        <option value="other" style={{backgroundColor: isDarkMode ? '#2f3136' : '#ffffff'}}>Other</option>
+                        <option value="" style={{ backgroundColor: isDarkMode ? '#2f3136' : '#ffffff' }}>Select gender</option>
+                        <option value="male" style={{ backgroundColor: isDarkMode ? '#2f3136' : '#ffffff' }}>Male</option>
+                        <option value="female" style={{ backgroundColor: isDarkMode ? '#2f3136' : '#ffffff' }}>Female</option>
+                        <option value="other" style={{ backgroundColor: isDarkMode ? '#2f3136' : '#ffffff' }}>Other</option>
                       </CFormSelect>
                     </CInputGroup>
                   </CCol>
@@ -857,8 +848,8 @@ export default function Account() {
                       Phone Number
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{ 
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa', 
+                      <CInputGroupText style={{
+                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                         border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                         color: isDarkMode ? '#e8eaed' : '#5f6368'
                       }}>
@@ -868,7 +859,7 @@ export default function Account() {
                         value={formData?.phoneNumber || ''}
                         onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
                         placeholder="Enter phone number"
-                        style={{ 
+                        style={{
                           border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                           backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                           color: isDarkMode ? '#e8eaed' : '#202124'
@@ -882,8 +873,8 @@ export default function Account() {
                       Email Address
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{ 
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa', 
+                      <CInputGroupText style={{
+                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                         border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                         color: isDarkMode ? '#e8eaed' : '#5f6368'
                       }}>
@@ -894,11 +885,10 @@ export default function Account() {
                         value={formData?.email || ''}
                         onChange={(e) => handleInputChange('email', e.target.value)}
                         placeholder="Enter email address"
-                        style={{ 
-                          // 💡 Dark Mode: Disabled input style adjustment
+                        style={{
                           border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                          backgroundColor: isDarkMode ? '#3c4043' : '#e8eaed', // Disabled background
-                          color: isDarkMode ? '#bdc1c6' : '#5f6368' // Disabled text color
+                          backgroundColor: isDarkMode ? '#3c4043' : '#e8eaed',
+                          color: isDarkMode ? '#bdc1c6' : '#5f6368'
                         }}
                         disabled
                       />
@@ -917,8 +907,8 @@ export default function Account() {
                       Restaurant Name
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{ 
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa', 
+                      <CInputGroupText style={{
+                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                         border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                         color: isDarkMode ? '#e8eaed' : '#5f6368'
                       }}>
@@ -928,7 +918,7 @@ export default function Account() {
                         value={formData?.restaurantName || ''}
                         onChange={(e) => handleInputChange('restaurantName', e.target.value)}
                         placeholder="Enter restaurant name"
-                        style={{ 
+                        style={{
                           border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                           backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                           color: isDarkMode ? '#e8eaed' : '#202124'
@@ -942,8 +932,8 @@ export default function Account() {
                       Owner Name
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{ 
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa', 
+                      <CInputGroupText style={{
+                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                         border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                         color: isDarkMode ? '#e8eaed' : '#5f6368'
                       }}>
@@ -953,7 +943,7 @@ export default function Account() {
                         value={formData?.ownerName || ''}
                         onChange={(e) => handleInputChange('ownerName', e.target.value)}
                         placeholder="Enter owner name"
-                        style={{ 
+                        style={{
                           border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                           backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                           color: isDarkMode ? '#e8eaed' : '#202124'
@@ -971,7 +961,7 @@ export default function Account() {
                       value={formData?.description || ''}
                       onChange={(e) => handleInputChange('description', e.target.value)}
                       placeholder="Enter restaurant description"
-                      style={{ 
+                      style={{
                         border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                         backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                         color: isDarkMode ? '#e8eaed' : '#202124'
@@ -984,8 +974,8 @@ export default function Account() {
                       Address
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{ 
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa', 
+                      <CInputGroupText style={{
+                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                         border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                         color: isDarkMode ? '#e8eaed' : '#5f6368'
                       }}>
@@ -995,7 +985,7 @@ export default function Account() {
                         value={formData?.address || ''}
                         onChange={(e) => handleInputChange('address', e.target.value)}
                         placeholder="Enter complete address"
-                        style={{ 
+                        style={{
                           border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                           backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                           color: isDarkMode ? '#e8eaed' : '#202124'
@@ -1009,8 +999,8 @@ export default function Account() {
                       City
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{ 
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa', 
+                      <CInputGroupText style={{
+                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                         border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                         color: isDarkMode ? '#e8eaed' : '#5f6368'
                       }}>
@@ -1020,7 +1010,7 @@ export default function Account() {
                         value={formData?.city || ''}
                         onChange={(e) => handleInputChange('city', e.target.value)}
                         placeholder="Enter city"
-                        style={{ 
+                        style={{
                           border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                           backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                           color: isDarkMode ? '#e8eaed' : '#202124'
@@ -1034,8 +1024,8 @@ export default function Account() {
                       Pin Code
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{ 
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa', 
+                      <CInputGroupText style={{
+                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                         border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                         color: isDarkMode ? '#e8eaed' : '#5f6368'
                       }}>
@@ -1045,7 +1035,7 @@ export default function Account() {
                         value={formData?.pinCode || ''}
                         onChange={(e) => handleInputChange('pinCode', e.target.value)}
                         placeholder="Enter pin code"
-                        style={{ 
+                        style={{
                           border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                           backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                           color: isDarkMode ? '#e8eaed' : '#202124'
@@ -1059,8 +1049,8 @@ export default function Account() {
                       Identity Type
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{ 
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa', 
+                      <CInputGroupText style={{
+                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                         border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                         color: isDarkMode ? '#e8eaed' : '#5f6368'
                       }}>
@@ -1070,7 +1060,7 @@ export default function Account() {
                         value={formData?.identity || ''}
                         onChange={(e) => handleInputChange('identity', e.target.value)}
                         placeholder="Enter identity type (e.g., Aadhar, PAN)"
-                        style={{ 
+                        style={{
                           border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                           backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                           color: isDarkMode ? '#e8eaed' : '#202124'
@@ -1084,8 +1074,8 @@ export default function Account() {
                       Identity Number
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{ 
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa', 
+                      <CInputGroupText style={{
+                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                         border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                         color: isDarkMode ? '#e8eaed' : '#5f6368'
                       }}>
@@ -1095,7 +1085,7 @@ export default function Account() {
                         value={formData?.identityNumber || ''}
                         onChange={(e) => handleInputChange('identityNumber', e.target.value)}
                         placeholder="Enter identity number"
-                        style={{ 
+                        style={{
                           border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                           backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                           color: isDarkMode ? '#e8eaed' : '#202124'
@@ -1109,8 +1099,8 @@ export default function Account() {
                       Status
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{ 
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa', 
+                      <CInputGroupText style={{
+                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                         border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                         color: isDarkMode ? '#e8eaed' : '#5f6368'
                       }}>
@@ -1119,16 +1109,16 @@ export default function Account() {
                       <CFormSelect
                         value={formData?.status || ''}
                         onChange={(e) => handleInputChange('status', e.target.value)}
-                        style={{ 
+                        style={{
                           border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                           backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                           color: isDarkMode ? '#e8eaed' : '#202124'
                         }}
                       >
-                        <option value="" style={{backgroundColor: isDarkMode ? '#2f3136' : '#ffffff'}}>Select status</option>
-                        <option value="active" style={{backgroundColor: isDarkMode ? '#2f3136' : '#ffffff'}}>Active</option>
-                        <option value="inactive" style={{backgroundColor: isDarkMode ? '#2f3136' : '#ffffff'}}>Inactive</option>
-                        <option value="pending" style={{backgroundColor: isDarkMode ? '#2f3136' : '#ffffff'}}>Pending</option>
+                        <option value="" style={{ backgroundColor: isDarkMode ? '#2f3136' : '#ffffff' }}>Select status</option>
+                        <option value="active" style={{ backgroundColor: isDarkMode ? '#2f3136' : '#ffffff' }}>Active</option>
+                        <option value="inactive" style={{ backgroundColor: isDarkMode ? '#2f3136' : '#ffffff' }}>Inactive</option>
+                        <option value="pending" style={{ backgroundColor: isDarkMode ? '#2f3136' : '#ffffff' }}>Pending</option>
                       </CFormSelect>
                     </CInputGroup>
                   </CCol>
@@ -1150,8 +1140,7 @@ export default function Account() {
                         label={feature}
                         checked={formData?.features?.includes(feature) || false}
                         onChange={() => handleFeaturesChange(feature)}
-                        // 💡 Dark Mode: Checkbox label text color
-                        style={{ 
+                        style={{
                           fontSize: '14px',
                           color: isDarkMode ? '#e8eaed' : '#202124'
                         }}
@@ -1164,18 +1153,16 @@ export default function Account() {
                   Operating Hours
                 </h6>
                 <div className="table-responsive">
-                  <table 
-                    className="table table-sm" 
-                    style={{ 
+                  <table
+                    className="table table-sm"
+                    style={{
                       fontSize: '14px',
-                      // 💡 Dark Mode: Table text color
                       color: isDarkMode ? '#e8eaed' : '#202124'
                     }}
                   >
-                    <thead style={{ 
-                        // 💡 Dark Mode: Table header background
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa' 
-                      }}
+                    <thead style={{
+                      backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa'
+                    }}
                     >
                       <tr>
                         <th style={{ width: '20%', color: isDarkMode ? '#aaa' : '#5f6368', fontWeight: '500', borderBottom: isDarkMode ? '2px solid #444' : '1px solid #e8eaed' }}>Day</th>
@@ -1186,14 +1173,12 @@ export default function Account() {
                     </thead>
                     <tbody>
                       {daysOfWeek.map((day) => (
-                        <tr key={day} style={{borderBottom: isDarkMode ? '1px solid #444' : '1px solid #e8eaed'}}>
+                        <tr key={day} style={{ borderBottom: isDarkMode ? '1px solid #444' : '1px solid #e8eaed' }}>
                           <td style={{ textTransform: 'capitalize', fontWeight: '500' }}>{day}</td>
                           <td style={{ textAlign: 'center' }}>
                             <CFormCheck
                               checked={formData?.operatingHours?.[day]?.isOpen ?? true}
                               onChange={(e) => handleOperatingHoursChange(day, 'isOpen', e.target.checked)}
-                              // 💡 Dark Mode: Checkbox visibility
-                              style={{'--cui-form-check-input-bg': isDarkMode ? '#2f3136' : '#fff', '--cui-form-check-input-border': '1px solid ' + (isDarkMode ? '#444' : '#ced4da')}}
                             />
                           </td>
                           <td>
@@ -1203,7 +1188,7 @@ export default function Account() {
                               value={formData?.operatingHours?.[day]?.open || ''}
                               onChange={(e) => handleOperatingHoursChange(day, 'open', e.target.value)}
                               disabled={!formData?.operatingHours?.[day]?.isOpen}
-                              style={{ 
+                              style={{
                                 border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                                 backgroundColor: (!formData?.operatingHours?.[day]?.isOpen && isDarkMode) ? '#3c4043' : (isDarkMode ? '#2f3136' : '#ffffff'),
                                 color: isDarkMode ? '#e8eaed' : '#202124'
@@ -1217,7 +1202,7 @@ export default function Account() {
                               value={formData?.operatingHours?.[day]?.close || ''}
                               onChange={(e) => handleOperatingHoursChange(day, 'close', e.target.value)}
                               disabled={!formData?.operatingHours?.[day]?.isOpen}
-                              style={{ 
+                              style={{
                                 border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                                 backgroundColor: (!formData?.operatingHours?.[day]?.isOpen && isDarkMode) ? '#3c4043' : (isDarkMode ? '#2f3136' : '#ffffff'),
                                 color: isDarkMode ? '#e8eaed' : '#202124'
@@ -1241,8 +1226,8 @@ export default function Account() {
                       Facebook
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{ 
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa', 
+                      <CInputGroupText style={{
+                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                         border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                         color: isDarkMode ? '#e8eaed' : '#5f6368'
                       }}>
@@ -1252,7 +1237,7 @@ export default function Account() {
                         value={formData?.facebook || ''}
                         onChange={(e) => handleInputChange('facebook', e.target.value)}
                         placeholder="Enter Facebook profile URL"
-                        style={{ 
+                        style={{
                           border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                           backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                           color: isDarkMode ? '#e8eaed' : '#202124'
@@ -1266,8 +1251,8 @@ export default function Account() {
                       Instagram
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{ 
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa', 
+                      <CInputGroupText style={{
+                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                         border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                         color: isDarkMode ? '#e8eaed' : '#5f6368'
                       }}>
@@ -1277,7 +1262,7 @@ export default function Account() {
                         value={formData?.instagram || ''}
                         onChange={(e) => handleInputChange('instagram', e.target.value)}
                         placeholder="Enter Instagram profile URL"
-                        style={{ 
+                        style={{
                           border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                           backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                           color: isDarkMode ? '#e8eaed' : '#202124'
@@ -1291,8 +1276,8 @@ export default function Account() {
                       WhatsApp
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{ 
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa', 
+                      <CInputGroupText style={{
+                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
                         border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                         color: isDarkMode ? '#e8eaed' : '#5f6368'
                       }}>
@@ -1302,7 +1287,7 @@ export default function Account() {
                         value={formData?.whatsapp || ''}
                         onChange={(e) => handleInputChange('whatsapp', e.target.value)}
                         placeholder="Enter WhatsApp number"
-                        style={{ 
+                        style={{
                           border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
                           backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                           color: isDarkMode ? '#e8eaed' : '#202124'
@@ -1315,10 +1300,9 @@ export default function Account() {
             </CTabPane>
           </CTabContent>
         </CModalBody>
-        <CModalFooter 
-          className="px-3 px-md-4 py-3" 
-          style={{ 
-            // 💡 Dark Mode: Modal footer background
+        <CModalFooter
+          className="px-3 px-md-4 py-3"
+          style={{
             backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
             borderTop: isDarkMode ? '1px solid #444' : '1px solid #e8eaed'
           }}
@@ -1330,7 +1314,6 @@ export default function Account() {
               onClick={handleCloseModal}
               className="w-100 w-md-auto"
               style={{
-                // 💡 Dark Mode: Secondary button style
                 borderColor: isDarkMode ? '#5f6368' : '#dadce0',
                 color: isDarkMode ? '#bdc1c6' : '#5f6368',
                 backgroundColor: isDarkMode ? 'transparent' : 'transparent',
@@ -1347,7 +1330,6 @@ export default function Account() {
               disabled={isUpdating}
               className="w-100 w-md-auto"
               style={{
-                // 💡 Dark Mode: Primary button style
                 backgroundColor: '#8ab4f8',
                 border: 'none',
                 borderRadius: '6px',

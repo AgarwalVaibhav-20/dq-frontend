@@ -353,7 +353,7 @@ const Cart = React.forwardRef(({
   
   return (
     <>
-      <CCard className="shadow-lg h-100" style={{ borderRadius: '15px' }}>
+      <CCard className="shadow-lg h-100 max-sm:mb-5" style={{ borderRadius: '15px' }} >
         <CCardHeader
           className="bg-white d-flex justify-content-between align-items-center"
           style={{

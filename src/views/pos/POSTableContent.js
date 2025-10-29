@@ -1941,7 +1941,7 @@ const POSTableContent = () => {
   }, [categories]);
 
   return (
-    <CContainer fluid className="p-3" style={{ backgroundColor: '#f0f2f5' }}>
+    <CContainer fluid className="p-5" style={{ backgroundColor: '#f0f2f5' }}>
       <CRow>
         <CCol md={7} lg={8}>
           <ProductList
@@ -1961,7 +1961,7 @@ const POSTableContent = () => {
             handleSystemDropdownChange={handleSystemDropdownChange}
           />
         </CCol>
-        <CCol md={5} lg={4}>
+        <CCol md={5} lg={4} className='mb-2'>
           <Cart
             selectedCustomerName={selectedCustomerName}
             setShowCustomerModal={setShowCustomerModal}

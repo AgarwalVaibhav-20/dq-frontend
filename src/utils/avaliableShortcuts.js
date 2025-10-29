@@ -319,20 +319,20 @@ export const AVAILABLE_SHORTCUTS = [
   },
 
   // --- FUNCTIONAL ACTIONS ---
-  {
-    category: 'Actions',
-    action: 'New Sale',
-    route: null,
-    suggestedKeys: ['Ctrl', 'N'],
-    description: 'Open new sale modal'
-  },
-  {
-    category: 'Actions',
-    action: 'Focus Search Bar',
-    route: null,
-    suggestedKeys: ['Ctrl', 'K'],
-    description: 'Focus on global search bar'
-  }
+  // {
+  //   category: 'Actions',
+  //   action: 'New Sale',
+  //   route: null,
+  //   suggestedKeys: ['Ctrl', 'N'],
+  //   description: 'Open new sale modal'
+  // },
+  // {
+  //   category: 'Actions',
+  //   action: 'Focus Search Bar',
+  //   route: null,
+  //   suggestedKeys: ['Ctrl', 'K'],
+  //   description: 'Focus on global search bar'
+  // }
 ];
 
 // Group shortcuts by category

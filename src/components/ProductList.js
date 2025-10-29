@@ -251,7 +251,7 @@ const ProductList = React.forwardRef(({
   return (
     <>
       <CContainer ref={ref}
-        className={`product-list-container rounded p-4 ${isDarkMode ? 'bg-dark text-light' : 'bg-white text-dark'} shadow-sm`}
+        className={`product-list-container rounded max-sm:mb-5 p-4 ${isDarkMode ? 'bg-dark text-light' : 'bg-white text-dark'} shadow-sm`}
       >
         {/* Search & Table Info - Mobile Responsive */}
         <div className="mb-4">
