@@ -103,20 +103,38 @@ export const deleteQr = createAsyncThunk(
   async (id, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem("authToken");
+      
+      if (!token) {
+        console.error("❌ No auth token found");
+        throw new Error("Authentication token not found");
+      }
+
+      console.log("🌐 Making DELETE request to:", `${BASE_URL}/delete/qrcodes/${id}`);
+      console.log("🔑 Token present:", !!token);
+
       const res = await axios.delete(
         `${BASE_URL}/delete/qrcodes/${id}`,
-        configureHeaders(token) // must return { headers: { Authorization: `Bearer ...` } }
+        configureHeaders(token)
       );
 
+      console.log("📡 Delete API response:", res.data);
+      console.log("📊 Response status:", res.status);
+
       if (res.data.success) {
+        console.log("✅ Delete successful in API");
         toast.success("QR deleted successfully");
         return id; // return ID so reducer can remove from state
       } else {
+        console.error("❌ Delete failed - success: false");
         throw new Error(res.data.message || "Failed to delete QR");
       }
     } catch (err) {
-      toast.error(err.response?.data?.message || "Failed to delete QR");
-      return rejectWithValue(err.response?.data);
+      console.error("❌ Delete API error:", err);
+      console.error("❌ Error response:", err.response?.data);
+      console.error("❌ Error status:", err.response?.status);
+      const errorMessage = err.response?.data?.message || err.message || "Failed to delete QR";
+      toast.error(errorMessage);
+      return rejectWithValue(err.response?.data || { message: errorMessage });
     }
   }
 );
@@ -191,7 +209,10 @@ const qrSlice = createSlice({
         state.error = null;
       })
       .addCase(deleteQr.fulfilled, (state, action) => {
-        state.data = action.payload;
+        state.loading = false;
+        // Remove deleted QR from the list
+        state.qrList = state.qrList.filter((qr) => qr._id !== action.payload);
+        state.error = null;
       })
       .addCase(deleteQr.rejected, (state, action) => {
         state.loading = false;

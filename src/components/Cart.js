@@ -201,30 +201,52 @@ const Cart = React.forwardRef(({
   // Handle arrow up/down for cart navigation (when NOT in modal)
   // Up/Down for navigation
   useHotkeys(
-    'up, down',
+    'arrowup, arrowdown',
     (e, handler) => {
+      // Check if focus is in cart or on a cart item
+      const activeElement = document.activeElement;
+      const isInCart = cartContainerRef.current?.contains(activeElement) || 
+                       activeElement?.classList.contains('cart-item');
+      
+      if (!isInCart || cart.length === 0) return;
+      
       e.preventDefault();
-      if (cart.length === 0) return;
-      if (handler.keys?.includes('down')) {
-        setFocusedItemIndex((prev) => {
-          const newIndex = prev < cart.length - 1 ? prev + 1 : 0;
+      e.stopPropagation();
+      
+      // If already on a cart item, navigate from that item
+      const currentIndex = Array.from(cartItemRefs.current).findIndex(ref => ref === activeElement);
+      
+      if (handler.keys?.includes('arrowdown')) {
+        const newIndex = currentIndex >= 0 
+          ? (currentIndex < cart.length - 1 ? currentIndex + 1 : 0)
+          : (focusedItemIndex < cart.length - 1 ? focusedItemIndex + 1 : 0);
+        
+        setFocusedItemIndex(newIndex);
+        setTimeout(() => {
           cartItemRefs.current[newIndex]?.focus();
-          return newIndex;
-        });
-      } else if (handler.keys?.includes('up')) {
-        setFocusedItemIndex((prev) => {
-          const newIndex = prev > 0 ? prev - 1 : cart.length - 1;
+        }, 0);
+      } else if (handler.keys?.includes('arrowup')) {
+        const newIndex = currentIndex >= 0 
+          ? (currentIndex > 0 ? currentIndex - 1 : cart.length - 1)
+          : (focusedItemIndex > 0 ? focusedItemIndex - 1 : cart.length - 1);
+        
+        setFocusedItemIndex(newIndex);
+        setTimeout(() => {
           cartItemRefs.current[newIndex]?.focus();
-          return newIndex;
-        });
+        }, 0);
       }
     },
     {
       enableOnFormTags: false,
       preventDefault: true,
-      enable: () => cartContainerRef.current?.contains(document.activeElement)  // Only in cart
+      enable: () => {
+        const activeElement = document.activeElement;
+        const isInCart = cartContainerRef.current?.contains(activeElement) || 
+                         activeElement?.classList.contains('cart-item');
+        return isInCart && cart.length > 0;
+      }
     },
-    [cart.length]
+    [cart.length, focusedItemIndex]
   );
 
   // Left/Right for quantity
@@ -415,14 +437,20 @@ const Cart = React.forwardRef(({
                       // Arrow Up/Down: Navigate between cart items
                       if (e.key === 'ArrowUp') {
                         e.preventDefault();
-                        if (index > 0) {
-                          cartItemRefs.current[index - 1]?.focus();
-                        }
+                        e.stopPropagation();
+                        const newIndex = index > 0 ? index - 1 : cart.length - 1;
+                        setFocusedItemIndex(newIndex);
+                        setTimeout(() => {
+                          cartItemRefs.current[newIndex]?.focus();
+                        }, 0);
                       } else if (e.key === 'ArrowDown') {
                         e.preventDefault();
-                        if (index < cart.length - 1) {
-                          cartItemRefs.current[index + 1]?.focus();
-                        }
+                        e.stopPropagation();
+                        const newIndex = index < cart.length - 1 ? index + 1 : 0;
+                        setFocusedItemIndex(newIndex);
+                        setTimeout(() => {
+                          cartItemRefs.current[newIndex]?.focus();
+                        }, 0);
                       }
                       // Arrow Right: Increment quantity (continuous while held)
                       else if (e.key === 'ArrowRight') {

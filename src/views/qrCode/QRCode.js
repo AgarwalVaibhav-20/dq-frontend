@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import {
   CButton,
   CModal,
@@ -121,6 +121,7 @@ export default function QRCode() {
   const [showQrModalVisible, setShowQrModalVisible] = useState(false); // New state for QR scan modal
   const [confirmDeleteModalVisible, setConfirmDeleteModalVisible] = useState(false);
   const [selectedQr, setSelectedQr] = useState(null);
+  const selectedQrRef = useRef(null); // Ref to preserve selectedQr during modal transitions
   const [tableNumber, setTableNumber] = useState('');
   const [error, setError] = useState('');
   const [floorId, setFloorId] = useState('');
@@ -194,12 +195,42 @@ export default function QRCode() {
   };
 
   const handleDelete = async () => {
-    if (selectedQr) {
-      await dispatch(deleteQr(selectedQr._id));
-      setConfirmDeleteModalVisible(false);
-      setShowQrModalVisible(false);
-      dispatch(getQrs({ restaurantId }));
-      setPreviewQr(null);
+    // Use ref as fallback if state is lost
+    const qrToDelete = selectedQr || selectedQrRef.current;
+    
+    if (!qrToDelete || !qrToDelete._id) {
+      console.error("❌ No QR selected for deletion");
+      console.error("❌ selectedQr:", selectedQr);
+      console.error("❌ selectedQrRef:", selectedQrRef.current);
+      alert("कोई QR code selected नहीं है!");
+      return;
+    }
+
+    console.log("🗑️ Attempting to delete QR:", qrToDelete._id);
+    console.log("📋 Selected QR:", qrToDelete);
+
+    try {
+      const result = await dispatch(deleteQr(qrToDelete._id));
+      console.log("📦 Delete result:", result);
+      
+      // Only close modals and refresh if delete was successful
+      if (result.meta.requestStatus === 'fulfilled') {
+        console.log("✅ Delete successful!");
+        setConfirmDeleteModalVisible(false);
+        setShowQrModalVisible(false);
+        setSelectedQr(null);
+        selectedQrRef.current = null; // Clear ref too
+        setPreviewQr(null);
+        // Refresh QR list to ensure UI is in sync
+        dispatch(getQrs({ restaurantId }));
+      } else {
+        console.error("❌ Delete failed:", result.payload);
+        // Keep modal open if delete failed
+        alert(result.payload?.message || "QR code delete करने में error आया।");
+      }
+    } catch (error) {
+      console.error("❌ Error in handleDelete:", error);
+      alert("QR code delete करते समय unexpected error आया।");
     }
   };
 
@@ -216,6 +247,7 @@ export default function QRCode() {
 
   const handleQrClick = (qr) => {
     setSelectedQr(qr);
+    selectedQrRef.current = qr; // Also store in ref for preservation
     setShowQrModalVisible(true); // Open QR scan modal instead of action modal
   };
 
@@ -507,8 +539,11 @@ export default function QRCode() {
         <CModal
           visible={showQrModalVisible}
           onClose={() => {
+            // Only clear selectedQr if not opening confirm delete modal
+            if (!confirmDeleteModalVisible) {
+              setSelectedQr(null);
+            }
             setShowQrModalVisible(false);
-            setSelectedQr(null);
           }}
           size="md"
           className="modal-fullscreen-sm-down"
@@ -535,8 +570,24 @@ export default function QRCode() {
               color="danger"
               variant="outline"
               onClick={() => {
-                setConfirmDeleteModalVisible(true);
+                console.log("🔴 Delete button clicked, selectedQr:", selectedQr);
+                console.log("🔴 Delete button clicked, selectedQrRef:", selectedQrRef.current);
+                // Preserve selectedQr in state before closing modal
+                const qrToDelete = selectedQr || selectedQrRef.current;
+                if (qrToDelete) {
+                  setSelectedQr(qrToDelete); // Ensure it's set
+                  selectedQrRef.current = qrToDelete; // Preserve in ref
+                }
                 setShowQrModalVisible(false);
+                // Use setTimeout to ensure modal state changes properly
+                setTimeout(() => {
+                  // Restore from ref if state was lost
+                  if (!selectedQr && selectedQrRef.current) {
+                    setSelectedQr(selectedQrRef.current);
+                  }
+                  setConfirmDeleteModalVisible(true);
+                  console.log("✅ Confirm delete modal opened, selectedQr:", selectedQr || selectedQrRef.current);
+                }, 100);
               }}
               className="w-100 w-sm-auto order-2 order-sm-1 responsive-button"
             >
@@ -555,7 +606,12 @@ export default function QRCode() {
         {/* Confirm Delete Modal */}
         <CModal
           visible={confirmDeleteModalVisible}
-          onClose={() => setConfirmDeleteModalVisible(false)}
+          onClose={() => {
+            setConfirmDeleteModalVisible(false);
+            // Clear selectedQr only when closing confirm delete modal (not when opening)
+            setSelectedQr(null);
+            selectedQrRef.current = null; // Clear ref too
+          }}
           size="md"
           className="modal-fullscreen-sm-down"
           scrollable
@@ -567,10 +623,16 @@ export default function QRCode() {
             </h2>
           </CModalHeader>
           <CModalBody className="text-center modal-body">
-            <p className="mb-0">
-              Are you sure you want to delete the QR Code for{' '}
-              <strong>Table {selectedQr?.tableNumber}</strong>?
-            </p>
+            {(selectedQr || selectedQrRef.current) ? (
+              <p className="mb-0">
+                Are you sure you want to delete the QR Code for{' '}
+                <strong>Table {(selectedQr || selectedQrRef.current)?.tableNumber}</strong>?
+              </p>
+            ) : (
+              <p className="mb-0 text-danger">
+                ⚠️ Error: QR code information not found. Please try again.
+              </p>
+            )}
           </CModalBody>
           <CModalFooter className="pt-2 d-flex flex-column flex-sm-row gap-2">
             <CButton
@@ -583,10 +645,29 @@ export default function QRCode() {
             </CButton>
             <CButton
               color="danger"
-              onClick={handleDelete}
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                console.log("🔴 Confirm Delete button clicked!");
+                console.log("📋 Current selectedQr:", selectedQr);
+                console.log("📋 selectedQrRef:", selectedQrRef.current);
+                // Use ref as fallback if state is lost
+                const qrToDelete = selectedQr || selectedQrRef.current;
+                if (!qrToDelete || !qrToDelete._id) {
+                  console.error("❌ selectedQr is null!");
+                  alert("QR code information missing. Please try again.");
+                  return;
+                }
+                // Ensure state is set if using ref
+                if (!selectedQr && selectedQrRef.current) {
+                  setSelectedQr(selectedQrRef.current);
+                }
+                handleDelete();
+              }}
+              disabled={loading || (!selectedQr && !selectedQrRef.current)}
               className="w-100 w-sm-auto order-1 order-sm-2 responsive-button"
             >
-              Confirm Delete
+              {loading ? "Deleting..." : "Confirm Delete"}
             </CButton>
           </CModalFooter>
         </CModal>

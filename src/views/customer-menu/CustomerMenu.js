@@ -62,23 +62,38 @@ const RestaurantOrderingApp = () => {
     const [existingCustomer, setExistingCustomer] = useState(null);
     const [customerError, setCustomerError] = useState('');
 
-    // --> Pre-fill form from localStorage on initial load
+    // --> Pre-fill form from localStorage on initial load (with restaurantId)
     useEffect(() => {
-        const savedCustomer = localStorage.getItem('currentCustomer');
+        if (!restaurantId) return;
+        
+        // Get customer data specific to current restaurant
+        const customerKey = `currentCustomer_${restaurantId}`;
+        const savedCustomer = localStorage.getItem(customerKey);
+        
         if (savedCustomer) {
             const customer = JSON.parse(savedCustomer);
             setCustomerForm({
-                ...customerForm, // keep defaults like orderType
                 name: customer.name || '',
                 email: customer.email || '',
                 phoneNumber: customer.phoneNumber || '',
+                orderType: 'In Restaurant', // Keep default
                 address: customer.address || ''
             });
             if (customer.phoneNumber && customers.length > 0) {
                 checkExistingCustomer(customer.phoneNumber);
             }
+        } else {
+            // Reset form if no customer data for this restaurant
+            setCustomerForm({
+                name: '',
+                email: '',
+                phoneNumber: '',
+                orderType: 'In Restaurant',
+                address: ''
+            });
+            setExistingCustomer(null);
         }
-    }, [customers]); // Depend on customers to ensure the list is loaded
+    }, [customers, restaurantId]); // Depend on customers and restaurantId to ensure correct data
 
     const activeMenuItems = menuItems.filter(item => item.status === 1);
     console.log('Active menuItems (status === 1):', activeMenuItems);
@@ -111,22 +126,35 @@ const RestaurantOrderingApp = () => {
     const getTotalPrice = () => cart.reduce((total, item) => total + (item.price * item.quantity), 0);
     const getTotalItems = () => cart.reduce((total, item) => total + item.quantity, 0);
 
-    // MODIFIED with the main logic change
+    // MODIFIED: Check current restaurant's customer data only and compare restaurantId
     const handleCheckout = () => {
         if (cart.length === 0) return;
 
-        // Check if we already have customer details from a previous order in this session
-        const savedCustomer = localStorage.getItem('currentCustomer');
+        // Check only current restaurant's customer data
+        const customerKey = `currentCustomer_${restaurantId}`;
+        const savedCustomer = localStorage.getItem(customerKey);
 
         if (savedCustomer) {
-            // If customer exists, parse the data and place the order directly
-            console.log("Customer data found in session. Placing order directly.");
             const customerData = JSON.parse(savedCustomer);
-            setCartOpen(false); // Close the cart
-            placeOrder(customerData); // Call our reusable order function
+            const storedRestaurantId = customerData?.restaurantId;
+            
+            // Compare stored restaurantId with current restaurantId
+            if (storedRestaurantId && storedRestaurantId === restaurantId) {
+                // Same restaurant - direct order placement
+                console.log("✅ Same restaurant detected. Placing order directly for restaurant:", restaurantId);
+                setCartOpen(false); // Close the cart
+                placeOrder(customerData); // Call our reusable order function
+            } else {
+                // Different restaurant ID - ask for details
+                console.log("⚠️ Different restaurant detected. Saved:", storedRestaurantId, "Current:", restaurantId);
+                console.log("Opening form to collect customer details for new restaurant");
+                setCartOpen(false);
+                setCheckoutOpen(true);
+            }
         } else {
-            // If no customer data, open the form to collect details
-            console.log("No customer data in session. Opening checkout form.");
+            // No customer data for this restaurant - open form
+            console.log("No customer data found for restaurant:", restaurantId);
+            console.log("Opening form to collect customer details");
             setCartOpen(false);
             setCheckoutOpen(true);
         }
@@ -229,13 +257,17 @@ const RestaurantOrderingApp = () => {
                 throw new Error("Customer creation failed or returned invalid data");
             }
 
-            localStorage.setItem('currentCustomer', JSON.stringify({
+            // Store customer data with restaurantId to support multiple restaurants
+            const customerKey = `currentCustomer_${restaurantId}`;
+            localStorage.setItem(customerKey, JSON.stringify({
                 _id: customerData._id,
                 name: customerData.name,
                 email: customerData.email,
                 phoneNumber: customerData.phoneNumber,
                 address: customerData.address,
+                restaurantId: restaurantId, // Store restaurantId with customer data for comparison
             }));
+            console.log("✅ Customer data saved for restaurant:", restaurantId);
 
             await placeOrder(customerData);
 

@@ -1750,8 +1750,15 @@ const POSTableContent = () => {
   }
   useEffect(() => {
     const handleKeyDown = (e) => {
-      // Prevent default browser behavior
-      if (['ArrowUp', 'ArrowDown', 'Enter', 'Escape'].includes(e.key)) {
+      // Don't prevent default for Enter on product cards - let ProductList handle it
+      const isProductCard = document.activeElement?.classList.contains('product-card');
+      if (isProductCard && e.key === 'Enter') {
+        // Let ProductList component handle Enter key for product cards
+        return;
+      }
+
+      // Prevent default browser behavior for other keys
+      if (['ArrowUp', 'ArrowDown', 'Escape'].includes(e.key)) {
         e.preventDefault();
       }
 
@@ -1793,11 +1800,9 @@ const POSTableContent = () => {
         index = index > 0 ? index - 1 : products.length - 1;
         products[index]?.focus();
       }
-      if (e.key === 'Enter' && currentFocused.classList.contains('product-card')) {
-        const productId = currentFocused.dataset.id;
-        const product = filteredMenuItems.find(p => p._id === productId);
-        if (product) handleMenuItemClick(product);
-      }
+      // Enter key is handled by ProductList.js component's onKeyDown handler
+      // It will call handleProductClickInternal which opens size selection modal
+      // We don't add to cart directly here - let ProductList handle it
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -1892,20 +1897,9 @@ const POSTableContent = () => {
     enable: () => productListRef.current?.contains(document.activeElement)
   });
 
-  useHotkeys('enter', (e) => {
-    const currentFocused = document.activeElement;
-    if (currentFocused?.className.includes('product-card')) {
-      const productId = currentFocused.getAttribute('data-id');
-      const product = filteredMenuItems.find((item) => item._id === productId);
-      if (product) {
-        handleProductClick(product); // Use the handler from ProductList
-      }
-    }
-    e.preventDefault();
-  }, {
-    preventDefault: true,
-    enable: () => productListRef.current?.contains(document.activeElement)
-  });
+  // Enter key for product cards is handled by ProductList.js component's onKeyDown
+  // Don't add global handler here - it would interfere with size selection modal
+  // useHotkeys('enter', ...) removed to allow ProductList to handle Enter key properly
 
   // Focus management: Switch between ProductList and Cart sections
   useHotkeys('arrowleft', (e) => {

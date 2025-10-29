@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef, useState, useEffect, useCallback } from 'react';
 import {
   CContainer,
   CInputGroup,
@@ -47,6 +47,7 @@ const ProductList = React.forwardRef(({
   const [showSizeModal, setShowSizeModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedSize, setSelectedSize] = useState('');
+  const sizeOptionRefs = useRef([]);
 
   // Available sizes
   const sizes = [
@@ -57,19 +58,39 @@ const ProductList = React.forwardRef(({
 
   // Handle product click - only show modal, no direct add
   const handleProductClickInternal = (product) => {
+    console.log('===== handleProductClickInternal CALLED =====');
     console.log('Product clicked:', product.itemName);
     console.log('Opening size selection modal');
+    console.log('Product details:', product);
+    console.log('Current showSizeModal state:', showSizeModal);
+
+    if (!product) {
+      console.error('Product is null or undefined!');
+      return;
+    }
 
     try {
+      console.log('Setting selectedProduct...');
       setSelectedProduct(product);
+      console.log('Setting selectedSize to empty...');
       setSelectedSize('');
+      console.log('Setting showSizeModal to true...');
+      
+      // Force immediate state update
       setShowSizeModal(true);
+      
+      console.log('Modal state set to true');
+      console.log('showSizeModal after setState:', true); // Note: won't show updated value due to async
+      
       if (handleProductClick) {
-        handleProductClick(product); // Call the passed handleProductClick
+        console.log('Calling handleProductClick prop');
+        handleProductClick(product);
       }
-      console.log('Modal opened for:', product.itemName);
+      
+      console.log('===== handleProductClickInternal COMPLETED =====');
     } catch (error) {
       console.error('Error opening modal:', error);
+      console.error('Error stack:', error.stack);
     }
   };
   const searchInputRef = useRef(null);
@@ -78,6 +99,80 @@ const ProductList = React.forwardRef(({
   useEffect(() => {
     searchInputRef.current?.focus();
   }, []);
+  
+  // Focus on first size option when modal opens
+  const modalHasFocusedRef = useRef(false);
+  
+  // Function to focus first size option
+  const focusFirstSizeOption = useCallback(() => {
+    // Wait a bit for modal to fully render
+    const attemptFocus = () => {
+      // Try multiple strategies
+      const firstSizeCard = sizeOptionRefs.current[0];
+      const firstSizeOptionByClass = document.querySelector('.size-option[tabindex="0"]');
+      const firstSizeOptionBySelector = document.querySelector('.size-option');
+      
+      const elementToFocus = firstSizeCard || firstSizeOptionByClass || firstSizeOptionBySelector;
+      
+      if (elementToFocus) {
+        console.log('Focusing first size option, element:', elementToFocus);
+        try {
+          // Ensure element is focusable
+          if (elementToFocus.setAttribute) {
+            elementToFocus.setAttribute('tabindex', '0');
+          }
+          
+          // Focus the element
+          if (typeof elementToFocus.focus === 'function') {
+            elementToFocus.focus();
+            modalHasFocusedRef.current = true;
+            console.log('✅ Successfully focused first size option!');
+            return true;
+          }
+        } catch (error) {
+          console.error('Error focusing:', error);
+        }
+      }
+      return false;
+    };
+    
+    // Try immediately
+    if (!attemptFocus()) {
+      // Try after animation frame
+      requestAnimationFrame(() => {
+        if (!attemptFocus()) {
+          // Try after short delay
+          setTimeout(() => {
+            if (!attemptFocus()) {
+              // Try after longer delay
+              setTimeout(() => {
+                attemptFocus();
+              }, 300);
+            }
+          }, 150);
+        }
+      });
+    }
+  }, []);
+  
+  useEffect(() => {
+    if (showSizeModal && selectedProduct?.sizes && selectedProduct.sizes.length > 0) {
+      // Reset focus flag when modal opens
+      modalHasFocusedRef.current = false;
+      
+      // Wait for modal to be in DOM before focusing
+      // Use longer delay to ensure modal is fully rendered
+      setTimeout(() => {
+        focusFirstSizeOption();
+      }, 200);
+    } else {
+      // Reset when modal closes
+      modalHasFocusedRef.current = false;
+      if (!showSizeModal) {
+        sizeOptionRefs.current = [];
+      }
+    }
+  }, [showSizeModal, selectedProduct, focusFirstSizeOption]);
   // Handle size selection and add to cart
   const handleAddToCart = () => {
     console.log('Add to cart clicked');
@@ -492,13 +587,18 @@ const ProductList = React.forwardRef(({
                 <CCol key={product._id} xs={6} sm={4} md={3} lg={2}>
                   <CTooltip content={`Click to select size for ${product.itemName}`} placement="top">
                     <div
-                      onClick={() => {
+                      onClick={(e) => {
                         console.log('Product div clicked:', product.itemName);
+                        e.preventDefault();
+                        e.stopPropagation();
                         handleProductClickInternal(product);
                       }}
                       className={`product-card p-2 d-flex flex-column align-items-center justify-content-between text-center border rounded-4 h-100 w-100 shadow-sm transition-all hover-scale ${isDarkMode ? 'bg-secondary text-light' : 'bg-white'}`}
                       tabIndex={0}
-                      data-id={product._id} // Add data-id for Enter key handling
+                      data-id={product._id}
+                      data-product-name={product.itemName}
+                      role="button"
+                      aria-label={`Select size for ${product.itemName}`}
                       style={{
                         cursor: 'pointer',
                         aspectRatio: '1 / 1',
@@ -523,9 +623,28 @@ const ProductList = React.forwardRef(({
                         e.currentTarget.style.outline = 'none';
                       }}
                       onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
+                        console.log('Key pressed on product card:', e.key, product.itemName);
+                        console.log('Current active element:', document.activeElement);
+                        console.log('Event target:', e.target);
+                        
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          console.log('Enter/Space key detected - opening modal');
                           e.preventDefault();
-                          handleProductClickInternal(product);
+                          e.stopPropagation();
+                          
+                          // Use nativeEvent for stopImmediatePropagation if available
+                          if (e.nativeEvent && typeof e.nativeEvent.stopImmediatePropagation === 'function') {
+                            e.nativeEvent.stopImmediatePropagation();
+                          }
+                          
+                          console.log('Before calling handleProductClickInternal');
+                          
+                          // Use setTimeout to ensure state update happens after event handling
+                          setTimeout(() => {
+                            console.log('Inside setTimeout, calling handleProductClickInternal');
+                            handleProductClickInternal(product);
+                            console.log('After calling handleProductClickInternal in setTimeout');
+                          }, 0);
                         }
                         // Arrow key navigation
                         else if (e.key === 'ArrowUp') {
@@ -652,6 +771,15 @@ const ProductList = React.forwardRef(({
         visible={showSizeModal}
         onClose={handleCloseModal}
         size="lg"
+        backdrop="static"
+        portal={false}
+        onOpened={() => {
+          // Focus first size when modal animation completes
+          console.log('Modal opened, focusing first size...');
+          setTimeout(() => {
+            focusFirstSizeOption();
+          }, 100);
+        }}
       >
           <CModalHeader className={isDarkMode ? 'bg-dark text-light border-secondary' : ''}>
             <CModalTitle style={{ fontSize: '16px' }}>Select Size</CModalTitle>
@@ -686,22 +814,78 @@ const ProductList = React.forwardRef(({
               <h6 className="mb-3" style={{ fontSize: '14px' }}>Available Sizes:</h6>
               {selectedProduct?.sizes && selectedProduct.sizes.length > 0 ? (
                 <CRow className="g-2">
-                  {selectedProduct.sizes.map((size) => (
+                  {selectedProduct.sizes.map((size, index) => (
                     <CCol key={size._id} xs={12} sm={6} md={4}>
                       <CCard
+                        ref={(el) => {
+                          sizeOptionRefs.current[index] = el;
+                          // Auto-focus first size when modal opens and element is ready
+                          if (index === 0 && showSizeModal && el && !modalHasFocusedRef.current) {
+                            // Use multiple strategies to ensure focus
+                            requestAnimationFrame(() => {
+                              if (el && document.activeElement !== el) {
+                                el.focus();
+                                modalHasFocusedRef.current = true;
+                              }
+                            });
+                          }
+                        }}
                         className={`size-option h-100 ${selectedSize === size._id
                           ? 'border-primary bg-primary bg-opacity-10'
                           : isDarkMode
                             ? 'bg-secondary border-secondary'
                             : 'border'
                           }`}
-                        style={{ cursor: 'pointer', transition: 'all 0.2s ease' }}
+                        style={{ 
+                          cursor: 'pointer', 
+                          transition: 'all 0.2s ease',
+                          outline: 'none'
+                        }}
                         onClick={() => setSelectedSize(size._id)}
                         tabIndex={0}
+                        role="button"
+                        aria-pressed={selectedSize === size._id}
+                        onFocus={(e) => {
+                          e.currentTarget.style.outline = '3px solid #0d6efd';
+                          e.currentTarget.style.outlineOffset = '2px';
+                        }}
+                        onBlur={(e) => {
+                          e.currentTarget.style.outline = 'none';
+                        }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter' || e.key === ' ') {
                             e.preventDefault();
                             setSelectedSize(size._id);
+                          } else if (e.key === 'ArrowRight') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            // Move to next size option
+                            const nextIndex = index < selectedProduct.sizes.length - 1 ? index + 1 : 0;
+                            const nextSizeOption = sizeOptionRefs.current[nextIndex];
+                            if (nextSizeOption) {
+                              nextSizeOption.focus();
+                            }
+                          } else if (e.key === 'ArrowLeft') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            // Move to previous size option
+                            const prevIndex = index > 0 ? index - 1 : selectedProduct.sizes.length - 1;
+                            const prevSizeOption = sizeOptionRefs.current[prevIndex];
+                            if (prevSizeOption) {
+                              prevSizeOption.focus();
+                            }
+                          } else if (e.key === 'ArrowDown') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            // Move to Add to Cart button
+                            const addToCartBtn = document.querySelector('.add-to-cart-size-btn');
+                            addToCartBtn?.focus();
+                          } else if (e.key === 'ArrowUp') {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            // Move to Cancel button
+                            const cancelBtn = document.querySelector('.cancel-size-btn');
+                            cancelBtn?.focus();
                           }
                         }}
                       >
@@ -749,16 +933,62 @@ const ProductList = React.forwardRef(({
           <CModalFooter className={isDarkMode ? 'bg-dark border-secondary' : ''} style={{ padding: '16px 20px' }}>
             <CButton
               color="secondary"
+              className="cancel-size-btn"
               onClick={handleCloseModal}
               style={{ fontSize: '14px', minWidth: '80px' }}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  handleCloseModal();
+                } else if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const addToCartBtn = document.querySelector('.add-to-cart-size-btn');
+                  addToCartBtn?.focus();
+                } else if (e.key === 'ArrowDown') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  // Move to first size option
+                  const firstSizeOption = sizeOptionRefs.current[0];
+                  if (firstSizeOption) {
+                    firstSizeOption.focus();
+                  }
+                }
+              }}
             >
               Cancel
             </CButton>
             <CButton
               color="primary"
+              className="add-to-cart-size-btn"
               onClick={handleAddToCart}
               disabled={!selectedSize}
               style={{ fontSize: '14px', minWidth: '100px' }}
+              tabIndex={0}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  if (selectedSize) {
+                    handleAddToCart();
+                  }
+                } else if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const cancelBtn = document.querySelector('.cancel-size-btn');
+                  cancelBtn?.focus();
+                } else if (e.key === 'ArrowUp') {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  // Move to last size option
+                  if (sizeOptionRefs.current.length > 0) {
+                    const lastSizeOption = sizeOptionRefs.current[sizeOptionRefs.current.length - 1];
+                    if (lastSizeOption) {
+                      lastSizeOption.focus();
+                    }
+                  }
+                }
+              }}
             >
               Add to Cart
               {/* {selectedProduct && selectedSize && (

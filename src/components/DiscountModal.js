@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   CModal,
   CModalHeader,
@@ -11,6 +11,7 @@ import {
   CAlert,
 } from '@coreui/react';
 import { useDispatch, useSelector } from 'react-redux';
+import { useHotkeys } from 'react-hotkeys-hook';
 import axios from 'axios';
 import { BASE_URL } from '../utils/constants';
 // Import the thunk for deduction
@@ -43,8 +44,9 @@ const DiscountModal = React.forwardRef(({
   const [couponError, setCouponError] = useState(''); // Error message for coupon
   
   // Refs for focus management
-  const modalRef = React.useRef(null);
-  const firstInputRef = React.useRef(null);
+  const modalRef = useRef(null);
+  const firstInputRef = useRef(null);
+  const modalHasFocusedRef = useRef(false);
 
   useEffect(() => {
     if (showDiscountModal) {
@@ -56,6 +58,7 @@ const DiscountModal = React.forwardRef(({
       setUseRewardPoints(false);
       setCouponError(''); // Reset error message
       setManualRewardPoints('');
+      modalHasFocusedRef.current = false; // Reset focus flag when modal opens
     }
   }, [showDiscountModal, cart]);
 
@@ -71,19 +74,251 @@ const DiscountModal = React.forwardRef(({
     return () => clearTimeout(timeoutId);
   }, [couponCode]);
   
-  // Auto-focus on percentage button when modal opens
+  // Function to focus first focusable element in modal (excluding close button)
+  const focusFirstElement = useCallback(() => {
+    const attemptFocus = () => {
+      // Try multiple strategies to find first focusable element (skip close button)
+      const percentageBtn = modalRef.current?.querySelector('.discount-type-btn[data-type="percentage"]');
+      
+      // Get all focusable elements but exclude close button
+      const allFocusables = modalRef.current?.querySelectorAll(
+        'button:not([tabindex="-1"]):not(.btn-close), input:not([tabindex="-1"]), select:not([tabindex="-1"]), textarea:not([tabindex="-1"]), [tabindex="0"]:not(.btn-close)'
+      );
+      
+      const firstFocusable = allFocusables && allFocusables.length > 0 ? allFocusables[0] : null;
+      const elementToFocus = percentageBtn || firstFocusable;
+      
+      if (elementToFocus) {
+        console.log('Focusing first element in discount modal:', elementToFocus);
+        try {
+          if (elementToFocus.setAttribute) {
+            elementToFocus.setAttribute('tabindex', '0');
+          }
+          
+          if (typeof elementToFocus.focus === 'function') {
+            elementToFocus.focus();
+            modalHasFocusedRef.current = true;
+            console.log('✅ Successfully focused first element in discount modal!');
+            return true;
+          }
+        } catch (error) {
+          console.error('Error focusing:', error);
+        }
+      }
+      return false;
+    };
+    
+    // Try immediately
+    if (!attemptFocus()) {
+      // Try after animation frame
+      requestAnimationFrame(() => {
+        if (!attemptFocus()) {
+          // Try after short delay
+          setTimeout(() => {
+            if (!attemptFocus()) {
+              // Try after longer delay
+              setTimeout(() => {
+                attemptFocus();
+              }, 300);
+            }
+          }, 150);
+        }
+      });
+    }
+  }, []);
+  
+  // Fix aria-hidden issue - ensure modal element doesn't have aria-hidden when visible
   useEffect(() => {
-    if (showDiscountModal && modalRef.current) {
+    if (showDiscountModal) {
+      let modalElement = null;
+      let observer = null;
+
+      // CoreUI modals are rendered via portal, so we need to find the modal element in the DOM
+      const findAndFixModal = () => {
+        // Find the modal element by aria-labelledby attribute
+        const element = document.querySelector('.modal[aria-labelledby="discount-modal-title"]');
+        if (element) {
+          modalElement = element;
+          // Remove aria-hidden when modal is visible
+          modalElement.removeAttribute('aria-hidden');
+          // Also ensure aria-modal is set for better accessibility
+          modalElement.setAttribute('aria-modal', 'true');
+          return true;
+        }
+        return false;
+      };
+
+      // Try immediately
+      if (!findAndFixModal()) {
+        // Try after a short delay (modal might still be rendering)
+        setTimeout(() => {
+          if (!findAndFixModal()) {
+            // Try once more after animation
+            setTimeout(() => {
+              if (findAndFixModal()) {
+                setupObserver();
+              }
+            }, 300);
+          } else {
+            setupObserver();
+          }
+        }, 100);
+      } else {
+        setupObserver();
+      }
+
+      // Set up MutationObserver to watch for aria-hidden changes
+      function setupObserver() {
+        if (!modalElement || !showDiscountModal) return;
+
+        observer = new MutationObserver((mutations) => {
+          mutations.forEach((mutation) => {
+            if (mutation.type === 'attributes' && mutation.attributeName === 'aria-hidden') {
+              // If aria-hidden is set to true while modal should be visible, remove it
+              if (modalElement.getAttribute('aria-hidden') === 'true' && showDiscountModal) {
+                modalElement.removeAttribute('aria-hidden');
+                modalElement.setAttribute('aria-modal', 'true');
+              }
+            }
+          });
+        });
+
+        observer.observe(modalElement, {
+          attributes: true,
+          attributeFilter: ['aria-hidden'],
+        });
+      }
+
+      return () => {
+        if (observer) {
+          observer.disconnect();
+        }
+      };
+    }
+  }, [showDiscountModal]);
+
+  // Auto-focus on first element when modal opens
+  useEffect(() => {
+    if (showDiscountModal && modalRef.current && !modalHasFocusedRef.current) {
+      // Wait for modal to be in DOM before focusing
       setTimeout(() => {
-        // Focus on percentage button first (default discount type)
+        focusFirstElement();
+      }, 200);
+    }
+  }, [showDiscountModal, focusFirstElement]);
+  
+  // Keyboard navigation for close button (X) - handle arrow keys
+  useEffect(() => {
+    if (!showDiscountModal || !modalRef.current) return;
+
+    const handleCloseButtonNavigation = (e) => {
+      // Only handle arrow keys
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+
+      // Find close button
+      const closeButtonSelectors = [
+        '.btn-close',
+        'button.btn-close',
+        '.modal-header .btn-close',
+        '.modal-header button[type="button"]',
+        'button[aria-label*="close" i]',
+        'button[aria-label*="Close" i]'
+      ];
+
+      let closeBtn = null;
+      for (const selector of closeButtonSelectors) {
+        closeBtn = modalRef.current?.querySelector(selector);
+        if (closeBtn && closeBtn.closest('.modal-header')) break;
+      }
+
+      // Check if focus is on close button
+      if (!closeBtn || document.activeElement !== closeBtn) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (e.key === 'ArrowDown') {
+        // Move to first focusable element (percentage button)
         const percentageBtn = modalRef.current?.querySelector('.discount-type-btn[data-type="percentage"]');
         if (percentageBtn) {
           percentageBtn.focus();
+        } else {
+          const firstFocusable = modalRef.current?.querySelector(
+            'button:not([tabindex="-1"]):not(.btn-close), input:not([tabindex="-1"]), select:not([tabindex="-1"]), textarea:not([tabindex="-1"]), [tabindex="0"]:not(.btn-close)'
+          );
+          firstFocusable?.focus();
         }
-      }, 100);
-    }
+      } else if (e.key === 'ArrowUp') {
+        // Move to last focusable element (Apply Discount button)
+        const applyBtn = modalRef.current?.querySelector('.apply-discount-btn');
+        if (applyBtn) {
+          applyBtn.focus();
+        } else {
+          const focusableElements = modalRef.current?.querySelectorAll(
+            'button:not([tabindex="-1"]):not(.btn-close), input:not([tabindex="-1"]), select:not([tabindex="-1"]), textarea:not([tabindex="-1"]), [tabindex="0"]:not(.btn-close)'
+          );
+          if (focusableElements && focusableElements.length > 0) {
+            focusableElements[focusableElements.length - 1].focus();
+          }
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleCloseButtonNavigation, true);
+
+    // Ensure close button is focusable but make it tabindex -1 so focus skips it initially
+    const setupCloseButton = () => {
+      const closeButtonSelectors = [
+        '.btn-close',
+        'button.btn-close',
+        '.modal-header .btn-close',
+        '.modal-header button[type="button"]'
+      ];
+
+      for (const selector of closeButtonSelectors) {
+        const closeBtn = modalRef.current?.querySelector(selector);
+        if (closeBtn && closeBtn.closest('.modal-header')) {
+          // Make it focusable but not in tab order initially
+          closeBtn.setAttribute('tabindex', '-1');
+          closeBtn.classList.add('modal-close-btn');
+          
+          // Add direct handler for keyboard navigation
+          const directHandler = (e) => {
+            if (e.key === 'ArrowDown') {
+              e.preventDefault();
+              e.stopPropagation();
+              const percentageBtn = modalRef.current?.querySelector('.discount-type-btn[data-type="percentage"]');
+              percentageBtn?.focus();
+            } else if (e.key === 'ArrowUp') {
+              e.preventDefault();
+              e.stopPropagation();
+              const applyBtn = modalRef.current?.querySelector('.apply-discount-btn');
+              applyBtn?.focus();
+            }
+          };
+          
+          closeBtn.addEventListener('keydown', directHandler, true);
+          closeBtn._arrowKeyHandler = directHandler;
+          break;
+        }
+      }
+    };
+
+    const timer = setTimeout(setupCloseButton, 100);
+
+    return () => {
+      document.removeEventListener('keydown', handleCloseButtonNavigation, true);
+      clearTimeout(timer);
+      
+      // Cleanup direct handlers
+      const closeBtnWithHandler = modalRef.current?.querySelector('.modal-close-btn');
+      if (closeBtnWithHandler && closeBtnWithHandler._arrowKeyHandler) {
+        closeBtnWithHandler.removeEventListener('keydown', closeBtnWithHandler._arrowKeyHandler, true);
+        delete closeBtnWithHandler._arrowKeyHandler;
+      }
+    };
   }, [showDiscountModal]);
-  
+
   // Focus trapping - prevent focus from leaving modal
   useEffect(() => {
     if (!showDiscountModal) return;
@@ -100,15 +335,18 @@ const DiscountModal = React.forwardRef(({
       // Only trap if focus is inside modal
       if (!isFocusInsideModal()) {
         e.preventDefault();
+        // Skip close button - focus on percentage button instead
+        const percentageBtn = modalRef.current?.querySelector('.discount-type-btn[data-type="percentage"]');
         const firstFocusable = modalRef.current?.querySelector(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          'button:not([tabindex="-1"]):not(.btn-close), input:not([tabindex="-1"]), select:not([tabindex="-1"]), textarea:not([tabindex="-1"]), [tabindex="0"]:not(.btn-close)'
         );
-        firstFocusable?.focus();
+        (percentageBtn || firstFocusable)?.focus();
         return;
       }
       
+      // Get focusable elements excluding close button
       const focusableElements = modalRef.current?.querySelectorAll(
-        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        'button:not([tabindex="-1"]):not(.btn-close), [href]:not([tabindex="-1"]), input:not([tabindex="-1"]), select:not([tabindex="-1"]), textarea:not([tabindex="-1"]), [tabindex="0"]:not(.btn-close)'
       );
       
       if (!focusableElements || focusableElements.length === 0) return;
@@ -137,13 +375,14 @@ const DiscountModal = React.forwardRef(({
       
       const activeElement = document.activeElement;
       
-      // If focus is not inside modal, bring it back
+      // If focus is not inside modal, bring it back (skip close button)
       if (!modalRef.current.contains(activeElement)) {
         e.preventDefault();
+        const percentageBtn = modalRef.current?.querySelector('.discount-type-btn[data-type="percentage"]');
         const firstFocusable = modalRef.current?.querySelector(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          'button:not([tabindex="-1"]):not(.btn-close), [href]:not([tabindex="-1"]), input:not([tabindex="-1"]), select:not([tabindex="-1"]), textarea:not([tabindex="-1"]), [tabindex="0"]:not(.btn-close)'
         );
-        firstFocusable?.focus();
+        (percentageBtn || firstFocusable)?.focus();
       }
     };
     
@@ -152,11 +391,12 @@ const DiscountModal = React.forwardRef(({
       if (!modalRef.current?.contains(e.target)) {
         e.preventDefault();
         e.stopPropagation();
-        // Keep focus inside modal
+        // Keep focus inside modal (skip close button)
+        const percentageBtn = modalRef.current?.querySelector('.discount-type-btn[data-type="percentage"]');
         const firstFocusable = modalRef.current?.querySelector(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          'button:not([tabindex="-1"]):not(.btn-close), [href]:not([tabindex="-1"]), input:not([tabindex="-1"]), select:not([tabindex="-1"]), textarea:not([tabindex="-1"]), [tabindex="0"]:not(.btn-close)'
         );
-        firstFocusable?.focus();
+        (percentageBtn || firstFocusable)?.focus();
       }
     };
     
@@ -164,14 +404,35 @@ const DiscountModal = React.forwardRef(({
     const handleFocusIn = (e) => {
       if (!modalRef.current || !showDiscountModal) return;
       
-      // If focus moves to an element outside modal, bring it back
-      if (!modalRef.current.contains(e.target)) {
+      const target = e.target;
+      
+      // Allow focus on checkboxes - don't interfere
+      if (target?.classList.contains('item-discount-checkbox') || 
+          target?.type === 'checkbox' ||
+          target?.closest('.item-discount-checkbox')) {
+        return; // Let checkbox keep focus
+      }
+      
+      // If focus moves to close button, move it to percentage button instead
+      if (target?.classList.contains('btn-close') || target?.classList.contains('modal-close-btn')) {
         e.preventDefault();
         e.stopPropagation();
+        const percentageBtn = modalRef.current?.querySelector('.discount-type-btn[data-type="percentage"]');
+        if (percentageBtn) {
+          percentageBtn.focus();
+        }
+        return;
+      }
+      
+      // If focus moves to an element outside modal, bring it back
+      if (!modalRef.current.contains(target)) {
+        e.preventDefault();
+        e.stopPropagation();
+        const percentageBtn = modalRef.current?.querySelector('.discount-type-btn[data-type="percentage"]');
         const firstFocusable = modalRef.current?.querySelector(
-          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+          'button:not([tabindex="-1"]):not(.btn-close), [href]:not([tabindex="-1"]), input:not([tabindex="-1"]), select:not([tabindex="-1"]), textarea:not([tabindex="-1"]), [tabindex="0"]:not(.btn-close)'
         );
-        firstFocusable?.focus();
+        (percentageBtn || firstFocusable)?.focus();
       }
     };
     
@@ -186,6 +447,83 @@ const DiscountModal = React.forwardRef(({
     };
   }, [showDiscountModal]);
   
+  // Global keyboard navigation for checkboxes in modal
+  useHotkeys(
+    'arrowup, arrowdown',
+    (e, handler) => {
+      if (!showDiscountModal || !modalRef.current) return;
+      
+      const activeElement = document.activeElement;
+      const isInModal = modalRef.current.contains(activeElement);
+      if (!isInModal) return;
+
+      // Check if focus is on a checkbox - try multiple ways to detect
+      const isCheckboxInput = activeElement.type === 'checkbox';
+      const isInCheckboxWrapper = activeElement.closest('.item-discount-checkbox');
+      const hasCheckboxClass = activeElement.classList?.contains('item-discount-checkbox');
+      
+      if (!isCheckboxInput && !isInCheckboxWrapper && !hasCheckboxClass) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+      
+      // Get all checkbox inputs directly (find within wrappers if needed)
+      let allCheckboxInputs = Array.from(
+        modalRef.current.querySelectorAll('input[type="checkbox"].item-discount-checkbox')
+      );
+      
+      // If not found with class, try finding within wrapper
+      if (allCheckboxInputs.length === 0) {
+        const wrappers = modalRef.current.querySelectorAll('.item-discount-checkbox');
+        wrappers.forEach(wrapper => {
+          const input = wrapper.querySelector('input[type="checkbox"]');
+          if (input && !allCheckboxInputs.includes(input)) {
+            allCheckboxInputs.push(input);
+          }
+        });
+      }
+
+      if (allCheckboxInputs.length === 0) return;
+
+      // Find current focused checkbox index
+      let currentIndex = -1;
+      if (isCheckboxInput) {
+        currentIndex = allCheckboxInputs.indexOf(activeElement);
+      } else if (isInCheckboxWrapper) {
+        const wrapper = isInCheckboxWrapper;
+        const input = wrapper.querySelector('input[type="checkbox"]');
+        currentIndex = input ? allCheckboxInputs.indexOf(input) : -1;
+      }
+
+      let nextIndex;
+      if (handler.keys?.includes('arrowdown')) {
+        nextIndex = currentIndex >= 0 && currentIndex < allCheckboxInputs.length - 1 
+          ? currentIndex + 1 
+          : 0;
+      } else if (handler.keys?.includes('arrowup')) {
+        nextIndex = currentIndex > 0 
+          ? currentIndex - 1 
+          : allCheckboxInputs.length - 1;
+      } else {
+        return;
+      }
+
+      if (nextIndex >= 0 && nextIndex < allCheckboxInputs.length) {
+        const nextCheckbox = allCheckboxInputs[nextIndex];
+        setTimeout(() => {
+          nextCheckbox.focus();
+          nextCheckbox.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }, 0);
+      }
+    },
+    {
+      enableOnFormTags: true,
+      preventDefault: true,
+      enable: () => showDiscountModal && modalRef.current?.contains(document.activeElement)
+    },
+    [showDiscountModal, cart.length]
+  );
+
   // Keyboard shortcuts - Enter to Apply, Escape to Close
   useEffect(() => {
     if (!showDiscountModal) return;
@@ -447,6 +785,13 @@ const DiscountModal = React.forwardRef(({
       role="dialog"
       aria-modal="true"
       aria-labelledby="discount-modal-title"
+      onOpened={() => {
+        // Focus first element when modal animation completes
+        console.log('Discount modal opened, focusing first element...');
+        setTimeout(() => {
+          focusFirstElement();
+        }, 100);
+      }}
     >
       <CModalHeader>
         <CModalTitle id="discount-modal-title">Apply Discount / Coupon / Reward Points</CModalTitle>
@@ -841,8 +1186,16 @@ const DiscountModal = React.forwardRef(({
                   } else if (e.key === 'ArrowDown') {
                     e.preventDefault();
                     e.stopPropagation();
-                    const firstCheckbox = modalRef.current?.querySelector('.item-discount-checkbox');
-                    if (firstCheckbox) firstCheckbox.focus();
+                    // Find first checkbox input
+                    const wrappers = modalRef.current?.querySelectorAll('.item-discount-checkbox');
+                    if (wrappers && wrappers.length > 0) {
+                      const firstInput = wrappers[0].querySelector('input[type="checkbox"]');
+                      if (firstInput) {
+                        setTimeout(() => firstInput.focus(), 0);
+                      } else {
+                        wrappers[0].focus();
+                      }
+                    }
                   }
                 }}
               >
@@ -858,31 +1211,31 @@ const DiscountModal = React.forwardRef(({
                       onChange={() => toggleSelection(item.id)}
                       className="me-2 item-discount-checkbox"
                       tabIndex={0}
+                      onFocus={(e) => {
+                        // Add focus outline like input boxes
+                        const checkbox = e.target.querySelector('input[type="checkbox"]') || e.target;
+                        if (checkbox && checkbox.tagName === 'INPUT') {
+                          checkbox.style.outline = '2px solid #0d6efd';
+                          checkbox.style.outlineOffset = '2px';
+                          checkbox.style.borderRadius = '3px';
+                        }
+                      }}
+                      onBlur={(e) => {
+                        // Remove focus outline
+                        const checkbox = e.target.querySelector('input[type="checkbox"]') || e.target;
+                        if (checkbox && checkbox.tagName === 'INPUT') {
+                          checkbox.style.outline = 'none';
+                          checkbox.style.outlineOffset = '0';
+                        }
+                      }}
                       onKeyDown={(e) => {
                         if (!modalRef.current?.contains(e.target)) return;
                         
                         if (e.key === 'Enter' || e.key === ' ') {
                           e.preventDefault();
                           toggleSelection(item.id);
-                        } else if (e.key === 'ArrowUp') {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          if (index === 0) {
-                            modalRef.current?.querySelector('.select-all-discount-btn')?.focus();
-                          } else {
-                            const checkboxes = modalRef.current?.querySelectorAll('.item-discount-checkbox');
-                            if (checkboxes[index - 1]) checkboxes[index - 1].focus();
-                          }
-                        } else if (e.key === 'ArrowDown') {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          const checkboxes = modalRef.current?.querySelectorAll('.item-discount-checkbox');
-                          if (checkboxes[index + 1]) {
-                            checkboxes[index + 1].focus();
-                          } else {
-                            modalRef.current?.querySelector('.cancel-discount-btn')?.focus();
-                          }
                         }
+                        // Arrow navigation is handled by global useHotkeys now
                       }}
                     />
                     <div className="flex-grow-1">
