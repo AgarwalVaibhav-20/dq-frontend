@@ -1,5 +1,3 @@
-
-
 import React, { useState, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
 
@@ -393,7 +391,12 @@ export default function PurchaseAnalytics() {
                   return { name: "Unknown Item", totalCost: 0, costPerUnit: 0, currentRate: 0, previousRate: 0, rateChange: 0, supplier: 'N/A', unit: 'N/A', stockId: stockItem.stockId, quantity: stockItem.quantity };
                 }
 
-                const latestPurchase = [...inventory.supplierStocks].sort((a, b) => new Date(b.purchasedAt) - new Date(a.purchasedAt))[0];
+                // Use FIFO: oldest purchase first with robust fallback on missing dates
+                const getTime = (s) => {
+                  try { return s?.purchasedAt ? new Date(s.purchasedAt).getTime() : (s?.createdAt ? new Date(s.createdAt).getTime() : 0); }
+                  catch { return 0; }
+                };
+                const latestPurchase = [...inventory.supplierStocks].sort((a, b) => getTime(a) - getTime(b))[0];
 
                 // --- 👇 NEW UNIT CONVERSION LOGIC START 👇 ---
 
@@ -494,7 +497,12 @@ export default function PurchaseAnalytics() {
               return { name: "Unknown Item", totalCost: 0, costPerUnit: 0, currentRate: 0, previousRate: 0, rateChange: 0, supplier: 'N/A', unit: 'N/A', stockId: stockItem.stockId, quantity: stockItem.quantity };
             }
 
-            const latestPurchase = [...inventory.supplierStocks].sort((a, b) => new Date(b.purchasedAt) - new Date(a.purchasedAt))[0];
+            // Use FIFO: oldest purchase first with robust fallback on missing dates
+            const getTime = (s) => {
+              try { return s?.purchasedAt ? new Date(s.purchasedAt).getTime() : (s?.createdAt ? new Date(s.createdAt).getTime() : 0); }
+              catch { return 0; }
+            };
+            const latestPurchase = [...inventory.supplierStocks].sort((a, b) => getTime(a) - getTime(b))[0];
 
             // --- 👇 NEW UNIT CONVERSION LOGIC START 👇 ---
 
