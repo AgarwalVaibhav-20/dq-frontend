@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import axiosInstance from '../../utils/axiosConfig';
 import { toast } from 'react-toastify';
 import { BASE_URL } from '../../utils/constants';
 
@@ -46,7 +47,7 @@ export const addReservation = createAsyncThunk(
   'reservations/addReservation',
   async ({ startTime, endTime, customerId, payment, advance, notes, tableNumber, restaurantId, token }, { rejectWithValue }) => {
     try {
-      const response = await axios.post(
+      const response = await axiosInstance.post(
         `${BASE_URL}/reservations/add`,
         { restaurantId, startTime, endTime, customerId, payment, advance, notes, tableNumber },
         configureHeaders(token)

@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import axiosInstance from '../../utils/axiosConfig';
 import { toast } from 'react-toastify';
 import { BASE_URL } from '../../utils/constants';
 
@@ -25,7 +26,7 @@ export const getRestaurantProfile = createAsyncThunk(
       console.log('Using token:', token ? 'Present' : 'Missing');
       console.log('API URL:', `${BASE_URL}/account/${userId}`);
 
-      const response = await axios.get(`${BASE_URL}/account/${userId}`, configureHeaders(token));
+      const response = await axiosInstance.get(`${BASE_URL}/account/${userId}`, configureHeaders(token));
       console.log("Restaurant profile API response:", response.data);
       console.log("Response status:", response.status);
 
@@ -89,7 +90,7 @@ export const checkRestaurantPermission = createAsyncThunk(
       // console.log("Permission check - userId:", userId);
       // console.log("Permission check - token exists:", !!authToken);
 
-      const response = await axios.get(
+      const response = await axiosInstance.get(
         `${BASE_URL}/check-permission/${userId}`,
         configureHeaders(authToken)
       );
@@ -125,7 +126,7 @@ export const updateRestaurantProfile = createAsyncThunk(
       const actualProfileData = profileData.profileData || profileData;
       console.log('Sending actual profile data to backend:', actualProfileData);
 
-      const response = await axios.put(
+      const response = await axiosInstance.put(
         `${BASE_URL}/user/update/${userId}`,
         actualProfileData,
         configureHeaders(token)
@@ -151,7 +152,7 @@ export const updateRestaurantFCM = createAsyncThunk(
   'restaurantProfile/updateFCM',
   async ({ id, fcm }, { rejectWithValue }) => {
     try {
-      const response = await axios.put(
+      const response = await axiosInstance.put(
         `${BASE_URL}/account/restaurant/updateFcm/${id}`,
         fcm,
         { headers: { ...getAuthHeaders(), 'Content-Type': 'application/json' } }
@@ -171,7 +172,7 @@ export const uploadRestaurantImage = createAsyncThunk(
       const formData = new FormData();
       formData.append('image', imageFile);
 
-      const response = await axios.post(
+      const response = await axiosInstance.post(
         `${BASE_URL}/account/profile/${id}/image`,
         formData,
         { headers: { ...getAuthHeaders(), 'Content-Type': 'multipart/form-data' } }

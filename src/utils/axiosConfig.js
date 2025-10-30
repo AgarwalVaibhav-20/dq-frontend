@@ -1,6 +1,8 @@
 import axios from 'axios';
 import { BASE_URL } from './constants';
 import { getValidToken, clearAuthData } from './tokenUtils';
+// import store from '../redux/store';
+// import { logoutUser } from '../redux/slices/authSlice';
 
 const axiosInstance = axios.create({
   baseURL: BASE_URL,
@@ -23,12 +25,16 @@ axiosInstance.interceptors.request.use(
 // Response Interceptor: Handles 401 Unauthorized errors globally
 axiosInstance.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
     if (error.response?.status === 401) {
-      // Clear all authentication data
+      const userId = localStorage.getItem('userId');
+      if (userId) {
+        try {
+          await axios.post(`${BASE_URL}/force-logout`, { userId });
+        } catch (e) {/* ignore errors */}
+      }
+      localStorage.setItem('session-expired', 'true');
       clearAuthData();
-      
-      // Redirect to login page
       window.location.href = '/login';
     }
     return Promise.reject(error);

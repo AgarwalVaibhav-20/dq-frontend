@@ -249,7 +249,11 @@ const authSlice = createSlice({
   reducers: {
     setSessionStarted: (state, action) => {
       state.sessionStarted = action.payload;
-      localStorage.setItem('sessionStarted', action.payload.toString());
+      if (action.payload) {
+        localStorage.setItem('sessionStarted', 'true');
+      } else {
+        localStorage.removeItem('sessionStarted');
+      }
     },
     localLogout: (state) => {
       state.userId = null;

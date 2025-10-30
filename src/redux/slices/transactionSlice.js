@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import axios from 'axios'
 import { toast } from 'react-toastify'
 import { BASE_URL } from '../../utils/constants'
+import axiosInstance from '../../utils/axiosConfig';
 
 const configureHeaders = (token) => ({
   headers: {
@@ -63,7 +64,7 @@ export const createTransaction = createAsyncThunk(
 
       console.log('Transaction payload:', requestData); // Debug log
 
-      const response = await axios.post(`${BASE_URL}/create/transaction`, requestData, { headers });
+      const response = await axiosInstance.post(`${BASE_URL}/create/transaction`, requestData, { headers });
       return response.data;
     } catch (error) {
       console.error('Transaction creation error:', error.response?.data || error.message);
@@ -93,7 +94,7 @@ export const createCashInTransaction = createAsyncThunk(
 
       console.log('Cash In payload:', requestData);
 
-      const response = await axios.post(`${BASE_URL}/cashin`, requestData, configureHeaders(token));
+      const response = await axiosInstance.post(`${BASE_URL}/cashin`, requestData, configureHeaders(token));
 
       // Fix: Return the correct data structure
       return {
@@ -133,7 +134,7 @@ export const createCashOutTransaction = createAsyncThunk(
 
       console.log('Cash Out payload:', requestData);
 
-      const response = await axios.post(`${BASE_URL}/cashout`, requestData, { headers });
+      const response = await axiosInstance.post(`${BASE_URL}/cashout`, requestData, { headers });
       return {
         ...response.data,
         amount,
@@ -170,7 +171,7 @@ export const createBankInTransaction = createAsyncThunk(
       };
 
       console.log('Bank In payload:', requestData);
-      const response = await axios.post(`${BASE_URL}/bankin`, requestData, { headers });
+      const response = await axiosInstance.post(`${BASE_URL}/bankin`, requestData, { headers });
 
       return {
         ...response.data,
@@ -210,7 +211,7 @@ export const createBankOutTransaction = createAsyncThunk(
 
       console.log('Bank Out payload:', requestData);
 
-      const response = await axios.post(`${BASE_URL}/bankout`, requestData, { headers });
+      const response = await axiosInstance.post(`${BASE_URL}/bankout`, requestData, { headers });
       return {
         ...response.data,
         amount,
@@ -235,7 +236,7 @@ export const getDailyCashBalance = createAsyncThunk(
       };
       const finalRestaurantId = String(restaurantId || localStorage.getItem('restaurantId'));
       const today = new Date().toISOString().split('T')[0];
-      const response = await axios.get(`${BASE_URL}/get-daily-cash-balance/${finalRestaurantId}/${today}`, { headers });
+      const response = await axiosInstance.get(`${BASE_URL}/get-daily-cash-balance/${finalRestaurantId}/${today}`, { headers });
       console.log("Daily cash balance response:", response.data);
       return response.data;
     } catch (error) {
@@ -274,7 +275,7 @@ export const fetchTransactionsByRestaurant = createAsyncThunk(
   async ({ restaurantId, token }, { rejectWithValue }) => {
     try {
       console.log("Fetching transactions with token:", token);
-      const response = await axios.get(`${BASE_URL}/get-by-restaurant/transaction/${String(restaurantId)}`, configureHeaders(token))
+      const response = await axiosInstance.get(`${BASE_URL}/get-by-restaurant/transaction/${String(restaurantId)}`, configureHeaders(token))
       console.log("Response data tran:", response.data)
 
       // Return the actual data array, not the wrapper object
@@ -290,7 +291,7 @@ export const fetchTransactionsByRestaurantyear = createAsyncThunk(
   "transactions/fetchTransactionsByRestaurantyear",
   async ({ restaurantId, year, token }, { rejectWithValue }) => {
     try {
-      const response = await axios.get(
+      const response = await axiosInstance.get(
         `${BASE_URL}/get-by-year-restaurant/transaction/${restaurantId}?year=${year}`,
         configureHeaders(token)
       );
@@ -315,7 +316,7 @@ export const fetchTransactionDetails = createAsyncThunk(
         'Content-Type': 'application/json'
       };
 
-      const response = await axios.get(`${BASE_URL}/transactionById/${transactionId}`, { headers })
+      const response = await axiosInstance.get(`${BASE_URL}/transactionById/${transactionId}`, { headers })
       console.log("Transaction details response:", response.data)
 
       // Handle the response format - backend returns { success: true, data: transaction }
@@ -343,7 +344,7 @@ export const deleteTransaction = createAsyncThunk(
       };
 
       // Fix: Send note in request body, not as separate object
-      await axios.delete(`${BASE_URL}/deleteTransaction/${id}`, {
+      await axiosInstance.delete(`${BASE_URL}/deleteTransaction/${id}`, {
         headers,
         data: { deletionRemark }
       });
@@ -367,7 +368,7 @@ export const fetchPOSTransactions = createAsyncThunk(
         'Content-Type': 'application/json'
       };
 
-      const response = await axios.get(`${BASE_URL}/POStransactions`, { headers })
+      const response = await axiosInstance.get(`${BASE_URL}/POStransactions`, { headers })
       console.log("POS transactions:", response.data);
 
       // Return the actual data array

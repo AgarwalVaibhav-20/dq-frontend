@@ -2,6 +2,7 @@ import { createSlice, createAsyncThunk } from '@reduxjs/toolkit'
 import axios from 'axios'
 import { toast } from 'react-toastify'
 import { BASE_URL } from '../../utils/constants'
+import axiosInstance from '../../utils/axiosConfig';
 
 
 const configureHeaders = (token, isFormData = false) => ({
@@ -45,7 +46,7 @@ export const createOrder = createAsyncThunk(
 
       console.log('🌐 Creating order - hasToken:', !!token, 'restaurantId:', restaurantId);
 
-      const response = await axios.post(`${BASE_URL}/create/order`, {
+      const response = await axiosInstance.post(`${BASE_URL}/create/order`, {
         customerId,
         items,
         totalAmount,
@@ -80,7 +81,7 @@ export const fetchOrders = createAsyncThunk(
       const currentRestaurantId = restaurantId || localStorage.getItem('restaurantId')
       const token = localStorage.getItem("authToken");
 
-      const response = await axios.get(`${BASE_URL}/all/order`, { params: currentRestaurantId ? { restaurantId: currentRestaurantId } : {}, ...configureHeaders(token) })
+      const response = await axiosInstance.get(`${BASE_URL}/all/order`, { params: currentRestaurantId ? { restaurantId: currentRestaurantId } : {}, ...configureHeaders(token) })
       return response.data
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || 'Failed to fetch orders')
@@ -98,7 +99,7 @@ export const fetchDeliveryOrders = createAsyncThunk(
         Authorization: `Bearer ${token}`,
       }
 
-      const response = await axios.get(
+      const response = await axiosInstance.get(
         `${BASE_URL}/getOrderByDelivery?restaurantId=${restaurantId}&page=${pageNo}`,
         {
           headers,
@@ -118,7 +119,7 @@ export const fetchCombinedOrders = createAsyncThunk(
       const token = localStorage.getItem('authToken')
       const headers = { Authorization: `Bearer ${token}` }
 
-      const response = await axios.post(
+      const response = await axiosInstance.post(
         `${BASE_URL}/orders/active-tables?restaurantId=${restaurantId}`,
         { tableNumber, restaurantId },
         { headers }
@@ -140,7 +141,7 @@ export const fetchOrderById = createAsyncThunk(
         Authorization: `Bearer ${token}`,
       }
 
-      const response = await axios.get(`${BASE_URL}/orders/${id}`, {
+      const response = await axiosInstance.get(`${BASE_URL}/orders/${id}`, {
         headers,
       })
       return response.data
@@ -159,7 +160,7 @@ export const updateOrderStatus = createAsyncThunk(
       const token = localStorage.getItem('authToken');
       const headers = { Authorization: `Bearer ${token}` };
 
-      const response = await axios.put(`${BASE_URL}/orders/${id}/status`, { status }, { headers });
+      const response = await axiosInstance.put(`${BASE_URL}/orders/${id}/status`, { status }, { headers });
       return response.data;
     } catch (error) {
       console.error('Error in API:', error.response?.data);
@@ -178,7 +179,7 @@ export const updateOrder = createAsyncThunk(
         Authorization: `Bearer ${token}`,
       }
 
-      const response = await axios.put(
+      const response = await axiosInstance.put(
         `${BASE_URL}/orders/${id}`,
         {
           tableNumber,
@@ -206,7 +207,7 @@ export const fetchNotificationOrders = createAsyncThunk(
         Authorization: `Bearer ${token}`,
       }
 
-      const response = await axios.get(`${BASE_URL}/orders/notification/${restaurantId}`, {
+      const response = await axiosInstance.get(`${BASE_URL}/orders/notification/${restaurantId}`, {
         headers,
       })
       return response.data
@@ -226,7 +227,7 @@ export const updateOrderNotificationStatus = createAsyncThunk(
         Authorization: `Bearer ${token}`,
       }
 
-      const response = await axios.put(
+      const response = await axiosInstance.put(
         `${BASE_URL}/orders/status/notification/${id}`,
         { status },
         { headers },
@@ -248,7 +249,7 @@ export const deleteOrder = createAsyncThunk(
         Authorization: `Bearer ${token}`,
       }
 
-      const response = await axios.delete(`${BASE_URL}/orders/${id}`, { headers })
+      const response = await axiosInstance.delete(`${BASE_URL}/orders/${id}`, { headers })
       return { id, message: response.data.message }
     } catch (error) {
       return rejectWithValue(error.response?.data?.error || 'Failed to delete order')

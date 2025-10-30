@@ -43,6 +43,7 @@ export const clearAuthData = () => {
   localStorage.removeItem('userName');
   localStorage.removeItem('userEmail');
   localStorage.removeItem('username');
+  // Ensure sessionStarted is also removed (not just set false)
   localStorage.removeItem('sessionStarted');
 };
 

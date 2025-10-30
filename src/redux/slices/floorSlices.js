@@ -3,6 +3,7 @@ import axios from "axios";
 import { toast } from "react-toastify";
 
 import { BASE_URL } from '../../utils/constants'
+import axiosInstance from '../../utils/axiosConfig';
 
 export const configureHeaders = (token) => ({
     headers: {
@@ -51,7 +52,7 @@ export const getFloors = createAsyncThunk(
                 throw new Error("No authentication token found");
             }
             
-            const res = await axios.get(`${BASE_URL}/get/floors/${restaurantId}`, configureHeaders(token));
+            const res = await axiosInstance.get(`${BASE_URL}/get/floors/${restaurantId}`, configureHeaders(token));
 
             return res.data.data;
         } catch (err) {

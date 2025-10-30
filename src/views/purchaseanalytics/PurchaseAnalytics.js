@@ -274,7 +274,6 @@ export default function PurchaseAnalytics() {
   // }, [inventories, restaurantId]);
   // In PurchaseAnalytics.js
 
-  // In PurchaseAnalytics.js - **Replace the entire useEffect block below with this fixed one**
   useEffect(() => {
     try {
       const inventoriesValid = validateDataStructure(inventories, 'inventories');
@@ -284,41 +283,40 @@ export default function PurchaseAnalytics() {
         return;
       }
 
-      console.log("Starting inventory data transformation with FIXED schema logic...");
+      console.log("Starting inventory data transformation with NEW schema logic...");
 
+      // 1. Filter inventories by the current restaurantId
       const filteredInventories = inventories.filter(
         (inventory) => String(inventory.restaurantId) === String(restaurantId)
       );
+      console.log("Filtered Inventories for Restaurant:", filteredInventories);
 
-      // FIX: Determine which array to use: supplierStocks (new schema) or suppliers (old schema)
-      const allPurchases = filteredInventories.flatMap((inventory) => {
-        // Priority 1: Use supplierStocks if it has data
-        const stockArray = (inventory.supplierStocks && inventory.supplierStocks.length > 0)
-          ? inventory.supplierStocks
-          : inventory.suppliers || []; // Priority 2: Use suppliers array
-
-        return stockArray.map((stock) => ({
+      // 2. Flatten the supplierStocks array into a single list of purchases
+      const allPurchases = filteredInventories.flatMap((inventory) =>
+        // For each inventory, map its supplierStocks to a new format
+        (inventory.supplierStocks || []).map((stock) => ({
           // Item-level details
           id: `${inventory._id}-${stock._id}`, // Create a unique ID for the row
           inventoryName: inventory.itemName,
           inventoryId: inventory._id.slice(-6),
-          category: inventory.unit || 'General', // Using unit as category for simplicity
+          category: inventory.unit || 'General',
 
-          // Purchase-specific details
+          // Purchase-specific details from supplierStocks
           supplier: stock.supplierName || 'N/A',
           supplierId: stock.supplierId,
-          amount: stock.total || 0, // Using 'total' field from your data for Amount
-          quantity: stock.quantity || 0,
-          currentRate: (stock.amount || 0).toFixed(2), // Assuming 'amount' is pricePerUnit in old schema
+          amount: stock.totalAmount || 0,
+          quantity: stock.purchasedQuantity || 0,
+          currentRate: (stock.pricePerUnit || 0).toFixed(2),
           date: stock.purchasedAt
             ? new Date(stock.purchasedAt).toISOString().split('T')[0]
             : new Date(inventory.createdAt).toISOString().split('T')[0],
 
+          // We will calculate rate change in the next step
           previousRate: 0,
           rateChange: 0,
-        }));
-      });
-      console.log("Flattened purchases (using fixed logic):", allPurchases.length);
+        }))
+      );
+      console.log("Flattened purchases:", allPurchases);
 
       // 3. Sort all purchases chronologically to calculate rate changes
       const sortedPurchases = allPurchases.sort(
@@ -327,9 +325,10 @@ export default function PurchaseAnalytics() {
 
       // 4. Calculate rate change for each purchase
       const finalData = sortedPurchases.map((purchase, index, array) => {
+        // Find the previous purchase of the SAME item from the SAME supplier
         const previousPurchase = array
-          .slice(0, index)
-          .reverse()
+          .slice(0, index) // Only look at items before this one
+          .reverse()      // Start from the most recent
           .find(
             (prev) =>
               prev.inventoryName === purchase.inventoryName &&
@@ -413,9 +412,9 @@ export default function PurchaseAnalytics() {
                 const getPricePerBaseUnit = (price, unit) => {
                   const u = normalizeUnit(unit);
                   switch (u) {
-                    case 'kg': return price / 1000; // ₹ per gram
+                    case 'kg': return price/1000; // ₹ per gram
                     case 'gm': return price;
-                    case 'ltr': return price / 1000; // ₹ per ml
+                    case 'ltr': return price/1000; // ₹ per ml
                     case 'ml': return price;
                     case 'pcs': return price;
                     default: return price; // fallback
@@ -450,7 +449,7 @@ export default function PurchaseAnalytics() {
                 const recipeUnitInBaseUnits = getQuantityInBaseUnit(1, recipeUnit);
                 const currentRatePerRecipeUnit = pricePerBaseUnit * recipeUnitInBaseUnits;
 
-                const currentRate = pricePerBaseUnit * recipeUnitInBaseUnits;
+                const currentRate =  pricePerBaseUnit * recipeUnitInBaseUnits;
 
                 return {
                   stockId: stockItem.stockId,
@@ -514,9 +513,9 @@ export default function PurchaseAnalytics() {
             const getPricePerBaseUnit = (price, unit) => {
               const u = normalizeUnit(unit);
               switch (u) {
-                case 'kg': return price / 1000; // ₹ per gram
+                case 'kg': return price/1000; // ₹ per gram
                 case 'gm': return price;
-                case 'ltr': return price / 1000; // ₹ per ml
+                case 'ltr': return price/1000; // ₹ per ml
                 case 'ml': return price;
                 case 'pcs': return price;
                 default: return price; // fallback
@@ -551,7 +550,7 @@ export default function PurchaseAnalytics() {
             const recipeUnitInBaseUnits = getQuantityInBaseUnit(1, recipeUnit);
             const currentRatePerRecipeUnit = pricePerBaseUnit * recipeUnitInBaseUnits;
 
-            const currentRate = pricePerBaseUnit * recipeUnitInBaseUnits;
+            const currentRate =  pricePerBaseUnit * recipeUnitInBaseUnits;
 
             return {
               stockId: stockItem.stockId,
@@ -594,8 +593,8 @@ export default function PurchaseAnalytics() {
       console.error("Error in menu items transformation with unit conversion:", error);
     }
   }, [menuItems, inventories, restaurantId]);
-
-  // useEffect(() => {
+ 
+   // useEffect(() => {
   //   try {
   //     // Validate data before processing
   //     const inventoriesValid = validateDataStructure(inventories, 'inventories');
@@ -1143,28 +1142,28 @@ export default function PurchaseAnalytics() {
     if (viewMode === 'menu') {
       doc.setFontSize(12);
       doc.text(`Total Menu Items: ${filteredData.length}`, 14, 35);
-      doc.text(`Total Ingredient Cost: ₹${(summaryData.totalIngredientCost || 0).toFixed(2)}`, 14, 45);
-      doc.text(`Total Profit Potential: ₹${(summaryData.totalProfitPotential || 0).toFixed(2)}`, 14, 55);
-      doc.text(`Average Profit Margin: ₹${(summaryData.averageProfitMargin || 0).toFixed(2)}`, 14, 65);
-      doc.text(`Average Profit %: ${(summaryData.averageProfitPercentage || 0).toFixed(2)}%`, 14, 75);
+      doc.text(`Total Ingredient Cost: ₹${summaryData.main.toFixed(2)}`, 14, 45);
+      doc.text(`Total Ingredient Cost (Detailed): ₹${summaryData.third.toFixed(2)}`, 14, 55);
+      doc.text(`Total Profit Potential: ₹${summaryData.totalProfitPotential.toFixed(2)}`, 14, 65);
+      doc.text(`Average Profit Margin: ₹${summaryData.averageProfitMargin}`, 14, 75);
+      doc.text(`Average Profit %: ${summaryData.averageProfitPercentage}%`, 14, 85);
 
       doc.autoTable({
         startY: 95,
         head: [["Menu Item", "Ingredient Cost", "Profit Margin", "Profit %", "Stock"]],
         body: filteredData.map((item) => [
           item.itemName,
-          // FIX: Ensure numerical data is passed as string without symbols/units for calculation
-          String(parseFloat(item.totalIngredientCost || 0).toFixed(2)),
-          String(parseFloat(item.profitMargin || 0).toFixed(2)),
-          `${String(parseFloat(item.profitPercentage || 0).toFixed(2))}%`,
-          item.stock || 0
+          `₹${item.totalIngredientCost.toFixed(2)}`,
+          `₹${item.profitMargin.toFixed(2)}`,
+          `${item.profitPercentage}%`,
+          item.stock
         ]),
         styles: { fontSize: 8 },
       });
     } else {
-      // Inventory PDF export FIX
-      const totalAmount = filteredData.reduce((sum, item) => sum + (parseFloat(item.amount) || 0), 0);
-      const totalQuantity = filteredData.reduce((sum, item) => sum + (parseFloat(item.quantity) || 0), 0);
+      // Regular inventory PDF export - unchanged
+      const totalAmount = filteredData.reduce((sum, item) => sum + (item.amount || 0), 0);
+      const totalQuantity = filteredData.reduce((sum, item) => sum + (item.quantity || 0), 0);
 
       doc.setFontSize(12);
       doc.text(`Total Amount: ₹${totalAmount.toFixed(2)}`, 14, 35);
@@ -1172,27 +1171,19 @@ export default function PurchaseAnalytics() {
 
       doc.autoTable({
         startY: 65,
-        head: [["Inventory", "ID", "Supplier", "Unit", "Amount", "Qty", "Prev Rate", "Curr Rate", "Change %"]],
+        head: [["Inventory", "ID", "Supplier", "Category", "Amount", "Qty", "Prev Rate", "Curr Rate", "Change %"]],
         body: filteredData.map((item) => [
           item.inventoryName,
           item.inventoryId,
           item.supplier,
-          item.category, // Unit/Category
-
-          // FIX: Pass Amount as clean string number
-          String(parseFloat(item.amount || 0).toFixed(2)),
-
+          item.category,
+          `₹${(item.amount || 0).toFixed(2)}`,
           item.quantity || 0,
-
-          // FIX: Pass Previous Rate as clean string number
-          String(parseFloat(item.previousRate || 0).toFixed(2)),
-
-          // FIX: Pass Current Rate as clean string number
-          String(parseFloat(item.currentRate || 0).toFixed(2)),
-          `${String(parseFloat(item.rateChange || 0).toFixed(2))}%`, // Percentage as string
+          `₹${(item.previousRate || 0).toFixed(1)}`,
+          `₹${item.currentRate}`,
+          `${item.rateChange}%`,
         ]),
         styles: { fontSize: 8 },
-        headStyles: { fillColor: [52, 152, 219] }
       });
     }
 
@@ -1217,41 +1208,43 @@ export default function PurchaseAnalytics() {
     <Box sx={{
       p: 3,
       width: '100%',
-      maxWidth: 1200,
-      mx: 'auto',
+      minWidth: '100%',
       overflow: 'hidden'
     }}>
-      <Typography variant="h4" gutterBottom sx={{ mb: 3, fontWeight: 'bold', textAlign: 'center' }}>
+      <Typography variant="h4" gutterBottom sx={{ mb: 3, fontWeight: 'bold' }}>
         Purchase Analytics Dashboard
       </Typography>
 
       {/* View Mode Toggle */}
       <Paper sx={{ p: 2, mb: 3, borderRadius: 3, boxShadow: 3 }}>
         <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} md={3}>
+          <Grid item xs={12} sm={12} md={3}>
             <Typography variant="h6" sx={{
-              textAlign: { xs: 'center', md: 'left' },
-              mb: { xs: 1, md: 0 }
+              textAlign: { xs: 'center', sm: 'center', md: 'left' },
+              mb: { xs: 1, sm: 1, md: 0 }
             }}>
               View Mode:
             </Typography>
           </Grid>
-          <Grid item xs={12} md={9}>
+          <Grid item xs={12} sm={12} md={9}>
             <Stack
               direction={{ xs: 'column', sm: 'row' }}
               spacing={2}
               alignItems="center"
-              justifyContent={{ xs: "center", sm: "flex-start" }}
-              sx={{ width: '100%' }}
+              sx={{
+                width: '100%',
+                justifyContent: { xs: 'center', sm: 'flex-start' }
+              }}
             >
               <Button
                 variant={viewMode === 'inventory' ? 'contained' : 'outlined'}
                 startIcon={<Inventory />}
                 onClick={() => setViewMode('inventory')}
                 sx={{
-                  width: { xs: '100%', sm: 'auto' },
-                  fontSize: '0.875rem',
+                  minWidth: { xs: '100%', sm: 'auto' },
+                  fontSize: { xs: '0.875rem', sm: '0.875rem' },
                   py: { xs: 1.5, sm: 1 },
+                  width: { xs: '100%', sm: 'auto' }
                 }}
               >
                 Inventory Analytics
@@ -1261,9 +1254,10 @@ export default function PurchaseAnalytics() {
                 startIcon={<Restaurant />}
                 onClick={() => setViewMode('menu')}
                 sx={{
-                  width: { xs: '100%', sm: 'auto' },
-                  fontSize: '0.875rem',
+                  minWidth: { xs: '100%', sm: 'auto' },
+                  fontSize: { xs: '0.875rem', sm: '0.875rem' },
                   py: { xs: 1.5, sm: 1 },
+                  width: { xs: '100%', sm: 'auto' }
                 }}
               >
                 Menu Item Costs
@@ -1274,29 +1268,44 @@ export default function PurchaseAnalytics() {
       </Paper>
 
       {/* Summary Cards */}
-      <Grid container spacing={3} sx={{ mb: 3 }}>
-        {/* Card 1 */}
+      <Grid container spacing={3} sx={{
+        mb: 3,
+        width: '100%',
+        minWidth: '100%'
+      }}>
         <Grid item xs={12} sm={6} md={3}>
           <Card sx={{
-            borderRadius: 3, boxShadow: 3, height: '100%', display: 'flex', flexDirection: 'column'
+            borderRadius: 3,
+            boxShadow: 3,
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column'
           }}>
             <CardContent sx={{
-              flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '120px'
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              minHeight: '120px'
             }}>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                {viewMode === 'inventory' ? <ShoppingCart color="primary" sx={{ fontSize: 32 }} /> : <Restaurant color="primary" sx={{ fontSize: 32 }} />}
+              <Stack direction="row" alignItems="center" spacing={2} sx={{ height: '100%' }}>
+                {viewMode === 'inventory' ? <ShoppingCart color="primary" size={32} /> : <Restaurant color="primary" size={32} />}
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="h4" sx={{
                     fontWeight: 'bold',
                     fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                    lineHeight: 1.2,
+                    lineHeight: 1.2
                   }}>
                     {viewMode === 'inventory'
                       ? `₹${filteredData.reduce((sum, item) => sum + item.amount, 0).toLocaleString()}`
                       : `₹${filteredData.reduce((sum, item) => sum + parseFloat(item.totalIngredientCost || 0), 0).toFixed(2)}`
                     }
                   </Typography>
-                  <Typography color="text.secondary" sx={{ fontSize: '0.875rem', fontWeight: 500, mt: 0.5 }}>
+                  <Typography color="text.secondary" sx={{
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    mt: 0.5
+                  }}>
                     {viewMode === 'inventory' ? 'Total Purchases' : 'Total Ingredient Cost'}
                   </Typography>
                 </Box>
@@ -1304,28 +1313,39 @@ export default function PurchaseAnalytics() {
             </CardContent>
           </Card>
         </Grid>
-        {/* Card 2 */}
         <Grid item xs={12} sm={6} md={3}>
           <Card sx={{
-            borderRadius: 3, boxShadow: 3, height: '100%', display: 'flex', flexDirection: 'column'
+            borderRadius: 3,
+            boxShadow: 3,
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column'
           }}>
             <CardContent sx={{
-              flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '120px'
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              minHeight: '120px'
             }}>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <Inventory color="secondary" sx={{ fontSize: 32 }} />
+              <Stack direction="row" alignItems="center" spacing={2} sx={{ height: '100%' }}>
+                <Inventory color="secondary" size={32} />
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="h4" sx={{
                     fontWeight: 'bold',
                     fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                    lineHeight: 1.2,
+                    lineHeight: 1.2
                   }}>
                     {viewMode === 'inventory'
                       ? filteredData.reduce((sum, item) => sum + item.quantity, 0)
                       : filteredData.length
                     }
                   </Typography>
-                  <Typography color="text.secondary" sx={{ fontSize: '0.875rem', fontWeight: 500, mt: 0.5 }}>
+                  <Typography color="text.secondary" sx={{
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    mt: 0.5
+                  }}>
                     {viewMode === 'inventory' ? 'Total Quantity' : 'Menu Items'}
                   </Typography>
                 </Box>
@@ -1333,24 +1353,32 @@ export default function PurchaseAnalytics() {
             </CardContent>
           </Card>
         </Grid>
-        {/* Card 3 */}
         <Grid item xs={12} sm={6} md={3}>
           <Card sx={{
-            borderRadius: 3, boxShadow: 3, height: '100%', display: 'flex', flexDirection: 'column'
+            borderRadius: 3,
+            boxShadow: 3,
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column'
           }}>
             <CardContent sx={{
-              flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '120px'
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              minHeight: '120px'
             }}>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <Kitchen color="success" sx={{ fontSize: 32 }} />
+              <Stack direction="row" alignItems="center" spacing={2} sx={{ height: '100%' }}>
+                <Kitchen color="success" size={32} />
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="h4" sx={{
                     fontWeight: 'bold',
                     fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                    lineHeight: 1.2,
+                    lineHeight: 1.2
                   }}>
                     {viewMode === 'inventory'
                       ? availableCategories.length
+                      // --- REPLACEMENT LOGIC START ---
                       : `₹${filteredData.length > 0
                         ? (
                           filteredData.reduce((sum, item) => sum + parseFloat(item.totalIngredientCost || 0), 0) /
@@ -1358,38 +1386,54 @@ export default function PurchaseAnalytics() {
                         ).toFixed(2)
                         : '0.00'
                       }`
+                      // --- REPLACEMENT LOGIC END ---
                     }
                   </Typography>
-                  <Typography color="text.secondary" sx={{ fontSize: '0.875rem', fontWeight: 500, mt: 0.5 }}>
-                    {viewMode === 'inventory' ? 'Categories' : 'Avg Ingredient Cost'}
+                  <Typography color="text.secondary" sx={{
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    mt: 0.5
+                  }}>
+                    {viewMode === 'inventory' ? 'Categories' : 'Total Ingredient Cost'}
                   </Typography>
                 </Box>
               </Stack>
             </CardContent>
           </Card>
         </Grid>
-        {/* Card 4 */}
         <Grid item xs={12} sm={6} md={3}>
           <Card sx={{
-            borderRadius: 3, boxShadow: 3, height: '100%', display: 'flex', flexDirection: 'column'
+            borderRadius: 3,
+            boxShadow: 3,
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column'
           }}>
             <CardContent sx={{
-              flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', minHeight: '120px'
+              flex: 1,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              minHeight: '120px'
             }}>
-              <Stack direction="row" alignItems="center" spacing={2}>
-                <TrendingUp color="error" sx={{ fontSize: 32 }} />
+              <Stack direction="row" alignItems="center" spacing={2} sx={{ height: '100%' }}>
+                <TrendingUp color="error" size={32} />
                 <Box sx={{ flex: 1 }}>
                   <Typography variant="h4" sx={{
                     fontWeight: 'bold',
                     fontSize: { xs: '1.5rem', sm: '1.75rem', md: '2rem' },
-                    lineHeight: 1.2,
+                    lineHeight: 1.2
                   }}>
                     {viewMode === 'inventory'
                       ? filteredData.filter(item => parseFloat(item.rateChange) > 0).length
                       : filteredData.filter(item => parseFloat(item.profitPercentage) > 20).length
                     }
                   </Typography>
-                  <Typography color="text.secondary" sx={{ fontSize: '0.875rem', fontWeight: 500, mt: 0.5 }}>
+                  <Typography color="text.secondary" sx={{
+                    fontSize: '0.875rem',
+                    fontWeight: 500,
+                    mt: 0.5
+                  }}>
                     {viewMode === 'inventory' ? 'Price Increases' : 'Profitable Items'}
                   </Typography>
                 </Box>
@@ -1398,9 +1442,6 @@ export default function PurchaseAnalytics() {
           </Card>
         </Grid>
       </Grid>
-
-
-
 
       {/* Export Buttons */}
       <Stack direction="row" spacing={2} sx={{ mb: 3 }}>
@@ -1606,8 +1647,16 @@ export default function PurchaseAnalytics() {
                       .map((item, idx) => (
                         <React.Fragment key={item.id}>
                           <TableRow
-                           sx={{ backgroundColor: "var(--cui-card-bg) !important" }}
-
+                            sx={{
+                              backgroundColor: isDark ? (idx % 2 === 0 ? theme.palette.grey[900] : theme.palette.grey[800]) : (idx % 2 === 0 ? "#f9f9f9" : "white"),
+                              cursor: 'pointer',
+                              border: selectedGraphItem?.id === item.id ? `2px solid ${theme.palette.primary.main}` : 'none',
+                              '&:hover': {
+                                backgroundColor: isDark ? theme.palette.action.hover : "#e3f2fd",
+                                transform: 'scale(1.01)',
+                                transition: 'all 0.2s ease-in-out'
+                              }
+                            }}
                             onClick={() => {
                               if (viewMode === 'inventory') {
                                 setSelectedGraphItem({

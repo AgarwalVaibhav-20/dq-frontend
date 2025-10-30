@@ -3,6 +3,7 @@ import axios from 'axios';
 import { toast } from 'react-toastify';
 import { BASE_URL } from '../../utils/constants';
 import { getValidToken } from '../../utils/tokenUtils';
+import axiosInstance from '../../utils/axiosConfig';
 
 const configureHeaders = (token) => ({
   headers: {
@@ -127,7 +128,7 @@ export const addMenuItem = createAsyncThunk(
         }
       }
 
-      const response = await axios.post(`${BASE_URL}/menu/add`, formData, {
+      const response = await axiosInstance.post(`${BASE_URL}/menu/add`, formData, {
         headers: {
           Authorization: `Bearer ${token}`,
           "Content-Type": "multipart/form-data",

@@ -11,6 +11,7 @@ import {
   CSpinner,
 } from '@coreui/react'
 import axios from 'axios'
+import axiosInstance from '../utils/axiosConfig';
 import { BASE_URL } from '../utils/constants'
 
 const SystemSelectionModal = React.forwardRef(({
@@ -45,7 +46,7 @@ const SystemSelectionModal = React.forwardRef(({
       console.log('Fetching settings for restaurantId:', restaurantId)
 
       // Fetch settings from your backend API
-      const response = await axios.get(`${BASE_URL}/api/settings?restaurantId=${restaurantId}`, {
+      const response = await axiosInstance.get(`${BASE_URL}/api/settings?restaurantId=${restaurantId}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },

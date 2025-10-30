@@ -16,6 +16,7 @@ import PermissionGuard from './components/PermissionGuard'
 import PermissionDebug from './components/PermissionDebug'
 import { fetchShortcuts } from './redux/slices/keyboardShortcutSlice';
 import GlobalShortcutListener from './components/GlobalShortcutListener'; 
+import { logoutUser } from './redux/slices/authSlice';
 
 // Permission mapping helper - Updated to match exact permission names from the list
 const getPermissionForRoute = (routePath) => {
@@ -318,6 +319,13 @@ const App = () => {
 
     // Sync localStorage with Redux state on app initialization
     dispatch(syncLocalStorage());
+  }, [dispatch]);
+
+  useEffect(() => {
+    if (window.location.pathname === '/login' && localStorage.getItem('session-expired') === 'true') {
+      dispatch(logoutUser());
+      localStorage.removeItem('session-expired');
+    }
   }, [dispatch]);
 
   // ✅ Better loading state handling
