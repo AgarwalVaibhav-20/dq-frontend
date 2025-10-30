@@ -59,13 +59,13 @@
 //   // ✅ Fixed Redux selectors with proper fallbacks
 //   const orders = useSelector((state) => state.orders?.orders || []);
 //   const ordersLoading = useSelector((state) => state.orders?.loading || false);
-  
+
 //   const customers = useSelector((state) => state.customers?.customers || []);
 //   const customersLoading = useSelector((state) => state.customers?.loading || false);
-  
+
 //   const menuItems = useSelector((state) => state.menuItems?.menuItems || []);
 //   const menuItemsLoading = useSelector((state) => state.menuItems?.loading || false);
-  
+
 //   const inventories = useSelector((state) => state.inventories?.inventories || []);
 //   const inventoriesLoading = useSelector((state) => state.inventories?.loading || false);
 
@@ -75,7 +75,7 @@
 //   const [salesData, setSalesData] = useState([]);
 //   const [menuPerformanceData, setMenuPerformanceData] = useState([]);
 //   const [customerAnalyticsData, setCustomerAnalyticsData] = useState([]);
-  
+
 //   const [page, setPage] = useState(0);
 //   const [rowsPerPage, setRowsPerPage] = useState(10);
 //   const [startDate, setStartDate] = useState('');
@@ -159,7 +159,7 @@
 //             const menuItem = menuItems.find(m => 
 //               String(m._id) === String(item.menuItemId || item.itemId)
 //             );
-            
+
 //             let itemCost = 0;
 //             if (menuItem) {
 //               // Calculate cost from ingredients if available
@@ -168,25 +168,25 @@
 //                   const inventoryItem = inventories.find(inv => 
 //                     String(inv._id) === String(stockItem.stockId)
 //                   );
-                  
+
 //                   if (inventoryItem && inventoryItem.stock) {
 //                     const rate = Number(inventoryItem.stock.amount) || 0;
 //                     const qty = Number(stockItem.quantity) || 0;
 //                     const unit = (stockItem.unit || '').toLowerCase();
-                    
+
 //                     let ratePerUnit = rate;
 //                     if (unit === 'gm' || unit === 'gram') {
 //                       ratePerUnit = rate / 1000;
 //                     } else if (unit === 'ml' || unit === 'milliliter') {
 //                       ratePerUnit = rate / 1000;
 //                     }
-                    
+
 //                     return cost + (ratePerUnit * qty);
 //                   }
 //                   return cost;
 //                 }, 0);
 //               }
-              
+
 //               // Fallback to costPrice or 40% of selling price
 //               if (itemCost === 0) {
 //                 itemCost = Number(menuItem.costPrice) || (Number(menuItem.price) * 0.4) || 0;
@@ -195,7 +195,7 @@
 //               // If menu item not found, use 40% of item price
 //               itemCost = (Number(item.price) || 0) * 0.4;
 //             }
-            
+
 //             return sum + (itemCost * (Number(item.quantity) || 0));
 //           }, 0);
 
@@ -259,7 +259,7 @@
 //         if (Array.isArray(order.items)) {
 //           order.items.forEach(item => {
 //             const key = `${item.menuItemId}_${item.name}`;
-            
+
 //             if (!menuPerformance[key]) {
 //               menuPerformance[key] = {
 //                 menuItemId: item.menuItemId,
@@ -270,7 +270,7 @@
 //                 category: item.category || 'General'
 //               };
 //             }
-            
+
 //             menuPerformance[key].totalQuantitySold += Number(item.quantity) || 0;
 //             menuPerformance[key].totalRevenue += Number(item.total) || 0;
 //             menuPerformance[key].orderCount += 1;
@@ -298,12 +298,12 @@
 //             const inventoryItem = inventories.find(inv => 
 //               String(inv._id) === String(stockItem.stockId)
 //             );
-            
+
 //             if (inventoryItem && inventoryItem.stock) {
 //               const rate = Number(inventoryItem.stock.amount) || 0;
 //               const qty = Number(stockItem.quantity) || 0;
 //               const unit = (stockItem.unit || inventoryItem.unit || '').toLowerCase();
-              
+
 //               let ratePerUnit = rate;
 //               if (unit === 'kg' || unit === 'kilogram') {
 //                 ratePerUnit = rate;
@@ -316,13 +316,13 @@
 //               } else if (unit === 'pcs' || unit === 'pieces') {
 //                 ratePerUnit = rate;
 //               }
-              
+
 //               return totalCost + (ratePerUnit * qty);
 //             }
 //             return totalCost;
 //           }, 0);
 //         }
-        
+
 //         // Fallback to costPrice or 40% of selling price
 //         if (itemCost === 0) {
 //           itemCost = Number(menuItem.costPrice) || (basePrice * 0.4);
@@ -446,7 +446,7 @@
 //         const customerOrders = salesData.filter(order => 
 //           (order.customerId || order.customerName) === customer.customerId
 //         );
-        
+
 //         if (customerOrders.length > 0) {
 //           const firstOrder = Math.min(...customerOrders.map(order => 
 //             new Date(order.orderDate).getTime()
@@ -1453,7 +1453,7 @@
 // //         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
 // //       setSalesData(transformedSalesData);
-      
+
 // //       // Save to localStorage for persistence
 // //       localStorage.setItem('salesAnalytics_salesData', JSON.stringify(transformedSalesData));
 // //     } catch (error) {
@@ -1472,7 +1472,7 @@
 // //     const menuItemsString = JSON.stringify(menuItems.map(m => ({ id: m._id, itemName: m.itemName, price: m.price })));
 // //     const inventoriesString = JSON.stringify(inventories.map(i => ({ id: i._id, stock: i.stock })));
 // //     const currentDataString = JSON.stringify(menuPerformanceData.map(m => ({ id: m.id, itemName: m.itemName })));
-    
+
 // //     if (menuItemsString === currentDataString && inventoriesString === currentDataString) {
 // //       return;
 // //     }
@@ -1488,14 +1488,14 @@
 // //         }
 // //         const itemName = menuItem.itemName;
 // //         const basePrice = menuItem.price || 0;
-        
+
 // //         // Process each size separately
 // //         if (menuItem.sizes && menuItem.sizes.length > 0) {
 // //           menuItem.sizes.forEach(size => {
 // //             const sizeName = size.name || size.label || 'Regular';
 // //             const sizePrice = size.price || basePrice;
 // //             const sizeKey = `${itemName}_${sizeName}`;
-            
+
 // //             if (!menuPerformance[sizeKey]) {
 // //               menuPerformance[sizeKey] = {
 // //                 id: `${menuItem._id}_${sizeName}`, // Unique ID for each size
@@ -1548,7 +1548,7 @@
 // //           itemCost = menuItem.stockItems.reduce((totalCost, stockItem) => {
 // //             // Find the inventory item
 // //             const inventoryItem = inventories.find(inv => String(inv._id) === String(stockItem.stockId));
-            
+
 // //             if (inventoryItem && inventoryItem.stock) {
 // //               // === Inventory values ===
 // //               const inventoryRate = inventoryItem.stock.amount;       // rate per unit (e.g. 25/kg, 60/litre, etc.)
@@ -1610,7 +1610,7 @@
 // //         .sort((a, b) => b.profit - a.profit);
 
 // //       setMenuPerformanceData(menuPerformanceArray);
-      
+
 // //       // Save to localStorage for persistence
 // //       localStorage.setItem('salesAnalytics_menuPerformanceData', JSON.stringify(menuPerformanceArray));
 // //     } catch (error) {
@@ -1673,7 +1673,7 @@
 // //       }).sort((a, b) => b.totalSpent - a.totalSpent);
 
 // //       setCustomerAnalyticsData(customerAnalyticsArray);
-      
+
 // //       // Save to localStorage for persistence
 // //       localStorage.setItem('salesAnalytics_customerAnalyticsData', JSON.stringify(customerAnalyticsArray));
 // //     } catch (error) {
@@ -2582,7 +2582,7 @@ export default function SalesAnalytics() {
         .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
 
       setSalesData(transformedSalesData);
-      
+
       // Save to localStorage for persistence
       localStorage.setItem('salesAnalytics_salesData', JSON.stringify(transformedSalesData));
     } catch (error) {
@@ -2601,7 +2601,7 @@ export default function SalesAnalytics() {
     const menuItemsString = JSON.stringify(menuItems.map(m => ({ id: m._id, itemName: m.itemName, price: m.price })));
     const inventoriesString = JSON.stringify(inventories.map(i => ({ id: i._id, stock: i.stock })));
     const currentDataString = JSON.stringify(menuPerformanceData.map(m => ({ id: m.id, itemName: m.itemName })));
-    
+
     if (menuItemsString === currentDataString && inventoriesString === currentDataString) {
       return;
     }
@@ -2617,14 +2617,14 @@ export default function SalesAnalytics() {
         }
         const itemName = menuItem.itemName;
         const basePrice = menuItem.price || 0;
-        
+
         // Process each size separately
         if (menuItem.sizes && menuItem.sizes.length > 0) {
           menuItem.sizes.forEach(size => {
             const sizeName = size.name || size.label || 'Regular';
             const sizePrice = size.price || basePrice;
             const sizeKey = `${itemName}_${sizeName}`;
-            
+
             if (!menuPerformance[sizeKey]) {
               menuPerformance[sizeKey] = {
                 id: `${menuItem._id}_${sizeName}`, // Unique ID for each size
@@ -2685,11 +2685,11 @@ export default function SalesAnalytics() {
               itemCost = sizeSpecificIngredients.reduce((totalCost, stockItem) => {
                 // Find the inventory item
                 const inventoryItem = inventories.find(inv => String(inv._id) === String(stockItem.stockId));
-                
+
                 if (inventoryItem && inventoryItem.supplierStocks && inventoryItem.supplierStocks.length > 0) {
                   // Get the latest purchase from supplierStocks
                   const latestPurchase = [...inventoryItem.supplierStocks].sort((a, b) => new Date(b.purchasedAt) - new Date(a.purchasedAt))[0];
-                  
+
                   if (latestPurchase) {
                     // === Inventory values ===
                     const inventoryRate = latestPurchase.pricePerUnit || 0;       // rate per unit (e.g. 25/kg, 60/litre, etc.)
@@ -2704,7 +2704,7 @@ export default function SalesAnalytics() {
                     } else if (unit === "litre" || unit === "liter" || unit === "ltr") {
                       currentRate = inventoryRate; // per ltr (no conversion needed)
                     } else if (unit === "ml" || unit === "milliliter") {
-                      currentRate = inventoryRate/1000; // per ml (ltr/1000)
+                      currentRate = inventoryRate / 1000; // per ml (ltr/1000)
                     } else if (unit === "pcs" || unit === "pieces") {
                       currentRate = inventoryRate; // per piece
                     } else {
@@ -2716,7 +2716,7 @@ export default function SalesAnalytics() {
                     return totalCost + ingredientCost;
                   }
                 }
-                
+
                 // Fallback: use 40% of selling price as cost
                 const estimatedCostPerUnit = (performanceItem.averagePrice || 0) * 0.4;
                 return totalCost + (estimatedCostPerUnit * stockItem.quantity);
@@ -2748,7 +2748,7 @@ export default function SalesAnalytics() {
         .sort((a, b) => b.profit - a.profit);
 
       setMenuPerformanceData(menuPerformanceArray);
-      
+
       // Save to localStorage for persistence
       localStorage.setItem('salesAnalytics_menuPerformanceData', JSON.stringify(menuPerformanceArray));
     } catch (error) {
@@ -2811,7 +2811,7 @@ export default function SalesAnalytics() {
       }).sort((a, b) => b.totalSpent - a.totalSpent);
 
       setCustomerAnalyticsData(customerAnalyticsArray);
-      
+
       // Save to localStorage for persistence
       localStorage.setItem('salesAnalytics_customerAnalyticsData', JSON.stringify(customerAnalyticsArray));
     } catch (error) {
@@ -2959,12 +2959,12 @@ export default function SalesAnalytics() {
         csvRows = [
           ["Menu Item", "Menu ID", "Size", "Cost Price (CP)", "Sold Price (SP)", "Profit", "Profit Percentage (%)", "Total Quantity", "Total Revenue"],
           ...filteredData.map(item => [
-            item.itemName, 
+            item.itemName,
             item.menuId || '',
             item.sizeName || item.sizes?.join(', ') || 'Regular',
-            item.averageCostPrice || item.totalCost.toFixed(2), 
-            item.averagePrice, 
-            item.profit, 
+            item.averageCostPrice || item.totalCost.toFixed(2),
+            item.averagePrice,
+            item.profit,
             item.profitMargin,
             item.totalQuantity,
             item.totalRevenue
@@ -3009,11 +3009,11 @@ export default function SalesAnalytics() {
         startY: 30,
         head: [["Menu Item", "Size", "Cost Price (CP)", "Sold Price (SP)", "Profit", "Profit Percentage (%)"]],
         body: filteredData.slice(0, 50).map(item => [
-          item.itemName, 
+          item.itemName,
           item.sizeName || item.sizes?.join(', ') || 'Regular',
-          `₹${item.averageCostPrice || item.totalCost.toFixed(2)}`, 
-          `₹${item.averagePrice}`, 
-          `₹${item.profit}`, 
+          `₹${item.averageCostPrice || item.totalCost.toFixed(2)}`,
+          `₹${item.averagePrice}`,
+          `₹${item.profit}`,
           `${item.profitMargin}%`
         ]),
         styles: { fontSize: 8 },
@@ -3065,13 +3065,15 @@ export default function SalesAnalytics() {
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h4" gutterBottom sx={{ mb: 3, fontWeight: 'bold' }}>
-        Sales Analytics Dashboard
+        <h2 className="text-center text-2xl font-semibold">
+          Sales Analytics Dashboard
+        </h2>
       </Typography>
 
       <Paper sx={{ p: 2, mb: 3, borderRadius: 3, boxShadow: 3 }}>
         <Grid container spacing={2} alignItems="center">
           <Grid item xs={12} sm={12} md={3}>
-            <Typography variant="h6" sx={{ 
+            <Typography variant="h6" sx={{
               textAlign: { xs: 'center', sm: 'center', md: 'left' },
               mb: { xs: 1, sm: 1, md: 0 }
             }}>
@@ -3079,11 +3081,11 @@ export default function SalesAnalytics() {
             </Typography>
           </Grid>
           <Grid item xs={12} sm={12} md={9}>
-            <Stack 
-              direction={{ xs: 'column', sm: 'row' }} 
-              spacing={2} 
+            <Stack
+              direction={{ xs: 'column', sm: 'row' }}
+              spacing={2}
               alignItems="center"
-              sx={{ 
+              sx={{
                 width: '100%',
                 justifyContent: { xs: 'center', sm: 'flex-start' }
               }}
@@ -3101,11 +3103,11 @@ export default function SalesAnalytics() {
               >
                 Sales Overview
               </Button> */}
-              <Button 
-                variant={viewMode === 'menu' ? 'contained' : 'outlined'} 
-                startIcon={<BarChart3 />} 
+              <Button
+                variant={viewMode === 'menu' ? 'contained' : 'outlined'}
+                startIcon={<BarChart3 />}
                 onClick={() => setViewMode('menu')}
-                sx={{ 
+                sx={{
                   minWidth: { xs: '100%', sm: 'auto' },
                   fontSize: { xs: '0.875rem', sm: '0.875rem' },
                   py: { xs: 1.5, sm: 1 },
@@ -3223,15 +3225,48 @@ export default function SalesAnalytics() {
         </Grid>
       </Paper>
 
-      <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 3 }}>
+      <Paper sx={{ p: 3, borderRadius: 3, boxShadow: 3, }}>
         <Typography variant="h6" gutterBottom>{viewMode === 'sales' ? 'Sales Orders' : viewMode === 'menu' ? 'Menu Performance' : 'Customer Analytics'} ({filteredData.length} records)</Typography>
         <TableContainer>
           <Table>
             <TableHead>
               <TableRow>
-                {viewMode === 'sales' ? ["Order ID", "Customer", "Date", "Total", "Profit", "Status", "Details"].map((h) => (<TableCell key={h} sx={{ fontWeight: "bold" }}>{h}</TableCell>))
-                  : viewMode === 'menu' ? ["Menu Item", "Size", "Cost Price (CP)", "Sold Price (SP)", "Profit", "Profit Percentage (%)"].map((h) => (<TableCell key={h} sx={{ fontWeight: "bold" }}>{h}</TableCell>))
-                    : ["Customer", "Orders", "Total Spent", "Avg Order", "Last Order", "Favorite Item", "Frequency"].map((h) => (<TableCell key={h} sx={{ fontWeight: "bold" }}>{h}</TableCell>))}
+                {viewMode === 'sales' ?
+                  ["Order ID", "Customer", "Date", "Total", "Profit", "Status", "Details"].map((h) => (
+                    <TableCell
+                      key={h}
+                      sx={{
+                        fontWeight: "bold",
+                        // ✅ FIX: Ensure text is white/light for visibility
+                        color: 'var(--cui-body-color)'
+                      }}>
+                      {h}
+                    </TableCell>
+                  ))
+                  : viewMode === 'menu' ?
+                    ["Menu Item", "Size", "Cost Price (CP)", "Sold Price (SP)", "Profit", "Profit Percentage (%)"].map((h) => (
+                      <TableCell
+                        key={h}
+                        sx={{
+                          fontWeight: "bold",
+                          // ✅ FIX: Ensure text is white/light for visibility
+                          color: 'var(--cui-body-color)'
+                        }}>
+                        {h}
+                      </TableCell>
+                    ))
+                    :
+                    ["Customer", "Orders", "Total Spent", "Avg Order", "Last Order", "Favorite Item", "Frequency"].map((h) => (
+                      <TableCell
+                        key={h}
+                        sx={{
+                          fontWeight: "bold",
+                          // ✅ FIX: Ensure text is white/light for visibility
+                          color: 'var(--cui-body-color)'
+                        }}>
+                        {h}
+                      </TableCell>
+                    ))}
               </TableRow>
             </TableHead>
             <TableBody>
@@ -3257,11 +3292,11 @@ export default function SalesAnalytics() {
                           </Stack>
                         </TableCell>
                         <TableCell>
-                          <Chip 
-                            label={item.sizeName || item.sizes?.join(', ') || 'Regular'} 
-                            color="primary" 
-                            variant="outlined" 
-                            size="small" 
+                          <Chip
+                            label={item.sizeName || item.sizes?.join(', ') || 'Regular'}
+                            color="primary"
+                            variant="outlined"
+                            size="small"
                           />
                         </TableCell>
                         <TableCell>₹{item.averageCostPrice || item.totalCost.toFixed(2)}</TableCell>
@@ -3360,33 +3395,33 @@ export default function SalesAnalytics() {
                       profit: parseFloat(item.profit) || 0,
                       profitMargin: parseFloat(item.profitMargin) || 0
                     }))}
-                    xAxis={[{ 
-                      dataKey: 'itemName', 
+                    xAxis={[{
+                      dataKey: 'itemName',
                       label: 'Menu Items',
                       scaleType: 'band'
                     }]}
                     yAxis={[
-                      { 
-                        dataKey: 'costPrice', 
+                      {
+                        dataKey: 'costPrice',
                         label: 'Cost Price (₹)',
                         scaleType: 'linear'
                       },
-                      { 
-                        dataKey: 'soldPrice', 
+                      {
+                        dataKey: 'soldPrice',
                         label: 'Sold Price (₹)',
                         scaleType: 'linear'
                       }
                     ]}
                     series={[
-                      { 
-                        dataKey: 'costPrice', 
-                        label: 'Cost Price (₹)', 
+                      {
+                        dataKey: 'costPrice',
+                        label: 'Cost Price (₹)',
                         color: '#ff9800',
                         yAxisKey: 'costPrice'
                       },
-                      { 
-                        dataKey: 'soldPrice', 
-                        label: 'Sold Price (₹)', 
+                      {
+                        dataKey: 'soldPrice',
+                        label: 'Sold Price (₹)',
                         color: '#2196f3',
                         yAxisKey: 'soldPrice'
                       }
@@ -3412,7 +3447,7 @@ export default function SalesAnalytics() {
                       <Box>
                         <Typography variant="subtitle2" color="text.secondary">Average Cost Price</Typography>
                         <Typography variant="h5" fontWeight="medium" color="warning.main">
-                          ₹{filteredData.length > 0 
+                          ₹{filteredData.length > 0
                             ? (filteredData.reduce((sum, item) => sum + (parseFloat(item.averageCostPrice || item.totalCost) || 0), 0) / filteredData.length).toFixed(2)
                             : 0}
                         </Typography>
@@ -3420,7 +3455,7 @@ export default function SalesAnalytics() {
                       <Box>
                         <Typography variant="subtitle2" color="text.secondary">Average Sold Price</Typography>
                         <Typography variant="h5" fontWeight="medium" color="success.main">
-                          ₹{filteredData.length > 0 
+                          ₹{filteredData.length > 0
                             ? (filteredData.reduce((sum, item) => sum + (parseFloat(item.averagePrice) || 0), 0) / filteredData.length).toFixed(2)
                             : 0}
                         </Typography>
@@ -3428,7 +3463,7 @@ export default function SalesAnalytics() {
                       <Box>
                         <Typography variant="subtitle2" color="text.secondary">Average Profit Margin</Typography>
                         <Typography variant="h5" fontWeight="medium" color="info.main">
-                          {filteredData.length > 0 
+                          {filteredData.length > 0
                             ? (filteredData.reduce((sum, item) => sum + (parseFloat(item.profitMargin) || 0), 0) / filteredData.length).toFixed(1)
                             : 0}%
                         </Typography>

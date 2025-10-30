@@ -184,7 +184,7 @@ const AverageOrderValueReport = () => {
   /* ----------------------------- UI ------------------------- */
   return (
     <CContainer fluid className="p-3">
-      <h2 className="mb-4">Average Order Value Report</h2>
+      <h2 className="mb-4 text-center">Average Order Value Report</h2>
 
       {/* Date pickers and controls */}
       <CCard className="mb-4">

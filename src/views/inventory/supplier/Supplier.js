@@ -590,7 +590,7 @@ const Supplier = () => {
       <style>{mobileStyles}</style>
       <CContainer fluid className="px-2 px-md-3">
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
-          <h2 className="mb-2 mb-md-0">Suppliers</h2>
+           <h2 className="mb-0 mx-auto text-center w-100 heading-mobile-center">Suppliers</h2>
           <div className="d-flex flex-column flex-sm-row gap-2 w-100 w-md-auto">
             <div className="d-flex justify-content-end">
               <CButton

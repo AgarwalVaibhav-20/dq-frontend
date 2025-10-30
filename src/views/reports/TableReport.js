@@ -147,7 +147,7 @@ const TableReport = () => {
 
   return (
     <CContainer fluid className="p-3">
-      <h2 className="mb-4">Table Report</h2>
+        <h2 className="mb-4 mx-auto text-center w-100 heading-mobile-center">Table Report</h2>
 
       {/* Date range and filters */}
       <CCard className="mb-4">

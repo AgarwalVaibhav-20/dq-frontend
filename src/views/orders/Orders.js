@@ -34,23 +34,23 @@ const Order = () => {
   const { restaurantProfile } = useSelector((state) => state.restaurantProfile)
   const token = localStorage.getItem("authToken")
   const restaurantId = localStorage.getItem('restaurantId');
-  
+
   // Filter states
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('all')
   const [sortBy, setSortBy] = useState('created_at')
   const [sortOrder, setSortOrder] = useState('desc')
-  
+
   // Refs for KOT and Invoice components
   const kotRef = useRef(null)
   const invoiceRef = useRef(null)
 
   useEffect(() => {
     if (token && restaurantId) {
-      dispatch(fetchOrders({ token , restaurantId }))
+      dispatch(fetchOrders({ token, restaurantId }))
     }
-  }, [dispatch, token , restaurantId])
+  }, [dispatch, token, restaurantId])
 
   useEffect(() => {
     if (restaurantId) {
@@ -62,13 +62,13 @@ const Order = () => {
       setIsUpdatingStatus(true);
       console.log('Updating order status:', _id, newStatus);
       console.log('Selected order object:', selectedOrder);
-      
+
       // Use the correct ID field - try both _id and order_id
       const orderId = selectedOrder._id || selectedOrder.order_id || _id;
       console.log('Using order ID:', orderId);
-      
+
       const result = await dispatch(updateOrderStatus({ id: orderId, status: newStatus }));
-      
+
       if (result.type === 'orders/updateOrderStatus/fulfilled') {
         console.log('Status updated successfully');
         // Refresh the orders list
@@ -89,7 +89,7 @@ const Order = () => {
   const generateKOT = (order) => {
     try {
       setSelectedOrder(order)
-      
+
       // Get cart items from either items or order_details
       const cartItems = order.items?.map(item => ({
         id: item._id || item.id || item.itemId,
@@ -130,7 +130,7 @@ const Order = () => {
 
       // Wait a bit for the component to render
       setTimeout(() => {
-        html2canvas(kotElement, { 
+        html2canvas(kotElement, {
           scale: 2,
           useCORS: true,
           allowTaint: true,
@@ -248,7 +248,7 @@ const Order = () => {
   const generateBill = (order) => {
     try {
       setSelectedOrder(order)
-      
+
       // Get cart items from either items or order_details
       const cartItems = order.items?.map(item => ({
         id: item._id || item.id || item.itemId,
@@ -289,8 +289,8 @@ const Order = () => {
 
       // Wait a bit for the component to render
       setTimeout(() => {
-        html2canvas(invoiceElement, { 
-          scale: 2, 
+        html2canvas(invoiceElement, {
+          scale: 2,
           useCORS: true,
           allowTaint: true,
           backgroundColor: '#ffffff',
@@ -418,11 +418,11 @@ const Order = () => {
   // Filter and sort logic
   const filteredAndSortedOrders = orders
     ?.filter((order) => {
-      const matchesSearch = 
+      const matchesSearch =
         order.orderId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.tableNumber?.toString().includes(searchTerm) ||
-        order.items?.some(item => 
+        order.items?.some(item =>
           item.itemName?.toLowerCase().includes(searchTerm.toLowerCase())
         )
 
@@ -455,7 +455,7 @@ const Order = () => {
     })
     ?.sort((a, b) => {
       let aValue, bValue
-      
+
       switch (sortBy) {
         case 'orderId':
           aValue = a.orderId || ''
@@ -491,8 +491,17 @@ const Order = () => {
           <div>
             <h6 className="fw-bold mb-1 text-primary">#{order.orderId}</h6>
             <small className="text-muted">
-              {format(new Date(order.created_at), 'dd/MM/yyyy HH:mm')}
+              {order.created_at
+                ? (() => {
+                  try {
+                    return format(new Date(order.created_at), 'dd/MM/yyyy HH:mm');
+                  } catch {
+                    return "—";
+                  }
+                })()
+                : "—"}
             </small>
+
           </div>
           <div style={getStatusStyle(order.status)} className="px-2 py-1 rounded-pill">
             <small className="fw-bold">
@@ -500,7 +509,7 @@ const Order = () => {
             </small>
           </div>
         </div>
-        
+
         <div className="mb-2">
           <div className="d-flex justify-content-between">
             <span className="text-muted small">Customer:</span>
@@ -709,8 +718,11 @@ const Order = () => {
           }
         `}
       </style>
-      <h2 className="mb-4">Orders</h2>
-      
+      <div className="text-center mb-4">
+        <h2 className="mb-0">Orders</h2>
+      </div>
+
+
       {/* Filter Section */}
       <CCard className="mb-4 shadow-sm filter-section">
         <CCardHeader>
@@ -922,9 +934,9 @@ const Order = () => {
               <img
                 src={invoiceImage}
                 alt="Invoice Preview"
-                style={{ 
-                  width: '100%', 
-                  marginBottom: '10px', 
+                style={{
+                  width: '100%',
+                  marginBottom: '10px',
                   maxWidth: '400px',
                   border: '1px solid #ddd',
                   borderRadius: '4px'
@@ -944,9 +956,9 @@ const Order = () => {
               <div style={{ fontSize: '24px', marginBottom: '10px' }}>📄</div>
               <p>Generating invoice...</p>
               <p style={{ fontSize: '12px' }}>Invoice Image State: {invoiceImage ? 'Available' : 'Not Available'}</p>
-              <div style={{ 
-                width: '20px', 
-                height: '20px', 
+              <div style={{
+                width: '20px',
+                height: '20px',
                 border: '2px solid #f3f3f3',
                 borderTop: '2px solid #3498db',
                 borderRadius: '50%',
@@ -993,7 +1005,7 @@ const Order = () => {
         </CModal>
       )}
 
-     {selectedOrder && (
+      {selectedOrder && (
         <div
           className="bg-theme-aware custom-scrollbar"
           style={{
@@ -1126,9 +1138,9 @@ const Order = () => {
       {/* Hidden KOT and Invoice components for generation */}
       {selectedOrder && (
         <>
-          <div style={{ 
-            position: 'absolute', 
-            left: '-9999px', 
+          <div style={{
+            position: 'absolute',
+            left: '-9999px',
             top: '-9999px',
             visibility: 'hidden',
             width: '2in',
@@ -1152,10 +1164,10 @@ const Order = () => {
               })) || []}
             />
           </div>
-          
-          <div style={{ 
-            position: 'absolute', 
-            left: '-9999px', 
+
+          <div style={{
+            position: 'absolute',
+            left: '-9999px',
             top: '-9999px',
             visibility: 'hidden',
             width: '2in',

@@ -126,7 +126,7 @@ const DailyReport = () => {
     <CContainer fluid className="px-3 py-4">
       <Box className="mb-4">
         <Typography variant="h4" className="mb-3">
-          Daily Reports
+           <h3 className="mb-4 mx-auto text-center w-100 heading-mobile-center">Daily Reports</h3>
         </Typography>
         
         {/* Mobile Filter Options */}

@@ -302,9 +302,9 @@ export default function SubCategory() {
   return (
     <div className="p-3 p-md-4">
       {/* Mobile Responsive Header */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
-        <h1 className="fs-4 fw-semibold mb-3 mb-md-0">My Subcategories</h1>
-        <div className="d-flex justify-content-end">
+       <div className="d-flex flex-column flex-md-row align-items-center justify-content-between mb-4 text-center text-md-start">
+        <h1 className="fs-4 fw-semibold mb-3 mb-md-0 w-100 w-md-auto">My Subcategories</h1>
+        <div className="d-flex justify-content-center justify-content-md-end w-100 w-md-auto">
           <CButton 
             color="primary" 
             onClick={() => setModalVisible(true)}

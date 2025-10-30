@@ -321,25 +321,28 @@ export default function Banner() {
 
   return (
     <div className="p-2 p-md-4">
-      {/* Mobile Responsive Header */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
-        <h1 className="fs-4 fw-semibold mb-2 mb-md-0">Banners ({filteredBanners.length})</h1>
-        <div className="d-flex justify-content-end">
-          <CButton 
-            color="primary" 
-            onClick={() => setModalVisible(true)}
-            className="w-100 w-md-auto"
-            size="sm"
-            style={{ 
-              fontSize: '0.875rem', 
-              padding: '0.375rem 0.75rem',
-              minWidth: 'auto'
-            }}
-          >
-            Add Banner
-          </CButton>
-        </div>
-      </div>
+  {/* Mobile Responsive Header */}
+  <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4">
+    <h2 className="mb-0 mx-auto text-center w-100 heading-mobile-center">
+      Banners ({filteredBanners.length})
+    </h2>
+
+    <div className="d-flex justify-content-start w-100 w-md-auto mt-2 mt-md-0">
+      <CButton 
+        color="primary" 
+        onClick={() => setModalVisible(true)}
+        className="w-100 w-md-auto"
+        size="sm"
+        style={{ 
+          fontSize: '0.875rem', 
+          padding: '0.375rem 0.75rem',
+          minWidth: 'auto'
+        }}
+      >
+        Add Banner
+      </CButton>
+    </div>
+  </div>
 
       {/* Mobile Responsive Search and Filter */}
       <div className="d-flex flex-column flex-md-row mb-4 gap-2">
@@ -348,7 +351,6 @@ export default function Banner() {
           placeholder="Search by URL or Restaurant ID..."
           value={searchTerm}
           onChange={(e) => setSearchTerm(e.target.value)}
-          className="flex-grow-1"
           style={{ minWidth: '200px' }}
         />
         <CFormSelect 

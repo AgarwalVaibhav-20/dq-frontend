@@ -928,8 +928,8 @@ const POS = () => {
       <div className="mb-4">
         {/* Title Section - Mobile Responsive */}
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-          <div className="mb-2 mb-md-0">
-            <h3 className="mb-0 text-center text-md-start">Select Table To Generate Bill</h3>
+           <div className="w-100 d-flex justify-content-center mb-2 mb-md-0">
+            <h3 className="mb-4 text-center">Select Table To Generate Bill</h3>
           </div>
 
           {/* Mobile Responsive Button Groups */}

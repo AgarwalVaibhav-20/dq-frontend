@@ -94,7 +94,7 @@ const DeliveryTiming = () => {
   return (
     <div className="px-2 sm:px-5" style={{ backgroundColor: 'var(--cui-body-bg)', minHeight: '100vh' }}>
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-3 gap-3">
-        <h2 className="text-xl sm:text-2xl font-semibold" style={{ color: 'var(--cui-body-color)' }}>
+          <h2 className="text-xl sm:text-2xl font-semibold text-center w-full" style={{ color: 'var(--cui-body-color)' }}>
           Delivery Timings
         </h2>
         <CButton 

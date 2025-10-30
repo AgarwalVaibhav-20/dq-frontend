@@ -141,7 +141,7 @@ const PaymentReport = () => {
       <CCard className="shadow-sm">
         <CCardHeader className="bg-white">
           <Typography variant="h4" sx={{ fontWeight: 'bold', color: theme.palette.primary.main }}>
-            Payment Report
+             <h2 className="mb-0 mx-auto text-center w-100 heading-mobile-center">Payment Report</h2>
           </Typography>
         </CCardHeader>
         <CCardBody>

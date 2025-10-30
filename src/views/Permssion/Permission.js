@@ -684,56 +684,76 @@ export default function PermissionManagement() {
   }
 
   return (
-    <div className="p-4">
-      {/* Header - Mobile Responsive */}
-      <div className="mb-4">
-        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-          <div className="mb-3 mb-md-0">
-            <h1 className="fs-4 fw-semibold d-flex align-items-center">
-              <CIcon icon={cilPeople} className="me-2" />
-              Permission Management
-            </h1>
-            <p className="text-muted mb-0">Manage user roles and permissions (Admin & Waiter)</p>
-          </div>
-          <div className="d-flex flex-column flex-sm-row gap-2 w-100 w-md-auto">
-            <CBadge color="info" className="fs-6 px-3 py-2 text-center">
-              Total Users: {stats.total}
-            </CBadge>
-            <div className="d-flex justify-content-end gap-2">
-              <CButton
-                color="success"
-                size="sm"
-                onClick={() => setInviteModal({ visible: true })}
-                className="w-100 w-sm-auto"
-                style={{ 
-                  fontSize: '0.875rem', 
-                  padding: '0.375rem 0.75rem',
-                  minWidth: 'auto'
-                }}
-              >
-                <CIcon icon={cilUserFollow} className="me-1" />
-                Invite User
-              </CButton>
-              <CButton
-                color="primary"
-                variant="outline"
-                size="sm"
-                onClick={refreshUsers}
-                disabled={loading}
-                className="w-100 w-sm-auto"
-                style={{ 
-                  fontSize: '0.875rem', 
-                  padding: '0.375rem 0.75rem',
-                  minWidth: 'auto'
-                }}
-              >
-                <CIcon icon={cilReload} className="me-1" />
-                Refresh
-              </CButton>
+<div className="p-4">
+    <div className="mb-4">
+        {/* Main Flex Container: Column on mobile, Row on desktop */}
+        <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3 gap-3">
+            
+            {/* LEFT: Heading & Subtitle (Centered on mobile, Left on desktop) */}
+            <div className="mb-3 mb-md-0 w-100 w-md-auto text-center text-md-start">
+                
+                {/* Heading: Centered on mobile */}
+                <h1 className="fs-4 fw-semibold d-flex align-items-center justify-content-center justify-content-md-start text-theme-aware">
+                    <CIcon icon={cilPeople} className="me-2" />
+                    Permission Management
+                </h1>
+                
+                {/* Subtitle: Automatically centered by parent div */}
+                <p className="text-secondary mb-0">Manage user roles and permissions (Admin & Waiter)</p>
             </div>
-          </div>
+
+            {/* RIGHT: Badge & Buttons (Centered stack on mobile, Right aligned row on desktop) */}
+            <div className="d-flex flex-column flex-sm-row flex-md-nowrap align-items-center gap-2 w-100 w-md-auto">
+                
+                {/* Total Users Badge: Use text-theme-aware for text color in dark mode */}
+                <CBadge 
+                    color="info" 
+                    className="fs-6 px-3 py-2 text-center w-100 w-sm-auto order-sm-1 order-md-1 text-theme-aware"
+                    style={{ 
+                        fontSize: '0.875rem', 
+                        padding: '0.375rem 0.75rem',
+                        minWidth: 'auto',
+                        // Ensure dark mode background for info badge is correct
+                        backgroundColor: 'var(--cui-info-bg)', 
+                        color: 'var(--cui-info-color)' 
+                    }}
+                >
+                    Total Users: {stats.total}
+                </CBadge>
+                
+                {/* Buttons Group: Centered on mobile */}
+                <div className="d-flex justify-content-center justify-content-md-end gap-2 w-100 w-sm-auto order-sm-2 order-md-2">
+                    
+                    <CButton
+                        color="success"
+                        size="sm"
+                        onClick={() => setInviteModal({ visible: true })}
+                        className="w-100 w-sm-auto"
+                        style={{ fontSize: '0.875rem', padding: '0.375rem 0.75rem' }}
+                    >
+                        <CIcon icon={cilUserFollow} className="me-1" />
+                        Invite User
+                    </CButton>
+                    
+                    <CButton
+                        color="primary"
+                        variant="outline"
+                        size="sm"
+                        onClick={refreshUsers}
+                        disabled={loading}
+                        className="w-100 w-sm-auto"
+                        style={{ fontSize: '0.875rem', padding: '0.375rem 0.75rem' }}
+                    >
+                        <CIcon icon={cilReload} className="me-1" />
+                        Refresh
+                    </CButton>
+                </div>
+            </div>
         </div>
-      </div>
+    </div>
+ 
+ 
+ 
 
       {/* Statistics Cards - Mobile Responsive */}
       <CRow className="mb-4 g-3">

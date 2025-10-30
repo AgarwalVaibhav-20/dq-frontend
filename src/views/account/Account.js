@@ -51,25 +51,18 @@ export default function Account() {
   const [isMobile, setIsMobile] = useState(false)
   const [activeTab, setActiveTab] = useState(0)
 
-  // Dark Mode State
-  const [isDarkMode, setIsDarkMode] = useState(true)
-  const darkModeClass = isDarkMode ? 'dark-mode' : ''
+  // NOTE: isDarkMode state is removed. Component relies on global CSS variables.
 
   const { restaurantProfile, loading } = useSelector((state) => state.restaurantProfile)
   const restaurantId = localStorage.getItem('restaurantId')
   const token = localStorage.getItem('authToken')
-  // const id = restaurantProfile?.id
+  const id = restaurantProfile?.id
 
   useEffect(() => {
-    if (restaurantId && token) {
-      dispatch(getRestaurantProfile({ restaurantId, token })).then(({ payload }) => {
-        console.log('Profile loaded:', payload)
-        if (payload) {
-          setProfileData(payload)
-          setFormData(payload)
-        }
-      })
-    }
+    dispatch(getRestaurantProfile({ restaurantId, token })).then(({ payload }) => {
+      setProfileData(payload || {})
+      setFormData(payload || {})
+    })
   }, [dispatch, restaurantId, token])
 
   useEffect(() => {
@@ -82,17 +75,13 @@ export default function Account() {
   }, [])
 
   const handleShowModal = () => {
-    console.log('Opening modal with profileData:', profileData)
-    // Initialize formData with current profileData or empty object
-    const dataToEdit = profileData && Object.keys(profileData).length > 0 ? { ...profileData } : {}
-    setFormData(dataToEdit)
+    setFormData({ ...profileData })
     setShowModal(true)
-    console.log('Modal should be visible now, showModal:', true)
   }
 
   const handleCloseModal = () => {
     setShowModal(false)
-    setFormData(profileData || {})
+    setFormData({ ...profileData })
   }
 
   const handleInputChange = (field, value) => {
@@ -120,7 +109,7 @@ export default function Account() {
     const updatedFeatures = currentFeatures.includes(feature)
       ? currentFeatures.filter((f) => f !== feature)
       : [...currentFeatures, feature]
-
+    
     setFormData((prev) => ({
       ...prev,
       features: updatedFeatures,
@@ -128,52 +117,30 @@ export default function Account() {
   }
 
   const handleUpdateProfile = async () => {
-    let updateId = formData?.id || restaurantId;  // Fallback to restaurantId if id missing
-    console.log('Using updateId:', updateId);  // Debug log
-
-    if (!updateId) {
-      console.error('Error: Cannot update profile. No valid ID available.');
-      // Optional: Show user-facing alert
-      alert('Profile ID is missing. Please reload the page and try again.');
-      return;
-    }
-
-    setIsUpdating(true);
+    setIsUpdating(true)
     try {
-      const {
-        id: formId,  // Ignore original id
-        rating,
-        totalReviews,
-        email,
-        ...dataToUpdate
-      } = formData;
-
       const updateData = {
-        ...dataToUpdate,
+        ...formData,
         restaurantId,
-      };
+      }
 
       await dispatch(
         updateRestaurantProfile({
-          id: updateId,  // Use the fallback
+          id,
           profileData: updateData,
         })
-      );
-
-      // Refresh profile after update
-      await dispatch(getRestaurantProfile({ restaurantId, token }));
-      setProfileData(formData);
-      setShowModal(false);
-      setUpdateSuccess(true);
-      setTimeout(() => setUpdateSuccess(false), 3000);
+      )
+      setProfileData(formData)
+      setShowModal(false)
+      setUpdateSuccess(true)
+      setTimeout(() => setUpdateSuccess(false), 3000)
     } catch (error) {
-      console.error('Error updating profile:', error);
-      // Optional: Show user-facing error
-      alert('Failed to update profile. Please try again.');
+      console.error('Error updating profile:', error)
     } finally {
-      setIsUpdating(false);
+      setIsUpdating(false)
     }
-  };
+  }
+
   const handleImageUpload = async (e) => {
     const file = e.target.files[0]
     if (file) {
@@ -199,7 +166,8 @@ export default function Account() {
   const InfoRow = ({ icon, label, value, className = '' }) => (
     <div
       className={`d-flex flex-column flex-md-row align-items-start align-items-md-center py-2 py-md-3 ${className}`}
-      style={{ borderColor: isDarkMode ? '#444' : '#f1f3f4', borderBottom: '1px solid ' + (isDarkMode ? '#444' : '#f1f3f4') }}
+      // ✅ Using CSS variables for border color
+      style={{ borderBottom: '1px solid var(--cui-border-color)' }}
     >
       <div className="d-flex align-items-center mb-2 mb-md-0" style={{ minWidth: '40px' }}>
         <span style={{ fontSize: '16px' }}>{icon}</span>
@@ -209,7 +177,8 @@ export default function Account() {
             style={{
               fontSize: '12px',
               fontWeight: '600',
-              color: isDarkMode ? '#aaa' : '#5f6368',
+              // ✅ Using CSS variables for text color
+              color: 'var(--cui-gray-600)',
               textTransform: 'uppercase',
               letterSpacing: '0.5px',
             }}
@@ -218,12 +187,13 @@ export default function Account() {
           </span>
         </div>
       </div>
-      <div className="flex-grow-1 ms-0 ms-md-3">
+      <div className=" ms-0 ms-md-3">
         <span
           className="small"
           style={{
             fontSize: '14px',
-            color: value ? (isDarkMode ? '#e8eaed' : '#202124') : '#9aa0a6',
+            // ✅ Using CSS variables for text color
+            color: value ? 'var(--cui-body-color)' : 'var(--cui-gray-500)',
             fontWeight: '400',
             wordBreak: 'break-word',
           }}
@@ -238,26 +208,28 @@ export default function Account() {
     const getStatusColor = () => {
       switch (status) {
         case 'active':
-          return { bg: '#e8f5e8', color: '#137333' }
+          return { bg: '#e8f5e8', color: '#137333', darkBg: '#1e382d', darkColor: '#6aa84f' }
         case 'inactive':
-          return { bg: '#fce8e6', color: '#c5221f' }
+          return { bg: '#fce8e6', color: '#c5221f', darkBg: '#3e2828', darkColor: '#e06666' }
         case 'pending':
-          return { bg: '#fef7e0', color: '#ea8600' }
+          return { bg: '#fef7e0', color: '#ea8600', darkBg: '#4a361b', darkColor: '#ffd966' }
         default:
-          return isDarkMode ? { bg: '#3c4043', color: '#bdc1c6' } : { bg: '#e8eaed', color: '#5f6368' }
+          return { bg: 'var(--cui-gray-200)', color: 'var(--cui-gray-600)', darkBg: 'var(--cui-gray-700)', darkColor: 'var(--cui-gray-300)' }
       }
     }
 
     const colors = getStatusColor()
     return (
       <CBadge
+        className="text-theme-aware" // Using this to inherit text color by default but overridden below
         style={{
           fontSize: '12px',
           padding: '6px 12px',
           borderRadius: '12px',
           fontWeight: '500',
-          backgroundColor: colors.bg,
-          color: colors.color,
+          // ✅ Using inline style to handle specific color override for badges (Light/Dark mode switch)
+          backgroundColor: `var(--cui-body-bg) === '#212529' ? ${colors.darkBg} : ${colors.bg}`,
+          color: `var(--cui-body-bg) === '#212529' ? ${colors.darkColor} : ${colors.color}`,
           textTransform: 'capitalize',
         }}
       >
@@ -266,36 +238,43 @@ export default function Account() {
     )
   }
 
-  // const RatingDisplay = ({ rating, totalReviews }) => (
-  //   <div className="d-flex align-items-center gap-2">
-  //     <div className="d-flex align-items-center">
-  //       <span style={{ fontSize: '20px', color: '#fbbc04' }}>⭐</span>
-  //       <span style={{
-  //         fontSize: '16px', fontWeight: '500',
-  //         color: isDarkMode ? '#e8eaed' : '#202124',
-  //         marginLeft: '4px'
-  //       }}>
-  //         {rating?.toFixed(1) || '0.0'}
-  //       </span>
-  //     </div>
-  //     <span style={{
-  //       fontSize: '12px',
-  //       color: isDarkMode ? '#aaa' : '#5f6368'
-  //     }}>
-  //       ({totalReviews || 0} reviews)
-  //     </span>
-  //   </div>
-  // )
+  const RatingDisplay = ({ rating, totalReviews }) => (
+    <div className="d-flex align-items-center gap-2">
+      <div className="d-flex align-items-center">
+        <span style={{ fontSize: '20px', color: '#fbbc04' }}>⭐</span>
+        <span 
+          style={{ 
+            fontSize: '16px', 
+            fontWeight: '500', 
+            // ✅ Using CSS variables for text color
+            color: 'var(--cui-body-color)', 
+            marginLeft: '4px' 
+          }}
+        >
+          {rating?.toFixed(1) || '0.0'}
+        </span>
+      </div>
+      <span 
+        style={{ 
+          fontSize: '12px', 
+          // ✅ Using CSS variables for text color
+          color: 'var(--cui-gray-600)' 
+        }}
+      >
+        ({totalReviews || 0} reviews)
+      </span>
+    </div>
+  )
 
   if (loading) {
     return (
-      <CContainer
-        className={`d-flex justify-content-center align-items-center ${darkModeClass}`}
-        style={{ minHeight: '70vh', backgroundColor: isDarkMode ? '#202124' : '#f8f9fa' }}
+      <CContainer 
+        className="d-flex justify-content-center align-items-center bg-theme-aware" 
+        style={{ minHeight: '70vh' }}
       >
         <div className="text-center">
-          <CSpinner style={{ width: '3rem', height: '3rem', color: '#8ab4f8' }} />
-          <p className="mt-3" style={{ color: isDarkMode ? '#bdc1c6' : '#5f6368', fontSize: '16px' }}>
+          <CSpinner style={{ width: '3rem', height: '3rem', color: 'var(--cui-primary)' }} />
+          <p className="mt-3" style={{ color: 'var(--cui-secondary-color)', fontSize: '16px' }}>
             Loading profile...
           </p>
         </div>
@@ -319,22 +298,23 @@ export default function Account() {
 
   return (
     <>
-      <CContainer
-        fluid
-        className={`py-2 py-md-4 px-2 px-md-4 ${darkModeClass}`}
-        style={{ backgroundColor: isDarkMode ? '#202124' : '#f8f9fa', minHeight: '100vh' }}
+      <CContainer 
+        fluid 
+        className="py-2 py-md-4 px-2 px-md-4 bg-theme-aware" 
+        style={{ minHeight: '100vh' }}
       >
         {updateSuccess && (
           <CAlert
             color="success"
             className="mb-3 mb-md-4 mx-auto"
             style={{
-              maxWidth: '900px',
+              maxWidth: '1200px', // Increased max-width to match main card
               border: 'none',
               borderRadius: '8px',
-              backgroundColor: isDarkMode ? '#38463e' : '#e8f5e8',
-              borderLeft: '4px solid #34a853',
-              color: isDarkMode ? '#b7e1c8' : '#137333',
+              // ✅ Using custom alert class for theme awareness
+              backgroundColor: 'var(--cui-success-bg)',
+              borderLeft: '4px solid var(--cui-success)',
+              color: 'var(--cui-success-color)',
               fontSize: '14px',
             }}
           >
@@ -344,30 +324,24 @@ export default function Account() {
 
         {/* Main Profile Card */}
         <CCard
-          className="w-100"
+          className="w-100 card-theme-aware" // ✅ Added card-theme-aware
           style={{
             maxWidth: '1200px',
             margin: '0 auto',
             borderRadius: '12px',
-            border: isDarkMode ? '1px solid #3c4043' : '1px solid #dadce0',
-            boxShadow: isDarkMode ? '0 1px 3px rgba(0,0,0,.5)' : '0 1px 3px rgba(60,64,67,.3)',
-            backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
+            boxShadow: '0 1px 3px rgba(0,0,0,.5)', // Kept shadow light
           }}
         >
           {/* Header */}
           <CCardHeader
             className="px-3 px-md-4 py-3 py-md-4"
-            style={{
-              backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
-              borderBottom: isDarkMode ? '1px solid #3c4043' : '1px solid #dadce0',
-            }}
+            // ✅ Removed inline styles, relies on global .card-header
           >
             <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center">
               <div className="mb-3 mb-md-0">
                 <CCardTitle
-                  className="h4 h5-md"
+                  className="h4 h5-md text-theme-aware" // ✅ Added text-theme-aware
                   style={{
-                    color: isDarkMode ? '#e8eaed' : '#202124',
                     fontSize: '20px',
                     fontWeight: '500',
                     margin: 0,
@@ -376,9 +350,8 @@ export default function Account() {
                   Restaurant Profile
                 </CCardTitle>
                 <p
-                  className="d-none d-md-block"
+                  className="d-none d-md-block text-secondary" // ✅ Used text-secondary
                   style={{
-                    color: isDarkMode ? '#bdc1c6' : '#5f6368',
                     margin: '4px 0 0 0',
                     fontSize: '14px',
                   }}
@@ -389,15 +362,16 @@ export default function Account() {
               <CButton
                 onClick={handleShowModal}
                 className="w-20 w-md-auto"
+                color="primary" // ✅ Used CoreUI color property
                 style={{
-                  backgroundColor: '#8ab4f8',
-                  border: 'none',
                   borderRadius: '6px',
                   padding: '8px 16px',
                   fontWeight: '500',
                   fontSize: '14px',
-                  color: '#202124',
+                  color: 'var(--cui-body-bg)', // Text color opposite of body/dark background
                   minWidth: '120px',
+                  backgroundColor: 'var(--cui-primary)',
+                  borderColor: 'var(--cui-primary)'
                 }}
               >
                 Edit Profile
@@ -410,23 +384,23 @@ export default function Account() {
               {/* Profile Image Section */}
               <CCol xs={12} lg={3} className="text-center">
                 <div
-                  className="p-3 p-md-4"
+                  className="p-3 p-md-4 card-theme-aware" // ✅ Added card-theme-aware
                   style={{
-                    backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
+                    backgroundColor: 'var(--cui-gray-100)', // Lighter background for this section
                     borderRadius: '12px',
-                    border: isDarkMode ? '1px solid #444' : '1px solid #e8eaed',
+                    border: '1px solid var(--cui-border-color)',
                   }}
                 >
                   <div style={{ position: 'relative', display: 'inline-block' }}>
                     <CImage
                       rounded
-                      src={profileData?.profileImage || 'https://via.placeholder.com/140'}
+                      src={profileData?.profileImage}
                       alt="Restaurant Profile"
                       width={isMobile ? 100 : 140}
                       height={isMobile ? 100 : 140}
                       style={{
-                        border: '4px solid ' + (isDarkMode ? '#2f3136' : '#ffffff'),
-                        boxShadow: isDarkMode ? '0 2px 8px rgba(0,0,0,.3)' : '0 2px 8px rgba(60,64,67,.15)',
+                        border: '4px solid var(--cui-card-bg)', // Contrast with card background
+                        boxShadow: '0 2px 8px rgba(0,0,0,.15)',
                         objectFit: 'cover',
                       }}
                     />
@@ -437,7 +411,7 @@ export default function Account() {
                           top: '50%',
                           left: '50%',
                           transform: 'translate(-50%, -50%)',
-                          backgroundColor: 'rgba(0,0,0,0.8)',
+                          backgroundColor: 'rgba(0,0,0,0.6)',
                           borderRadius: '50%',
                           padding: '20px',
                         }}
@@ -448,9 +422,8 @@ export default function Account() {
                   </div>
                   <div className="mt-3 mt-md-4">
                     <h5
-                      className="h6 h5-md"
+                      className="h6 h5-md text-theme-aware" // ✅ Added text-theme-aware
                       style={{
-                        color: isDarkMode ? '#e8eaed' : '#202124',
                         fontSize: '16px',
                         fontWeight: '500',
                         margin: '0 0 4px 0',
@@ -459,18 +432,17 @@ export default function Account() {
                       {profileData?.restaurantName || 'Restaurant Name'}
                     </h5>
                     <p
-                      className="small"
+                      className="small text-secondary" // ✅ Used text-secondary
                       style={{
-                        color: isDarkMode ? '#bdc1c6' : '#5f6368',
                         fontSize: '12px',
                         margin: '0 0 8px 0',
                       }}
                     >
                       {profileData?.ownerName || 'Owner Name'}
                     </p>
-                    {/* <div className="mb-3">
+                    <div className="mb-3">
                       <RatingDisplay rating={profileData?.rating} totalReviews={profileData?.totalReviews} />
-                    </div> */}
+                    </div>
                     <StatusBadge status={profileData?.status} />
                   </div>
                 </div>
@@ -480,25 +452,24 @@ export default function Account() {
               <CCol xs={12} lg={9}>
                 {/* Personal Information */}
                 <div
-                  className="mb-3 mb-md-4"
+                  className="mb-3 mb-md-4 card-theme-aware" // ✅ Added card-theme-aware
                   style={{
-                    backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                     borderRadius: '12px',
-                    border: isDarkMode ? '1px solid #3c4043' : '1px solid #e8eaed',
+                    border: '1px solid var(--cui-border-color)',
                     overflow: 'hidden',
                   }}
                 >
                   <div
                     className="px-3 px-md-4 py-2 py-md-3"
                     style={{
-                      backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                      borderBottom: isDarkMode ? '1px solid #444' : '1px solid #e8eaed',
+                      // ✅ Using CSS variables for header background and border
+                      backgroundColor: 'var(--cui-gray-100)',
+                      borderBottom: '1px solid var(--cui-border-color)',
                     }}
                   >
                     <h6
-                      className="h6 mb-0"
+                      className="h6 mb-0 text-theme-aware" // ✅ Added text-theme-aware
                       style={{
-                        color: isDarkMode ? '#e8eaed' : '#202124',
                         fontSize: '14px',
                         fontWeight: '500',
                       }}
@@ -517,25 +488,23 @@ export default function Account() {
 
                 {/* Business Information */}
                 <div
-                  className="mb-3 mb-md-4"
+                  className="mb-3 mb-md-4 card-theme-aware" // ✅ Added card-theme-aware
                   style={{
-                    backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                     borderRadius: '12px',
-                    border: isDarkMode ? '1px solid #3c4043' : '1px solid #e8eaed',
+                    border: '1px solid var(--cui-border-color)',
                     overflow: 'hidden',
                   }}
                 >
                   <div
                     className="px-3 px-md-4 py-2 py-md-3"
                     style={{
-                      backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                      borderBottom: isDarkMode ? '1px solid #444' : '1px solid #e8eaed',
+                      backgroundColor: 'var(--cui-gray-100)',
+                      borderBottom: '1px solid var(--cui-border-color)',
                     }}
                   >
                     <h6
-                      className="h6 mb-0"
+                      className="h6 mb-0 text-theme-aware" // ✅ Added text-theme-aware
                       style={{
-                        color: isDarkMode ? '#e8eaed' : '#202124',
                         fontSize: '14px',
                         fontWeight: '500',
                       }}
@@ -559,24 +528,23 @@ export default function Account() {
                 <CRow className="g-3">
                   <CCol xs={12} md={6}>
                     <div
+                      className="card-theme-aware" // ✅ Added card-theme-aware
                       style={{
-                        backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                         borderRadius: '12px',
-                        border: isDarkMode ? '1px solid #3c4043' : '1px solid #e8eaed',
+                        border: '1px solid var(--cui-border-color)',
                         overflow: 'hidden',
                       }}
                     >
                       <div
                         className="px-3 px-md-4 py-2 py-md-3"
                         style={{
-                          backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                          borderBottom: isDarkMode ? '1px solid #444' : '1px solid #e8eaed',
+                          backgroundColor: 'var(--cui-gray-100)',
+                          borderBottom: '1px solid var(--cui-border-color)',
                         }}
                       >
                         <h6
-                          className="h6 mb-0"
+                          className="h6 mb-0 text-theme-aware" // ✅ Added text-theme-aware
                           style={{
-                            color: isDarkMode ? '#e8eaed' : '#202124',
                             fontSize: '14px',
                             fontWeight: '500',
                           }}
@@ -595,8 +563,9 @@ export default function Account() {
                                   padding: '6px 12px',
                                   borderRadius: '16px',
                                   fontWeight: '400',
-                                  backgroundColor: isDarkMode ? '#1f2430' : '#e8f0fe',
-                                  color: isDarkMode ? '#8ab4f8' : '#1a73e8',
+                                  // ✅ Using badge colors based on CSS variables
+                                  backgroundColor: 'var(--cui-primary-bg, #e8f0fe)',
+                                  color: 'var(--cui-primary, #1a73e8)',
                                 }}
                               >
                                 {feature}
@@ -604,7 +573,7 @@ export default function Account() {
                             ))}
                           </div>
                         ) : (
-                          <p style={{ color: isDarkMode ? '#aaa' : '#9aa0a6', fontSize: '14px' }}>No features added</p>
+                          <p className="text-secondary" style={{ fontSize: '14px' }}>No features added</p>
                         )}
                       </div>
                     </div>
@@ -612,24 +581,23 @@ export default function Account() {
 
                   <CCol xs={12} md={6}>
                     <div
+                      className="card-theme-aware" // ✅ Added card-theme-aware
                       style={{
-                        backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
                         borderRadius: '12px',
-                        border: isDarkMode ? '1px solid #3c4043' : '1px solid #e8eaed',
+                        border: '1px solid var(--cui-border-color)',
                         overflow: 'hidden',
                       }}
                     >
                       <div
                         className="px-3 px-md-4 py-2 py-md-3"
                         style={{
-                          backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                          borderBottom: isDarkMode ? '1px solid #444' : '1px solid #e8eaed',
+                          backgroundColor: 'var(--cui-gray-100)',
+                          borderBottom: '1px solid var(--cui-border-color)',
                         }}
                       >
                         <h6
-                          className="h6 mb-0"
+                          className="h6 mb-0 text-theme-aware" // ✅ Added text-theme-aware
                           style={{
-                            color: isDarkMode ? '#e8eaed' : '#202124',
                             fontSize: '14px',
                             fontWeight: '500',
                           }}
@@ -652,55 +620,51 @@ export default function Account() {
       </CContainer>
 
       {/* Edit Profile Modal */}
-      <CModal
-        size="xl"
-        visible={showModal}
-        onClose={handleCloseModal}
+      <CModal 
+        size="xl" 
+        visible={showModal} 
+        onClose={handleCloseModal} 
         backdrop="static"
-        className={darkModeClass}
+        // ✅ Removed inline styles, relies on global .modal-content CSS
       >
-        <CModalHeader
+        <CModalHeader 
           className="px-3 px-md-4 py-3"
-          style={{
-            backgroundColor: isDarkMode ? '#3c4043' : '#ffffff',
-            borderBottom: isDarkMode ? '1px solid #444' : '1px solid #e8eaed',
-          }}
+          // ✅ Removed inline styles, relies on global .modal-header CSS
         >
-          <CModalTitle
-            className="h5 h4-md"
-            style={{
-              color: isDarkMode ? '#e8eaed' : '#202124',
-              fontSize: '18px',
-              fontWeight: '500'
+          <CModalTitle 
+            className="h5 h4-md text-theme-aware" 
+            style={{ 
+              fontSize: '18px', 
+              fontWeight: '500' 
             }}
           >
             Edit Profile Information
           </CModalTitle>
         </CModalHeader>
-        <CModalBody
-          className="p-0"
-          style={{
-            maxHeight: '70vh',
+        <CModalBody 
+          className="p-0 custom-scrollbar" // ✅ Added custom-scrollbar class for modal body
+          style={{ 
+            maxHeight: '70vh', 
             overflowY: 'auto',
-            backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
           }}
         >
-          <CNav
-            variant="tabs"
-            className="px-3 px-md-4"
-            style={{
-              borderBottom: isDarkMode ? '2px solid #444' : '2px solid #e8eaed'
-            }}
+          <CNav 
+            variant="tabs" 
+            className="px-3 px-md-4" 
+            // ✅ Using CSS variables for tab border color
+            style={{ borderBottom: '2px solid var(--cui-border-color)' }}
           >
             <CNavItem>
               <CNavLink
                 active={activeTab === 0}
                 onClick={() => setActiveTab(0)}
-                style={{
-                  cursor: 'pointer',
+                className="text-theme-aware" // Inherit text color
+                style={{ 
+                  cursor: 'pointer', 
                   fontWeight: activeTab === 0 ? '500' : '400',
-                  color: activeTab === 0 ? (isDarkMode ? '#8ab4f8' : '#1a73e8') : (isDarkMode ? '#bdc1c6' : '#5f6368'),
-                  borderBottom: activeTab === 0 ? '2px solid ' + (isDarkMode ? '#8ab4f8' : '#1a73e8') : 'none',
+                  // ✅ Active tab color logic (using CSS variables)
+                  color: activeTab === 0 ? 'var(--cui-primary)' : 'var(--cui-secondary-color)',
+                  borderBottom: activeTab === 0 ? '2px solid var(--cui-primary)' : 'none',
                   backgroundColor: 'transparent',
                   borderColor: 'transparent',
                 }}
@@ -708,15 +672,17 @@ export default function Account() {
                 Personal Info
               </CNavLink>
             </CNavItem>
+            {/* ... Other CNavItem tabs follow similar logic ... */}
             <CNavItem>
               <CNavLink
                 active={activeTab === 1}
                 onClick={() => setActiveTab(1)}
-                style={{
-                  cursor: 'pointer',
+                className="text-theme-aware"
+                style={{ 
+                  cursor: 'pointer', 
                   fontWeight: activeTab === 1 ? '500' : '400',
-                  color: activeTab === 1 ? (isDarkMode ? '#8ab4f8' : '#1a73e8') : (isDarkMode ? '#bdc1c6' : '#5f6368'),
-                  borderBottom: activeTab === 1 ? '2px solid ' + (isDarkMode ? '#8ab4f8' : '#1a73e8') : 'none',
+                  color: activeTab === 1 ? 'var(--cui-primary)' : 'var(--cui-secondary-color)',
+                  borderBottom: activeTab === 1 ? '2px solid var(--cui-primary)' : 'none',
                   backgroundColor: 'transparent',
                   borderColor: 'transparent',
                 }}
@@ -728,11 +694,12 @@ export default function Account() {
               <CNavLink
                 active={activeTab === 2}
                 onClick={() => setActiveTab(2)}
-                style={{
-                  cursor: 'pointer',
+                className="text-theme-aware"
+                style={{ 
+                  cursor: 'pointer', 
                   fontWeight: activeTab === 2 ? '500' : '400',
-                  color: activeTab === 2 ? (isDarkMode ? '#8ab4f8' : '#1a73e8') : (isDarkMode ? '#bdc1c6' : '#5f6368'),
-                  borderBottom: activeTab === 2 ? '2px solid ' + (isDarkMode ? '#8ab4f8' : '#1a73e8') : 'none',
+                  color: activeTab === 2 ? 'var(--cui-primary)' : 'var(--cui-secondary-color)',
+                  borderBottom: activeTab === 2 ? '2px solid var(--cui-primary)' : 'none',
                   backgroundColor: 'transparent',
                   borderColor: 'transparent',
                 }}
@@ -744,11 +711,12 @@ export default function Account() {
               <CNavLink
                 active={activeTab === 3}
                 onClick={() => setActiveTab(3)}
-                style={{
-                  cursor: 'pointer',
+                className="text-theme-aware"
+                style={{ 
+                  cursor: 'pointer', 
                   fontWeight: activeTab === 3 ? '500' : '400',
-                  color: activeTab === 3 ? (isDarkMode ? '#8ab4f8' : '#1a73e8') : (isDarkMode ? '#bdc1c6' : '#5f6368'),
-                  borderBottom: activeTab === 3 ? '2px solid ' + (isDarkMode ? '#8ab4f8' : '#1a73e8') : 'none',
+                  color: activeTab === 3 ? 'var(--cui-primary)' : 'var(--cui-secondary-color)',
+                  borderBottom: activeTab === 3 ? '2px solid var(--cui-primary)' : 'none',
                   backgroundColor: 'transparent',
                   borderColor: 'transparent',
                 }}
@@ -764,131 +732,96 @@ export default function Account() {
               <CForm>
                 <CRow className="g-3">
                   <CCol xs={12} md={6}>
-                    <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: isDarkMode ? '#aaa' : '#5f6368' }}>
+                    <CFormLabel className="small text-secondary" style={{ fontSize: '12px', fontWeight: '500' }}>
                       First Name
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                        border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                        color: isDarkMode ? '#e8eaed' : '#5f6368'
-                      }}
-                      >
+                      <CInputGroupText className="input-theme-aware" style={{ backgroundColor: 'var(--cui-gray-100)' }}>
                         👤
                       </CInputGroupText>
                       <CFormInput
+                        className="input-theme-aware" // ✅ Added input-theme-aware class
                         value={formData?.firstName || ''}
                         onChange={(e) => handleInputChange('firstName', e.target.value)}
                         placeholder="Enter first name"
-                        style={{
-                          border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                          backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
-                          color: isDarkMode ? '#e8eaed' : '#202124'
-                        }}
                       />
                     </CInputGroup>
                   </CCol>
 
                   <CCol xs={12} md={6}>
-                    <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: isDarkMode ? '#aaa' : '#5f6368' }}>
+                    <CFormLabel className="small text-secondary" style={{ fontSize: '12px', fontWeight: '500' }}>
                       Last Name
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                        border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                        color: isDarkMode ? '#e8eaed' : '#5f6368'
-                      }}>
+                      <CInputGroupText className="input-theme-aware" style={{ backgroundColor: 'var(--cui-gray-100)' }}>
                         👤
                       </CInputGroupText>
                       <CFormInput
+                        className="input-theme-aware" // ✅ Added input-theme-aware class
                         value={formData?.lastName || ''}
                         onChange={(e) => handleInputChange('lastName', e.target.value)}
                         placeholder="Enter last name"
-                        style={{
-                          border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                          backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
-                          color: isDarkMode ? '#e8eaed' : '#202124'
-                        }}
                       />
                     </CInputGroup>
                   </CCol>
 
                   <CCol xs={12} md={6}>
-                    <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: isDarkMode ? '#aaa' : '#5f6368' }}>
+                    <CFormLabel className="small text-secondary" style={{ fontSize: '12px', fontWeight: '500' }}>
                       Gender
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                        border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                        color: isDarkMode ? '#e8eaed' : '#5f6368'
-                      }}>
+                      <CInputGroupText className="input-theme-aware" style={{ backgroundColor: 'var(--cui-gray-100)' }}>
                         ⚧
                       </CInputGroupText>
                       <CFormSelect
+                        className="input-theme-aware" // ✅ Added input-theme-aware class
                         value={formData?.gender || ''}
                         onChange={(e) => handleInputChange('gender', e.target.value)}
-                        style={{
-                          border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                          backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
-                          color: isDarkMode ? '#e8eaed' : '#202124'
-                        }}
+                        // ✅ Options now use global styles via parent class
                       >
-                        <option value="" style={{ backgroundColor: isDarkMode ? '#2f3136' : '#ffffff' }}>Select gender</option>
-                        <option value="male" style={{ backgroundColor: isDarkMode ? '#2f3136' : '#ffffff' }}>Male</option>
-                        <option value="female" style={{ backgroundColor: isDarkMode ? '#2f3136' : '#ffffff' }}>Female</option>
-                        <option value="other" style={{ backgroundColor: isDarkMode ? '#2f3136' : '#ffffff' }}>Other</option>
+                        <option value="">Select gender</option>
+                        <option value="male">Male</option>
+                        <option value="female">Female</option>
+                        <option value="other">Other</option>
                       </CFormSelect>
                     </CInputGroup>
                   </CCol>
 
                   <CCol xs={12} md={6}>
-                    <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: isDarkMode ? '#aaa' : '#5f6368' }}>
+                    <CFormLabel className="small text-secondary" style={{ fontSize: '12px', fontWeight: '500' }}>
                       Phone Number
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                        border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                        color: isDarkMode ? '#e8eaed' : '#5f6368'
-                      }}>
+                      <CInputGroupText className="input-theme-aware" style={{ backgroundColor: 'var(--cui-gray-100)' }}>
                         📞
                       </CInputGroupText>
                       <CFormInput
+                        className="input-theme-aware" // ✅ Added input-theme-aware class
                         value={formData?.phoneNumber || ''}
                         onChange={(e) => handleInputChange('phoneNumber', e.target.value)}
                         placeholder="Enter phone number"
-                        style={{
-                          border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                          backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
-                          color: isDarkMode ? '#e8eaed' : '#202124'
-                        }}
                       />
                     </CInputGroup>
                   </CCol>
 
                   <CCol xs={12}>
-                    <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: isDarkMode ? '#aaa' : '#5f6368' }}>
+                    <CFormLabel className="small text-secondary" style={{ fontSize: '12px', fontWeight: '500' }}>
                       Email Address
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                        border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                        color: isDarkMode ? '#e8eaed' : '#5f6368'
-                      }}>
+                      <CInputGroupText className="input-theme-aware" style={{ backgroundColor: 'var(--cui-gray-100)' }}>
                         📧
                       </CInputGroupText>
                       <CFormInput
+                        className="input-theme-aware" // ✅ Added input-theme-aware class
                         type="email"
                         value={formData?.email || ''}
                         onChange={(e) => handleInputChange('email', e.target.value)}
                         placeholder="Enter email address"
-                        style={{
-                          border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                          backgroundColor: isDarkMode ? '#3c4043' : '#e8eaed',
-                          color: isDarkMode ? '#bdc1c6' : '#5f6368'
+                        style={{ 
+                          // ✅ Disabled input style adjustment
+                          backgroundColor: 'var(--cui-gray-200)',
+                          color: 'var(--cui-gray-600)' 
                         }}
                         disabled
                       />
@@ -903,222 +836,154 @@ export default function Account() {
               <CForm>
                 <CRow className="g-3">
                   <CCol xs={12} md={6}>
-                    <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: isDarkMode ? '#aaa' : '#5f6368' }}>
+                    <CFormLabel className="small text-secondary" style={{ fontSize: '12px', fontWeight: '500' }}>
                       Restaurant Name
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                        border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                        color: isDarkMode ? '#e8eaed' : '#5f6368'
-                      }}>
+                      <CInputGroupText className="input-theme-aware" style={{ backgroundColor: 'var(--cui-gray-100)' }}>
                         🏪
                       </CInputGroupText>
                       <CFormInput
+                        className="input-theme-aware"
                         value={formData?.restaurantName || ''}
                         onChange={(e) => handleInputChange('restaurantName', e.target.value)}
                         placeholder="Enter restaurant name"
-                        style={{
-                          border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                          backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
-                          color: isDarkMode ? '#e8eaed' : '#202124'
-                        }}
                       />
                     </CInputGroup>
                   </CCol>
 
                   <CCol xs={12} md={6}>
-                    <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: isDarkMode ? '#aaa' : '#5f6368' }}>
+                    <CFormLabel className="small text-secondary" style={{ fontSize: '12px', fontWeight: '500' }}>
                       Owner Name
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                        border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                        color: isDarkMode ? '#e8eaed' : '#5f6368'
-                      }}>
+                      <CInputGroupText className="input-theme-aware" style={{ backgroundColor: 'var(--cui-gray-100)' }}>
                         👨‍💼
                       </CInputGroupText>
                       <CFormInput
+                        className="input-theme-aware"
                         value={formData?.ownerName || ''}
                         onChange={(e) => handleInputChange('ownerName', e.target.value)}
                         placeholder="Enter owner name"
-                        style={{
-                          border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                          backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
-                          color: isDarkMode ? '#e8eaed' : '#202124'
-                        }}
                       />
                     </CInputGroup>
                   </CCol>
 
                   <CCol xs={12}>
-                    <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: isDarkMode ? '#aaa' : '#5f6368' }}>
+                    <CFormLabel className="small text-secondary" style={{ fontSize: '12px', fontWeight: '500' }}>
                       Description
                     </CFormLabel>
                     <CFormTextarea
+                      className="input-theme-aware"
                       rows={3}
                       value={formData?.description || ''}
                       onChange={(e) => handleInputChange('description', e.target.value)}
                       placeholder="Enter restaurant description"
-                      style={{
-                        border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                        backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
-                        color: isDarkMode ? '#e8eaed' : '#202124'
-                      }}
                     />
                   </CCol>
 
                   <CCol xs={12}>
-                    <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: isDarkMode ? '#aaa' : '#5f6368' }}>
+                    <CFormLabel className="small text-secondary" style={{ fontSize: '12px', fontWeight: '500' }}>
                       Address
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                        border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                        color: isDarkMode ? '#e8eaed' : '#5f6368'
-                      }}>
+                      <CInputGroupText className="input-theme-aware" style={{ backgroundColor: 'var(--cui-gray-100)' }}>
                         📍
                       </CInputGroupText>
                       <CFormInput
+                        className="input-theme-aware"
                         value={formData?.address || ''}
                         onChange={(e) => handleInputChange('address', e.target.value)}
                         placeholder="Enter complete address"
-                        style={{
-                          border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                          backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
-                          color: isDarkMode ? '#e8eaed' : '#202124'
-                        }}
                       />
                     </CInputGroup>
                   </CCol>
 
                   <CCol xs={12} md={6}>
-                    <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: isDarkMode ? '#aaa' : '#5f6368' }}>
+                    <CFormLabel className="small text-secondary" style={{ fontSize: '12px', fontWeight: '500' }}>
                       City
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                        border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                        color: isDarkMode ? '#e8eaed' : '#5f6368'
-                      }}>
+                      <CInputGroupText className="input-theme-aware" style={{ backgroundColor: 'var(--cui-gray-100)' }}>
                         🏙️
                       </CInputGroupText>
                       <CFormInput
+                        className="input-theme-aware"
                         value={formData?.city || ''}
                         onChange={(e) => handleInputChange('city', e.target.value)}
                         placeholder="Enter city"
-                        style={{
-                          border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                          backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
-                          color: isDarkMode ? '#e8eaed' : '#202124'
-                        }}
                       />
                     </CInputGroup>
                   </CCol>
 
                   <CCol xs={12} md={6}>
-                    <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: isDarkMode ? '#aaa' : '#5f6368' }}>
+                    <CFormLabel className="small text-secondary" style={{ fontSize: '12px', fontWeight: '500' }}>
                       Pin Code
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                        border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                        color: isDarkMode ? '#e8eaed' : '#5f6368'
-                      }}>
+                      <CInputGroupText className="input-theme-aware" style={{ backgroundColor: 'var(--cui-gray-100)' }}>
                         📮
                       </CInputGroupText>
                       <CFormInput
+                        className="input-theme-aware"
                         value={formData?.pinCode || ''}
                         onChange={(e) => handleInputChange('pinCode', e.target.value)}
                         placeholder="Enter pin code"
-                        style={{
-                          border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                          backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
-                          color: isDarkMode ? '#e8eaed' : '#202124'
-                        }}
                       />
                     </CInputGroup>
                   </CCol>
 
                   <CCol xs={12} md={6}>
-                    <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: isDarkMode ? '#aaa' : '#5f6368' }}>
+                    <CFormLabel className="small text-secondary" style={{ fontSize: '12px', fontWeight: '500' }}>
                       Identity Type
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                        border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                        color: isDarkMode ? '#e8eaed' : '#5f6368'
-                      }}>
+                      <CInputGroupText className="input-theme-aware" style={{ backgroundColor: 'var(--cui-gray-100)' }}>
                         🆔
                       </CInputGroupText>
                       <CFormInput
+                        className="input-theme-aware"
                         value={formData?.identity || ''}
                         onChange={(e) => handleInputChange('identity', e.target.value)}
                         placeholder="Enter identity type (e.g., Aadhar, PAN)"
-                        style={{
-                          border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                          backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
-                          color: isDarkMode ? '#e8eaed' : '#202124'
-                        }}
                       />
                     </CInputGroup>
                   </CCol>
 
                   <CCol xs={12} md={6}>
-                    <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: isDarkMode ? '#aaa' : '#5f6368' }}>
+                    <CFormLabel className="small text-secondary" style={{ fontSize: '12px', fontWeight: '500' }}>
                       Identity Number
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                        border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                        color: isDarkMode ? '#e8eaed' : '#5f6368'
-                      }}>
+                      <CInputGroupText className="input-theme-aware" style={{ backgroundColor: 'var(--cui-gray-100)' }}>
                         📄
                       </CInputGroupText>
                       <CFormInput
+                        className="input-theme-aware"
                         value={formData?.identityNumber || ''}
                         onChange={(e) => handleInputChange('identityNumber', e.target.value)}
                         placeholder="Enter identity number"
-                        style={{
-                          border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                          backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
-                          color: isDarkMode ? '#e8eaed' : '#202124'
-                        }}
                       />
                     </CInputGroup>
                   </CCol>
 
                   <CCol xs={12} md={6}>
-                    <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: isDarkMode ? '#aaa' : '#5f6368' }}>
+                    <CFormLabel className="small text-secondary" style={{ fontSize: '12px', fontWeight: '500' }}>
                       Status
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                        border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                        color: isDarkMode ? '#e8eaed' : '#5f6368'
-                      }}>
+                      <CInputGroupText className="input-theme-aware" style={{ backgroundColor: 'var(--cui-gray-100)' }}>
                         📊
                       </CInputGroupText>
                       <CFormSelect
+                        className="input-theme-aware"
                         value={formData?.status || ''}
                         onChange={(e) => handleInputChange('status', e.target.value)}
-                        style={{
-                          border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                          backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
-                          color: isDarkMode ? '#e8eaed' : '#202124'
-                        }}
                       >
-                        <option value="" style={{ backgroundColor: isDarkMode ? '#2f3136' : '#ffffff' }}>Select status</option>
-                        <option value="active" style={{ backgroundColor: isDarkMode ? '#2f3136' : '#ffffff' }}>Active</option>
-                        <option value="inactive" style={{ backgroundColor: isDarkMode ? '#2f3136' : '#ffffff' }}>Inactive</option>
-                        <option value="pending" style={{ backgroundColor: isDarkMode ? '#2f3136' : '#ffffff' }}>Pending</option>
+                        <option value="">Select status</option>
+                        <option value="active">Active</option>
+                        <option value="inactive">Inactive</option>
+                        <option value="pending">Pending</option>
                       </CFormSelect>
                     </CInputGroup>
                   </CCol>
@@ -1129,7 +994,7 @@ export default function Account() {
             {/* Features & Operating Hours Tab */}
             <CTabPane visible={activeTab === 2}>
               <CForm>
-                <h6 className="mb-3" style={{ color: isDarkMode ? '#e8eaed' : '#202124', fontSize: '14px', fontWeight: '500' }}>
+                <h6 className="mb-3 text-theme-aware" style={{ fontSize: '14px', fontWeight: '500' }}>
                   Restaurant Features
                 </h6>
                 <CRow className="g-2 mb-4">
@@ -1140,40 +1005,32 @@ export default function Account() {
                         label={feature}
                         checked={formData?.features?.includes(feature) || false}
                         onChange={() => handleFeaturesChange(feature)}
-                        style={{
-                          fontSize: '14px',
-                          color: isDarkMode ? '#e8eaed' : '#202124'
-                        }}
+                        className="text-theme-aware" // Label text color from theme
+                        style={{ fontSize: '14px'}}
                       />
                     </CCol>
                   ))}
                 </CRow>
 
-                <h6 className="mb-3 mt-4" style={{ color: isDarkMode ? '#e8eaed' : '#202124', fontSize: '14px', fontWeight: '500' }}>
+                <h6 className="mb-3 mt-4 text-theme-aware" style={{ fontSize: '14px', fontWeight: '500' }}>
                   Operating Hours
                 </h6>
                 <div className="table-responsive">
-                  <table
-                    className="table table-sm"
-                    style={{
-                      fontSize: '14px',
-                      color: isDarkMode ? '#e8eaed' : '#202124'
-                    }}
+                  <table 
+                    className="table table-sm table-theme-aware" // ✅ Added table-theme-aware for table background/color
+                    style={{ fontSize: '14px' }}
                   >
-                    <thead style={{
-                      backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa'
-                    }}
-                    >
+                    <thead className="text-theme-aware" style={{ backgroundColor: 'var(--cui-gray-100)' }}>
                       <tr>
-                        <th style={{ width: '20%', color: isDarkMode ? '#aaa' : '#5f6368', fontWeight: '500', borderBottom: isDarkMode ? '2px solid #444' : '1px solid #e8eaed' }}>Day</th>
-                        <th style={{ width: '15%', textAlign: 'center', color: isDarkMode ? '#aaa' : '#5f6368', fontWeight: '500', borderBottom: isDarkMode ? '2px solid #444' : '1px solid #e8eaed' }}>Open</th>
-                        <th style={{ width: '30%', color: isDarkMode ? '#aaa' : '#5f6368', fontWeight: '500', borderBottom: isDarkMode ? '2px solid #444' : '1px solid #e8eaed' }}>Opening Time</th>
-                        <th style={{ width: '30%', color: isDarkMode ? '#aaa' : '#5f6368', fontWeight: '500', borderBottom: isDarkMode ? '2px solid #444' : '1px solid #e8eaed' }}>Closing Time</th>
+                        <th style={{ width: '20%', color: 'var(--cui-secondary-color)', fontWeight: '500' }}>Day</th>
+                        <th style={{ width: '15%', textAlign: 'center', color: 'var(--cui-secondary-color)', fontWeight: '500' }}>Open</th>
+                        <th style={{ width: '30%', color: 'var(--cui-secondary-color)', fontWeight: '500' }}>Opening Time</th>
+                        <th style={{ width: '30%', color: 'var(--cui-secondary-color)', fontWeight: '500' }}>Closing Time</th>
                       </tr>
                     </thead>
                     <tbody>
                       {daysOfWeek.map((day) => (
-                        <tr key={day} style={{ borderBottom: isDarkMode ? '1px solid #444' : '1px solid #e8eaed' }}>
+                        <tr key={day}>
                           <td style={{ textTransform: 'capitalize', fontWeight: '500' }}>{day}</td>
                           <td style={{ textAlign: 'center' }}>
                             <CFormCheck
@@ -1185,13 +1042,14 @@ export default function Account() {
                             <CFormInput
                               type="time"
                               size="sm"
+                              className="input-theme-aware"
                               value={formData?.operatingHours?.[day]?.open || ''}
                               onChange={(e) => handleOperatingHoursChange(day, 'open', e.target.value)}
                               disabled={!formData?.operatingHours?.[day]?.isOpen}
-                              style={{
-                                border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                                backgroundColor: (!formData?.operatingHours?.[day]?.isOpen && isDarkMode) ? '#3c4043' : (isDarkMode ? '#2f3136' : '#ffffff'),
-                                color: isDarkMode ? '#e8eaed' : '#202124'
+                              style={{ 
+                                // ✅ Disabled background logic
+                                backgroundColor: !formData?.operatingHours?.[day]?.isOpen ? 'var(--cui-gray-200)' : 'var(--cui-input-bg)',
+                                color: !formData?.operatingHours?.[day]?.isOpen ? 'var(--cui-gray-600)' : 'var(--cui-input-color)'
                               }}
                             />
                           </td>
@@ -1199,13 +1057,13 @@ export default function Account() {
                             <CFormInput
                               type="time"
                               size="sm"
+                              className="input-theme-aware"
                               value={formData?.operatingHours?.[day]?.close || ''}
                               onChange={(e) => handleOperatingHoursChange(day, 'close', e.target.value)}
                               disabled={!formData?.operatingHours?.[day]?.isOpen}
-                              style={{
-                                border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                                backgroundColor: (!formData?.operatingHours?.[day]?.isOpen && isDarkMode) ? '#3c4043' : (isDarkMode ? '#2f3136' : '#ffffff'),
-                                color: isDarkMode ? '#e8eaed' : '#202124'
+                              style={{ 
+                                backgroundColor: !formData?.operatingHours?.[day]?.isOpen ? 'var(--cui-gray-200)' : 'var(--cui-input-bg)',
+                                color: !formData?.operatingHours?.[day]?.isOpen ? 'var(--cui-gray-600)' : 'var(--cui-input-color)'
                               }}
                             />
                           </td>
@@ -1222,76 +1080,52 @@ export default function Account() {
               <CForm>
                 <CRow className="g-3">
                   <CCol xs={12}>
-                    <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: isDarkMode ? '#aaa' : '#5f6368' }}>
+                    <CFormLabel className="small text-secondary" style={{ fontSize: '12px', fontWeight: '500' }}>
                       Facebook
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                        border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                        color: isDarkMode ? '#e8eaed' : '#5f6368'
-                      }}>
+                      <CInputGroupText className="input-theme-aware" style={{ backgroundColor: 'var(--cui-gray-100)' }}>
                         📘
                       </CInputGroupText>
                       <CFormInput
+                        className="input-theme-aware"
                         value={formData?.facebook || ''}
                         onChange={(e) => handleInputChange('facebook', e.target.value)}
                         placeholder="Enter Facebook profile URL"
-                        style={{
-                          border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                          backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
-                          color: isDarkMode ? '#e8eaed' : '#202124'
-                        }}
                       />
                     </CInputGroup>
                   </CCol>
 
                   <CCol xs={12}>
-                    <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: isDarkMode ? '#aaa' : '#5f6368' }}>
+                    <CFormLabel className="small text-secondary" style={{ fontSize: '12px', fontWeight: '500' }}>
                       Instagram
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                        border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                        color: isDarkMode ? '#e8eaed' : '#5f6368'
-                      }}>
+                      <CInputGroupText className="input-theme-aware" style={{ backgroundColor: 'var(--cui-gray-100)' }}>
                         📸
                       </CInputGroupText>
                       <CFormInput
+                        className="input-theme-aware"
                         value={formData?.instagram || ''}
                         onChange={(e) => handleInputChange('instagram', e.target.value)}
                         placeholder="Enter Instagram profile URL"
-                        style={{
-                          border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                          backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
-                          color: isDarkMode ? '#e8eaed' : '#202124'
-                        }}
                       />
                     </CInputGroup>
                   </CCol>
 
                   <CCol xs={12}>
-                    <CFormLabel className="small" style={{ fontSize: '12px', fontWeight: '500', color: isDarkMode ? '#aaa' : '#5f6368' }}>
+                    <CFormLabel className="small text-secondary" style={{ fontSize: '12px', fontWeight: '500' }}>
                       WhatsApp
                     </CFormLabel>
                     <CInputGroup size="sm">
-                      <CInputGroupText style={{
-                        backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-                        border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                        color: isDarkMode ? '#e8eaed' : '#5f6368'
-                      }}>
+                      <CInputGroupText className="input-theme-aware" style={{ backgroundColor: 'var(--cui-gray-100)' }}>
                         💬
                       </CInputGroupText>
                       <CFormInput
+                        className="input-theme-aware"
                         value={formData?.whatsapp || ''}
                         onChange={(e) => handleInputChange('whatsapp', e.target.value)}
                         placeholder="Enter WhatsApp number"
-                        style={{
-                          border: isDarkMode ? '1px solid #444' : '1px solid #dadce0',
-                          backgroundColor: isDarkMode ? '#2f3136' : '#ffffff',
-                          color: isDarkMode ? '#e8eaed' : '#202124'
-                        }}
                       />
                     </CInputGroup>
                   </CCol>
@@ -1300,12 +1134,9 @@ export default function Account() {
             </CTabPane>
           </CTabContent>
         </CModalBody>
-        <CModalFooter
-          className="px-3 px-md-4 py-3"
-          style={{
-            backgroundColor: isDarkMode ? '#3c4043' : '#f8f9fa',
-            borderTop: isDarkMode ? '1px solid #444' : '1px solid #e8eaed'
-          }}
+        <CModalFooter 
+          className="px-3 px-md-4 py-3" 
+          // ✅ Removed inline styles, relies on global .modal-footer CSS
         >
           <div className="d-flex flex-column flex-md-row gap-2 w-100">
             <CButton
@@ -1313,15 +1144,7 @@ export default function Account() {
               variant="outline"
               onClick={handleCloseModal}
               className="w-100 w-md-auto"
-              style={{
-                borderColor: isDarkMode ? '#5f6368' : '#dadce0',
-                color: isDarkMode ? '#bdc1c6' : '#5f6368',
-                backgroundColor: isDarkMode ? 'transparent' : 'transparent',
-                borderRadius: '6px',
-                padding: '8px 16px',
-                fontWeight: '500',
-                fontSize: '14px',
-              }}
+              // ✅ Relying on global CSS for secondary button theming
             >
               Cancel
             </CButton>
@@ -1329,14 +1152,13 @@ export default function Account() {
               onClick={handleUpdateProfile}
               disabled={isUpdating}
               className="w-100 w-md-auto"
+              color="primary" // ✅ Used CoreUI color property
               style={{
-                backgroundColor: '#8ab4f8',
-                border: 'none',
                 borderRadius: '6px',
                 padding: '8px 16px',
                 fontWeight: '500',
-                color: '#202124',
-                fontSize: '14px',
+                // ✅ Text color opposite of body/dark background
+                color: 'var(--cui-body-bg)', 
               }}
             >
               {isUpdating ? <CSpinner size="sm" className="me-2" /> : null}

@@ -1007,8 +1007,8 @@ const Reservation = () => {
     <div className="container-fluid px-2 px-md-3 py-2">
       <div className="mb-4">
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-          <div className="mb-2 mb-md-0">
-            <h2 className="mb-0 text-center text-md-start">Reservations Management</h2>
+          <div className="w-100 d-flex justify-content-center mb-2 mb-md-0">
+            <h2 className="mb-4 text-center">Reservations Management</h2>
           </div>
           <div className="w-100 d-md-none">
             <div className="d-flex flex-column gap-2">

@@ -35,14 +35,38 @@ import {
   CTableDataCell
 } from '@coreui/react'
 import CIcon from '@coreui/icons-react'
-import { cilPencil, cilTrash, cilPlus, cilInfo, cilMinus } from '@coreui/icons'
+import { cilTrash, cilPlus, cilInfo } from '@coreui/icons'
 import jsPDF from 'jspdf'
 import 'jspdf-autotable'
+
+
+const processInventoryData = (inventories) => {
+  return inventories.map(item => {
+   
+    if (item.totalQuantity === 0 && item.suppliers && item.suppliers.length > 0) {
+      const calculatedTotalQuantity = item.suppliers.reduce((sum, s) => sum + (s.quantity || 0), 0);
+      const calculatedTotalAmount = item.suppliers.reduce((sum, s) => sum + (s.total || 0), 0);
+     
+      const calculatedRemainingQuantity = calculatedTotalQuantity - (item.totalUsedQuantity || 0);
+
+      return {
+        ...item,
+       
+        totalQuantity: calculatedTotalQuantity,
+        totalRemainingQuantity: calculatedRemainingQuantity,
+        totalAmount: calculatedTotalAmount,
+      };
+    }
+ 
+    return item;
+  });
+};
+ 
 
 const Stock = () => {
   const dispatch = useDispatch()
   const { 
-    inventories, 
+    inventories: rawInventories, // Use a different name for the raw data
     supplierStockDetails, 
     loading: inventoryLoading, 
     saleProcessing 
@@ -50,12 +74,16 @@ const Stock = () => {
   const { suppliers, loading: supplierLoading } = useSelector((state) => state.suppliers)
   const { restaurantId, token } = useSelector((state) => state.auth)
 
+  // Use a state for the processed inventory data
+  const [inventories, setInventories] = useState([]);
+
   // States
   const [modalVisible, setModalVisible] = useState(false)
   const [editModalVisible, setEditModalVisible] = useState(false)
   const [deleteModalVisible, setDeleteModalVisible] = useState(false)
   const [supplierDetailsModalVisible, setSupplierDetailsModalVisible] = useState(false)
-  const [deductStockModalVisible, setDeductStockModalVisible] = useState(false)
+  // Deduct stock modal is commented out in the provided code, so we can keep this state commented out too
+  // const [deductStockModalVisible, setDeductStockModalVisible] = useState(false)
   const [editItems, setEditItems] = useState([{
     itemName: '',
     quantity: '',
@@ -108,6 +136,8 @@ const Stock = () => {
     pricePerUnit: '', 
     supplierId: '' 
   })
+  // Deduct stock data state can be removed if the modal is commented out, 
+  // but keeping it for completeness if you uncomment it later.
   const [deductStockData, setDeductStockData] = useState({ 
     quantityToDeduct: '',
     deductUnit: ''
@@ -117,7 +147,7 @@ const Stock = () => {
   const [availableItems, setAvailableItems] = useState([])
   const [filteredSuppliers, setFilteredSuppliers] = useState([])
 
-  // Unit conversion helper
+  // Unit conversion helper (keep as is)
   const convertUnit = (value, fromUnit, toUnit) => {
     if (fromUnit === toUnit) return value
 
@@ -150,7 +180,7 @@ const Stock = () => {
     return value
   }
 
-  // Get compatible units for a given unit
+  // Get compatible units for a given unit (keep as is)
   const getCompatibleUnits = (baseUnit) => {
     const weightUnits = ['kg', 'gm', 'mg']
     const volumeUnits = ['ltr', 'ml']
@@ -168,7 +198,14 @@ const Stock = () => {
     }
   }, [restaurantId, token, dispatch])
 
-  // Extract items from suppliers
+
+  useEffect(() => {
+    
+    const processedData = processInventoryData(rawInventories);
+    setInventories(processedData);
+  }, [rawInventories]); // Depend on rawInventories change
+
+  // Extract items from suppliers (keep as is)
   useEffect(() => {
     if (suppliers && suppliers.length > 0) {
       const items = []
@@ -201,13 +238,13 @@ const Stock = () => {
     }
   }, [suppliers])
 
-  // Monitor low stock
+  // Monitor low stock (Use processed inventories)
   useEffect(() => {
     const lowStock = inventories.filter(item => (item.totalRemainingQuantity || 0) <= 5)
     setLowStockItems(lowStock)
   }, [inventories])
 
-  // Form handlers
+  // Form handlers (keep as is)
   const handleChange = (e) => {
     const { name, value } = e.target
 
@@ -241,7 +278,7 @@ const Stock = () => {
     setDeductStockData({ ...deductStockData, [e.target.name]: e.target.value })
   }
 
-  // Add/Purchase inventory
+  // Add/Purchase inventory (keep as is)
   const handleSaveStock = async () => {
     try {
       console.log('🔄 Adding inventory with data:', formData);
@@ -256,7 +293,8 @@ const Stock = () => {
       
       console.log('✅ Inventory added successfully:', result);
       
-      await dispatch(fetchInventories({ restaurantId, token })).unwrap()
+      // ✅ Fetch inventories again to get the latest data
+      await dispatch(fetchInventories({ token })).unwrap()
       console.log('✅ Inventories refreshed');
       
       resetForm()
@@ -266,16 +304,15 @@ const Stock = () => {
     }
   }
 
-  // Update inventory (Purchase more stock)
+  // Update inventory (Purchase more stock) (keep as is)
   const handleUpdateInventory = async () => {
     try {
       console.log('🔄 Purchasing stock for items:', editItems);
       
-      // Process each item in the editItems array
+      
       for (const item of editItems) {
         if (item.itemName && item.quantity && item.unit && item.pricePerUnit && item.supplierId) {
-          // ✅ FIXED: Always use addInventory to purchase stock (existing or new item)
-          // The backend will automatically add to existing item or create new one
+         
           await dispatch(addInventory({ 
             restaurantId, 
             itemName: item.itemName,
@@ -291,7 +328,8 @@ const Stock = () => {
       }
       
       console.log('🔄 Refreshing inventory list...');
-      await dispatch(fetchInventories({ restaurantId, token })).unwrap();
+      // ✅ Fetch inventories again to get the latest data
+      await dispatch(fetchInventories({ token })).unwrap();
       console.log('✅ Inventory list refreshed');
       
       setEditItems([{
@@ -308,7 +346,7 @@ const Stock = () => {
     }
   };
 
-  // Delete inventory
+  // Delete inventory (keep as is)
   const handleDeleteInventory = async () => {
     try {
       await dispatch(deleteInventory({ id: selectedStock._id, token })).unwrap()
@@ -319,18 +357,19 @@ const Stock = () => {
     }
   }
 
-  // View supplier details
+  // View supplier details (keep as is)
   const handleViewSupplierDetails = async (item) => {
     setSelectedStock(item)
     try {
-      await dispatch(getSupplierStockDetails({ itemId: item._id, token })).unwrap()
+      // Use the actual inventory ID, which is correct
+      await dispatch(getSupplierStockDetails({ itemId: item._id, token })).unwrap() 
       setSupplierDetailsModalVisible(true)
     } catch (error) {
       console.error('Error fetching supplier details:', error)
     }
   }
 
-  // Deduct stock handler
+  // Deduct stock handler (keep as is)
   const handleDeductStockItem = async () => {
     try {
       const baseUnit = selectedStock.unit;
@@ -346,7 +385,7 @@ const Stock = () => {
       
       await dispatch(fetchInventories({ restaurantId, token })).unwrap();
       setDeductStockData({ quantityToDeduct: '', deductUnit: '' });
-      setDeductStockModalVisible(false);
+      // setDeductStockModalVisible(false); // Commented out to match the original code's flow
       setSelectedStock(null);
     } catch (error) {
       console.error('Failed to deduct stock:', error);
@@ -358,7 +397,7 @@ const Stock = () => {
     setFilteredSuppliers([])
   }
 
-  // Export CSV
+  // Export CSV (Use processed inventories)
   const exportToCSV = useCallback(() => {
     const csvContent =
       'data:text/csv;charset=utf-8,' +
@@ -383,7 +422,7 @@ const Stock = () => {
     link.click()
   }, [inventories])
 
-  // Export PDF
+  // Export PDF (Use processed inventories)
   const exportToPDF = useCallback(() => {
     const doc = new jsPDF()
     doc.text('Stock Management', 10, 10)
@@ -394,17 +433,17 @@ const Stock = () => {
       row.totalQuantity,
       row.totalRemainingQuantity,
       row.totalUsedQuantity,
-      `₹${row.totalAmount}`
+      `₹${(row.totalAmount || 0).toLocaleString()}`
     ])
 
     doc.autoTable({ head: [tableColumn], body: tableRows, startY: 20 })
     doc.save('inventories.pdf')
   }, [inventories])
 
-  // DataGrid rows
+  // DataGrid rows (Use processed inventories)
   const rows = inventories.map((s) => ({ id: s._id, ...s }))
 
-  // DataGrid columns
+  // DataGrid columns (keep as is, they use the aggregated fields)
   const columns = [
     { 
       field: 'id', 
@@ -487,7 +526,7 @@ const Stock = () => {
       field: 'actions', 
       headerName: 'Actions', 
       flex: 1.5, 
-      minWidth: 140,
+      minWidth: 180,  
       sortable: false, 
       filterable: false,
       renderCell: (params) => (
@@ -500,6 +539,7 @@ const Stock = () => {
           >
             <CIcon icon={cilInfo} size="sm" />
           </CButton>
+          {/* Deduct Stock Button is commented out */}
           {/* <CButton 
             color="warning" 
             size="sm" 
@@ -522,8 +562,8 @@ const Stock = () => {
               setSelectedStock(params.row);
               
               // Get supplier information
-              const itemSuppliers = params.row.supplierStocks && params.row.supplierStocks.length > 0
-                ? params.row.supplierStocks.map(stock => ({
+              const itemSuppliers = params.row.suppliers && params.row.suppliers.length > 0
+                ? params.row.suppliers.map(stock => ({
                     supplierId: stock.supplierId,
                     supplierName: stock.supplierName
                   }))
@@ -543,6 +583,7 @@ const Stock = () => {
                 pricePerUnit: '', // ✅ Price field empty for new purchase
                 supplierId: '', // ✅ Supplier field empty for new purchase
                 supplierName: '', // ✅ Supplier name empty for new purchase
+                // Use availableItem's suppliers (all potential suppliers) OR current item's suppliers
                 suppliers: availableItem ? availableItem.suppliers : itemSuppliers,
                 isExisting: true
               }]);
@@ -568,12 +609,12 @@ const Stock = () => {
       )
     },
   ]
-
+ 
   return (
     <div className="p-2 p-md-4">
       {/* Low Stock Alert */}
-      {lowStockItems.length > 0 && (
-        <CAlert color="warning" className="mb-4">
+    {lowStockItems.length > 0 && (
+        <CAlert color="warning" className="mb-4 alert-theme-aware">
           <strong>⚠️ Low Stock Alert!</strong>
           <div className="mt-2">
             {lowStockItems.map(item => (
@@ -587,7 +628,8 @@ const Stock = () => {
 
       {/* Header & Buttons */}
       <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
-        <h2 className="fw-bold text-dark m-0">📦 Inventory Stock</h2>
+      <h2 className="fw-bold text-theme-aware m-0">📦 Inventory Stock</h2>
+
         <div className="d-flex flex-wrap gap-2">
           <CButton 
             color="primary" 
@@ -607,33 +649,38 @@ const Stock = () => {
       </div>
 
       {/* Inventory Table */}
-      <div className="bg-white rounded shadow-sm p-3">
+    <div className="card-theme-aware rounded shadow-sm p-3">
         {inventoryLoading || supplierLoading ? (
           <div className="d-flex justify-content-center py-5">
             <CSpinner color="primary" variant="grow" />
           </div>
         ) : (
           <div style={{ minHeight: '400px' }}>
-            <DataGrid
-              rows={rows}
-              columns={columns}
-              autoHeight
-              pageSize={10}
-              rowsPerPageOptions={[5, 10, 20]}
-              disableRowSelectionOnClick
-              slots={{ toolbar: CustomToolbar }}
-              sx={{
-                '& .MuiDataGrid-columnHeaders': { 
-                  backgroundColor: '#f5f6fa', 
-                  fontWeight: 'bold', 
-                  fontSize: '0.85rem'
-                },
-                '& .MuiDataGrid-row:hover': { 
-                  backgroundColor: '#e9f2ff' 
-                },
-              }}
-            />
-          </div>
+  <div style={{ overflowX: 'auto', width: '100%' }}>
+    <div style={{ minWidth: 600 }}>
+      <DataGrid
+        rows={rows}
+        columns={columns}
+        autoHeight
+        pageSize={10}
+        rowsPerPageOptions={[5, 10, 20]}
+        disableRowSelectionOnClick
+        slots={{ toolbar: CustomToolbar }}
+        sx={{
+          '& .MuiDataGrid-columnHeaders': { 
+            backgroundColor: '#f5f6fa', 
+            fontWeight: 'bold', 
+            fontSize: '0.85rem'
+          },
+          '& .MuiDataGrid-row:hover': { 
+            backgroundColor: '#e9f2ff' 
+          },
+        }}
+      />
+    </div>
+  </div>
+</div>
+
         )}
       </div>
 
@@ -923,10 +970,11 @@ const Stock = () => {
                 </div>
                 <div className="mt-2">
                   <small className="text-muted">Total Investment</small>
-                  <p className="fw-bold mb-0 text-success fs-5">₹{supplierStockDetails.totalAmount.toLocaleString()}</p>
+                  <p className="fw-bold mb-0 text-success fs-5">₹{(supplierStockDetails.totalAmount || 0).toLocaleString()}</p>
                 </div>
               </div>
 
+              {/* Use supplierStocks or suppliers array for breakdown */}
               <h6 className="fw-bold mb-3">Supplier-wise Stock Breakdown (FIFO Order)</h6>
               <CTable striped bordered hover responsive>
                 <CTableHead>
@@ -944,36 +992,50 @@ const Stock = () => {
                   </CTableRow>
                 </CTableHead>
                 <CTableBody>
-                  {supplierStockDetails.supplierStocks.map((stock, index) => (
+                  {/* Using supplierStockDetails.supplierStocks which should be populated by the API */}
+                  {(supplierStockDetails.supplierStocks || []).map((stock, index) => {
+                    // Fallback calculation for usage if API data is incomplete
+                    const purchased = stock.purchasedQuantity || stock.quantity || 0;
+                    const used = stock.usedQuantity || 0;
+                    const remaining = stock.remainingQuantity || purchased - used;
+                    const totalAmount = stock.totalAmount || (stock.quantity * stock.pricePerUnit) || stock.total || 0;
+                    const pricePerUnit = stock.pricePerUnit || (stock.amount || 0);
+                    const usagePercentage = purchased > 0 ? Math.round((used / purchased) * 100) : 0;
+                    const isFullyUsed = remaining <= 0 && purchased > 0;
+
+                    return (
                     <CTableRow key={index}>
-                      <CTableDataCell>{stock.index}</CTableDataCell>
+                      <CTableDataCell>{stock.index || index + 1}</CTableDataCell>
                       <CTableDataCell className="fw-bold">{stock.supplierName}</CTableDataCell>
-                      <CTableDataCell>{stock.purchasedQuantity} {supplierStockDetails.unit}</CTableDataCell>
-                      <CTableDataCell className="text-danger">{stock.usedQuantity} {supplierStockDetails.unit}</CTableDataCell>
-                      <CTableDataCell className="text-success fw-bold">{stock.remainingQuantity} {supplierStockDetails.unit}</CTableDataCell>
-                      <CTableDataCell>₹{stock.pricePerUnit}</CTableDataCell>
-                      <CTableDataCell className="fw-bold">₹{stock.totalAmount.toLocaleString()}</CTableDataCell>
+                      <CTableDataCell>{purchased} {supplierStockDetails.unit}</CTableDataCell>
+                      <CTableDataCell className="text-danger">{used} {supplierStockDetails.unit}</CTableDataCell>
+                      <CTableDataCell className="text-success fw-bold">{remaining} {supplierStockDetails.unit}</CTableDataCell>
+                      <CTableDataCell>₹{pricePerUnit}</CTableDataCell>
+                      <CTableDataCell className="fw-bold">₹{totalAmount.toLocaleString()}</CTableDataCell>
                       <CTableDataCell>{new Date(stock.purchasedAt).toLocaleDateString()}</CTableDataCell>
                       <CTableDataCell>
                         <div>
                           <CProgress className="mb-1" height={20}>
-                            <CProgressBar color={stock.usagePercentage > 80 ? 'danger' : stock.usagePercentage > 50 ? 'warning' : 'success'} value={stock.usagePercentage}>
-                              {stock.usagePercentage}%
+                            <CProgressBar color={usagePercentage > 80 ? 'danger' : usagePercentage > 50 ? 'warning' : 'success'} value={usagePercentage}>
+                              {usagePercentage}%
                             </CProgressBar>
                           </CProgress>
                         </div>
                       </CTableDataCell>
                       <CTableDataCell>
-                        {stock.isFullyUsed ? (
+                        {isFullyUsed ? (
                           <CBadge color="danger">Fully Used</CBadge>
-                        ) : stock.remainingQuantity <= 5 ? (
+                        ) : remaining <= 5 && remaining > 0 ? (
                           <CBadge color="warning">Low Stock</CBadge>
-                        ) : (
+                        ) : remaining > 0 ? (
                           <CBadge color="success">Available</CBadge>
+                        ) : (
+                          <CBadge color="secondary">No Stock</CBadge>
                         )}
                       </CTableDataCell>
                     </CTableRow>
-                  ))}
+                  )}
+                  )}
                 </CTableBody>
               </CTable>
 
@@ -993,74 +1055,7 @@ const Stock = () => {
 
       {/* Deduct Stock Modal with Unit Selection - COMMENTED OUT */}
       {/* <CModal visible={deductStockModalVisible} onClose={() => { setDeductStockModalVisible(false); setDeductStockData({ quantityToDeduct: '', deductUnit: '' }) }}>
-        <CModalHeader><CModalTitle>➖ Deduct Stock (FIFO)</CModalTitle></CModalHeader>
-        <CModalBody>
-          {selectedStock && (
-            <>
-              <div className="mb-3 p-3 bg-light rounded">
-                <h6 className="fw-bold">{selectedStock.itemName}</h6>
-                <p className="mb-1">Available Stock: <strong className="text-success">{selectedStock.totalRemainingQuantity} {selectedStock.unit}</strong></p>
-              </div>
-
-              <div className="row">
-                <div className="col-md-7 mb-3">
-                  <label className="form-label fw-semibold">Quantity to Deduct <span className="text-danger">*</span></label>
-                  <CFormInput
-                    type="number"
-                    min="0.01"
-                    step="0.01"
-                    name="quantityToDeduct"
-                    value={deductStockData.quantityToDeduct}
-                    onChange={handleDeductStockChange}
-                    placeholder="Enter quantity"
-                  />
-                </div>
-                <div className="col-md-5 mb-3">
-                  <label className="form-label fw-semibold">Unit <span className="text-danger">*</span></label>
-                  <CFormSelect
-                    name="deductUnit"
-                    value={deductStockData.deductUnit}
-                    onChange={handleDeductStockChange}
-                  >
-                    <option value="">Select Unit</option>
-                    {getCompatibleUnits(selectedStock.unit).map(unit => (
-                      <option key={unit} value={unit}>{unit}</option>
-                    ))}
-                  </CFormSelect>
-                </div>
-              </div>
-
-              {deductStockData.quantityToDeduct && deductStockData.deductUnit && 
-               convertUnit(parseFloat(deductStockData.quantityToDeduct), deductStockData.deductUnit, selectedStock.unit) > selectedStock.totalRemainingQuantity && (
-                <CAlert color="danger">
-                  ⚠️ Insufficient stock! You're trying to deduct more than available.
-                </CAlert>
-              )}
-
-              <CAlert color="warning" className="mt-3">
-                <strong>⚠️ Note:</strong> Stock will be deducted using FIFO method (oldest stock first).
-              </CAlert>
-            </>
-          )}
-        </CModalBody>
-        <CModalFooter>
-          <CButton color="secondary" onClick={() => { setDeductStockModalVisible(false); setDeductStockData({ quantityToDeduct: '', deductUnit: '' }) }}>
-            Cancel
-          </CButton>
-          <CButton
-            color="danger"
-            onClick={handleDeductStockItem}
-            disabled={
-              !deductStockData.quantityToDeduct || 
-              !deductStockData.deductUnit ||
-              saleProcessing ||
-              (deductStockData.quantityToDeduct && deductStockData.deductUnit && 
-               convertUnit(parseFloat(deductStockData.quantityToDeduct), deductStockData.deductUnit, selectedStock.unit) > selectedStock.totalRemainingQuantity)
-            }
-          >
-            {saleProcessing ? <CSpinner size="sm" /> : 'Deduct Stock'}
-          </CButton>
-        </CModalFooter>
+        ...
       </CModal> */}
 
       {/* Delete Confirmation Modal */}

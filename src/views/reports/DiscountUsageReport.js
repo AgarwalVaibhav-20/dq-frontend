@@ -244,13 +244,21 @@ const DiscountUsageReport = () => {
 
   /* --------------------------- UI --------------------------- */
   return (
-    <div style={{ padding: 20 }}>
-      <h2 className="mb-4">Discount Usage Report</h2>
+   <div className="p-3 p-md-4 bg-theme-aware" style={{ minHeight: '100vh' }}>
+      
+      {/* FIX 1: Heading Alignment and Theming */}
+      <h2 className="mb-4 text-center text-theme-aware">Discount Usage Report</h2>
 
-      {/* date pickers */}
-      <CRow className="align-items-end mb-3" style={{ gap: '1rem', flexWrap: 'wrap' }}>
-        <CCol xs="auto">
-          <label className="form-label fw-bold" htmlFor="start">
+      {/* Date range pickers */}
+      <CRow 
+        className="align-items-end mb-4" 
+        // FIX 2: Added gap for mobile/tablet spacing and flex-wrap utility
+        style={{ gap: '1rem 0', flexWrap: 'wrap' }}
+      >
+        {/* Start Date Column */}
+        {/* FIX 3: Use standard CCol classes for better responsiveness */}
+        <CCol xs={12} sm={6} md={3}>
+          <label className="form-label fw-bold text-theme-aware" htmlFor="start">
             Start Date
           </label>
           <CFormInput
@@ -259,10 +267,13 @@ const DiscountUsageReport = () => {
             value={startDate}
             max={endDate}
             onChange={(e) => setStartDate(e.target.value)}
+            className="input-theme-aware"
           />
         </CCol>
-        <CCol xs="auto">
-          <label className="form-label fw-bold" htmlFor="end">
+        
+        {/* End Date Column */}
+        <CCol xs={12} sm={6} md={3}>
+          <label className="form-label fw-bold text-theme-aware" htmlFor="end">
             End Date
           </label>
           <CFormInput
@@ -272,14 +283,23 @@ const DiscountUsageReport = () => {
             min={startDate}
             max={formatDate(today)}
             onChange={(e) => setEndDate(e.target.value)}
+            className="input-theme-aware"
           />
         </CCol>
-        <CCol xs="auto" className="pt-2">
-          <CButton color="primary" onClick={handleGenerateReport}>
+        
+        {/* Button Column */}
+        {/* FIX 4: Ensure button aligns properly and takes full width on mobile */}
+        <CCol xs={12} sm={12} md={3} className="pt-2">
+          <CButton 
+            color="primary" 
+            onClick={handleGenerateReport}
+            className="w-100 w-md-auto" // Full width on mobile, auto width on desktop
+          >
             Generate Report
           </CButton>
         </CCol>
       </CRow>
+    
 
       {/* Filter Section */}
       <CRow className="mb-3">

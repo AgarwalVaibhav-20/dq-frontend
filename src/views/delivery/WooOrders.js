@@ -85,7 +85,9 @@ const WooOrders = () => {
 
   return (
     <div style={{ paddingLeft: '20px', paddingRight: '20px' }}>
-      <h2 className="mb-4">WooCommerce Orders</h2>
+        <h2 className="mb-4" style={{ textAlign: 'center' }}>
+        WooCommerce Orders
+      </h2>
       {loading ? (
         <div className="d-flex justify-content-center">
           <CSpinner color="primary" variant="grow" />

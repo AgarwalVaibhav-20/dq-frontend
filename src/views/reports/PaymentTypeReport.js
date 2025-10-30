@@ -182,7 +182,7 @@ const PaymentTypeReport = () => {
           }
         }
       `}</style>
-      <h2 className="mb-4">Payment Type Report</h2>
+       <h2 className="mb-4 mx-auto text-center w-100 heading-mobile-center">Payment Type Report</h2>
 
       {/* Date range input row */}
       <CRow

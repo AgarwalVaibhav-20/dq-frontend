@@ -218,47 +218,59 @@ const LoginActivity = () => {
   };
 
   return (
-    <CContainer fluid className="px-2 px-md-3">
+      <CContainer fluid className="px-2 px-md-3">
       {/* Header Section - Mobile Responsive */}
-      <CRow className="mb-3 mb-md-4">
+      <CRow className="mb-3 mb-md-4 text-center">
         <CCol>
           <h2 className="h4 h3-md mb-2">Login Activity</h2>
-          <p className="text-muted small">Track your login and logout activities</p>
+          <p className="text-muted small">
+            Track your login and logout activities
+          </p>
         </CCol>
       </CRow>
 
       {/* Current Session Status - Mobile Responsive */}
-      {currentSession && (
-        <CRow className="mb-3 mb-md-4">
-          <CCol>
-            <CAlert color="info" className="d-flex align-items-start">
-              <div className="d-flex align-items-start w-100">
-                <CIcon icon={cilCheckCircle} className="me-2 mt-1 flex-shrink-0" />
-                <div className="flex-grow-1">
-                  <strong>Active Session:</strong><br className="d-md-none" />
-                  <span className="d-md-inline d-block">{currentSession.name}</span>
-                  <br className="d-md-none" />
-                  <small className="d-block d-md-inline ms-md-2">
-                    Logged in at {formatDate(currentSession.logintime)}
-                  </small>
+     {currentSession && (
+    <CRow className="mb-3 mb-md-4">
+        <CCol>
+            <CAlert 
+                color="info" 
+                className="d-flex align-items-start text-theme-aware"
+                // ✅ FIX: Use CSS variables for theme-aware coloring
+                style={{
+                    backgroundColor: 'var(--cui-info-bg)',
+                    borderColor: 'var(--cui-info-border)',
+                    color: 'var(--cui-body-color)' // Ensure text remains readable
+                }}
+            >
+                <div className="d-flex align-items-start w-100">
+                    {/* Icon will inherit color via text-theme-aware on parent */}
+                    <CIcon icon={cilCheckCircle} className="me-2 mt-1" />
+                    <div>
+                        <strong>Active Session:</strong><br className="d-md-none" />
+                        <span className="d-md-inline d-block">{currentSession.name}</span>
+                        <br className="d-md-none" />
+                        <small className="d-block d-md-inline ms-md-2 text-secondary">
+                            Logged in at {formatDate(currentSession.logintime)}
+                        </small>
+                    </div>
+                    {/* Logout button hidden */}
+                    {/* <div className="flex-shrink-0 ms-2">
+                        <CButton 
+                            color="danger" 
+                            size="sm" 
+                            onClick={handleLogout}
+                            className="d-flex align-items-center"
+                        >
+                            <CIcon icon={cilXCircle} className="me-1" />
+                            Logout
+                        </CButton>
+                    </div> */}
                 </div>
-                {/* Logout button hidden */}
-                {/* <div className="flex-shrink-0 ms-2">
-                  <CButton 
-                    color="danger" 
-                    size="sm" 
-                    onClick={handleLogout}
-                    className="d-flex align-items-center"
-                  >
-                    <CIcon icon={cilXCircle} className="me-1" />
-                    Logout
-                  </CButton>
-                </div> */}
-              </div>
             </CAlert>
-          </CCol>
-        </CRow>
-      )}
+        </CCol>
+    </CRow>
+)}
 
       {/* Login Form - Mobile Responsive */}
       {!currentSession && (

@@ -12,9 +12,8 @@ const DueReport = () => {
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-
   const restaurantId = localStorage.getItem('restaurantId');
-  
+
   useEffect(() => {
     const token = localStorage.getItem('authToken');
     if (token) {
@@ -25,7 +24,6 @@ const DueReport = () => {
   // Group dues by customer with proper balance calculations
   const getCustomerDueSummary = () => {
     const summary = {};
-
     dues.forEach((due) => {
       const customerId = due.customer_id || due.customerId;
       if (!summary[customerId]) {
@@ -41,7 +39,6 @@ const DueReport = () => {
           dues: [],
         };
       }
-
       const total = parseFloat(due.total) || 0;
       const paidAmount = parseFloat(due.paidAmount) || 0;
       const remainingAmount = parseFloat(due.remainingAmount) || (total - paidAmount);
@@ -51,7 +48,6 @@ const DueReport = () => {
       summary[customerId].totalRemaining += remainingAmount;
       summary[customerId].dues.push(due);
 
-      // Count based on actual status
       if (due.status === 'paid' || remainingAmount <= 0) {
         summary[customerId].paidCount += 1;
       } else if (paidAmount > 0 && remainingAmount > 0) {
@@ -60,13 +56,11 @@ const DueReport = () => {
         summary[customerId].unpaidCount += 1;
       }
     });
-
     return Object.values(summary);
   };
 
   const customerSummary = getCustomerDueSummary();
 
-  // Filter customers
   const filteredCustomers = customerSummary.filter((customer) => {
     const searchLower = searchTerm.toLowerCase();
     const matchesSearch =
@@ -82,7 +76,6 @@ const DueReport = () => {
     return matchesSearch && matchesStatus;
   });
 
-  // Stats
   const totalDuesAmount = customerSummary.reduce((sum, c) => sum + c.totalDue, 0);
   const totalPaidAmount = customerSummary.reduce((sum, c) => sum + c.totalPaid, 0);
   const totalRemainingAmount = customerSummary.reduce((sum, c) => sum + c.totalRemaining, 0);
@@ -106,90 +99,88 @@ const DueReport = () => {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+      <div className="flex items-center justify-center min-h-screen bg-theme-aware">
         <div className="text-center">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading due reports...</p>
+          <p className="mt-4 text-secondary">Loading due reports...</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-3 sm:p-6">
+    <div className="min-h-screen bg-theme-aware p-3 sm:p-6" style={{ color: "var(--cui-body-color)" }}>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-4 sm:mb-6">
-          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold text-gray-900 flex items-center gap-2">
-            <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-blue-600" />
+          <h1 className="text-xl sm:text-2xl lg:text-3xl font-bold flex items-center gap-2 text-theme-aware">
+            <FileText className="w-6 h-6 sm:w-8 sm:h-8 text-primary" />
             <span className="hidden sm:inline">Customer Due Report</span>
             <span className="sm:hidden">Due Report</span>
           </h1>
-          <p className="text-sm sm:text-base text-gray-600 mt-1">Comprehensive tracking of customer dues and payments</p>
+          <p className="text-sm sm:text-base text-secondary mt-1">Comprehensive tracking of customer dues and payments</p>
         </div>
 
         {/* Statistics */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <div className="bg-white rounded-lg shadow p-4 sm:p-6 border-l-4 border-blue-500">
+          <div className="rounded-lg shadow p-4 sm:p-6 border-l-4 border-blue-500" style={{ backgroundColor: "var(--cui-card-bg)", color: "var(--cui-body-color)" }}>
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="text-xs sm:text-sm text-gray-600">Total Dues</p>
-                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">₹{totalDuesAmount.toFixed(2)}</p>
-                <p className="text-xs text-gray-500 mt-1">{customerSummary.length} customers</p>
+                <p className="text-xs sm:text-sm text-secondary">Total Dues</p>
+                <p className="text-lg sm:text-xl lg:text-2xl font-bold text-theme-aware">₹{totalDuesAmount.toFixed(2)}</p>
+                <p className="text-xs text-secondary mt-1">{customerSummary.length} customers</p>
               </div>
-              <DollarSign className="w-8 h-8 sm:w-10 sm:h-10 text-blue-500 flex-shrink-0" />
+              <DollarSign className="w-8 h-8 sm:w-10 sm:h-10 text-primary  " />
             </div>
           </div>
-
-          <div className="bg-white rounded-lg shadow p-4 sm:p-6 border-l-4 border-green-500">
+          <div className="rounded-lg shadow p-4 sm:p-6 border-l-4 border-green-500" style={{ backgroundColor: "var(--cui-card-bg)", color: "var(--cui-body-color)" }}>
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="text-xs sm:text-sm text-gray-600">Total Paid</p>
+                <p className="text-xs sm:text-sm text-secondary">Total Paid</p>
                 <p className="text-lg sm:text-xl lg:text-2xl font-bold text-green-600">₹{totalPaidAmount.toFixed(2)}</p>
-                <p className="text-xs text-gray-500 mt-1">
+                <p className="text-xs text-secondary mt-1">
                   {totalDuesAmount > 0 ? ((totalPaidAmount / totalDuesAmount) * 100).toFixed(1) : 0}% collected
                 </p>
               </div>
-              <TrendingUp className="w-8 h-8 sm:w-10 sm:h-10 text-green-500 flex-shrink-0" />
+              <TrendingUp className="w-8 h-8 sm:w-10 sm:h-10 text-green-500" />
             </div>
           </div>
-
-          <div className="bg-white rounded-lg shadow p-4 sm:p-6 border-l-4 border-red-500">
+          <div className="rounded-lg shadow p-4 sm:p-6 border-l-4 border-red-500" style={{ backgroundColor: "var(--cui-card-bg)", color: "var(--cui-body-color)" }}>
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="text-xs sm:text-sm text-gray-600">Outstanding</p>
+                <p className="text-xs sm:text-sm text-secondary">Outstanding</p>
                 <p className="text-lg sm:text-xl lg:text-2xl font-bold text-red-600">₹{totalRemainingAmount.toFixed(2)}</p>
-                <p className="text-xs text-gray-500 mt-1">{customersWithOutstanding} customers</p>
+                <p className="text-xs text-secondary mt-1">{customersWithOutstanding} customers</p>
               </div>
-              <TrendingDown className="w-8 h-8 sm:w-10 sm:h-10 text-red-500 flex-shrink-0" />
+              <TrendingDown className="w-8 h-8 sm:w-10 sm:h-10 text-red-500 " />
             </div>
           </div>
-
-          <div className="bg-white rounded-lg shadow p-4 sm:p-6 border-l-4 border-orange-500">
+          <div className="rounded-lg shadow p-4 sm:p-6 border-l-4 border-orange-500" style={{ backgroundColor: "var(--cui-card-bg)", color: "var(--cui-body-color)" }}>
             <div className="flex items-center justify-between">
               <div className="flex-1">
-                <p className="text-xs sm:text-sm text-gray-600">Collection Rate</p>
+                <p className="text-xs sm:text-sm text-secondary">Collection Rate</p>
                 <p className="text-lg sm:text-xl lg:text-2xl font-bold text-orange-600">
                   {totalDuesAmount > 0 ? ((totalPaidAmount / totalDuesAmount) * 100).toFixed(1) : 0}%
                 </p>
-                <p className="text-xs text-gray-500 mt-1">Payment efficiency</p>
+                <p className="text-xs text-secondary mt-1">Payment efficiency</p>
               </div>
-              <Users className="w-8 h-8 sm:w-10 sm:h-10 text-orange-500 flex-shrink-0" />
+              <Users className="w-8 h-8 sm:w-10 sm:h-10 text-orange-500 " />
             </div>
           </div>
         </div>
 
         {/* Filters */}
-        <div className="bg-white rounded-lg shadow p-3 sm:p-4 mb-4 sm:mb-6">
+        <div className="rounded-lg shadow p-3 sm:p-4 mb-4 sm:mb-6" style={{ backgroundColor: "var(--cui-card-bg)", color: "var(--cui-body-color)" }}>
           <div className="flex flex-col gap-3 sm:gap-4">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4 sm:w-5 sm:h-5" />
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-secondary w-4 h-4 sm:w-5 sm:h-5" />
               <input
                 type="text"
                 placeholder="Search by customer name or ID..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-9 sm:pl-10 pr-4 py-2 sm:py-2.5 text-sm sm:text-base border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                style={{ backgroundColor: "var(--cui-input-bg)", color: "var(--cui-input-color)" }}
               />
             </div>
             <div className="flex gap-2 flex-wrap">
@@ -205,16 +196,18 @@ const DueReport = () => {
                   className={`px-3 sm:px-4 py-1.5 sm:py-2 rounded-lg text-xs sm:text-sm font-medium transition-colors ${
                     filterStatus === status.value
                       ? `bg-${status.color}-600 text-white`
-                      : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+                      : 'bg-secondary text-theme-aware hover:bg-secondary'
                   }`}
-                  style={{
-                    backgroundColor: filterStatus === status.value 
-                      ? status.color === 'blue' ? '#2563eb'
-                      : status.color === 'red' ? '#dc2626'
-                      : status.color === 'orange' ? '#ea580c'
-                      : '#16a34a'
-                      : undefined
-                  }}
+                  style={
+                    filterStatus === status.value
+                      ? { backgroundColor:
+                          status.color === 'blue' ? '#2563eb' :
+                          status.color === 'red' ? '#dc2626' :
+                          status.color === 'orange' ? '#ea580c' :
+                          '#16a34a'
+                        }
+                      : { backgroundColor: "var(--cui-gray-200)", color: "var(--cui-body-color)" }
+                  }
                 >
                   {status.label}
                 </button>
@@ -224,45 +217,46 @@ const DueReport = () => {
         </div>
 
         {/* Table */}
-        <div className="bg-white rounded-lg shadow overflow-hidden">
+        <div className="rounded-lg shadow overflow-hidden" style={{ backgroundColor: "var(--cui-card-bg)" }}>
           <div className="overflow-x-auto">
             <table className="w-full min-w-[800px]">
-              <thead className="bg-gray-50 border-b border-gray-200">
+              <thead style={{ backgroundColor: "var(--cui-gray-100)" }}>
                 <tr>
-                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer Name</th>
-                  <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total Due</th>
-                  <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Amount Paid</th>
-                  <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Remaining</th>
-                  <th className="px-3 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Progress</th>
-                  <th className="px-3 sm:px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-3 sm:px-6 py-3 text-left text-xs font-medium text-secondary uppercase">Customer Name</th>
+                  <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-secondary uppercase">Total Due</th>
+                  <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-secondary uppercase">Amount Paid</th>
+                  <th className="px-3 sm:px-6 py-3 text-right text-xs font-medium text-secondary uppercase">Remaining</th>
+                  <th className="px-3 sm:px-6 py-3 text-center text-xs font-medium text-secondary uppercase">Progress</th>
+                  <th className="px-3 sm:px-6 py-3 text-center text-xs font-medium text-secondary uppercase">Status</th>
                 </tr>
               </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
+              <tbody>
                 {filteredCustomers.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-3 sm:px-6 py-8 text-center text-gray-500">
+                    <td colSpan="6" className="px-3 sm:px-6 py-8 text-center text-secondary">
                       No customers found
                     </td>
                   </tr>
                 ) : (
                   filteredCustomers.map((customer) => {
-                    const progressPercent = customer.totalDue > 0 
+                    const progressPercent = customer.totalDue > 0
                       ? ((customer.totalPaid / customer.totalDue) * 100).toFixed(1)
                       : 0;
 
                     return (
                       <tr
                         key={customer.customerId}
-                        className="hover:bg-gray-50 cursor-pointer transition-colors"
+                        className="hover:bg-secondary cursor-pointer transition-colors"
+                        style={{ color: "var(--cui-body-color)" }}
                         onClick={() => handleCustomerClick(customer)}
                       >
                         <td className="px-3 sm:px-6 py-4">
-                          <div className="font-medium text-gray-900 text-sm sm:text-base">{customer.customerName}</div>
-                          <div className="text-xs sm:text-sm text-gray-500">
+                          <div className="font-medium text-theme-aware text-sm sm:text-base">{customer.customerName}</div>
+                          <div className="text-xs sm:text-sm text-secondary">
                             {customer.dues.length} transaction{customer.dues.length !== 1 ? 's' : ''}
                           </div>
                         </td>
-                        <td className="px-3 sm:px-6 py-4 text-right font-medium text-gray-900 text-sm sm:text-base">
+                        <td className="px-3 sm:px-6 py-4 text-right font-medium text-theme-aware text-sm sm:text-base">
                           ₹{customer.totalDue.toFixed(2)}
                         </td>
                         <td className="px-3 sm:px-6 py-4 text-right text-green-600 font-medium text-sm sm:text-base">
@@ -275,7 +269,7 @@ const DueReport = () => {
                         </td>
                         <td className="px-3 sm:px-6 py-4">
                           <div className="flex flex-col items-center">
-                            <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
+                            <div className="w-full" style={{ backgroundColor: "var(--cui-gray-200)", borderRadius: '9999px', height: '8px', marginBottom: '0.25rem' }}>
                               <div
                                 className={`h-2 rounded-full ${
                                   progressPercent >= 100 ? 'bg-green-500' :
@@ -285,21 +279,21 @@ const DueReport = () => {
                                 style={{ width: `${Math.min(progressPercent, 100)}%` }}
                               ></div>
                             </div>
-                            <span className="text-xs text-gray-600 font-medium">{progressPercent}%</span>
+                            <span className="text-xs text-secondary font-medium">{progressPercent}%</span>
                           </div>
                         </td>
                         <td className="px-3 sm:px-6 py-4 text-center">
                           {customer.totalRemaining === 0 && customer.totalPaid > 0 ? (
-                            <span className="px-2 sm:px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-green-100 text-green-800">
+                            <span className="px-2 sm:px-3 py-1 inline-flex text-xs font-semibold rounded-full" style={{ backgroundColor: "var(--cui-gray-200)", color: "#059669" }}>
                               <span className="hidden sm:inline">Fully Paid</span>
                               <span className="sm:hidden">Paid</span>
                             </span>
                           ) : customer.totalPaid > 0 && customer.totalRemaining > 0 ? (
-                            <span className="px-2 sm:px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-orange-100 text-orange-800">
+                            <span className="px-2 sm:px-3 py-1 inline-flex text-xs font-semibold rounded-full" style={{ backgroundColor: "var(--cui-gray-200)", color: "#ea580c" }}>
                               Partial
                             </span>
                           ) : (
-                            <span className="px-2 sm:px-3 py-1 inline-flex text-xs font-semibold rounded-full bg-red-100 text-red-800">
+                            <span className="px-2 sm:px-3 py-1 inline-flex text-xs font-semibold rounded-full" style={{ backgroundColor: "var(--cui-gray-200)", color: "#dc2626" }}>
                               Unpaid
                             </span>
                           )}
@@ -314,22 +308,22 @@ const DueReport = () => {
         </div>
 
         {/* Footer */}
-        <div className="mt-4 sm:mt-6 bg-blue-50 border border-blue-200 rounded-lg p-3 sm:p-4">
+        <div className="mt-4 sm:mt-6 rounded-lg p-3 sm:p-4" style={{ backgroundColor: "var(--cui-secondary-bg)", border: "1px solid var(--cui-border-color)" }}>
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-3 sm:gap-4">
-            <p className="text-xs sm:text-sm text-blue-700 text-center sm:text-left">
+            <p className="text-xs sm:text-sm text-primary text-center sm:text-left">
               Showing <span className="font-semibold">{filteredCustomers.length}</span> of{' '}
               <span className="font-semibold">{customerSummary.length}</span> customers
             </p>
             <div className="flex gap-4 sm:gap-6 justify-center sm:justify-end">
               <div className="text-center">
-                <p className="text-xs text-blue-600 mb-1">Avg Due per Customer</p>
-                <p className="text-sm sm:text-lg font-bold text-blue-900">
+                <p className="text-xs text-primary mb-1">Avg Due per Customer</p>
+                <p className="text-sm sm:text-lg font-bold text-theme-aware">
                   ₹{customerSummary.length > 0 ? (totalDuesAmount / customerSummary.length).toFixed(2) : 0}
                 </p>
               </div>
               <div className="text-center">
-                <p className="text-xs text-blue-600 mb-1">Avg Outstanding</p>
-                <p className="text-sm sm:text-lg font-bold text-blue-900">
+                <p className="text-xs text-primary mb-1">Avg Outstanding</p>
+                <p className="text-sm sm:text-lg font-bold text-theme-aware">
                   ₹{customerSummary.length > 0 ? (totalRemainingAmount / customerSummary.length).toFixed(2) : 0}
                 </p>
               </div>
@@ -339,10 +333,10 @@ const DueReport = () => {
 
         {/* Modal for Customer Dues Details */}
         {isModalOpen && selectedCustomer && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-2 sm:p-4">
-            <div className="bg-white rounded-lg shadow-2xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col">
+          <div style={{ background: "rgba(0,0,0,0.5)" }} className="fixed inset-0 flex items-center justify-center z-50 p-2 sm:p-4">
+            <div className="rounded-lg shadow-2xl max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-hidden flex flex-col" style={{ backgroundColor: "var(--cui-card-bg)", color: "var(--cui-body-color)" }}>
               {/* Modal Header */}
-              <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center">
+              <div className="from-primary to-blue-700 text-theme-aware px-4 sm:px-6 py-3 sm:py-4 flex justify-between items-center">
                 <div className="flex-1 min-w-0">
                   <h2 className="text-lg sm:text-xl lg:text-2xl font-bold truncate">{selectedCustomer.customerName}</h2>
                   <p className="text-blue-100 text-xs sm:text-sm mt-1">
@@ -351,14 +345,14 @@ const DueReport = () => {
                 </div>
                 <button
                   onClick={closeModal}
-                  className="text-white hover:bg-blue-800 rounded-full p-2 transition-colors flex-shrink-0 ml-2"
+                  className="text-white hover:bg-blue-800 rounded-full p-2 transition-colors   ml-2"
                 >
                   <X className="w-5 h-5 sm:w-6 sm:h-6" />
                 </button>
               </div>
 
               {/* Modal Summary */}
-              <div className="bg-gradient-to-r from-blue-50 to-blue-100 px-3 sm:px-6 py-3 sm:py-4 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 border-b">
+              <div className=" from-blue-50 to-blue-100 px-3 sm:px-6 py-3 sm:py-4 grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4 border-b">
                 <div className="text-center">
                   <p className="text-xs text-gray-600 uppercase mb-1">Total Due</p>
                   <p className="text-lg sm:text-xl lg:text-2xl font-bold text-gray-900">₹{selectedCustomer.totalDue.toFixed(2)}</p>
@@ -385,7 +379,7 @@ const DueReport = () => {
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-2 sm:h-3">
                   <div
-                    className="bg-gradient-to-r from-green-500 to-green-600 h-2 sm:h-3 rounded-full transition-all"
+                    className=" from-green-500 to-green-600 h-2 sm:h-3 rounded-full transition-all"
                     style={{
                       width: `${Math.min(
                         (selectedCustomer.totalPaid / selectedCustomer.totalDue) * 100,

@@ -102,7 +102,7 @@ const Waste = () => {
     // Unit conversion function - Simplified and working
     const convertUnits = (quantity, fromUnit, toUnit) => {
         console.log(`🔄 Converting: ${quantity} ${fromUnit} to ${toUnit}`);
-        
+
         // If same units, return as is
         if (fromUnit === toUnit) {
             console.log(`✅ Same units: ${quantity}`);
@@ -172,7 +172,7 @@ const Waste = () => {
         } else if (name === "wasteQuantity" || name === "unit") {
             const newFormData = { ...formData, [name]: value };
             setFormData(newFormData);
-            
+
             // Calculate converted quantity if both quantity and unit are provided
             if (newFormData.wasteQuantity && newFormData.unit && selectedStock) {
                 const quantity = parseFloat(newFormData.wasteQuantity);
@@ -282,7 +282,7 @@ const Waste = () => {
                 .map((row) => [
                     row._id,
                     row.date,
-                    row.itemName,
+                    row.stockName,
                     row.wasteQuantity,
                     row.unit,
                     `"${row.reason}"`
@@ -301,7 +301,7 @@ const Waste = () => {
         const tableRows = wastes.map((row) => [
             row._id,
             new Date(row.date).toLocaleDateString(),
-            row.itemName,
+            row.stockName,
             row.wasteQuantity,
             row.unit,
             row.reason,
@@ -702,8 +702,11 @@ const Waste = () => {
             <style>{mobileStyles}</style>
             <CContainer fluid className="px-2 px-md-3">
                 {/* Header Section - Mobile Responsive */}
-                <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
-                    <h2 className="mb-2 mb-md-0">Waste Management</h2>
+                <div className="d-flex flex-column align-items-center w-100 mb-3">
+                    <h2 className="fw-bold text-center mb-4" style={{ width: '100%' }}>
+                        Waste Management
+                    </h2>
+
                     <div className="d-flex flex-column flex-sm-row gap-2 w-100 w-md-auto">
                         <div className="d-flex justify-content-end">
                             <CButton

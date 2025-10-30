@@ -54,7 +54,7 @@ const TableUsageReport = () => {
     const checkMobileView = () => {
       setIsMobileView(window.innerWidth <= 768);
     };
-    
+
     checkMobileView();
     window.addEventListener('resize', checkMobileView);
     return () => window.removeEventListener('resize', checkMobileView);
@@ -102,13 +102,13 @@ const TableUsageReport = () => {
   // Filtered data based on search and table filter
   const filteredRows = useMemo(() => {
     return rows.filter(row => {
-      const matchesSearch = searchTerm === '' || 
+      const matchesSearch = searchTerm === '' ||
         row.tableNumber.toString().toLowerCase().includes(searchTerm.toLowerCase()) ||
         row.date.toLowerCase().includes(searchTerm.toLowerCase());
-      
-      const matchesTableFilter = filterTableNumber === '' || 
+
+      const matchesTableFilter = filterTableNumber === '' ||
         row.tableNumber.toString() === filterTableNumber;
-      
+
       return matchesSearch && matchesTableFilter;
     });
   }, [rows, searchTerm, filterTableNumber]);
@@ -250,27 +250,34 @@ const TableUsageReport = () => {
   );
 
   return (
-    <div className="p-3 p-md-4" style={{ minHeight: '100vh' }}>
+ <div className="p-3 p-md-4 bg-theme-aware" style={{ minHeight: '100vh' }}>
       <style jsx>{`
         @media (max-width: 768px) {
           .mobile-card {
+            /* Use theme colors for mobile card visibility */
+            border: 1px solid var(--cui-border-color);
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
             margin-bottom: 1rem;
+            background-color: var(--cui-card-bg); /* Ensure card background is theme-aware */
           }
           .mobile-card .card-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
+            /* Using utility classes for color in CoreUI/Bootstrap */
+            background-color: var(--cui-primary);
+            color: var(--cui-contrast-color-text, white); /* Text color contrast */
             border-radius: 8px 8px 0 0;
+            border-bottom: none;
           }
           .mobile-card .card-body {
             padding: 1rem;
           }
           .filter-section {
-            background: #f8f9fa;
-            border-radius: 8px;
-            padding: 1rem;
-            margin-bottom: 1rem;
+           background: var(--cui-card-bg) !important;
+           color: var(--cui-body-color) !important;
+           border-radius: 8px;
+           padding: 1rem;
+           margin-bottom: 1rem;
+           border: 1px solid var(--cui-border-color);
           }
         }
         .table-usage-card {
@@ -280,24 +287,35 @@ const TableUsageReport = () => {
           transform: translateY(-2px);
         }
       `}</style>
-      <h2 className="mb-4">Table Usage Report</h2>
+      
+      {/* FIX 1: Heading Alignment */}
+      <h2 className="mb-4 text-center text-theme-aware">Table Usage Report</h2>
 
       {/* Date range pickers */}
-      <CRow className="align-items-end mb-3" style={{ gap: '1rem', flexWrap: 'wrap' }}>
+      <CRow 
+        className="align-items-end mb-4" 
+        style={{ gap: '1rem 0', flexWrap: 'wrap' }}
+      >
+        {/* Start Date Column */}
         <CCol xs={12} sm={6} md={3}>
-          <label htmlFor="start" className="form-label fw-bold">
+          {/* FIX 2: Label color for theme awareness */}
+          <label htmlFor="start" className="form-label fw-bold text-theme-aware">
             Start Date
           </label>
+          {/* FIX 3: Input theme awareness */}
           <CFormInput
             type="date"
             id="start"
             value={startDate}
             max={endDate}
             onChange={(e) => setStartDate(e.target.value)}
+            className="input-theme-aware"
           />
         </CCol>
+        
+        {/* End Date Column */}
         <CCol xs={12} sm={6} md={3}>
-          <label htmlFor="end" className="form-label fw-bold">
+          <label htmlFor="end" className="form-label fw-bold text-theme-aware">
             End Date
           </label>
           <CFormInput
@@ -307,8 +325,12 @@ const TableUsageReport = () => {
             min={startDate}
             max={formatDate(today)}
             onChange={(e) => setEndDate(e.target.value)}
+            className="input-theme-aware"
           />
         </CCol>
+        
+        {/* Button Column */}
+        {/* FIX 4: Button alignment—100% width on mobile, top padding on tablet/desktop */}
         <CCol xs={12} sm={12} md={3} className="pt-2">
           <CButton color="primary" onClick={handleGenerateReport} className="w-100 w-md-auto">
             Generate Report
@@ -393,7 +415,8 @@ const TableUsageReport = () => {
           rowsPerPageOptions={[10]}
           components={{ Toolbar: CustomToolbar }}
           sx={{
-            backgroundColor: '#fff',
+            backgroundColor: 'var(--cui-card-bg)',
+            color: 'var(--cui-body-color)',
             '& .hdr': { fontWeight: 700, fontSize: '1.05rem' },
           }}
         />

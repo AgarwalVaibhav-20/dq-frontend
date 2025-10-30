@@ -530,17 +530,30 @@ const Menu = () => {
 
   // ------------------ UI ------------------
   return (
-    <div className="container-fluid px-2 px-md-4">
+        <div className="container-fluid px-2 px-md-4 ">
       {/* Header */}
-      <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center my-3 my-md-4 gap-3">
-        <h2 className="fw-bold mb-0 text-black" style={{ fontSize: '1.5rem' }}>🍽️ Menu </h2>
-        <div className="d-flex justify-content-end">
+      <div
+        className="d-flex flex-column flex-md-row justify-between   align-items-center my-3 my-md-4 gap-3"
+        style={{ width: "100%" }}
+      >
+        <h2
+          className="fw-bold mb-0 menu-title"
+          style={{
+            fontSize: '1.5rem',
+            textAlign: 'center'
+          }}
+        >
+          🍽️ Menu
+        </h2>
+
+
+        <div className="d-flex justify-content-center" style={{ width: "100%", maxWidth: 200 }}>
           <CButton
             color="primary"
             className="w-100 w-md-auto"
             size="sm"
-            style={{ 
-              fontSize: '0.875rem', 
+            style={{
+              fontSize: '0.875rem',
               padding: '0.375rem 0.75rem',
               minWidth: 'auto'
             }}

@@ -775,7 +775,9 @@ const Transactions = () => {
       paddingTop: isMobile ? '10px' : '0px'
     }}>
       <div className={`d-flex ${isMobile ? 'flex-column' : 'justify-content-between'} align-items-${isMobile ? 'start' : 'center'} mb-4`}>
-        <h2 className={isMobile ? 'mb-3' : ''}>Transactions</h2>
+        <h2 className="mb-3 text-center w-100">
+          Transactions
+        </h2>
         <CButton
           color="primary"
           onClick={() => dispatch(fetchTransactionsByRestaurant({ restaurantId, token }))}

@@ -16,12 +16,9 @@ import {
   CModalFooter,
   CCard,
   CCardBody,
-  CCardImage,
 } from '@coreui/react';
 import { useSelector } from 'react-redux';
 import FocusTrap from 'focus-trap-react';
-
-
 
 const ProductList = React.forwardRef(({
   searchProduct,
@@ -41,92 +38,51 @@ const ProductList = React.forwardRef(({
   const theme = useSelector((state) => state.theme.theme);
   const isDarkMode = theme === 'dark';
 
-  // console.log("filtered itesm menu",filteredMenuItems)
-
   // Modal state
   const [showSizeModal, setShowSizeModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [selectedSize, setSelectedSize] = useState('');
   const sizeOptionRefs = useRef([]);
 
-  // Available sizes
-  const sizes = [
-    { id: 'small', label: 'Small', priceMultiplier: 0.8 },
-    { id: 'medium', label: 'Medium', priceMultiplier: 1.0 },
-    { id: 'full', label: 'Full', priceMultiplier: 1.3 }
-  ];
-
   // Handle product click - only show modal, no direct add
   const handleProductClickInternal = (product) => {
-    console.log('===== handleProductClickInternal CALLED =====');
-    console.log('Product clicked:', product.itemName);
-    console.log('Opening size selection modal');
-    console.log('Product details:', product);
-    console.log('Current showSizeModal state:', showSizeModal);
-
-    if (!product) {
-      console.error('Product is null or undefined!');
-      return;
-    }
+    if (!product) return;
 
     try {
-      console.log('Setting selectedProduct...');
       setSelectedProduct(product);
-      console.log('Setting selectedSize to empty...');
       setSelectedSize('');
-      console.log('Setting showSizeModal to true...');
-      
-      // Force immediate state update
       setShowSizeModal(true);
-      
-      console.log('Modal state set to true');
-      console.log('showSizeModal after setState:', true); // Note: won't show updated value due to async
-      
+
       if (handleProductClick) {
-        console.log('Calling handleProductClick prop');
         handleProductClick(product);
       }
-      
-      console.log('===== handleProductClickInternal COMPLETED =====');
     } catch (error) {
       console.error('Error opening modal:', error);
-      console.error('Error stack:', error.stack);
     }
   };
+
   const searchInputRef = useRef(null);
   const selectSystemRef = useRef(null);
+  const modalHasFocusedRef = useRef(false);
 
   useEffect(() => {
     searchInputRef.current?.focus();
   }, []);
-  
-  // Focus on first size option when modal opens
-  const modalHasFocusedRef = useRef(false);
-  
+
   // Function to focus first size option
   const focusFirstSizeOption = useCallback(() => {
-    // Wait a bit for modal to fully render
     const attemptFocus = () => {
-      // Try multiple strategies
       const firstSizeCard = sizeOptionRefs.current[0];
-      const firstSizeOptionByClass = document.querySelector('.size-option[tabindex="0"]');
-      const firstSizeOptionBySelector = document.querySelector('.size-option');
-      
-      const elementToFocus = firstSizeCard || firstSizeOptionByClass || firstSizeOptionBySelector;
-      
+      const elementToFocus = firstSizeCard || document.querySelector('.size-option[tabindex="0"]');
+
       if (elementToFocus) {
-        console.log('Focusing first size option, element:', elementToFocus);
         try {
-          // Ensure element is focusable
           if (elementToFocus.setAttribute) {
             elementToFocus.setAttribute('tabindex', '0');
           }
-          
-          // Focus the element
           if (typeof elementToFocus.focus === 'function') {
             elementToFocus.focus();
             modalHasFocusedRef.current = true;
-            console.log('✅ Successfully focused first size option!');
             return true;
           }
         } catch (error) {
@@ -135,16 +91,12 @@ const ProductList = React.forwardRef(({
       }
       return false;
     };
-    
-    // Try immediately
+
     if (!attemptFocus()) {
-      // Try after animation frame
       requestAnimationFrame(() => {
         if (!attemptFocus()) {
-          // Try after short delay
           setTimeout(() => {
             if (!attemptFocus()) {
-              // Try after longer delay
               setTimeout(() => {
                 attemptFocus();
               }, 300);
@@ -154,34 +106,25 @@ const ProductList = React.forwardRef(({
       });
     }
   }, []);
-  
+
   useEffect(() => {
     if (showSizeModal && selectedProduct?.sizes && selectedProduct.sizes.length > 0) {
-      // Reset focus flag when modal opens
       modalHasFocusedRef.current = false;
-      
-      // Wait for modal to be in DOM before focusing
-      // Use longer delay to ensure modal is fully rendered
       setTimeout(() => {
         focusFirstSizeOption();
       }, 200);
     } else {
-      // Reset when modal closes
       modalHasFocusedRef.current = false;
       if (!showSizeModal) {
         sizeOptionRefs.current = [];
       }
     }
   }, [showSizeModal, selectedProduct, focusFirstSizeOption]);
+
   // Handle size selection and add to cart
   const handleAddToCart = () => {
-    console.log('Add to cart clicked');
-    console.log('Selected product:', selectedProduct?.itemName);
-    console.log('Selected size:', selectedSize);
-
     if (selectedProduct && selectedSize) {
       const sizeData = selectedProduct.sizes.find(s => s._id === selectedSize);
-      console.log('Size data found:', sizeData);
 
       const productWithSize = {
         ...selectedProduct,
@@ -190,75 +133,49 @@ const ProductList = React.forwardRef(({
         sizeId: sizeData._id,
       };
 
-      console.log('Adding product with size:', productWithSize);
       onMenuItemClick(productWithSize);
 
       setShowSizeModal(false);
       setSelectedProduct(null);
       setSelectedSize('');
-      console.log('Modal closed and product added');
-    } else {
-      console.log('Missing selectedProduct or selectedSize');
     }
   };
 
-
   // Close modal
   const handleCloseModal = () => {
-    try {
-      console.log('Closing modal');
-      setShowSizeModal(false);
-      setSelectedProduct(null);
-      setSelectedSize('');
-    } catch (error) {
-      console.error('Error closing modal:', error);
-    }
+    setShowSizeModal(false);
+    setSelectedProduct(null);
+    setSelectedSize('');
+    // Optionally focus back to the product list search input
+    searchInputRef.current?.focus();
   };
 
   // Direct add to cart without modal
   const handleDirectAdd = (product) => {
-    try {
-      const productToAdd = {
-        ...product,
-        adjustedPrice: product.price,
-        sizeId: null,
-      };
-      onMenuItemClick(productToAdd);
-      console.log('Added to cart directly:', product.itemName);
-    } catch (error) {
-      console.error('Error adding to cart:', error);
-    }
+    const productToAdd = {
+      ...product,
+      adjustedPrice: product.price,
+      sizeId: null,
+    };
+    onMenuItemClick(productToAdd);
   };
-  // useEffect(() => {
-  //   const handleCategoryKeyDown = (e) => {
-  //     const categoryButtons = document.querySelectorAll('.category-button');
-  //     const currentFocused = document.activeElement;
-  //     let index = Array.from(categoryButtons).indexOf(currentFocused);
 
-  //     if (e.key === 'ArrowRight') {
-  //       index = index < categoryButtons.length - 1 ? index + 1 : 0;
-  //       categoryButtons[index].focus();
-  //     }
-  //     if (e.key === 'ArrowLeft') {
-  //       index = index > 0 ? index - 1 : categoryButtons.length - 1;
-  //       categoryButtons[index].focus();
-  //     }
-  //   };
-
-  //   window.addEventListener('keydown', handleCategoryKeyDown);
-  //   return () => window.removeEventListener('keydown', handleCategoryKeyDown);
-  // }, []);
   return (
     <>
       <CContainer ref={ref}
-        className={`product-list-container rounded max-sm:mb-5 p-4 ${isDarkMode ? 'bg-dark text-light' : 'bg-white text-dark'} shadow-sm`}
+        className={`product-list-container rounded max-sm:mb-5 p-4 card-theme-aware text-theme-aware shadow-sm`}
+        style={{
+          borderColor: isDarkMode ? 'var(--cui-border-color)' : 'var(--cui-gray-400)',
+          borderWidth: '1px',
+          borderStyle: 'solid'
+        }}
       >
         {/* Search & Table Info - Mobile Responsive */}
         <div className="mb-4">
           <CInputGroup className="mb-2 mb-md-0">
             <CFormInput
               placeholder="Search menu items..."
-              className={`me-2 me-md-3 py-2 px-3 rounded-pill ${isDarkMode ? 'bg-secondary text-light border-0' : 'border'}`}
+              className="me-2 me-md-3 py-2 px-3 rounded-pill input-theme-aware"
               value={searchProduct}
               onChange={handleSearchProduct}
               ref={searchInputRef}
@@ -267,19 +184,16 @@ const ProductList = React.forwardRef(({
                 minHeight: '40px'
               }}
               onKeyDown={(e) => {
-                // Right arrow: Move to Select System
                 if (e.key === 'ArrowRight') {
                   e.preventDefault();
                   e.stopPropagation();
                   selectSystemRef.current?.focus();
                 }
-                // Left arrow: Stay or wrap to Select System (since it's circular)
                 else if (e.key === 'ArrowLeft') {
                   e.preventDefault();
                   e.stopPropagation();
                   selectSystemRef.current?.focus();
                 }
-                // Down arrow: Move focus to first category button
                 else if (e.key === 'ArrowDown') {
                   e.preventDefault();
                   e.stopPropagation();
@@ -287,7 +201,6 @@ const ProductList = React.forwardRef(({
                   if (categoryButtons.length > 0) {
                     categoryButtons[0].focus();
                   } else {
-                    // If no categories, move to first product
                     const productCards = document.querySelectorAll('.product-card');
                     if (productCards.length > 0) {
                       productCards[0].focus();
@@ -298,7 +211,7 @@ const ProductList = React.forwardRef(({
             />
             <CFormSelect
               ref={selectSystemRef}
-              className={`rounded-pill px-2 px-md-3 py-2 ${isDarkMode ? 'bg-secondary text-light border-0' : 'border'}`}
+              className="rounded-pill px-2 px-md-3 py-2 input-theme-aware"
               value={selectedSystem?._id || ''}
               onChange={handleSystemDropdownChange}
               style={{
@@ -307,23 +220,19 @@ const ProductList = React.forwardRef(({
                 minWidth: '120px'
               }}
               onKeyDown={(e) => {
-                // Left arrow: Move back to search input
                 if (e.key === 'ArrowLeft') {
                   e.preventDefault();
                   e.stopPropagation();
                   searchInputRef.current?.focus();
                 }
-                // Right arrow: Move to Cart section
                 else if (e.key === 'ArrowRight') {
                   e.preventDefault();
                   e.stopPropagation();
-                  // Focus on first cart item or cart container
                   const cartItem = document.querySelector('.cart-item');
                   if (cartItem) {
                     cartItem.focus();
                   }
                 }
-                // Down arrow: Move to categories
                 else if (e.key === 'ArrowDown') {
                   e.preventDefault();
                   e.stopPropagation();
@@ -345,14 +254,14 @@ const ProductList = React.forwardRef(({
         </div>
 
         {/* Category Filter Bar - Mobile Responsive */}
-        <h5 className="fw-semibold mb-3" style={{ fontSize: '16px' }}>Browse by Category</h5>
+        <h5 className="fw-semibold mb-3 text-theme-aware" style={{ fontSize: '16px' }}>Browse by Category</h5>
         <div
           className="d-flex overflow-auto pb-2 mb-4 gap-2 flex-nowrap custom-scrollbar"
           style={{
             scrollbarWidth: 'thin',
             scrollbarColor: isDarkMode
-              ? '#6c757d #343a40'
-              : '#adb5bd #f8f9fa',
+              ? 'var(--cui-gray-600) var(--cui-gray-800)' // Dark Mode scrollbar colors
+              : 'var(--cui-gray-500) var(--cui-gray-100)', // Light Mode scrollbar colors
             minHeight: '48px',
             maxWidth: '100%',
             overflowX: 'auto',
@@ -361,7 +270,8 @@ const ProductList = React.forwardRef(({
           }}
         >
           <CButton
-            color={!selectedCategoryId ? 'primary' : isDarkMode ? 'secondary' : 'light'}
+            // Use secondary for inactive, relying on global CSS to theme 'secondary'
+            color={!selectedCategoryId ? 'primary' : 'secondary'}
             className="category-button rounded-pill px-4 shadow-sm border-0"
             onClick={() => setSelectedCategoryId(null)}
             tabIndex={0}
@@ -382,18 +292,17 @@ const ProductList = React.forwardRef(({
               whiteSpace: 'nowrap'
             }}
             onKeyDown={(e) => {
+              // ... (Keydown logic remains the same)
               if (e.key === 'Enter' || e.key === ' ') {
                 e.preventDefault();
                 setSelectedCategoryId(null);
               } else if (e.key === 'ArrowDown') {
-                // Move to first product
                 e.preventDefault();
                 const productCards = document.querySelectorAll('.product-card');
                 if (productCards.length > 0) {
                   productCards[0].focus();
                 }
               } else if (e.key === 'ArrowUp') {
-                // Move to search bar
                 e.preventDefault();
                 e.stopPropagation();
                 const searchInput = document.querySelector('input[placeholder*="Search menu"]');
@@ -410,7 +319,6 @@ const ProductList = React.forwardRef(({
                 if (currentIndex > 0) {
                   targetButton = categoryButtons[currentIndex - 1];
                 } else {
-                  // Wrap to last button
                   targetButton = categoryButtons[categoryButtons.length - 1];
                 }
                 if (targetButton) {
@@ -426,7 +334,6 @@ const ProductList = React.forwardRef(({
                 if (currentIndex < categoryButtons.length - 1) {
                   targetButton = categoryButtons[currentIndex + 1];
                 } else {
-                  // Wrap to first button
                   targetButton = categoryButtons[0];
                 }
                 if (targetButton) {
@@ -439,11 +346,12 @@ const ProductList = React.forwardRef(({
             <i className="bi bi-grid me-1" style={{ fontSize: '12px' }} /> All
           </CButton>
           {categories.map((cat) => {
-            const categoryId = cat._id || cat.id; // Handle both _id and id fields
+            const categoryId = cat._id || cat.id;
             return (
               <CButton
                 key={categoryId}
-                color={selectedCategoryId === categoryId ? 'primary' : isDarkMode ? 'secondary' : 'light'}
+                // Use secondary for inactive, relying on global CSS to theme 'secondary'
+                color={selectedCategoryId === categoryId ? 'primary' : 'secondary'}
                 className={`category-button rounded-pill px-4 shadow-sm border-0 ${selectedCategoryId === categoryId ? '' : 'opacity-75'}`}
                 onClick={() => setSelectedCategoryId(categoryId)}
                 tabIndex={0}
@@ -455,18 +363,17 @@ const ProductList = React.forwardRef(({
                   e.currentTarget.style.outline = 'none';
                 }}
                 onKeyDown={(e) => {
+                  // ... (Keydown logic remains the same)
                   if (e.key === 'Enter' || e.key === ' ') {
                     e.preventDefault();
                     setSelectedCategoryId(categoryId);
                   } else if (e.key === 'ArrowDown') {
-                    // Move to first product
                     e.preventDefault();
                     const productCards = document.querySelectorAll('.product-card');
                     if (productCards.length > 0) {
                       productCards[0].focus();
                     }
                   } else if (e.key === 'ArrowUp') {
-                    // Move to search bar
                     e.preventDefault();
                     e.stopPropagation();
                     const searchInput = document.querySelector('input[placeholder*="Search menu"]');
@@ -483,7 +390,6 @@ const ProductList = React.forwardRef(({
                     if (currentIndex > 0) {
                       targetButton = categoryButtons[currentIndex - 1];
                     } else {
-                      // Wrap to last button
                       targetButton = categoryButtons[categoryButtons.length - 1];
                     }
                     if (targetButton) {
@@ -499,7 +405,6 @@ const ProductList = React.forwardRef(({
                     if (currentIndex < categoryButtons.length - 1) {
                       targetButton = categoryButtons[currentIndex + 1];
                     } else {
-                      // Wrap to first button
                       targetButton = categoryButtons[0];
                     }
                     if (targetButton) {
@@ -524,12 +429,12 @@ const ProductList = React.forwardRef(({
                   <img
                     src={cat.icon}
                     alt=""
+                    className="invert-dark-mode-icon" // ✅ New Class: Use a global class for inversion
                     style={{
                       width: '14px',
                       height: '14px',
                       objectFit: 'contain',
                       marginRight: '4px',
-                      filter: isDarkMode ? 'invert(1)' : undefined,
                     }}
                   />
                 )}
@@ -537,63 +442,31 @@ const ProductList = React.forwardRef(({
               </CButton>
             );
           })}
-          {/* {categories.map((cat) => (
-            <CButton
-              key={cat.id}
-              color={selectedCategoryId === cat.id ? 'primary' : isDarkMode ? 'secondary' : 'light'}
-              className={`rounded-pill px-4 shadow-sm border-0 ${selectedCategoryId === cat.id ? '' : 'opacity-75'}`}
-              onClick={() => setSelectedCategoryId(cat.id)}
-              style={{
-                fontWeight: selectedCategoryId === cat.id ? 600 : 400,
-                boxShadow: selectedCategoryId === cat.id ? '0 0 0 0.2rem rgba(0,123,255,.15)' : undefined,
-                transition: 'all 0.2s',
-                display: 'flex',
-                alignItems: 'center',
-                whiteSpace: 'nowrap',
-              }}
-            >
-              {cat.icon && (
-                <img
-                  src={cat.icon}
-                  alt=""
-                  style={{
-                    width: 22,
-                    height: 22,
-                    objectFit: 'contain',
-                    marginRight: 8,
-                    filter: isDarkMode ? 'invert(1)' : undefined,
-                  }}
-                />
-              )}
-              {cat.categoryName}
-            </CButton>
-          ))} */}
         </div>
 
-        <h5 className="fw-semibold mb-3" style={{ fontSize: '16px' }}>Available Items</h5>
+        <h5 className="fw-semibold mb-3 text-theme-aware" style={{ fontSize: '16px' }}>Available Items</h5>
         {menuItemsLoading ? (
           <div className="text-center py-5">
             <CSpinner color="primary" className="mb-3" />
-            <p style={{ fontSize: '14px' }}>Fetching products...</p>
+            <p className="text-theme-aware" style={{ fontSize: '14px' }}>Fetching products...</p>
           </div>
         ) : filteredMenuItems.length === 0 ? (
-          <div className="text-center text-muted py-5" style={{ fontSize: '14px' }}>
+          <div className="text-center text-secondary py-5" style={{ fontSize: '14px' }}>
             {selectedCategoryId ? 'No products found in this category.' : 'No products match your selection.'}
           </div>
         ) : (
-          <div className="product-grid overflow-auto px-2" style={{ maxHeight: '55vh' }}>
+          <div className="product-grid overflow-auto px-2 custom-scrollbar" style={{ maxHeight: '55vh' }}>
             <CRow className="g-2 g-md-4">
               {filteredMenuItems.map((product) => (
                 <CCol key={product._id} xs={6} sm={4} md={3} lg={2}>
                   <CTooltip content={`Click to select size for ${product.itemName}`} placement="top">
                     <div
                       onClick={(e) => {
-                        console.log('Product div clicked:', product.itemName);
                         e.preventDefault();
                         e.stopPropagation();
                         handleProductClickInternal(product);
                       }}
-                      className={`product-card p-2 d-flex flex-column align-items-center justify-content-between text-center border rounded-4 h-100 w-100 shadow-sm transition-all hover-scale ${isDarkMode ? 'bg-secondary text-light' : 'bg-white'}`}
+                      className={`product-card p-2 d-flex flex-column align-items-center justify-content-between text-center border rounded-4 h-100 w-100 shadow-sm transition-all hover-scale card-theme-aware text-theme-aware`}
                       tabIndex={0}
                       data-id={product._id}
                       data-product-name={product.itemName}
@@ -609,10 +482,14 @@ const ProductList = React.forwardRef(({
                       onMouseEnter={(e) => {
                         e.currentTarget.style.transform = 'translateY(-2px)';
                         e.currentTarget.style.boxShadow = '0 4px 20px rgba(0,0,0,0.12)';
+                        // Apply hover color for non-JS themes
+                        e.currentTarget.style.backgroundColor = isDarkMode ? 'var(--cui-gray-800)' : 'var(--cui-gray-100)';
                       }}
                       onMouseLeave={(e) => {
                         e.currentTarget.style.transform = 'translateY(0)';
                         e.currentTarget.style.boxShadow = '0 2px 12px rgba(0,0,0,0.06)';
+                        // Revert to base color
+                        e.currentTarget.style.backgroundColor = isDarkMode ? 'var(--cui-card-bg)' : 'var(--cui-body-bg)';
                       }}
                       onFocus={(e) => {
                         e.currentTarget.style.outline = '3px solid #0d6efd';
@@ -621,36 +498,24 @@ const ProductList = React.forwardRef(({
                       }}
                       onBlur={(e) => {
                         e.currentTarget.style.outline = 'none';
+                        // Revert to base color on blur
+                        e.currentTarget.style.backgroundColor = isDarkMode ? 'var(--cui-card-bg)' : 'var(--cui-body-bg)';
                       }}
                       onKeyDown={(e) => {
-                        console.log('Key pressed on product card:', e.key, product.itemName);
-                        console.log('Current active element:', document.activeElement);
-                        console.log('Event target:', e.target);
-                        
                         if (e.key === 'Enter' || e.key === ' ') {
-                          console.log('Enter/Space key detected - opening modal');
                           e.preventDefault();
                           e.stopPropagation();
-                          
-                          // Use nativeEvent for stopImmediatePropagation if available
                           if (e.nativeEvent && typeof e.nativeEvent.stopImmediatePropagation === 'function') {
                             e.nativeEvent.stopImmediatePropagation();
                           }
-                          
-                          console.log('Before calling handleProductClickInternal');
-                          
-                          // Use setTimeout to ensure state update happens after event handling
                           setTimeout(() => {
-                            console.log('Inside setTimeout, calling handleProductClickInternal');
                             handleProductClickInternal(product);
-                            console.log('After calling handleProductClickInternal in setTimeout');
                           }, 0);
                         }
-                        // Arrow key navigation
+                        // ... (Arrow key navigation remains the same)
                         else if (e.key === 'ArrowUp') {
                           e.preventDefault();
                           e.stopPropagation();
-                          // Move to categories when pressing Up arrow from products
                           const categoryButtons = document.querySelectorAll('.category-button');
                           if (categoryButtons.length > 0) {
                             categoryButtons[0].focus();
@@ -661,13 +526,12 @@ const ProductList = React.forwardRef(({
                           e.preventDefault();
                           const productCards = document.querySelectorAll('.product-card');
                           const currentIndex = Array.from(productCards).indexOf(e.currentTarget);
-                          
-                          // Calculate cols based on screen width
-                          let colsPerRow = 2; // xs default
-                          if (window.innerWidth >= 1200) colsPerRow = 6; // lg
-                          else if (window.innerWidth >= 992) colsPerRow = 4; // md
-                          else if (window.innerWidth >= 576) colsPerRow = 3; // sm
-                          
+
+                          let colsPerRow = 2;
+                          if (window.innerWidth >= 1200) colsPerRow = 6;
+                          else if (window.innerWidth >= 992) colsPerRow = 4;
+                          else if (window.innerWidth >= 576) colsPerRow = 3;
+
                           const newIndex = currentIndex + colsPerRow;
                           if (newIndex < productCards.length) {
                             productCards[newIndex]?.focus();
@@ -678,30 +542,25 @@ const ProductList = React.forwardRef(({
                           e.stopPropagation();
                           const productCards = document.querySelectorAll('.product-card');
                           const currentIndex = Array.from(productCards).indexOf(e.currentTarget);
-                          
+
                           if (currentIndex === -1) return;
-                          
-                          // Calculate cols based on screen width
-                          let colsPerRow = 2; // xs default
-                          if (window.innerWidth >= 1200) colsPerRow = 6; // lg
-                          else if (window.innerWidth >= 992) colsPerRow = 4; // md
-                          else if (window.innerWidth >= 576) colsPerRow = 3; // sm
-                          
-                          // Calculate current position in grid
+
+                          let colsPerRow = 2;
+                          if (window.innerWidth >= 1200) colsPerRow = 6;
+                          else if (window.innerWidth >= 992) colsPerRow = 4;
+                          else if (window.innerWidth >= 576) colsPerRow = 3;
+
                           const currentRow = Math.floor(currentIndex / colsPerRow);
                           const currentCol = currentIndex % colsPerRow;
-                          
+
                           let targetIndex;
-                          // Move to previous column in same row
                           if (currentCol > 0) {
-                            // Normal: move to previous column
                             targetIndex = currentRow * colsPerRow + (currentCol - 1);
                           } else {
-                            // At start of row: move to last column of same row
                             const lastColInRow = Math.min(colsPerRow - 1, (productCards.length - (currentRow * colsPerRow) - 1));
                             targetIndex = currentRow * colsPerRow + lastColInRow;
                           }
-                          
+
                           if (targetIndex >= 0 && targetIndex < productCards.length) {
                             productCards[targetIndex]?.focus();
                           }
@@ -711,30 +570,25 @@ const ProductList = React.forwardRef(({
                           e.stopPropagation();
                           const productCards = document.querySelectorAll('.product-card');
                           const currentIndex = Array.from(productCards).indexOf(e.currentTarget);
-                          
+
                           if (currentIndex === -1) return;
-                          
-                          // Calculate cols based on screen width
-                          let colsPerRow = 2; // xs default
-                          if (window.innerWidth >= 1200) colsPerRow = 6; // lg
-                          else if (window.innerWidth >= 992) colsPerRow = 4; // md
-                          else if (window.innerWidth >= 576) colsPerRow = 3; // sm
-                          
-                          // Calculate current position in grid
+
+                          let colsPerRow = 2;
+                          if (window.innerWidth >= 1200) colsPerRow = 6;
+                          else if (window.innerWidth >= 992) colsPerRow = 4;
+                          else if (window.innerWidth >= 576) colsPerRow = 3;
+
                           const currentRow = Math.floor(currentIndex / colsPerRow);
                           const currentCol = currentIndex % colsPerRow;
                           const itemsInCurrentRow = Math.min(colsPerRow, productCards.length - (currentRow * colsPerRow));
-                          
+
                           let targetIndex;
-                          // Move to next column in same row
                           if (currentCol < itemsInCurrentRow - 1) {
-                            // Normal: move to next column
                             targetIndex = currentRow * colsPerRow + (currentCol + 1);
                           } else {
-                            // At end of row: move to first column of same row (wrap around)
                             targetIndex = currentRow * colsPerRow;
                           }
-                          
+
                           if (targetIndex >= 0 && targetIndex < productCards.length) {
                             productCards[targetIndex]?.focus();
                           }
@@ -750,6 +604,7 @@ const ProductList = React.forwardRef(({
                           textOverflow: 'ellipsis',
                           width: '100%',
                           lineHeight: '1.2',
+                          color: isDarkMode ? 'var(--cui-body-color)' : 'var(--cui-body-color)' // Explicit text color fix
                         }}
                       >
                         {product.itemName}
@@ -774,231 +629,199 @@ const ProductList = React.forwardRef(({
         backdrop="static"
         portal={false}
         onOpened={() => {
-          // Focus first size when modal animation completes
-          console.log('Modal opened, focusing first size...');
           setTimeout(() => {
             focusFirstSizeOption();
           }, 100);
         }}
       >
-          <CModalHeader className={isDarkMode ? 'bg-dark text-light border-secondary' : ''}>
-            <CModalTitle style={{ fontSize: '16px' }}>Select Size</CModalTitle>
-          </CModalHeader>
-          <CModalBody className={isDarkMode ? 'bg-dark text-light' : ''} style={{ padding: '20px' }}>
-            {selectedProduct && (
-              <div className="text-center mb-3">
-                {selectedProduct.itemImage && (
-                  <img
-                    src={selectedProduct.itemImage}
-                    alt={selectedProduct.itemName}
-                    style={{
-                      width: '80px',
-                      height: '80px',
-                      objectFit: 'cover',
-                      borderRadius: '8px',
-                      margin: '0 auto 12px'
-                    }}
-                    onError={(e) => {
-                      e.target.style.display = 'none';
-                    }}
-                  />
-                )}
-                <h5 className="mb-2" style={{ fontSize: '16px' }}>{selectedProduct.itemName}</h5>
-                <p className={`mb-3 ${isDarkMode ? 'text-light opacity-75' : 'text-muted'}`} style={{ fontSize: '14px' }}>
-                  {selectedProduct.description || 'Choose your preferred size'}
-                </p>
+        {/* Header relies on global .modal-header CSS */}
+        <CModalHeader>
+          <CModalTitle style={{ fontSize: '16px' }}>Select Size</CModalTitle>
+        </CModalHeader>
+
+        {/* Body relies on global .modal-body CSS */}
+        <CModalBody style={{ padding: '20px' }}>
+          {selectedProduct && (
+            <div className="text-center mb-3">
+              {selectedProduct.itemImage && (
+                <img
+                  src={selectedProduct.itemImage}
+                  alt={selectedProduct.itemName}
+                  style={{
+                    width: '80px',
+                    height: '80px',
+                    objectFit: 'cover',
+                    borderRadius: '8px',
+                    margin: '0 auto 12px'
+                  }}
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                  }}
+                />
+              )}
+              <h5 className="mb-2 text-theme-aware" style={{ fontSize: '16px' }}>{selectedProduct.itemName}</h5>
+              <p className="mb-3 text-secondary" style={{ fontSize: '14px' }}>
+                {selectedProduct.description || 'Choose your preferred size'}
+              </p>
+            </div>
+          )}
+
+          <div className="size-options">
+            <h6 className="mb-3 text-theme-aware" style={{ fontSize: '14px' }}>Available Sizes:</h6>
+            {selectedProduct?.sizes && selectedProduct.sizes.length > 0 ? (
+              <CRow className="g-2">
+                {selectedProduct.sizes.map((size, index) => (
+                  <CCol key={size._id} xs={12} sm={6} md={4}>
+                    <CCard
+                      ref={(el) => {
+                        sizeOptionRefs.current[index] = el;
+                      }}
+                      className={`size-option h-100 ${selectedSize === size._id
+                        ? 'border-primary bg-primary bg-opacity-10'
+                        : 'border card-theme-aware' // Use card-theme-aware for default style
+                        }`}
+                      style={{
+                        cursor: 'pointer',
+                        transition: 'all 0.2s ease',
+                        outline: 'none'
+                      }}
+                      onClick={() => setSelectedSize(size._id)}
+                      tabIndex={0}
+                      role="button"
+                      aria-pressed={selectedSize === size._id}
+                      onFocus={(e) => {
+                        e.currentTarget.style.outline = '3px solid #0d6efd';
+                        e.currentTarget.style.outlineOffset = '2px';
+                      }}
+                      onBlur={(e) => {
+                        e.currentTarget.style.outline = 'none';
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSelectedSize(size._id);
+                        } else if (e.key === 'ArrowRight') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const nextIndex = index < selectedProduct.sizes.length - 1 ? index + 1 : 0;
+                          const nextSizeOption = sizeOptionRefs.current[nextIndex];
+                          nextSizeOption?.focus();
+                        } else if (e.key === 'ArrowLeft') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const prevIndex = index > 0 ? index - 1 : selectedProduct.sizes.length - 1;
+                          const prevSizeOption = sizeOptionRefs.current[prevIndex];
+                          prevSizeOption?.focus();
+                        } else if (e.key === 'ArrowDown') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const addToCartBtn = document.querySelector('.add-to-cart-size-btn');
+                          addToCartBtn?.focus();
+                        } else if (e.key === 'ArrowUp') {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          const cancelBtn = document.querySelector('.cancel-size-btn');
+                          cancelBtn?.focus();
+                        }
+                      }}
+                    >
+                      <CCardBody className="text-center p-3 text-theme-aware">
+                        <h6 className="mb-2" style={{ fontSize: '14px' }}>{size.label}</h6>
+                        <div className="price-info">
+                          <span className="text-primary fw-bold" style={{ fontSize: '14px' }}>₹{size.price}</span>
+                        </div>
+                        {selectedSize === size._id && (
+                          <div className="mt-2">
+                            <i className="bi bi-check-circle-fill text-primary" style={{ fontSize: '16px' }}></i>
+                          </div>
+                        )}
+                      </CCardBody>
+                    </CCard>
+                  </CCol>
+                ))}
+              </CRow>
+            ) : (
+              <div className="text-center text-secondary">
+                <p>No sizes available for this item.</p>
+                <CButton
+                  color="primary"
+                  onClick={() => {
+                    const productWithoutSize = {
+                      ...selectedProduct,
+                      adjustedPrice: selectedProduct.price,
+                      sizeId: null,
+                    };
+                    onMenuItemClick(productWithoutSize);
+                    setShowSizeModal(false);
+                    setSelectedProduct(null);
+                    setSelectedSize('');
+                  }}
+                >
+                  Add to Cart (No Size)
+                </CButton>
               </div>
             )}
-
-            <div className="size-options">
-              <h6 className="mb-3" style={{ fontSize: '14px' }}>Available Sizes:</h6>
-              {selectedProduct?.sizes && selectedProduct.sizes.length > 0 ? (
-                <CRow className="g-2">
-                  {selectedProduct.sizes.map((size, index) => (
-                    <CCol key={size._id} xs={12} sm={6} md={4}>
-                      <CCard
-                        ref={(el) => {
-                          sizeOptionRefs.current[index] = el;
-                          // Auto-focus first size when modal opens and element is ready
-                          if (index === 0 && showSizeModal && el && !modalHasFocusedRef.current) {
-                            // Use multiple strategies to ensure focus
-                            requestAnimationFrame(() => {
-                              if (el && document.activeElement !== el) {
-                                el.focus();
-                                modalHasFocusedRef.current = true;
-                              }
-                            });
-                          }
-                        }}
-                        className={`size-option h-100 ${selectedSize === size._id
-                          ? 'border-primary bg-primary bg-opacity-10'
-                          : isDarkMode
-                            ? 'bg-secondary border-secondary'
-                            : 'border'
-                          }`}
-                        style={{ 
-                          cursor: 'pointer', 
-                          transition: 'all 0.2s ease',
-                          outline: 'none'
-                        }}
-                        onClick={() => setSelectedSize(size._id)}
-                        tabIndex={0}
-                        role="button"
-                        aria-pressed={selectedSize === size._id}
-                        onFocus={(e) => {
-                          e.currentTarget.style.outline = '3px solid #0d6efd';
-                          e.currentTarget.style.outlineOffset = '2px';
-                        }}
-                        onBlur={(e) => {
-                          e.currentTarget.style.outline = 'none';
-                        }}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter' || e.key === ' ') {
-                            e.preventDefault();
-                            setSelectedSize(size._id);
-                          } else if (e.key === 'ArrowRight') {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            // Move to next size option
-                            const nextIndex = index < selectedProduct.sizes.length - 1 ? index + 1 : 0;
-                            const nextSizeOption = sizeOptionRefs.current[nextIndex];
-                            if (nextSizeOption) {
-                              nextSizeOption.focus();
-                            }
-                          } else if (e.key === 'ArrowLeft') {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            // Move to previous size option
-                            const prevIndex = index > 0 ? index - 1 : selectedProduct.sizes.length - 1;
-                            const prevSizeOption = sizeOptionRefs.current[prevIndex];
-                            if (prevSizeOption) {
-                              prevSizeOption.focus();
-                            }
-                          } else if (e.key === 'ArrowDown') {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            // Move to Add to Cart button
-                            const addToCartBtn = document.querySelector('.add-to-cart-size-btn');
-                            addToCartBtn?.focus();
-                          } else if (e.key === 'ArrowUp') {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            // Move to Cancel button
-                            const cancelBtn = document.querySelector('.cancel-size-btn');
-                            cancelBtn?.focus();
-                          }
-                        }}
-                      >
-                        <CCardBody className="text-center p-3">
-                          <h6 className="mb-2" style={{ fontSize: '14px' }}>{size.label}</h6>
-                          <div className="price-info">
-                            <span className="text-primary fw-bold" style={{ fontSize: '14px' }}>₹{size.price}</span>
-                          </div>
-                          {selectedSize === size._id && (
-                            <div className="mt-2">
-                              <i className="bi bi-check-circle-fill text-primary" style={{ fontSize: '16px' }}></i>
-                            </div>
-                          )}
-                        </CCardBody>
-                      </CCard>
-                    </CCol>
-                  ))}
-                </CRow>
-              ) : (
-                <div className="text-center text-muted">
-                  <p>No sizes available for this item.</p>
-                  <CButton
-                    color="primary"
-                    onClick={() => {
-                      // Add item without size selection
-                      const productWithoutSize = {
-                        ...selectedProduct,
-                        adjustedPrice: selectedProduct.price,
-                        sizeId: null,
-                      };
-                      onMenuItemClick(productWithoutSize);
-                      setShowSizeModal(false);
-                      setSelectedProduct(null);
-                      setSelectedSize('');
-                    }}
-                  >
-                    Add to Cart (No Size)
-                  </CButton>
-                </div>
-              )}
-
-            </div>
-
-          </CModalBody>
-          <CModalFooter className={isDarkMode ? 'bg-dark border-secondary' : ''} style={{ padding: '16px 20px' }}>
-            <CButton
-              color="secondary"
-              className="cancel-size-btn"
-              onClick={handleCloseModal}
-              style={{ fontSize: '14px', minWidth: '80px' }}
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  handleCloseModal();
-                } else if (e.key === 'ArrowRight') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const addToCartBtn = document.querySelector('.add-to-cart-size-btn');
-                  addToCartBtn?.focus();
-                } else if (e.key === 'ArrowDown') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  // Move to first size option
-                  const firstSizeOption = sizeOptionRefs.current[0];
-                  if (firstSizeOption) {
-                    firstSizeOption.focus();
-                  }
+          </div>
+        </CModalBody>
+        {/* Footer relies on global .modal-footer CSS */}
+        <CModalFooter style={{ padding: '16px 20px' }}>
+          <CButton
+            color="secondary"
+            className="cancel-size-btn"
+            onClick={handleCloseModal}
+            style={{ fontSize: '14px', minWidth: '80px' }}
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                handleCloseModal();
+              } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                e.stopPropagation();
+                const addToCartBtn = document.querySelector('.add-to-cart-size-btn');
+                addToCartBtn?.focus();
+              } else if (e.key === 'ArrowDown') {
+                e.preventDefault();
+                e.stopPropagation();
+                const firstSizeOption = sizeOptionRefs.current[0];
+                firstSizeOption?.focus();
+              }
+            }}
+          >
+            Cancel
+          </CButton>
+          <CButton
+            color="primary"
+            className="add-to-cart-size-btn"
+            onClick={handleAddToCart}
+            disabled={!selectedSize}
+            style={{ fontSize: '14px', minWidth: '100px' }}
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                if (selectedSize) {
+                  handleAddToCart();
                 }
-              }}
-            >
-              Cancel
-            </CButton>
-            <CButton
-              color="primary"
-              className="add-to-cart-size-btn"
-              onClick={handleAddToCart}
-              disabled={!selectedSize}
-              style={{ fontSize: '14px', minWidth: '100px' }}
-              tabIndex={0}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault();
-                  if (selectedSize) {
-                    handleAddToCart();
-                  }
-                } else if (e.key === 'ArrowLeft') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  const cancelBtn = document.querySelector('.cancel-size-btn');
-                  cancelBtn?.focus();
-                } else if (e.key === 'ArrowUp') {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  // Move to last size option
-                  if (sizeOptionRefs.current.length > 0) {
-                    const lastSizeOption = sizeOptionRefs.current[sizeOptionRefs.current.length - 1];
-                    if (lastSizeOption) {
-                      lastSizeOption.focus();
-                    }
-                  }
+              } else if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                e.stopPropagation();
+                const cancelBtn = document.querySelector('.cancel-size-btn');
+                cancelBtn?.focus();
+              } else if (e.key === 'ArrowUp') {
+                e.preventDefault();
+                e.stopPropagation();
+                if (sizeOptionRefs.current.length > 0) {
+                  const lastSizeOption = sizeOptionRefs.current[sizeOptionRefs.current.length - 1];
+                  lastSizeOption?.focus();
                 }
-              }}
-            >
-              Add to Cart
-              {/* {selectedProduct && selectedSize && (
-              <span className="ms-2">
-                - ₹{Math.round(selectedProduct.price * sizes.find(s => s.id === selectedSize)?.priceMultiplier || 1)}
-              </span>
-            )} */}
-            </CButton>
-      </CModalFooter>
-    </CModal>
+              }
+            }}
+          >
+            Add to Cart
+          </CButton>
+        </CModalFooter>
+      </CModal>
 
     </>
   );

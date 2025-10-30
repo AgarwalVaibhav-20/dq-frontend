@@ -312,7 +312,7 @@ const TaxCollectedReport = () => {
   return (
     <CContainer fluid className="p-3">
       <div className="d-flex justify-content-between align-items-center mb-4">
-        <h2 className="mb-0">Tax Collected Report</h2>
+       <h2 className="mb-0 mx-auto text-center w-100 heading-mobile-center">Tax Collected Report</h2>
         {!isMobile && (
           <div className="d-flex gap-2">
             <CButton

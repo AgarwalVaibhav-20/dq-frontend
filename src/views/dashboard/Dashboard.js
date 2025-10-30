@@ -592,11 +592,24 @@ const getPieChartData = () => {
   }
 
   return (
-    <div style={{ paddingLeft: '20px', paddingRight: '20px' }}>
+     <div 
+    style={{ 
+      paddingLeft: '20px', 
+      paddingRight: '20px',
+      // The following styles are added to center the inner content
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+    }}>
       {/* Header with Restaurant Dropdown (only for superadmin) */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
+      <div style={{ 
+        width: '100%', 
+        maxWidth: '1200px', // Set a max-width to keep content readable on very large screens
+      }}>
         <div>
-          <h2 className="mb-0">Overview</h2>
+           <div className="w-100 d-flex justify-content-center align-items-center mb-3">
+            <h2 className="mb-0 text-center fw-bold fs-3">Overview</h2>
+          </div>
           {isSuperAdmin && (
             <p className="text-muted mb-0" style={{ fontSize: '14px' }}>
               Total Restaurants: <strong>{restaurants.length}</strong> | 

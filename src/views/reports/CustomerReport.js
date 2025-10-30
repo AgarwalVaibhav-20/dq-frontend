@@ -134,7 +134,8 @@ const CustomerReport = () => {
   return (
     <div className="container-fluid px-3 customer-report-mobile-container">
       <div className="d-flex justify-content-between align-items-center mb-4 customer-report-mobile-header">
-        <h2 className="mb-0 customer-report-mobile-title">Customer Report</h2>
+         <h2 className="mb-0 customer-report-mobile-title">Customer Report</h2>
+         
         <div className="text-muted customer-report-mobile-subtitle">
           Total Customers: {rows.length}
         </div>

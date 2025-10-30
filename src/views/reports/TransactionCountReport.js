@@ -170,8 +170,8 @@ const TransactionCountReport = () => {
 
   /* -------------------------------- render -------------------------------- */
   return (
-    <div style={{ padding: 20 }}>
-      <h2 className="mb-4">Transaction Count Report</h2>
+     <div style={{ padding: 20 }}>
+    <h2 className="mb-4 text-center">Transaction Count Report</h2>
 
       {/* date-range controls */}
       <CRow className="align-items-end mb-3" style={{ gap: '1rem', flexWrap: 'wrap' }}>

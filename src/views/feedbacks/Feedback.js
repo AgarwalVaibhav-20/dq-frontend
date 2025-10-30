@@ -122,7 +122,7 @@ export default function FeedbackPage() {
         gutterBottom 
         sx={{ color: isDark ? '#ffffff' : '#212529' }}
       >
-        Customer Feedback
+      <h2 className="mb-4 mx-auto text-center w-100 heading-mobile-center">Customer Feedback</h2>
       </Typography>
 
       <Stack 

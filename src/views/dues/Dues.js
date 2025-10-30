@@ -981,48 +981,28 @@ const Dues = () => {
   };
 
   return (
-    <div style={{ padding: '20px', minHeight: '100vh' }}>
-      {/* Header */}
-      <div>
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '16px',
-          }}
-        >
-          <div>
-            <h2 style={{margin: 0, marginBottom: '8px' }}>
-              Dues Management
-            </h2>
-          </div>
-          <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
-            <CButton
-              color="dark"
-              variant="outline"
-              onClick={handleRefresh}
-              disabled={isLoading}
-              title="Refresh Data"
-              className="d-flex align-items-center gap-2"
-            >
-              <CIcon icon={cilReload} size="sm" />
-              {!isMobile && 'Refresh'}
-            </CButton>
-            <CButton
-              color="dark"
-              onClick={() => setModalVisible(true)}
-              disabled={isLoading}
-              className="d-flex align-items-center gap-2"
-              style={{ fontWeight: '600' }}
-            >
-              <CIcon icon={cilPlus} size="sm" />
-              Add Due
-            </CButton>
-          </div>
-        </div>
-      </div>
+ <div className="due-header-flex" style={{marginBottom: 18}}>
+  <h2 style={{ margin: 0, marginBottom: 2 }} className="text-center mb-3">Dues Management</h2>
+  <div className="header-btns" style={{
+    display: 'flex',
+    gap: 12,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    width: '100%',
+    marginTop: 8
+  }}>
+    <CButton
+      color="dark"
+      onClick={() => setModalVisible(true)}
+      style={{
+        fontWeight: '600',
+        width: '180px',         // Chaho toh width 100% bhi kar sakte ho mobile pe
+        maxWidth: '100%'
+      }}
+    >
+      + Add Due
+    </CButton>
+  </div>
 
       {/* Statistics Cards */}
       <div className="row g-3 mb-4 mt-3">

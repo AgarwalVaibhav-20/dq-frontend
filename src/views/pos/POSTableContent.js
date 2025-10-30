@@ -1941,7 +1941,7 @@ const POSTableContent = () => {
   }, [categories]);
 
   return (
-    <CContainer fluid className="p-5" style={{ backgroundColor: '#f0f2f5' }}>
+    <CContainer fluid className="p-5 bg-theme-aware">
       <CRow>
         <CCol md={7} lg={8}>
           <ProductList

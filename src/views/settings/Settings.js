@@ -1064,7 +1064,7 @@ const Settings = () => {
         <CCol>
           <CCard>
             <CCardHeader className="px-2 px-md-3 py-2 py-md-3">
-              <CCardTitle className="h5 h6-md mb-0">
+              <CCardTitle className="h5 h6-md mb-0 text-center">
                 <CIcon icon={cilSettings} className="me-1 me-md-2" />
                 <span className="d-none d-sm-inline">Settings Management</span>
                 <span className="d-inline d-sm-none">Settings</span>
@@ -1130,7 +1130,7 @@ const Settings = () => {
                 <CNav
                   variant="tabs"
                   role="tablist"
-                  className="bg-light border-bottom rounded-top px-2 shadow-sm"
+                //className="bg-light border-bottom rounded-top px-2 shadow-sm"
                 >
                   <CNavItem>
                     <CNavLink
@@ -1304,7 +1304,7 @@ const Settings = () => {
                               }}
                               placeholder="#FF0000"
                               maxLength={7}
-                              className="form-control-sm flex-grow-1"
+                              className="form-control-sm "
                               style={{ fontFamily: 'monospace', minWidth: '120px' }}
                             />
                           </div>
@@ -2479,28 +2479,28 @@ const Settings = () => {
                 </CCardHeader>
 
                 {/* Inside the Shortcuts CTabPane, BEFORE the form */}
-                
+
                 <CCardBody>
                   <CRow className="mb-3">
-                  <CCol>
-                    <div className="d-flex gap-2">
-                      <CButton
-                        color="info"
-                        size="sm"
-                        onClick={handleSelectFromPredefined}
-                      >
-                        <CIcon icon={cilPlus} className="me-2" />
-                        Browse Available Shortcuts
-                      </CButton>
+                    <CCol>
+                      <div className="d-flex gap-2">
+                        <CButton
+                          color="info"
+                          size="sm"
+                          onClick={handleSelectFromPredefined}
+                        >
+                          <CIcon icon={cilPlus} className="me-2" />
+                          Browse Available Shortcuts
+                        </CButton>
 
-                      <div className="ms-auto">
-                        <CBadge color="secondary" className="p-2">
-                          {shortcuts.length} / {AVAILABLE_SHORTCUTS.length} shortcuts configured
-                        </CBadge>
+                        <div className="ms-auto">
+                          <CBadge color="secondary" className="p-2">
+                            {shortcuts.length} / {AVAILABLE_SHORTCUTS.length} shortcuts configured
+                          </CBadge>
+                        </div>
                       </div>
-                    </div>
-                  </CCol>
-                </CRow>
+                    </CCol>
+                  </CRow>
                   {/* <CForm onSubmit={handleShortcutSubmit}>
                     <CRow className="mb-3">
                       <CCol xs={12} md={6}>
@@ -2741,7 +2741,7 @@ const Settings = () => {
                                     }}
                                   >
                                     <div className="d-flex justify-content-between align-items-start">
-                                      <div className="flex-grow-1">
+                                      <div>
                                         <div className="d-flex align-items-center gap-2 mb-1">
                                           <strong>{shortcut.action}</strong>
                                           {isAlreadyAdded && (

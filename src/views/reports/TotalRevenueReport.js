@@ -120,38 +120,62 @@ function TotalRevenueReport() {
 
   /* -------- render ----------------------------------------------------- */
   return (
-    <div style={{ padding: 20 }}>
-      <h2 className="mb-4">Total Revenue Report</h2>
+<div className="p-3 p-md-4 bg-theme-aware" style={{ minHeight: '100vh' }}>
+      
+    {/* FIX 1: Heading Alignment and Theming */}
+    <h2 className="mb-4 text-center text-theme-aware">Total Revenue Report</h2>
 
-      {/* date pickers */}
-      <CRow className="align-items-end mb-3" style={{ gap: '1rem', flexWrap: 'wrap' }}>
-        <CCol xs="auto">
-          <label className="form-label fw-bold" htmlFor="start">Start Date</label>
-          <CFormInput
-            id="start"
-            type="date"
-            value={startDate}
-            max={endDate}
-            onChange={(e) => setStartDate(e.target.value)}
-          />
-        </CCol>
-        <CCol xs="auto">
-          <label className="form-label fw-bold" htmlFor="end">End Date</label>
-          <CFormInput
-            id="end"
-            type="date"
-            value={endDate}
-            min={startDate}
-            max={formatDate(today)}
-            onChange={(e) => setEndDate(e.target.value)}
-          />
-        </CCol>
-        <CCol xs="auto" className="pt-2">
-          <CButton color="primary" onClick={handleGenerateReport}>
-            Generate Report
-          </CButton>
-        </CCol>
-      </CRow>
+    {/* Date range pickers */}
+    <CRow 
+      className="align-items-end mb-4" 
+      // Added gap for spacing between columns and enabled wrapping
+      style={{ gap: '1rem 0', flexWrap: 'wrap' }}
+    >
+      {/* Start Date Column */}
+      {/* FIX 2: Use standard CCol={12} sm={6} md={3} for responsiveness */}
+      <CCol xs={12} sm={6} md={3}>
+        <label className="form-label fw-bold text-theme-aware" htmlFor="start">
+          Start Date
+        </label>
+        <CFormInput
+          id="start"
+          type="date"
+          value={startDate}
+          max={endDate}
+          onChange={(e) => setStartDate(e.target.value)}
+          className="input-theme-aware"
+        />
+      </CCol>
+      
+      {/* End Date Column */}
+      <CCol xs={12} sm={6} md={3}>
+        <label className="form-label fw-bold text-theme-aware" htmlFor="end">
+          End Date
+        </label>
+        <CFormInput
+          id="end"
+          type="date"
+          value={endDate}
+          min={startDate}
+          max={formatDate(today)}
+          onChange={(e) => setEndDate(e.target.value)}
+          className="input-theme-aware"
+        />
+      </CCol>
+      
+      {/* Button Column */}
+      {/* FIX 3: Button takes full width on mobile/tablet, and aligns at the bottom */}
+      <CCol xs={12} sm={12} md={3} className="pt-2">
+        <CButton 
+          color="primary" 
+          onClick={handleGenerateReport}
+          className="w-100 w-md-auto" // Full width on mobile, auto width on desktop
+        >
+          Generate Report
+        </CButton>
+      </CCol>
+    </CRow>
+ 
 
       {/* grid */}
       {loading ? (
