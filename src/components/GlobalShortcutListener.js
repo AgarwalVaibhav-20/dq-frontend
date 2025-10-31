@@ -168,9 +168,9 @@ const GlobalShortcutListener = () => {
             case 'Go to Average Order Report':
                 navigate('/average-order-report');
                 break;
-            case 'Go to Payment Type Transaction Report':
-                navigate('/payment-type-transaction-report');
-                break;
+            // case 'Go to Payment Type Transaction Report':
+            //     navigate('/payment-type-transaction-report');
+            //     break;
             case 'Go to Total Revenue Report':
                 navigate('/total-revenue-report');
                 break;

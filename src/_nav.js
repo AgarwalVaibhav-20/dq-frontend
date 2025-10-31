@@ -290,11 +290,11 @@ const _nav = [
         name: 'Average Order Report',
         to: '/average-order-report',
       },
-      {
-        component: CNavItem,
-        name: 'Payment Type Transaction Report',
-        to: '/payment-type-transaction-report',
-      },
+      // {
+      //   component: CNavItem,
+      //   name: 'Payment Type Transaction Report',
+      //   to: '/payment-type-transaction-report',
+      // },
       {
         component: CNavItem,
         name: 'Total Revenue Report',

@@ -889,6 +889,26 @@ const POS = () => {
       } else if (currentFocused.classList.contains('cart-button')) {
         if (currentFocused.textContent.includes('Select Customer')) {
           setShowCustomerModal(true);
+          // Ensure focus happens after modal opens
+          setTimeout(() => {
+            const searchInput = document.querySelector('.customer-search-input');
+            if (searchInput) {
+              searchInput.focus();
+            } else {
+              setTimeout(() => {
+                const searchInput2 = document.querySelector('.customer-search-input');
+                if (searchInput2) {
+                  searchInput2.focus();
+                }
+              }, 200);
+              setTimeout(() => {
+                const searchInput3 = document.querySelector('.customer-search-input');
+                if (searchInput3) {
+                  searchInput3.focus();
+                }
+              }, 400);
+            }
+          }, 100);
         } else if (currentFocused.textContent.includes('Tax')) {
           setShowTaxModal(true);
         } else if (currentFocused.textContent.includes('Discount')) {
@@ -1041,7 +1061,6 @@ const POS = () => {
                 variant="btn-group"
                 onMouseEnter={() => setIsDropdownOpen(true)}
                 onMouseLeave={() => setIsDropdownOpen(false)}
-                show={isDropdownOpen} // Mouse over पर show होगा
               >
                 <CDropdownToggle
                   color="info"
@@ -1142,7 +1161,6 @@ const POS = () => {
             variant="btn-group"
             onMouseEnter={() => setIsDropdownOpen(true)}
             onMouseLeave={() => setIsDropdownOpen(false)}
-            show={isDropdownOpen}
           >
             <CDropdownToggle
               color="info"
@@ -1350,7 +1368,7 @@ const POS = () => {
             setCashAmount('')
             setCashAmountNotes('')
           }}
-          size="md"
+          size="lg"
           backdrop="static"
           className="modal-mobile-responsive"
         >
@@ -1430,7 +1448,7 @@ const POS = () => {
           setCashAmount('')
           setCashAmountNotes('')
         }}
-        size="md"
+        size="lg"
         backdrop="static"
         className="modal-mobile-responsive"
       >
@@ -1521,7 +1539,7 @@ const POS = () => {
           setBankAmount('')
           setBankAmountNotes('')
         }}
-        size="md"
+        size="lg"
         backdrop="static"
         className="modal-mobile-responsive"
       >
@@ -1598,7 +1616,7 @@ const POS = () => {
           setBankOutAmount('')
           setBankOutNotes('')
         }}
-        size="md"
+        size="lg"
         backdrop="static"
         className="modal-mobile-responsive"
       >

@@ -785,13 +785,6 @@ const DiscountModal = React.forwardRef(({
       role="dialog"
       aria-modal="true"
       aria-labelledby="discount-modal-title"
-      onOpened={() => {
-        // Focus first element when modal animation completes
-        console.log('Discount modal opened, focusing first element...');
-        setTimeout(() => {
-          focusFirstElement();
-        }, 100);
-      }}
     >
       <CModalHeader>
         <CModalTitle id="discount-modal-title">Apply Discount / Coupon / Reward Points</CModalTitle>

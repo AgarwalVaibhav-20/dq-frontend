@@ -106,7 +106,48 @@ import {
 export default function PurchaseAnalytics() {
   const dispatch = useDispatch();
   const theme = useTheme();
-  const isDark = theme.palette.mode === "dark";
+  
+  // Detect dark mode from CoreUI theme attribute (more reliable than Material-UI theme)
+  const [isDark, setIsDark] = useState(() => {
+    if (typeof document === 'undefined') return false;
+    const htmlTheme = document.documentElement.getAttribute('data-coreui-theme');
+    const bodyTheme = document.body?.getAttribute('data-coreui-theme');
+    return htmlTheme === 'dark' || bodyTheme === 'dark' || theme.palette.mode === 'dark';
+  });
+
+  // Update dark mode detection when theme changes
+  useEffect(() => {
+    const checkDarkMode = () => {
+      if (typeof document === 'undefined') {
+        setIsDark(theme.palette.mode === 'dark');
+        return;
+      }
+      const htmlTheme = document.documentElement.getAttribute('data-coreui-theme');
+      const bodyTheme = document.body?.getAttribute('data-coreui-theme');
+      const dark = htmlTheme === 'dark' || bodyTheme === 'dark' || theme.palette.mode === 'dark';
+      setIsDark(dark);
+    };
+
+    checkDarkMode();
+    
+    // Watch for theme changes in DOM
+    if (typeof document !== 'undefined') {
+      const observer = new MutationObserver(checkDarkMode);
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-coreui-theme']
+      });
+      
+      if (document.body) {
+        observer.observe(document.body, {
+          attributes: true,
+          attributeFilter: ['data-coreui-theme']
+        });
+      }
+
+      return () => observer.disconnect();
+    }
+  }, [theme.palette.mode]);
 
   // Redux state
   const { suppliers, loading: suppliersLoading } = useSelector((state) => state.suppliers || { suppliers: [], loading: false });
@@ -1213,12 +1254,54 @@ export default function PurchaseAnalytics() {
   };
 
   return (
-    <Box sx={{
-      p: 3,
-      width: '100%',
-      minWidth: '100%',
-      overflow: 'hidden'
-    }}>
+    <>
+      {/* Global styles for table text colors in dark mode */}
+      <style>{`
+        /* Force white text in all table cells for dark mode */
+        [data-coreui-theme="dark"] .MuiTableCell-root,
+        html[data-coreui-theme="dark"] .MuiTableCell-root,
+        body[data-coreui-theme="dark"] .MuiTableCell-root {
+          color: #ffffff !important;
+        }
+        
+        /* Typography components inside table cells */
+        [data-coreui-theme="dark"] .MuiTableCell-root .MuiTypography-root,
+        html[data-coreui-theme="dark"] .MuiTableCell-root .MuiTypography-root,
+        body[data-coreui-theme="dark"] .MuiTableCell-root .MuiTypography-root {
+          color: #ffffff !important;
+        }
+        
+        /* Specific Typography variants */
+        [data-coreui-theme="dark"] .MuiTableCell-root .MuiTypography-body2,
+        [data-coreui-theme="dark"] .MuiTableCell-root .MuiTypography-caption,
+        [data-coreui-theme="dark"] .MuiTableCell-root .MuiTypography-h6,
+        [data-coreui-theme="dark"] .MuiTableCell-root .MuiTypography-body1 {
+          color: #ffffff !important;
+        }
+        
+        /* Chips inside table cells */
+        [data-coreui-theme="dark"] .MuiTableCell-root .MuiChip-root,
+        [data-coreui-theme="dark"] .MuiTableCell-root .MuiChip-label {
+          color: #ffffff !important;
+        }
+        
+        /* Table rows and containers */
+        [data-coreui-theme="dark"] .MuiTable-root .MuiTableCell-root,
+        [data-coreui-theme="dark"] .MuiTableContainer-root .MuiTableCell-root {
+          color: #ffffff !important;
+        }
+        
+        /* Ensure nested tables also get proper styling */
+        [data-coreui-theme="dark"] .MuiTable-root .MuiTable-root .MuiTableCell-root {
+          color: #ffffff !important;
+        }
+      `}</style>
+      <Box sx={{
+        p: 3,
+        width: '100%',
+        minWidth: '100%',
+        overflow: 'hidden'
+      }}>
       <Typography variant="h4" gutterBottom sx={{ mb: 3, fontWeight: 'bold' }}>
         Purchase Analytics Dashboard
       </Typography>
@@ -1681,32 +1764,32 @@ export default function PurchaseAnalytics() {
                           >
                             {viewMode === 'inventory' ? (
                               <>
-                                <TableCell>
+                                <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
                                   <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                    <Typography variant="body2" fontWeight="medium">{item.inventoryName}</Typography>
+                                    <Typography variant="body2" fontWeight="medium" sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>{item.inventoryName}</Typography>
                                     {selectedGraphItem?.id === item.id && (
                                       <Box sx={{ width: 8, height: 8, borderRadius: '50%', backgroundColor: '#ff5722' }} />
                                     )}
                                   </Box>
                                 </TableCell>
-                                <TableCell>
-                                  <Typography variant="body2" color="text.secondary">{item.inventoryId}</Typography>
+                                <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
+                                  <Typography variant="body2" sx={{ color: isDark ? theme.palette.text.secondary : theme.palette.text.secondary }}>{item.inventoryId}</Typography>
                                 </TableCell>
                                 {/* // In PurchaseAnalytics.js -> TableBody -> React.Fragment -> TableRow */}
 
-                                <TableCell>
-                                  <Typography variant="body2">{item.supplier}</Typography>
+                                <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
+                                  <Typography variant="body2" sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>{item.supplier}</Typography>
                                 </TableCell>
-                                <TableCell>
+                                <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
                                   <Chip label={item.category} color="primary" variant="outlined" size="small" />
                                 </TableCell>
-                                <TableCell>
-                                  <Typography variant="body2" fontWeight="medium">₹{item.amount}</Typography>
+                                <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
+                                  <Typography variant="body2" fontWeight="medium" sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>₹{item.amount}</Typography>
                                 </TableCell>
-                                <TableCell>{item.quantity}</TableCell>
-                                <TableCell>
+                                <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>{item.quantity}</TableCell>
+                                <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
                                   <Stack spacing={1}>
-                                    <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 500 }}>
+                                    <Typography variant="caption" sx={{ fontWeight: 500, color: isDark ? theme.palette.text.secondary : theme.palette.text.secondary }}>
                                       Previous: ₹{item.previousRate}
                                     </Typography>
                                     <Typography variant="caption" color="success.main" sx={{ fontWeight: 500 }}>
@@ -1722,20 +1805,20 @@ export default function PurchaseAnalytics() {
                                     />
                                   </Stack>
                                 </TableCell>
-                                <TableCell>
-                                  <Typography variant="body2">{item.date}</Typography>
+                                <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
+                                  <Typography variant="body2" sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>{item.date}</Typography>
                                 </TableCell>
                               </>
                             ) : (
                               <>
-                                <TableCell>
+                                <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
                                   <Stack>
-                                    <Typography variant="body2" fontWeight="medium">{item.itemName}</Typography>
-                                    <Typography variant="caption" color="text.secondary">{item.menuId}</Typography>
+                                    <Typography variant="body2" fontWeight="medium" sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>{item.itemName}</Typography>
+                                    <Typography variant="caption" sx={{ color: isDark ? theme.palette.text.secondary : theme.palette.text.secondary }}>{item.menuId}</Typography>
                                   </Stack>
                                 </TableCell>
                                 {/* Size Column - Now shows individual size */}
-                                <TableCell>
+                                <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
                                   <Chip
                                     label={`${item.size} - ₹${item.price}`}
                                     variant="outlined"
@@ -1745,12 +1828,12 @@ export default function PurchaseAnalytics() {
                                   />
                                 </TableCell>
                                 {/* Ingredient Cost */}
-                                <TableCell>
+                                <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
                                   <Typography variant="body2" color="warning.main" fontWeight="medium">
                                     ₹{parseFloat(item.totalIngredientCost).toFixed(2)}
                                   </Typography>
                                 </TableCell>
-                                <TableCell>
+                                <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
                                   <Tooltip title="Click to view detailed ingredient breakdown" arrow placement="top">
                                     <IconButton
                                       onClick={() => handleExpandRow(item.id)}
@@ -1766,7 +1849,7 @@ export default function PurchaseAnalytics() {
                                     </IconButton>
                                   </Tooltip>
                                 </TableCell>
-                                <TableCell>
+                                <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
                                   <Chip
                                     label={item.stock || 0}
                                     variant="outlined"
@@ -1774,8 +1857,8 @@ export default function PurchaseAnalytics() {
                                   />
                                   {console.log(item.stock, "stock")}
                                 </TableCell>
-                                <TableCell>
-                                  <Typography variant="body2">{item.date}</Typography>
+                                <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
+                                  <Typography variant="body2" sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>{item.date}</Typography>
                                 </TableCell>
                               </>
                             )}
@@ -1784,25 +1867,25 @@ export default function PurchaseAnalytics() {
                           {/* Expandable row for ingredient details (menu view only) */}
                           {viewMode === 'menu' && (
                             <TableRow>
-                              <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6}>
+                              <TableCell style={{ paddingBottom: 0, paddingTop: 0 }} colSpan={6} sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
                                 <Collapse in={expandedRows.has(item.id)} timeout="auto" unmountOnExit>
                                   <Box sx={{ margin: 2, p: 2, backgroundColor: isDark ? theme.palette.grey[900] : theme.palette.grey[50], borderRadius: 2 }}>
                                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 2 }}>
-                                      < ReceiptIndianRupee size={20} />
-                                      <Typography variant="h6" component="div" sx={{ fontWeight: 600 }}>
+                                      < ReceiptIndianRupee size={20} color={isDark ? "white" : "black"} />
+                                      <Typography variant="h6" component="div" sx={{ fontWeight: 600, color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
                                         Ingredient Breakdown
                                       </Typography>
                                     </Box>
                                     <Table size="small">
                                       <TableHead>
                                         <TableRow sx={{ backgroundColor: isDark ? theme.palette.grey[800] : theme.palette.grey[200] }}>
-                                          <TableCell sx={{ fontWeight: 'bold' }}>Ingredient</TableCell>
-                                          <TableCell sx={{ fontWeight: 'bold' }}>Size</TableCell>
-                                          <TableCell sx={{ fontWeight: 'bold' }}>Quantity</TableCell>
-                                          <TableCell sx={{ fontWeight: 'bold' }}>Cost/Unit</TableCell>
-                                          <TableCell sx={{ fontWeight: 'bold' }}>Total Cost</TableCell>
-                                          <TableCell sx={{ fontWeight: 'bold' }}>Supplier</TableCell>
-                                          <TableCell sx={{ fontWeight: 'bold' }}>Rate Change</TableCell>
+                                          <TableCell sx={{ fontWeight: 'bold', color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>Ingredient</TableCell>
+                                          <TableCell sx={{ fontWeight: 'bold', color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>Size</TableCell>
+                                          <TableCell sx={{ fontWeight: 'bold', color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>Quantity</TableCell>
+                                          <TableCell sx={{ fontWeight: 'bold', color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>Cost/Unit</TableCell>
+                                          <TableCell sx={{ fontWeight: 'bold', color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>Total Cost</TableCell>
+                                          <TableCell sx={{ fontWeight: 'bold', color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>Supplier</TableCell>
+                                          <TableCell sx={{ fontWeight: 'bold', color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>Rate Change</TableCell>
                                         </TableRow>
                                       </TableHead>
                                       <TableBody>
@@ -1810,12 +1893,12 @@ export default function PurchaseAnalytics() {
                                           <TableRow key={ingredient.stockId} sx={{
                                             '&:hover': { backgroundColor: isDark ? theme.palette.action.hover : theme.palette.grey[100] }
                                           }}>
-                                            <TableCell>
-                                              <Typography variant="body2" fontWeight="medium">
+                                            <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
+                                              <Typography variant="body2" fontWeight="medium" sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
                                                 {ingredient.name}
                                               </Typography>
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
                                               <Chip
                                                 label={ingredient.size || 'N/A'}
                                                 variant="outlined"
@@ -1824,28 +1907,28 @@ export default function PurchaseAnalytics() {
                                                 sx={{ fontSize: '0.7rem', height: '20px' }}
                                               />
                                             </TableCell>
-                                            <TableCell>
-                                              <Typography variant="body2">
+                                            <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
+                                              <Typography variant="body2" sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
                                                 {ingredient.quantity} {ingredient.unit}
                                               </Typography>
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
                                               <Stack>
-                                                <Typography variant="body2" fontWeight="medium">₹{ingredient.currentRate} / {ingredient.unit}</Typography>
-                                                <Typography variant="caption" color="text.secondary">
+                                                <Typography variant="body2" fontWeight="medium" sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>₹{ingredient.currentRate} / {ingredient.unit}</Typography>
+                                                <Typography variant="caption" sx={{ color: isDark ? theme.palette.text.secondary : theme.palette.text.secondary }}>
                                                   Previous: ₹{ingredient.previousRate}
                                                 </Typography>
                                               </Stack>
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
                                               <Typography variant="body2" fontWeight="medium" color="primary.main">
                                                 ₹{parseFloat(ingredient.totalCost).toFixed(2)}
                                               </Typography>
                                             </TableCell>
-                                            <TableCell>
-                                              <Typography variant="body2">{ingredient.supplier}</Typography>
+                                            <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
+                                              <Typography variant="body2" sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>{ingredient.supplier}</Typography>
                                             </TableCell>
-                                            <TableCell>
+                                            <TableCell sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
                                               <Chip
                                                 label={`${parseFloat(ingredient.rateChange) > 0 ? '+' : ''}${ingredient.rateChange}%`}
                                                 color={getRateChangeColor(ingredient.rateChange)}
@@ -1857,10 +1940,10 @@ export default function PurchaseAnalytics() {
                                           </TableRow>
                                         )) || (
                                             <TableRow>
-                                              <TableCell colSpan={6}>
+                                              <TableCell colSpan={6} sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
                                                 <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, py: 2 }}>
-                                                  <Info size={16} color="gray" />
-                                                  <Typography variant="body2" color="text.secondary">
+                                                  <Info size={16} color={isDark ? "white" : "gray"} />
+                                                  <Typography variant="body2" sx={{ color: isDark ? theme.palette.text.secondary : theme.palette.text.secondary }}>
                                                     No ingredients found for this menu item
                                                   </Typography>
                                                 </Box>
@@ -1878,10 +1961,10 @@ export default function PurchaseAnalytics() {
                       ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={viewMode === 'inventory' ? 8 : 5}>
+                      <TableCell colSpan={viewMode === 'inventory' ? 8 : 5} sx={{ color: isDark ? theme.palette.common.white : theme.palette.text.primary }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 1, py: 4 }}>
-                          <Info size={24} color="gray" />
-                          <Typography variant="body1" color="text.secondary">
+                          <Info size={24} color={isDark ? "white" : "gray"} />
+                          <Typography variant="body1" sx={{ color: isDark ? theme.palette.text.secondary : theme.palette.text.secondary }}>
                             {viewMode === 'inventory'
                               ? 'No inventory data available. Please check if data is loaded properly.'
                               : 'No menu items data available. Please check if data is loaded properly.'
@@ -2373,5 +2456,6 @@ export default function PurchaseAnalytics() {
         </CModalFooter>
       </CModal>
     </Box>
+    </>
   );
 }

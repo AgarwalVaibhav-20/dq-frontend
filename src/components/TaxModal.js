@@ -662,13 +662,6 @@ const TaxModal = React.forwardRef(({
       role="dialog"
       aria-modal="true"
       aria-labelledby="tax-modal-title"
-      onOpened={() => {
-        // Focus first element when modal animation completes
-        console.log('Tax modal opened, focusing first element...');
-        setTimeout(() => {
-          focusFirstElement();
-        }, 100);
-      }}
     >
       <CModalHeader>
         <CModalTitle id="tax-modal-title">Apply Tax to Items</CModalTitle>

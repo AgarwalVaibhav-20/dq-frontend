@@ -43,7 +43,49 @@ const Cart = React.forwardRef(({
   onSystemChange,
   appliedDiscounts,
   setAppliedDiscounts,
+  theme = 'light',
 }, ref) => {
+  // Detect dark mode from DOM - use state to track real-time changes
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    if (typeof document === 'undefined') return false;
+    const htmlTheme = document.documentElement.getAttribute('data-coreui-theme');
+    const bodyTheme = document.body?.getAttribute('data-coreui-theme');
+    return theme === 'dark' || htmlTheme === 'dark' || bodyTheme === 'dark';
+  });
+
+  // Update dark mode detection when theme changes
+  useEffect(() => {
+    const checkDarkMode = () => {
+      if (typeof document === 'undefined') {
+        setIsDarkMode(false);
+        return;
+      }
+      const htmlTheme = document.documentElement.getAttribute('data-coreui-theme');
+      const bodyTheme = document.body?.getAttribute('data-coreui-theme');
+      const dark = theme === 'dark' || htmlTheme === 'dark' || bodyTheme === 'dark';
+      setIsDarkMode(dark);
+    };
+
+    checkDarkMode();
+    
+    // Watch for theme changes in DOM
+    if (typeof document !== 'undefined') {
+      const observer = new MutationObserver(checkDarkMode);
+      observer.observe(document.documentElement, {
+        attributes: true,
+        attributeFilter: ['data-coreui-theme']
+      });
+      
+      if (document.body) {
+        observer.observe(document.body, {
+          attributes: true,
+          attributeFilter: ['data-coreui-theme']
+        });
+      }
+
+      return () => observer.disconnect();
+    }
+  }, [theme]);
   const [tempDiscount, setTempDiscount] = useState(0);
   const [tempRoundOff, setTempRoundOff] = useState(roundOff || 0);
   const [localDiscountModal, setLocalDiscountModal] = useState(false);
@@ -301,7 +343,32 @@ const Cart = React.forwardRef(({
   useHotkeys('r', () => (setShowRoundOffModal?.(true) || setLocalRoundOffModal(true)), {
     enable: () => cartContainerRef.current?.contains(document.activeElement)
   });
-  useHotkeys('c', () => setShowCustomerModal?.(true), {
+  useHotkeys('c', () => {
+    if (setShowCustomerModal) {
+      setShowCustomerModal(true);
+      // Ensure focus happens after modal opens - use setTimeout to allow modal to render
+      setTimeout(() => {
+        const searchInput = document.querySelector('.customer-search-input');
+        if (searchInput) {
+          searchInput.focus();
+        } else {
+          // Try multiple times if not found immediately
+          setTimeout(() => {
+            const searchInput2 = document.querySelector('.customer-search-input');
+            if (searchInput2) {
+              searchInput2.focus();
+            }
+          }, 200);
+          setTimeout(() => {
+            const searchInput3 = document.querySelector('.customer-search-input');
+            if (searchInput3) {
+              searchInput3.focus();
+            }
+          }, 400);
+        }
+      }, 100);
+    }
+  }, {
     enable: () => cartContainerRef.current?.contains(document.activeElement)
   });
   
@@ -353,6 +420,23 @@ const Cart = React.forwardRef(({
   
   return (
     <>
+      {/* Dark mode style for cart item names */}
+      <style>{`
+        /* Default - Light mode - dark text */
+        .cart-item .cart-item-name,
+        .cart-item-name {
+          color: #212529 !important;
+        }
+        /* Dark mode - white text - higher specificity */
+        [data-coreui-theme="dark"] .cart-item .cart-item-name,
+        [data-coreui-theme="dark"] .cart-item-name,
+        html[data-coreui-theme="dark"] .cart-item .cart-item-name,
+        html[data-coreui-theme="dark"] .cart-item-name,
+        body[data-coreui-theme="dark"] .cart-item .cart-item-name,
+        body[data-coreui-theme="dark"] .cart-item-name {
+          color: #ffffff !important;
+        }
+      `}</style>
       <CCard className="shadow-lg h-100 max-sm:mb-5" style={{ borderRadius: '15px' }} >
         <CCardHeader
           className="bg-white d-flex justify-content-between align-items-center"
@@ -574,7 +658,13 @@ const Cart = React.forwardRef(({
                   >
                     <div style={{ flex: '1 1 0%' }}>
                       <div className="d-flex align-items-center mb-1">
-                        <h6 className="mb-0 fw-bold text-dark me-2">{item.itemName}</h6>
+                        <h6 
+                          className="mb-0 fw-bold me-2 cart-item-name"
+                          style={isDarkMode ? { color: '#ffffff' } : { color: '#212529' }}
+                          suppressHydrationWarning
+                        >
+                          {item.itemName}
+                        </h6>
                         {item.selectedSize && (
                           <span className="badge bg-primary">
                             {item.selectedSize}

@@ -259,9 +259,8 @@ const POSTableContent = () => {
       const data = await response.json()
 
       if (data.success && data.data && data.data.length > 0) {
-        // Transform the data to match expected format and filter by willOccupy
+        // Transform the data to match expected format - show all systems regardless of willOccupy
         const transformedSystems = data.data
-          .filter(setting => setting.willOccupy === true) // Only show systems with willOccupy: true
           .map(setting => ({
             _id: setting._id,
             systemName: setting.systemName,
@@ -270,7 +269,7 @@ const POSTableContent = () => {
             color: setting.color
           }))
 
-        console.log('Filtered systems (willOccupy: true):', transformedSystems)
+        console.log('All systems (including willOccupy: false):', transformedSystems)
         setSystems(transformedSystems); // Store systems for dropdown
 
         // Handle system selection based on count
@@ -1837,7 +1836,30 @@ const POSTableContent = () => {
     preventDefault: true,
     enable: () => !cartRef.current?.contains(document.activeElement)
   });
-  useHotkeys('ctrl+c', () => setShowCustomerModal(true), {
+  useHotkeys('ctrl+c', () => {
+    setShowCustomerModal(true);
+    // Ensure focus happens after modal opens - use setTimeout to allow modal to render
+    setTimeout(() => {
+      const searchInput = document.querySelector('.customer-search-input');
+      if (searchInput) {
+        searchInput.focus();
+      } else {
+        // Try multiple times if not found immediately
+        setTimeout(() => {
+          const searchInput2 = document.querySelector('.customer-search-input');
+          if (searchInput2) {
+            searchInput2.focus();
+          }
+        }, 200);
+        setTimeout(() => {
+          const searchInput3 = document.querySelector('.customer-search-input');
+          if (searchInput3) {
+            searchInput3.focus();
+          }
+        }, 400);
+      }
+    }, 100);
+  }, {
     preventDefault: true,
     enable: () => !cartRef.current?.contains(document.activeElement)
   });
@@ -1990,6 +2012,7 @@ const POSTableContent = () => {
             setShowRoundOffModal={setShowRoundOffModal}
             selectedSystem={selectedSystem}
             onSystemChange={handleSystemChange}
+            theme={theme}
             ref={cartRef}
           />
         </CCol>

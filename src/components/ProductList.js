@@ -628,11 +628,6 @@ const ProductList = React.forwardRef(({
         size="lg"
         backdrop="static"
         portal={false}
-        onOpened={() => {
-          setTimeout(() => {
-            focusFirstSizeOption();
-          }, 100);
-        }}
       >
         {/* Header relies on global .modal-header CSS */}
         <CModalHeader>

@@ -55,9 +55,8 @@ const SystemSelectionModal = React.forwardRef(({
       console.log('Settings API response:', response.data)
 
       if (response.data.success && response.data.data && response.data.data.length > 0) {
-        // Transform the data to match expected format and filter by willOccupy
+        // Transform the data to match expected format - show all systems regardless of willOccupy
         const transformedSystems = response.data.data
-          .filter(setting => setting.willOccupy === true) // Only show systems with willOccupy: true
           .map(setting => ({
             _id: setting._id,
             systemName: setting.systemName,
@@ -66,7 +65,7 @@ const SystemSelectionModal = React.forwardRef(({
             color: setting.color
           }))
 
-        console.log('Filtered systems for modal (willOccupy: true):', transformedSystems)
+        console.log('All systems for modal (including willOccupy: false):', transformedSystems)
         setSystems(transformedSystems)
 
         // If there's only one system, auto-select it

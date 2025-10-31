@@ -164,13 +164,13 @@ export const AVAILABLE_SHORTCUTS = [
     suggestedKeys: ['Ctrl', 'Alt', 'A'],
     description: 'View average order report'
   },
-  {
-    category: 'Analytics & Reports',
-    action: 'Go to Payment Type Transaction Report',
-    route: '/payment-type-transaction-report',
-    suggestedKeys: ['Ctrl', 'Alt', 'R'],
-    description: 'View payment type transaction report'
-  },
+  // {
+  //   category: 'Analytics & Reports',
+  //   action: 'Go to Payment Type Transaction Report',
+  //   route: '/payment-type-transaction-report',
+  //   suggestedKeys: ['Ctrl', 'Alt', 'R'],
+  //   description: 'View payment type transaction report'
+  // },
   {
     category: 'Analytics & Reports',
     action: 'Go to Total Revenue Report',

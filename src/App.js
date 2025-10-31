@@ -54,7 +54,7 @@ const getPermissionForRoute = (routePath) => {
     'table-usage-report': 'Reports',
     'discount-usage-report': 'Reports',
     'average-order-report': 'Reports',
-    'payment-type-transaction-report': 'Reports',
+    // 'payment-type-transaction-report': 'Reports',
     'total-revenue-report': 'Reports',
     'yearly-chart-report': 'Reports',
     'weekly-chart-report': 'Reports',
@@ -98,7 +98,7 @@ import DueReport from './views/reports/DueRepoert.js'
 import TableUsageReport from './views/reports/TableUsageReport'
 import DiscountUsageReport from './views/reports/DiscountUsageReport'
 import AverageOrderValueReport from './views/reports/AverageOrderValueReport'
-import TransactionsByPaymentTypeReport from './views/reports/TransactionsByPaymentTypeReport'
+// import TransactionsByPaymentTypeReport from './views/reports/TransactionsByPaymentTypeReport'
 import TotalRevenueReport from './views/reports/TotalRevenueReport'
 import MostOrderedDishesReport from './views/reports/MostOrderedDishesReport'
 import YearlyChartReport from './views/reports/YearlyChartReport'
@@ -439,7 +439,7 @@ const App = () => {
                         <Route path="table-usage-report" element={<TableUsageReport />} />
                         <Route path="discount-usage-report" element={<DiscountUsageReport />} />
                         <Route path="average-order-report" element={<AverageOrderValueReport />} />
-                        <Route path="payment-type-transaction-report" element={<TransactionsByPaymentTypeReport />} />
+                        {/* <Route path="payment-type-transaction-report" element={<TransactionsByPaymentTypeReport />} /> */}
                         <Route path="total-revenue-report" element={<TotalRevenueReport />} />
                         <Route path="yearly-chart-report" element={<YearlyChartReport />} />
                         <Route path="weekly-chart-report" element={<WeeklyChartReport />} />
@@ -654,11 +654,11 @@ const App = () => {
                         <AverageOrderValueReport />
                       </PermissionGuard>
                     } />
-                    <Route path="payment-type-transaction-report" element={
+                    {/* <Route path="payment-type-transaction-report" element={
                       <PermissionGuard requiredPermissions={['Reports']}>
                         <TransactionsByPaymentTypeReport />
                       </PermissionGuard>
-                    } />
+                    } /> */}
                     <Route path="total-revenue-report" element={
                       <PermissionGuard requiredPermissions={['Reports']}>
                         <TotalRevenueReport />

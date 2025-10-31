@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback, useMemo } from "react";
 import { useDispatch, useSelector } from "react-redux";
 import { fetchCustomers } from "../../src/redux/slices/customerSlice";
 import { fetchMembers } from "../../src/redux/slices/memberSlice";
@@ -34,6 +34,7 @@ const CustomerModal = React.forwardRef(({
   const token = localStorage.getItem('authToken');
 
   // Refs for input fields
+  const modalRef = useRef(null);
   const searchRef = useRef(null);
   const nameRef = useRef(null);
   const emailRef = useRef(null);
@@ -42,6 +43,7 @@ const CustomerModal = React.forwardRef(({
   const birthdayRef = useRef(null);
   const anniversaryRef = useRef(null);
   const membershipRef = useRef(null);
+  const modalHasFocusedRef = useRef(false);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [formValues, setFormValues] = useState({
@@ -57,6 +59,7 @@ const CustomerModal = React.forwardRef(({
   const [formErrors, setFormErrors] = useState({});
   const [selectedCustomer, setSelectedCustomer] = useState(null);
   const [highlightedCustomerIndex, setHighlightedCustomerIndex] = useState(-1);
+  const [activeSection, setActiveSection] = useState('select'); // 'select' or 'add'
 
   // Fetch customers and members when modal opens
   useEffect(() => {
@@ -64,55 +67,459 @@ const CustomerModal = React.forwardRef(({
       dispatch(fetchCustomers({ token, restaurantId }));
       dispatch(fetchMembers(token));
       setHighlightedCustomerIndex(-1);
+      setActiveSection('select');
+      modalHasFocusedRef.current = false;
     }
   }, [showCustomerModal, restaurantId, dispatch, token]);
 
+  // Function to focus search bar when modal opens - multiple strategies
+  const focusSearchBar = useCallback(() => {
+    const attemptFocus = () => {
+      // Strategy 1: Try ref directly
+      if (searchRef.current) {
+        try {
+          searchRef.current.focus();
+          modalHasFocusedRef.current = true;
+          console.log('✅ Successfully focused search bar via ref in customer modal!');
+          return true;
+        } catch (error) {
+          console.error('Error focusing search bar via ref:', error);
+        }
+      }
+      
+      // Strategy 2: Try finding by class name
+      const searchInputByClass = modalRef.current?.querySelector('.customer-search-input');
+      if (searchInputByClass) {
+        try {
+          searchInputByClass.focus();
+          modalHasFocusedRef.current = true;
+          console.log('✅ Successfully focused search bar via class in customer modal!');
+          return true;
+        } catch (error) {
+          console.error('Error focusing search bar via class:', error);
+        }
+      }
+      
+      // Strategy 3: Try finding by placeholder
+      const searchInputByPlaceholder = modalRef.current?.querySelector('input[placeholder*="Search customers"]');
+      if (searchInputByPlaceholder) {
+        try {
+          searchInputByPlaceholder.focus();
+          modalHasFocusedRef.current = true;
+          console.log('✅ Successfully focused search bar via placeholder in customer modal!');
+          return true;
+        } catch (error) {
+          console.error('Error focusing search bar via placeholder:', error);
+        }
+      }
+      
+      // Strategy 4: Try first focusable input (excluding close button)
+      const firstFocusable = modalRef.current?.querySelector(
+        'input:not([tabindex="-1"]):not(.btn-close), button:not([tabindex="-1"]):not(.btn-close), select:not([tabindex="-1"]), textarea:not([tabindex="-1"]), [tabindex="0"]:not(.btn-close)'
+      );
+      if (firstFocusable) {
+        try {
+          firstFocusable.focus();
+          modalHasFocusedRef.current = true;
+          console.log('✅ Successfully focused first focusable element in customer modal!');
+          return true;
+        } catch (error) {
+          console.error('Error focusing first focusable element:', error);
+        }
+      }
+      
+      return false;
+    };
+    
+    // Try immediately
+    if (!attemptFocus()) {
+      // Try after animation frame
+      requestAnimationFrame(() => {
+        if (!attemptFocus()) {
+          // Try after short delay
+          setTimeout(() => {
+            if (!attemptFocus()) {
+              // Try after longer delay
+              setTimeout(() => {
+                if (!attemptFocus()) {
+                  // Final attempt after even longer delay
+                  setTimeout(() => {
+                    attemptFocus();
+                  }, 400);
+                }
+              }, 300);
+            }
+          }, 150);
+        }
+      });
+    }
+  }, []);
+
+  // Fix aria-hidden issue - ensure modal element doesn't have aria-hidden when visible
+  useEffect(() => {
+    if (!showCustomerModal) return;
+    
+    const observer = new MutationObserver(() => {
+      if (modalRef.current) {
+        const modalElement = modalRef.current.closest('.modal');
+        if (modalElement) {
+          // Remove aria-hidden when modal is visible
+          if (showCustomerModal) {
+            modalElement.removeAttribute('aria-hidden');
+          }
+        }
+        
+        // Also check if modal is in DOM and try to focus
+        if (!modalHasFocusedRef.current && modalRef.current.offsetParent !== null) {
+          // Modal is visible in DOM, try focusing
+          setTimeout(() => {
+            focusSearchBar();
+          }, 50);
+        }
+      }
+    });
+    
+    // Observe changes to modal and its parent
+    if (modalRef.current) {
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['aria-hidden']
+      });
+    }
+    
+    return () => observer.disconnect();
+  }, [showCustomerModal, focusSearchBar]);
+
+  // Auto-focus on search bar when modal opens
+  useEffect(() => {
+    if (showCustomerModal && !modalHasFocusedRef.current) {
+      // Multiple attempts with increasing delays
+      const timeout1 = setTimeout(() => {
+        focusSearchBar();
+      }, 100);
+      
+      const timeout2 = setTimeout(() => {
+        if (!modalHasFocusedRef.current) {
+          focusSearchBar();
+        }
+      }, 300);
+      
+      const timeout3 = setTimeout(() => {
+        if (!modalHasFocusedRef.current) {
+          focusSearchBar();
+        }
+      }, 500);
+      
+      return () => {
+        clearTimeout(timeout1);
+        clearTimeout(timeout2);
+        clearTimeout(timeout3);
+      };
+    }
+  }, [showCustomerModal, focusSearchBar]);
+
+  // Handle modal close
+  const handleClose = useCallback(() => {
+    setShowCustomerModal(false);
+    setFormValues({
+      name: "",
+      email: "",
+      phoneNumber: "",
+      address: "",
+      birthday: "",
+      anniversary: "",
+      membershipId: "",
+      membershipName: ""
+    });
+    setFormErrors({});
+    setSelectedCustomer(null);
+    setSearchTerm("");
+    setHighlightedCustomerIndex(-1);
+  }, [setShowCustomerModal]);
+
+  // Escape key handler to close modal
+  useEffect(() => {
+    if (!showCustomerModal) return;
+    
+    const handleEscape = (e) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        handleClose();
+      }
+    };
+    
+    document.addEventListener('keydown', handleEscape, true);
+    return () => document.removeEventListener('keydown', handleEscape, true);
+  }, [showCustomerModal, handleClose]);
+
+  // Focus trapping - prevent focus from leaving modal
+  useEffect(() => {
+    if (!showCustomerModal) return;
+    
+    const handleTabKey = (e) => {
+      if (e.key !== 'Tab') return;
+      
+      if (!modalRef.current) return;
+      
+      // Get all focusable elements
+      const focusableElements = modalRef.current?.querySelectorAll(
+        'button:not([disabled]), [href], input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])'
+      );
+      
+      if (!focusableElements || focusableElements.length === 0) return;
+      
+      const firstElement = focusableElements[0];
+      const lastElement = focusableElements[focusableElements.length - 1];
+      
+      if (e.shiftKey) {
+        // Shift + Tab
+        if (document.activeElement === firstElement) {
+          e.preventDefault();
+          lastElement?.focus();
+        }
+      } else {
+        // Tab
+        if (document.activeElement === lastElement) {
+          e.preventDefault();
+          firstElement?.focus();
+        }
+      }
+    };
+    
+    document.addEventListener('keydown', handleTabKey);
+    return () => document.removeEventListener('keydown', handleTabKey);
+  }, [showCustomerModal]);
+
+  // Filter customers locally - use useMemo so it's available in handlers
+  const filteredCustomers = useMemo(() => {
+    return customers.filter(
+      (c) =>
+        c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        c.phoneNumber?.includes(searchTerm)
+    );
+  }, [customers, searchTerm]);
+
+  // Handle selecting an existing customer - define before handlers that use it
+  const handleSelectCustomer = useCallback((customer) => {
+    setSelectedCustomer(customer);
+    localStorage.setItem("customer", JSON.stringify(customer));
+    handleCustomerSelect(customer);
+  }, [handleCustomerSelect]);
+
+  // Validate form
+  const validateForm = () => {
+    const errors = {};
+
+    if (!formValues.name?.trim()) {
+      errors.name = "Customer name is required";
+    }
+
+    if (formValues.email && !/\S+@\S+\.\S+/.test(formValues.email)) {
+      errors.email = "Please enter a valid email address";
+    }
+
+    if (
+      formValues.phoneNumber &&
+      !/^\d{10}$/.test(formValues.phoneNumber.replace(/\D/g, ""))
+    ) {
+      errors.phoneNumber = "Please enter a valid 10-digit phone number";
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  // Handle form submission - define before handlers that use it
+  const handleSubmit = useCallback(() => {
+    if (validateForm()) {
+      handleAddCustomer(formValues);
+      setFormValues({
+        name: "",
+        email: "",
+        phoneNumber: "",
+        address: "",
+        birthday: "",
+        anniversary: "",
+        membershipId: "",
+        membershipName: ""
+      });
+      setFormErrors({});
+    }
+  }, [formValues, handleAddCustomer]);
+
   // Keyboard navigation handler for form inputs
-  const handleKeyDown = (e, currentRef) => {
+  const handleKeyDown = useCallback((e, currentRef) => {
     if (!showCustomerModal) return;
     
     const inputs = [nameRef, emailRef, phoneNumberRef, addressRef, birthdayRef, anniversaryRef, membershipRef];
     const currentIndex = inputs.findIndex(ref => ref.current === currentRef?.current);
     
-    if (e.key === 'ArrowDown' && currentIndex < inputs.length - 1) {
+    // Handle Enter key - submit form if valid, otherwise move to next field
+    if (e.key === 'Enter') {
+      // For textarea (address), allow normal Enter behavior unless Ctrl/Cmd is pressed
+      if (currentRef.current === addressRef.current && !e.ctrlKey && !e.metaKey) {
+        // Allow normal Enter behavior for new line in textarea
+        return;
+      }
+      
       e.preventDefault();
       e.stopPropagation();
-      inputs[currentIndex + 1]?.current?.focus();
-    } else if (e.key === 'ArrowUp' && currentIndex > 0) {
+      
+      // If on last field (membership) and name is filled, submit form
+      if (currentIndex === inputs.length - 1) {
+        // Last field - submit if name is filled (required field)
+        if (formValues.name?.trim()) {
+          handleSubmit();
+        }
+      } else if (currentIndex < inputs.length - 1) {
+        // Not on last field - move to next field
+        inputs[currentIndex + 1]?.current?.focus();
+      }
+    } else if (e.key === 'ArrowDown') {
+      if (currentIndex < inputs.length - 1) {
+        e.preventDefault();
+        e.stopPropagation();
+        inputs[currentIndex + 1]?.current?.focus();
+      }
+    } else if (e.key === 'ArrowUp') {
+      if (currentIndex > 0) {
+        e.preventDefault();
+        e.stopPropagation();
+        inputs[currentIndex - 1]?.current?.focus();
+      } else {
+        // Move to search bar or last customer if in select section
+        e.preventDefault();
+        e.stopPropagation();
+        if (activeSection === 'select' && filteredCustomers.length > 0) {
+          setHighlightedCustomerIndex(filteredCustomers.length - 1);
+          const lastCustomerId = filteredCustomers[filteredCustomers.length - 1]._id || filteredCustomers[filteredCustomers.length - 1].id;
+          setTimeout(() => {
+            const element = document.getElementById(`customer-${lastCustomerId}`);
+            element?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            element?.focus();
+          }, 0);
+        } else {
+          searchRef.current?.focus();
+        }
+      }
+    } else if (e.key === 'ArrowLeft') {
+      // Switch to select section
       e.preventDefault();
       e.stopPropagation();
-      inputs[currentIndex - 1]?.current?.focus();
+      setActiveSection('select');
+      searchRef.current?.focus();
     }
-  };
+  }, [showCustomerModal, activeSection, filteredCustomers, formValues, handleSubmit]);
 
   // Keyboard navigation for search bar and customer list
-  const handleSearchKeyDown = (e) => {
+  const handleSearchKeyDown = useCallback((e) => {
     if (!showCustomerModal) return;
     
-    if (e.key === 'ArrowDown' || e.key === 'ArrowRight') {
+    if (e.key === 'ArrowDown') {
       e.preventDefault();
+      e.stopPropagation();
+      setActiveSection('select');
       if (filteredCustomers.length > 0) {
-        const nextIndex = Math.min(highlightedCustomerIndex + 1, filteredCustomers.length - 1);
+        const nextIndex = highlightedCustomerIndex < 0 ? 0 : Math.min(highlightedCustomerIndex + 1, filteredCustomers.length - 1);
         setHighlightedCustomerIndex(nextIndex);
         // Scroll to highlighted customer
-        const customerId = filteredCustomers[nextIndex]._id || filteredCustomers[nextIndex].id;
-        document.getElementById(`customer-${customerId}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        setTimeout(() => {
+          const customerId = filteredCustomers[nextIndex]._id || filteredCustomers[nextIndex].id;
+          const customerElement = document.getElementById(`customer-${customerId}`);
+          if (customerElement) {
+            customerElement.focus();
+            customerElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }, 0);
       }
-    } else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') {
+    } else if (e.key === 'ArrowUp') {
       e.preventDefault();
+      e.stopPropagation();
       if (highlightedCustomerIndex > 0) {
         const prevIndex = highlightedCustomerIndex - 1;
         setHighlightedCustomerIndex(prevIndex);
         // Scroll to highlighted customer
-        const customerId = filteredCustomers[prevIndex]._id || filteredCustomers[prevIndex].id;
-        document.getElementById(`customer-${customerId}`)?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        setTimeout(() => {
+          const customerId = filteredCustomers[prevIndex]._id || filteredCustomers[prevIndex].id;
+          const customerElement = document.getElementById(`customer-${customerId}`);
+          if (customerElement) {
+            customerElement.focus();
+            customerElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }, 0);
       }
+    } else if (e.key === 'ArrowRight') {
+      // Switch to add section
+      e.preventDefault();
+      e.stopPropagation();
+      setActiveSection('add');
+      nameRef.current?.focus();
     } else if (e.key === 'Enter' && highlightedCustomerIndex >= 0 && highlightedCustomerIndex < filteredCustomers.length) {
       e.preventDefault();
+      e.stopPropagation();
       const customer = filteredCustomers[highlightedCustomerIndex];
       handleSelectCustomer(customer);
     }
-  };
+  }, [showCustomerModal, filteredCustomers, highlightedCustomerIndex, handleSelectCustomer]);
+
+  // Keyboard navigation for customer list items
+  const handleCustomerItemKeyDown = useCallback((e, customer, index) => {
+    if (!showCustomerModal) return;
+    
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (index < filteredCustomers.length - 1) {
+        const nextIndex = index + 1;
+        setHighlightedCustomerIndex(nextIndex);
+        setTimeout(() => {
+          const nextCustomerId = filteredCustomers[nextIndex]._id || filteredCustomers[nextIndex].id;
+          const nextElement = document.getElementById(`customer-${nextCustomerId}`);
+          if (nextElement) {
+            nextElement.focus();
+            nextElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }, 0);
+      }
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      e.stopPropagation();
+      if (index > 0) {
+        const prevIndex = index - 1;
+        setHighlightedCustomerIndex(prevIndex);
+        setTimeout(() => {
+          const prevCustomerId = filteredCustomers[prevIndex]._id || filteredCustomers[prevIndex].id;
+          const prevElement = document.getElementById(`customer-${prevCustomerId}`);
+          if (prevElement) {
+            prevElement.focus();
+            prevElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+          }
+        }, 0);
+      } else {
+        // Move to search bar
+        setHighlightedCustomerIndex(-1);
+        searchRef.current?.focus();
+      }
+    } else if (e.key === 'ArrowRight') {
+      // Switch to add section
+      e.preventDefault();
+      e.stopPropagation();
+      setActiveSection('add');
+      nameRef.current?.focus();
+    } else if (e.key === 'ArrowLeft') {
+      // Stay in select section, focus search bar
+      e.preventDefault();
+      e.stopPropagation();
+      searchRef.current?.focus();
+    } else if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      e.stopPropagation();
+      handleSelectCustomer(customer);
+    }
+  }, [showCustomerModal, filteredCustomers, handleSelectCustomer]);
 
   // Handle input changes
   const handleInputChange = (e) => {
@@ -142,84 +549,18 @@ const CustomerModal = React.forwardRef(({
     });
   };
 
-  // Validate form
-  const validateForm = () => {
-    const errors = {};
-
-    if (!formValues.name?.trim()) {
-      errors.name = "Customer name is required";
-    }
-
-    if (formValues.email && !/\S+@\S+\.\S+/.test(formValues.email)) {
-      errors.email = "Please enter a valid email address";
-    }
-
-    if (
-      formValues.phoneNumber &&
-      !/^\d{10}$/.test(formValues.phoneNumber.replace(/\D/g, ""))
-    ) {
-      errors.phoneNumber = "Please enter a valid 10-digit phone number";
-    }
-
-    setFormErrors(errors);
-    return Object.keys(errors).length === 0;
-  };
-
-  // Handle form submission
-  const handleSubmit = () => {
-    if (validateForm()) {
-      handleAddCustomer(formValues);
-      setFormValues({
-        name: "",
-        email: "",
-        phoneNumber: "",
-        address: "",
-        birthday: "",
-        anniversary: "",
-        membershipId: "",
-        membershipName: ""
-      });
-      setFormErrors({});
-    }
-  };
-
-  // Handle modal close
-  const handleClose = () => {
-    setShowCustomerModal(false);
-    setFormValues({
-      name: "",
-      email: "",
-      phoneNumber: "",
-      address: "",
-      birthday: "",
-      anniversary: "",
-      membershipId: "",
-      membershipName: ""
-    });
-    setFormErrors({});
-    setSelectedCustomer(null);
-    setSearchTerm("");
-    setHighlightedCustomerIndex(-1);
-  };
-
-  // Handle selecting an existing customer
-  const handleSelectCustomer = (customer) => {
-    setSelectedCustomer(customer);
-    localStorage.setItem("customer", JSON.stringify(customer));
-    handleCustomerSelect(customer);
-  };
-
-  // Filter customers locally
-  const filteredCustomers = customers.filter(
-    (c) =>
-      c.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      c.phoneNumber?.includes(searchTerm)
-  );
-
   return (
-    <CModal visible={showCustomerModal} onClose={handleClose} size="lg">
+    <CModal 
+      visible={showCustomerModal} 
+      onClose={handleClose} 
+      size="lg"
+      ref={modalRef}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="customer-modal-title"
+    >
       <CModalHeader>
-        <CModalTitle>Customer Management</CModalTitle>
+        <CModalTitle id="customer-modal-title">Customer Management</CModalTitle>
       </CModalHeader>
       <CModalBody>
         <div className="d-flex">
@@ -232,6 +573,7 @@ const CustomerModal = React.forwardRef(({
             <div className="input-group mb-3">
               <CFormInput
                 ref={searchRef}
+                className="customer-search-input"
                 placeholder="Search customers..."
                 value={searchTerm}
                 onChange={(e) => {
@@ -270,9 +612,15 @@ const CustomerModal = React.forwardRef(({
                       highlightedCustomerIndex === index ? "border-primary border-2 shadow-sm" : ""
                     }`}
                     onClick={() => handleSelectCustomer(customer)}
+                    onKeyDown={(e) => handleCustomerItemKeyDown(e, customer, index)}
+                    tabIndex={0}
+                    role="button"
+                    aria-label={`Select customer ${customer.name}`}
                     style={{ 
                       cursor: "pointer",
-                      backgroundColor: highlightedCustomerIndex === index ? "#e7f3ff" : undefined
+                      backgroundColor: highlightedCustomerIndex === index ? "#e7f3ff" : undefined,
+                      outline: highlightedCustomerIndex === index ? '2px solid #0d6efd' : 'none',
+                      outlineOffset: highlightedCustomerIndex === index ? '2px' : '0'
                     }}
                   >
                     <div>
