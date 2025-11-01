@@ -981,31 +981,39 @@ const Dues = () => {
   };
 
   return (
- <div className="due-header-flex" style={{marginBottom: 18}}>
-  <h2 style={{ margin: 0, marginBottom: 2 }} className="text-center mb-3">Dues Management</h2>
-  <div className="header-btns" style={{
-    display: 'flex',
-    gap: 12,
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    width: '100%',
-    marginTop: 8
-  }}>
-    <CButton
-      color="dark"
-      onClick={() => setModalVisible(true)}
-      style={{
-        fontWeight: '600',
-        width: '180px',         // Chaho toh width 100% bhi kar sakte ho mobile pe
-        maxWidth: '100%'
-      }}
-    >
-      + Add Due
-    </CButton>
-  </div>
+    <div style={{ 
+      height: 'calc(100vh - 120px)', 
+      display: 'flex', 
+      flexDirection: 'column',
+      overflow: 'hidden',
+      padding: '0 1rem'
+    }}>
+      <div className="due-header-flex" style={{marginBottom: 12, flexShrink: 0}}>
+        <h2 style={{ margin: 0, marginBottom: 8 }} className="text-center mb-2">Dues Management</h2>
+        <div className="header-btns" style={{
+          display: 'flex',
+          gap: 12,
+          flexWrap: 'wrap',
+          justifyContent: 'center',
+          width: '100%',
+          marginBottom: 12
+        }}>
+          <CButton
+            color="primary"
+            onClick={() => setModalVisible(true)}
+            style={{
+              fontWeight: '600',
+              width: '180px',
+              maxWidth: '100%'
+            }}
+          >
+            + Add Due
+          </CButton>
+        </div>
+      </div>
 
       {/* Statistics Cards */}
-      <div className="row g-3 mb-4 mt-3">
+      <div className="row g-2 mb-3" style={{ flexShrink: 0 }}>
         <div className="col-12 col-md-6 col-lg-3">
           <div className="card border-0 shadow-sm" style={{ borderLeft: '4px solid #321fdb' }}>
             <div className="card-body">
@@ -1055,15 +1063,16 @@ const Dues = () => {
       )}
 
       {/* Data Grid / Mobile Cards */}
-      <div className="card border-0 shadow-sm">
-        <div className="card-body p-0">
+      <div className="card border-0 shadow-sm" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+        <div className="card-body p-0" style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
           {isLoading && validatedDues.length === 0 ? (
             <div
               style={{
                 display: 'flex',
                 justifyContent: 'center',
                 alignItems: 'center',
-                height: '400px',
+                height: '100%',
+                minHeight: '300px',
                 flexDirection: 'column',
                 gap: '16px',
               }}
@@ -1073,7 +1082,7 @@ const Dues = () => {
             </div>
           ) : isMobile ? (
             // Mobile Cards View
-            <div className="p-3">
+            <div className="p-3" style={{ overflowY: 'auto', flex: 1, minHeight: 0 }}>
               {/* Mobile Search Bar */}
               <div className="mb-3">
                 <div className="input-group">
@@ -1138,50 +1147,55 @@ const Dues = () => {
             </div>
           ) : (
             // Desktop DataGrid View
-            <DataGrid
-              style={{ width: '100%', minHeight: '400px' }}
-              rows={validatedDues}
-              columns={columns}
-              getRowId={(row) => getDueId(row)}
-              initialState={{
-                pagination: {
-                  paginationModel: { pageSize: 10 },
-                },
-              }}
-              pageSizeOptions={[5, 10, 20, 50]}
-              slots={{
-                toolbar: CustomToolbar,
-              }}
-              slotProps={{
-                toolbar: {
-                  showQuickFilter: true,
-                  quickFilterProps: { debounceMs: 500 },
-                },
-              }}
-              disableSelectionOnClick
-              autoHeight
-              loading={isLoading}
-              sx={{
-                border: 'none',
-                '& .MuiDataGrid-cell:hover': {
-                  backgroundColor: '#f5f5f5',
-                },
-                '& .MuiDataGrid-row:hover': {
-                  backgroundColor: '#f9f9f9',
-                },
-                '& .MuiDataGrid-columnHeaders': {
-                  backgroundColor: '#f8f9fa',
-                  fontWeight: 'bold',
-                },
-              }}
-            />
+            <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', minHeight: 0 }}>
+              <DataGrid
+                style={{ width: '100%', height: '100%' }}
+                rows={validatedDues}
+                columns={columns}
+                getRowId={(row) => getDueId(row)}
+                initialState={{
+                  pagination: {
+                    paginationModel: { pageSize: 10 },
+                  },
+                }}
+                pageSizeOptions={[5, 10, 20, 50]}
+                slots={{
+                  toolbar: CustomToolbar,
+                }}
+                slotProps={{
+                  toolbar: {
+                    showQuickFilter: true,
+                    quickFilterProps: { debounceMs: 500 },
+                  },
+                }}
+                disableSelectionOnClick
+                loading={isLoading}
+                sx={{
+                  border: 'none',
+                  height: '100%',
+                  '& .MuiDataGrid-cell:hover': {
+                    backgroundColor: '#f5f5f5',
+                  },
+                  '& .MuiDataGrid-row:hover': {
+                    backgroundColor: '#f9f9f9',
+                  },
+                  '& .MuiDataGrid-columnHeaders': {
+                    backgroundColor: '#f8f9fa',
+                    fontWeight: 'bold',
+                  },
+                  '& .MuiDataGrid-root': {
+                    height: '100%',
+                  },
+                }}
+              />
+            </div>
           )}
         </div>
       </div>
 
       {/* Empty State - Only show on desktop when not in mobile cards view */}
       {validatedDues.length === 0 && !isLoading && !isMobile && (
-        <div className="card border-0 shadow-sm mt-4">
+        <div className="card border-0 shadow-sm mt-3" style={{ flexShrink: 0 }}>
           <div className="card-body text-center p-5">
             <div style={{ fontSize: '64px', marginBottom: '16px' }}>📋</div>
             <h4 className="mb-3">No Dues Found</h4>

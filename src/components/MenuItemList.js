@@ -144,7 +144,11 @@ const MenuItemList = ({
           shape="rounded-pill"
           checked={params.row.status === 1}
           onChange={() => handleToggleStatus(params.row)}
-          label={params.row.status === 1 ? 'Active' : 'Inactive'}
+          label={
+            <span style={{ color: params.row.status === 1 ? '#6A5ACD' : '#6c757d' }}>
+              {params.row.status === 1 ? 'Active' : 'Inactive'}
+            </span>
+          }
         />
       ),
     },
@@ -265,7 +269,11 @@ const MenuItemList = ({
                             shape="rounded-pill"
                             checked={item.status === 1}
                             onChange={() => handleToggleStatus(item)}
-                            label={item.status === 1 ? 'Active' : 'Inactive'}
+                            label={
+                              <span style={{ color: item.status === 1 ? '#6A5ACD' : '#6c757d' }}>
+                                {item.status === 1 ? 'Active' : 'Inactive'}
+                              </span>
+                            }
                           />
                         </div>
 

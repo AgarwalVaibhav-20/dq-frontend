@@ -247,12 +247,9 @@ const LoginActivity = () => {
                     {/* Icon will inherit color via text-theme-aware on parent */}
                     <CIcon icon={cilCheckCircle} className="me-2 mt-1" />
                     <div>
-                        <strong>Active Session:</strong><br className="d-md-none" />
-                        <span className="d-md-inline d-block">{currentSession.name}</span>
-                        <br className="d-md-none" />
-                        <small className="d-block d-md-inline ms-md-2 text-secondary">
-                            Logged in at {formatDate(currentSession.logintime)}
-                        </small>
+                        <strong>Active Session: </strong>
+                        <span>{currentSession.name} </span>
+                        <span className="text-secondary">logged in at {formatDate(currentSession.logintime)}</span>
                     </div>
                     {/* Logout button hidden */}
                     {/* <div className="flex-shrink-0 ms-2">

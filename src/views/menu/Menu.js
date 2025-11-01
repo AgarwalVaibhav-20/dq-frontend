@@ -619,12 +619,35 @@ const Menu = () => {
         isLoading={isSubmitting}
       >
         {/* Tabs */}
-        <ul className="nav nav-tabs mb-3" style={{ fontSize: '14px' }}>
+        <style>
+          {`
+            .menu-modal-tabs .nav-link.active {
+              background-color: #6A5ACD !important;
+              color: #ffffff !important;
+              border-color: #6A5ACD !important;
+              border-bottom-color: #6A5ACD !important;
+            }
+            .menu-modal-tabs .nav-link {
+              color: #6c757d !important;
+            }
+            .menu-modal-tabs .nav-link:hover:not(.active) {
+              color: #6A5ACD !important;
+            }
+          `}
+        </style>
+        <ul className="nav nav-tabs mb-3 menu-modal-tabs" style={{ fontSize: '14px' }}>
           <li className="nav-item">
             <button
               className={`nav-link ${activeTab === "basic" ? "active" : ""}`}
               onClick={() => setActiveTab("basic")}
-              style={{ fontSize: '14px', padding: '8px 16px' }}
+              style={{ 
+                fontSize: '14px', 
+                padding: '8px 16px',
+                backgroundColor: activeTab === "basic" ? '#6A5ACD' : 'transparent',
+                color: activeTab === "basic" ? '#ffffff' : '#6c757d',
+                border: 'none',
+                borderBottom: activeTab === "basic" ? '2px solid #6A5ACD' : 'none'
+              }}
             >
               Basic Info
             </button>
@@ -633,7 +656,14 @@ const Menu = () => {
             <button
               className={`nav-link ${activeTab === "inventory" ? "active" : ""}`}
               onClick={() => setActiveTab("inventory")}
-              style={{ fontSize: '14px', padding: '8px 16px' }}
+              style={{ 
+                fontSize: '14px', 
+                padding: '8px 16px',
+                backgroundColor: activeTab === "inventory" ? '#6A5ACD' : 'transparent',
+                color: activeTab === "inventory" ? '#ffffff' : '#6c757d',
+                border: 'none',
+                borderBottom: activeTab === "inventory" ? '2px solid #6A5ACD' : 'none'
+              }}
             >
               Inventory
             </button>
