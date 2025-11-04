@@ -1320,9 +1320,35 @@ const POS = () => {
                               Table {qr.tableNumber}
                             </div>
                             {isItemInCart(qr) && (
-                              <small className="text-center mt-1 table-subtitle">
-                                {cart[qr.tableNumber]?.length || 0} items
-                              </small>
+                              <>
+                                <small className="text-center mt-1 table-subtitle">
+                                  {cart[qr.tableNumber]?.length || 0} items
+                                </small>
+                                <div className="d-flex gap-1 mt-2" onClick={(e) => e.stopPropagation()}>
+                                  <CButton
+                                    color="info"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/pos/table/${qr.tableNumber}`, { state: { openKOT: true } });
+                                    }}
+                                    style={{ fontSize: '0.7rem', padding: '2px 8px' }}
+                                  >
+                                    KOT
+                                  </CButton>
+                                  <CButton
+                                    color="warning"
+                                    size="sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/pos/table/${qr.tableNumber}`, { state: { openBill: true } });
+                                    }}
+                                    style={{ fontSize: '0.7rem', padding: '2px 8px' }}
+                                  >
+                                    Bill
+                                  </CButton>
+                                </div>
+                              </>
                             )}
                           </div>
                         </CCol>

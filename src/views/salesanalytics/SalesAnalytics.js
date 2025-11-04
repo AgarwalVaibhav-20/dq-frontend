@@ -2415,6 +2415,7 @@ import { fetchOrders } from '../../redux/slices/orderSlice';
 import { fetchCustomers } from '../../redux/slices/customerSlice';
 import { fetchMenuItems } from '../../redux/slices/menuSlice';
 import { fetchInventories } from '../../redux/slices/stockSlice';
+import { fetchTransactionsByRestaurant } from '../../redux/slices/transactionSlice';
 
 export default function SalesAnalytics() {
   const dispatch = useDispatch();
@@ -2434,6 +2435,9 @@ export default function SalesAnalytics() {
   const { inventories = [], loading: inventoriesLoading = false } = useSelector(
     (state) => state.inventories || { inventories: [], loading: false }
   );
+  const transactionsState = useSelector((state) => state.transactions || { transactions: [], loading: false });
+  const transactions = transactionsState.transactions || [];
+  const transactionsLoading = transactionsState.loading || false;
 
   // Debug Redux state
   console.log("🔍 Redux State Debug:", {
@@ -2441,10 +2445,12 @@ export default function SalesAnalytics() {
     customers: customers.length,
     menuItems: menuItems.length,
     inventories: inventories.length,
+    transactions: transactions.length,
     ordersLoading,
     customersLoading,
     menuItemsLoading,
-    inventoriesLoading
+    inventoriesLoading,
+    transactionsLoading
   });
 
   const [restaurantId, setRestaurantId] = useState(null);
@@ -2482,6 +2488,8 @@ export default function SalesAnalytics() {
   const [expandedRows, setExpandedRows] = useState(new Set());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [topItemsPeriod, setTopItemsPeriod] = useState('weekly'); // 'weekly' or 'monthly'
+  const [showTopItemsList, setShowTopItemsList] = useState(false);
 
   // Fetch data
   useEffect(() => {
@@ -2499,7 +2507,8 @@ export default function SalesAnalytics() {
           dispatch(fetchOrders({ restaurantId, token })),
           dispatch(fetchCustomers({ restaurantId, token })),
           dispatch(fetchMenuItems({ restaurantId, token })),
-          dispatch(fetchInventories({ restaurantId, token }))
+          dispatch(fetchInventories({ restaurantId, token })),
+          dispatch(fetchTransactionsByRestaurant({ restaurantId, token }))
         ]);
       } catch (err) {
         console.error('Error fetching data:', err);
@@ -2819,6 +2828,206 @@ export default function SalesAnalytics() {
     }
   }, [salesData]);
 
+  // Max Heap (Priority Queue) implementation for top items
+  class MaxHeap {
+    constructor(compareFn) {
+      this.heap = [];
+      this.compare = compareFn || ((a, b) => a.frequency - b.frequency);
+    }
+
+    push(item) {
+      this.heap.push(item);
+      this.heapifyUp(this.heap.length - 1);
+    }
+
+    pop() {
+      if (this.heap.length === 0) return null;
+      if (this.heap.length === 1) return this.heap.pop();
+
+      const top = this.heap[0];
+      this.heap[0] = this.heap.pop();
+      this.heapifyDown(0);
+      return top;
+    }
+
+    size() {
+      return this.heap.length;
+    }
+
+    heapifyUp(index) {
+      while (index > 0) {
+        const parentIndex = Math.floor((index - 1) / 2);
+        if (this.compare(this.heap[parentIndex], this.heap[index]) >= 0) break;
+        [this.heap[parentIndex], this.heap[index]] = [this.heap[index], this.heap[parentIndex]];
+        index = parentIndex;
+      }
+    }
+
+    heapifyDown(index) {
+      while (true) {
+        let largest = index;
+        const left = 2 * index + 1;
+        const right = 2 * index + 2;
+
+        if (left < this.heap.length && this.compare(this.heap[left], this.heap[largest]) > 0) {
+          largest = left;
+        }
+        if (right < this.heap.length && this.compare(this.heap[right], this.heap[largest]) > 0) {
+          largest = right;
+        }
+
+        if (largest === index) break;
+        [this.heap[index], this.heap[largest]] = [this.heap[largest], this.heap[index]];
+        index = largest;
+      }
+    }
+  }
+
+  // Function to get top items using frequency map and max heap
+  const getTopItemsByFrequency = (period = 'weekly', topK = 3) => {
+    try {
+      if (!transactions || transactions.length === 0) {
+        console.log('⚠️ No transactions available');
+        return [];
+      }
+
+      const today = new Date();
+      today.setHours(23, 59, 59, 999);
+      
+      let startDate;
+      if (period === 'weekly') {
+        startDate = new Date(today);
+        startDate.setDate(startDate.getDate() - 7);
+        startDate.setHours(0, 0, 0, 0);
+      } else {
+        // Monthly - 1 month ago from current date to today
+        startDate = new Date(today);
+        startDate.setMonth(startDate.getMonth() - 1); // Go back 1 month
+        startDate.setHours(0, 0, 0, 0);
+      }
+
+      console.log(`📅 ${period.toUpperCase()} Date Range:`, {
+        startDate: startDate.toISOString(),
+        endDate: today.toISOString(),
+        totalTransactions: transactions.length
+      });
+
+      // Filter transactions by date range
+      const filteredTransactions = transactions.filter(transaction => {
+        if (!transaction.createdAt) return false;
+        
+        // Exclude CashIn/CashOut transactions
+        if (transaction.type === 'CashIn' || transaction.type === 'CashOut' || 
+            transaction.type === 'bank_in' || transaction.type === 'bank_out') {
+          return false;
+        }
+        
+        if (transaction.status === 'cancelled') return false;
+        
+        if (!transaction.items || !Array.isArray(transaction.items) || transaction.items.length === 0) {
+          return false;
+        }
+        
+        const transactionDate = new Date(transaction.createdAt);
+        
+        // For both weekly and monthly: Check date range
+        // Reset time to start of day for accurate comparison
+        const transactionDateOnly = new Date(transactionDate);
+        transactionDateOnly.setHours(0, 0, 0, 0);
+        const startDateOnly = new Date(startDate);
+        startDateOnly.setHours(0, 0, 0, 0);
+        const todayOnly = new Date(today);
+        todayOnly.setHours(23, 59, 59, 999); // Include today's full day
+        
+        // Check if transaction is within the date range
+        return transactionDate >= startDateOnly && transactionDate <= todayOnly;
+      });
+
+      console.log(`✅ Filtered ${period} transactions:`, filteredTransactions.length);
+
+      // Create frequency map - count how many times each item appears in transactions
+      // Frequency = कितनी बार item transactions में आया (कितने orders में वो item है)
+      // Total Quantity = सभी transactions में उस item की कुल quantity का sum (कुल कितने units बिके)
+      // Example: 
+      //   - Transaction 1: Burger (quantity: 2) -> frequency = 1, totalQuantity = 2
+      //   - Transaction 2: Burger (quantity: 3) -> frequency = 2, totalQuantity = 5
+      //   - Transaction 3: Burger (quantity: 1) -> frequency = 3, totalQuantity = 6
+      const itemFrequencyMap = {};
+      
+      filteredTransactions.forEach(transaction => {
+        if (transaction.items && Array.isArray(transaction.items)) {
+          transaction.items.forEach(item => {
+            const itemName = item.itemName || 'Unknown';
+            
+            if (!itemFrequencyMap[itemName]) {
+              itemFrequencyMap[itemName] = {
+                itemName: itemName,
+                frequency: 0,           // कितने transactions में यह item आया
+                totalQuantity: 0,       // सभी transactions में इस item की कुल quantity
+                totalRevenue: 0         // सभी transactions में इस item की कुल revenue
+              };
+            }
+            
+            // Increment frequency (count each occurrence in transaction)
+            // हर transaction में item आने पर frequency +1 होगी
+            itemFrequencyMap[itemName].frequency += 1;
+            
+            // Add quantity (sum of all quantities across all transactions)
+            // सभी transactions में item की quantity का sum
+            itemFrequencyMap[itemName].totalQuantity += (parseInt(item.quantity) || 0);
+            itemFrequencyMap[itemName].totalRevenue += (parseFloat(item.subtotal) || 0);
+          });
+        }
+      });
+
+      console.log(`📊 ${period.toUpperCase()} Item Frequency Map:`, {
+        uniqueItems: Object.keys(itemFrequencyMap).length,
+        items: Object.entries(itemFrequencyMap).slice(0, 5).map(([name, data]) => ({
+          name,
+          frequency: data.frequency,
+          quantity: data.totalQuantity
+        }))
+      });
+
+      // Use Max Heap to get top K items based on frequency
+      const heap = new MaxHeap((a, b) => {
+        // Compare by frequency first, then by totalQuantity
+        if (a.frequency !== b.frequency) {
+          return a.frequency - b.frequency;
+        }
+        return a.totalQuantity - b.totalQuantity;
+      });
+
+      // Add all items to heap
+      Object.values(itemFrequencyMap).forEach(item => {
+        heap.push(item);
+      });
+
+      // Extract top K items
+      const topItems = [];
+      const itemsToExtract = Math.min(topK, heap.size());
+      
+      for (let i = 0; i < itemsToExtract; i++) {
+        const item = heap.pop();
+        if (item) topItems.push(item);
+      }
+
+      // Reverse to get descending order (highest frequency first)
+      const result = topItems.reverse();
+      console.log(`🏆 ${period.toUpperCase()} Top ${topK} Items:`, result);
+      return result;
+    } catch (error) {
+      console.error('❌ Error getting top items by frequency:', error);
+      return [];
+    }
+  };
+
+  // Function to calculate top item based on transactions from last 7 days
+  const calculateTopItemFromTransactions = () => {
+    const topItems = getTopItemsByFrequency('weekly', 1);
+    return topItems.length > 0 ? topItems[0].itemName : 'N/A';
+  };
+
   const getSummaryData = () => {
     if (viewMode === 'sales') {
       const totalRevenue = filteredData.reduce((sum, order) => sum + parseFloat(order.totalAmount), 0);
@@ -2840,7 +3049,16 @@ export default function SalesAnalytics() {
       const totalRevenue = filteredData.reduce((sum, item) => sum + item.totalRevenue, 0);
       const totalItemsSold = filteredData.reduce((sum, item) => sum + item.totalQuantity, 0);
       const totalProfit = filteredData.reduce((sum, item) => sum + item.profit, 0);
-      const topPerformer = filteredData.length > 0 ? filteredData[0] : { itemName: 'N/A' };
+      
+      // Calculate top item from transactions (based on selected period)
+      const topItems = getTopItemsByFrequency(topItemsPeriod, 1);
+      let topItem = topItems.length > 0 ? topItems[0].itemName : 'N/A';
+      
+      // Fallback: If no transactions found, use the first item from filtered data
+      if (topItem === 'N/A' && filteredData.length > 0) {
+        topItem = filteredData[0].itemName || 'N/A';
+        console.log('⚠️ Using fallback top item from filtered data:', topItem);
+      }
 
       return {
         main: totalRevenue,
@@ -2849,7 +3067,7 @@ export default function SalesAnalytics() {
         secondaryLabel: 'Items Sold',
         third: totalProfit,
         thirdLabel: 'Total Profit',
-        fourth: topPerformer.itemName,
+        fourth: topItem,
         fourthLabel: 'Top Item'
       };
     } else {
@@ -3179,11 +3397,36 @@ export default function SalesAnalytics() {
             <CardContent>
               <Stack direction="row" alignItems="center" spacing={2}>
                 <PieChartIcon />
-                <Box>
-                  <Typography variant="h5" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                    {typeof summaryData.fourth === 'number' ? `₹${summaryData.fourth.toFixed(2)}` : summaryData.fourth}
-                  </Typography>
-                  <Typography color="text.secondary">{summaryData.fourthLabel}</Typography>
+                <Box sx={{ flex: 1 }}>
+                  <Stack direction="row" alignItems="center" spacing={1} justifyContent="space-between">
+                    <Box sx={{ flex: 1 }}>
+                      <Typography variant="h5" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {typeof summaryData.fourth === 'number' ? `₹${summaryData.fourth.toFixed(2)}` : summaryData.fourth}
+                      </Typography>
+                      <Typography color="text.secondary">{summaryData.fourthLabel}</Typography>
+                    </Box>
+                    {viewMode === 'menu' && (
+                      <FormControl size="small" sx={{ minWidth: 100 }}>
+                        <Select
+                          value={topItemsPeriod}
+                          onChange={(e) => setTopItemsPeriod(e.target.value)}
+                          sx={{ fontSize: '0.75rem' }}
+                        >
+                          <MenuItem value="weekly">Weekly</MenuItem>
+                          <MenuItem value="monthly">Monthly</MenuItem>
+                        </Select>
+                      </FormControl>
+                    )}
+                  </Stack>
+                  {viewMode === 'menu' && (
+                    <Button
+                      size="small"
+                      onClick={() => setShowTopItemsList(!showTopItemsList)}
+                      sx={{ mt: 1, fontSize: '0.7rem' }}
+                    >
+                      {showTopItemsList ? 'Hide' : 'Show'} Top Items List
+                    </Button>
+                  )}
                 </Box>
               </Stack>
             </CardContent>
@@ -3195,6 +3438,59 @@ export default function SalesAnalytics() {
         <Button variant="contained" color="primary" onClick={exportCSV}>Export CSV</Button>
         <Button variant="contained" color="secondary" onClick={exportPDF}>Export PDF</Button>
       </Stack>
+
+      {/* Top Items List Section */}
+      {viewMode === 'menu' && showTopItemsList && (
+        <Paper sx={{ p: 3, mb: 3, borderRadius: 3, boxShadow: 3 }}>
+          <Typography variant="h6" gutterBottom>
+            Top Items ({topItemsPeriod === 'weekly' ? 'Last 7 Days' : 'Current Month'})
+          </Typography>
+          {(() => {
+            const topItems = getTopItemsByFrequency(topItemsPeriod, 3);
+            
+            if (topItems.length === 0) {
+              return (
+                <Alert severity="info">
+                  No top items data available for {topItemsPeriod === 'weekly' ? 'last 7 days' : 'current month'}.
+                </Alert>
+              );
+            }
+
+            return (
+              <TableContainer>
+                <Table>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell><strong>Rank</strong></TableCell>
+                      <TableCell><strong>Item Name</strong></TableCell>
+                      <TableCell align="right"><strong>Frequency</strong></TableCell>
+                      <TableCell align="right"><strong>Total Quantity</strong></TableCell>
+                      <TableCell align="right"><strong>Total Revenue</strong></TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {topItems.map((item, index) => (
+                      <TableRow key={item.itemName || index} hover>
+                        <TableCell>
+                          <Chip 
+                            label={`#${index + 1}`} 
+                            color={index < 3 ? 'primary' : 'default'} 
+                            size="small"
+                          />
+                        </TableCell>
+                        <TableCell><strong>{item.itemName || 'Unknown'}</strong></TableCell>
+                        <TableCell align="right">{item.frequency || 0}</TableCell>
+                        <TableCell align="right">{item.totalQuantity || 0}</TableCell>
+                        <TableCell align="right">₹{parseFloat(item.totalRevenue || 0).toFixed(2)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            );
+          })()}
+        </Paper>
+      )}
 
       <Paper sx={{ p: 3, mb: 3, borderRadius: 3, boxShadow: 3 }}>
         <Typography variant="h6" gutterBottom>Search & Filters</Typography>

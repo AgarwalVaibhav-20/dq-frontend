@@ -280,7 +280,7 @@ const POSTableContent = () => {
             localStorage.setItem(`selectedSystem_${tableId}`, JSON.stringify(transformedSystems[0]))
           } else if (transformedSystems.length > 1) {
             // Multiple systems - show selection modal
-            setShowSystemModal(true)
+            // setShowSystemModal(true) // Commented out - modal not showing
           }
         }
       }
@@ -500,7 +500,7 @@ const POSTableContent = () => {
 
   const handleSystemChange = () => {
     // Open system selection modal instead of navigating
-    setShowSystemModal(true)
+    // setShowSystemModal(true) // Commented out - modal not showing
   }
 
   const handleSystemSelect = (system) => {
@@ -1535,23 +1535,17 @@ const POSTableContent = () => {
   }
 
   const generateKOT = async () => {
-    const newItems = cart.filter((item) => {
-      const cartItemId = item._id || item.id;
-      return !kotItems.some((kot) => {
-        const kotItemId = kot._id || kot.id;
-        return kotItemId === cartItemId;
-      });
-    });
-
-    if (newItems.length === 0) {
-      toast.info('No new items to generate KOT!', { autoClose: 3000 })
+    // Generate KOT for all items in cart, including same items and different sizes
+    // This allows re-generating same items and different sizes
+    if (cart.length === 0) {
+      toast.info('Cart is empty! Please add items to generate KOT.', { autoClose: 3000 })
       return
     }
 
     try {
-      // Calculate subtotal and tax for new items
-      const kotSubtotal = newItems.reduce((total, item) => total + (item.adjustedPrice * item.quantity), 0);
-      const kotTaxAmount = newItems.reduce((total, item) => total + (Number(item.taxAmount) || 0), 0);
+      // Calculate subtotal and tax for all cart items
+      const kotSubtotal = cart.reduce((total, item) => total + (item.adjustedPrice * item.quantity), 0);
+      const kotTaxAmount = cart.reduce((total, item) => total + (Number(item.taxAmount) || 0), 0);
       const kotDiscountAmount = (kotSubtotal * discount) / 100;
       const kotTotal = kotSubtotal + kotTaxAmount - kotDiscountAmount;
       const orderData = {
@@ -1560,12 +1554,15 @@ const POSTableContent = () => {
         userId: localStorage.getItem('userId'),
         tableNumber: tableNumber,
         customerName: selectedCustomerName,
-        items: newItems.map((item) => ({
+        items: cart.map((item) => ({
           itemId: item._id || item.id,
           itemName: item.itemName,
           price: item.adjustedPrice,
           quantity: item.quantity,
           selectedSubcategoryId: item.selectedSubcategoryId || null,
+          sizeId: item.sizeId || null,
+          size: item.size || item.selectedSize || null,
+          selectedSize: item.selectedSize || null,
           subtotal: item.adjustedPrice * item.quantity,
           taxPercentage: item.taxPercentage || 0,
           taxAmount: item.taxAmount || 0
@@ -1581,9 +1578,10 @@ const POSTableContent = () => {
       }
 
       const result = await dispatch(createOrder(orderData)).unwrap()
-      toast.success('Order saved successfully!', { autoClose: 3000 })
+      toast.success('KOT generated successfully!', { autoClose: 3000 })
 
-      setKotItems((prevKotItems) => [...prevKotItems, ...newItems])
+      // Update kotItems with all current cart items (including duplicates and different sizes)
+      setKotItems((prevKotItems) => [...prevKotItems, ...cart])
 
       const kotElement = kotRef.current
       if (!kotElement) return
@@ -2163,14 +2161,15 @@ const POSTableContent = () => {
           onAddToCartWithSubcategory={handleAddToCartWithSubcategory}
         />
       </FocusTrap>
-      <FocusTrap active={showSystemModal}>
+      {/* System Selection Modal - Commented out as per user request */}
+      {/* <FocusTrap active={showSystemModal}>
         <SystemSelectionModal
           showSystemModal={showSystemModal}
           setShowSystemModal={setShowSystemModal}
           onSystemSelect={handleSystemSelect}
           selectedSystem={selectedSystem}
         />
-      </FocusTrap>
+      </FocusTrap> */}
       <FocusTrap active={showKOTModal}>
         <KOTModal isVisible={showKOTModal} onClose={() => setShowKOTModal(false)}>
           <div
@@ -2350,7 +2349,7 @@ const POSTableContent = () => {
         <KOT
           ref={kotRef}
           tableNumber={tableId}
-          cart={cart.filter((item) => !kotItems.includes(item))}
+          cart={cart}
           selectedSystem={selectedSystem}
         />
       </div>

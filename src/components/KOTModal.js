@@ -1,7 +1,16 @@
 import React from "react";
+import { useSelector } from 'react-redux';
 
 const KOTModal = React.forwardRef(({ isVisible, onClose, children }, ref) => {
+  const theme = useSelector((state) => state.theme.theme);
+  const isDarkMode = theme === 'dark';
+
   if (!isVisible) return null;
+
+  // Theme-aware colors
+  const modalBackground = isDarkMode ? "#1e1e1e" : "#fff";
+  const closeButtonColor = isDarkMode ? "#fff" : "#000";
+  const overlayBackground = isDarkMode ? "rgba(0, 0, 0, 0.8)" : "rgba(0, 0, 0, 0.5)";
 
   return (
     <div
@@ -11,7 +20,7 @@ const KOTModal = React.forwardRef(({ isVisible, onClose, children }, ref) => {
         left: 0,
         width: "100%",
         height: "100%",
-        backgroundColor: "rgba(0, 0, 0, 0.5)",
+        backgroundColor: overlayBackground,
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
@@ -20,7 +29,7 @@ const KOTModal = React.forwardRef(({ isVisible, onClose, children }, ref) => {
     >
       <div
         style={{
-          background: "#fff",
+          background: modalBackground,
           borderRadius: "8px",
           padding: "10px",
           width: "90%",
@@ -39,7 +48,7 @@ const KOTModal = React.forwardRef(({ isVisible, onClose, children }, ref) => {
             border: "none",
             fontSize: "24px",
             cursor: "pointer",
-            color: "black",
+            color: closeButtonColor,
           }}
         >
           &times;

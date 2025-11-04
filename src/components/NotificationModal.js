@@ -16,18 +16,21 @@ import {
   CAlert
 } from '@coreui/react';
 import CIcon from '@coreui/icons-react';
-import { cilCalendar, cilUser, cilPhone, cilEnvelopeOpen } from '@coreui/icons';
+import { cilCalendar, cilUser, cilPhone, cilEnvelopeOpen, cilWarning } from '@coreui/icons';
 import axios from 'axios';
 import { BASE_URL } from '../utils/constants';
 
-const NotificationModal = ({ visible, onClose }) => {
+const NotificationModal = ({ visible, onClose, onCountChange }) => {
   const [customers, setCustomers] = useState([]);
+  const [lowStockItems, setLowStockItems] = useState([]);
+  const [lowStockThreshold, setLowStockThreshold] = useState(10);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
   useEffect(() => {
     if (visible) {
       fetchCustomersWithUpcomingEvents();
+      fetchLowStockItems();
     }
   }, [visible]);
 
@@ -51,7 +54,8 @@ const NotificationModal = ({ visible, onClose }) => {
         },
       });
 
-      const allCustomers = response.data;
+      // Backend returns { success: true, data: customers } or just customers array
+      const allCustomers = response.data?.data || response.data || [];
       
       // Filter customers with birthdays or anniversaries today or tomorrow
       const today = new Date();
@@ -101,11 +105,46 @@ const NotificationModal = ({ visible, onClose }) => {
       setCustomers(customersWithEventInfo);
     } catch (err) {
       console.error('Error fetching customers:', err);
-      setError('Failed to fetch customer data');
+      const errorMessage = err.response?.data?.message || err.message || 'Failed to fetch customer data';
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
   };
+
+  const fetchLowStockItems = async () => {
+    try {
+      const token = localStorage.getItem('authToken');
+      const restaurantId = localStorage.getItem('restaurantId');
+      
+      if (!token || !restaurantId) return;
+
+      const response = await axios.get(`${BASE_URL}/api/low-stock/items`, {
+        params: { restaurantId },
+        headers: {
+          Authorization: `Bearer ${token}`,
+        },
+      });
+
+      const lowStockData = response.data?.data || {};
+      const items = lowStockData.items || [];
+      const threshold = lowStockData.threshold || 10;
+      
+      setLowStockItems(items);
+      setLowStockThreshold(threshold);
+    } catch (err) {
+      console.error('Error fetching low stock items:', err);
+      // Don't set error for low stock, just log it
+    }
+  };
+
+  // Update total count whenever customers or lowStockItems change
+  useEffect(() => {
+    if (onCountChange && !loading) {
+      const totalCount = customers.length + lowStockItems.length;
+      onCountChange(totalCount);
+    }
+  }, [customers.length, lowStockItems.length, onCountChange, loading]);
 
   const isSameDate = (date1, date2) => {
     return date1.getMonth() === date2.getMonth() && 
@@ -132,27 +171,29 @@ const NotificationModal = ({ visible, onClose }) => {
       <CModalHeader>
         <CModalTitle>
           <CIcon icon={cilCalendar} className="me-2" />
-          Upcoming Customer Events
+          Notifications
         </CModalTitle>
       </CModalHeader>
       <CModalBody>
         {loading ? (
           <div className="text-center py-4">
             <CSpinner color="primary" />
-            <div className="mt-2">Loading customer events...</div>
+            <div className="mt-2">Loading notifications...</div>
           </div>
         ) : error ? (
           <CAlert color="danger">
             <strong>Error:</strong> {error}
           </CAlert>
-        ) : customers.length === 0 ? (
-          <CAlert color="info">
-            <strong>No Events:</strong> No customers have birthdays or anniversaries today or tomorrow.
-          </CAlert>
         ) : (
           <div>
+            {/* Customer Events Section */}
+            {customers.length > 0 && (
+              <div className="mb-4">
             <div className="mb-3">
-              <strong>Found {customers.length} customer(s) with upcoming events:</strong>
+                  <strong className="d-flex align-items-center">
+                    <CIcon icon={cilCalendar} className="me-2" />
+                    Upcoming Customer Events ({customers.length})
+                  </strong>
             </div>
             <CListGroup>
               {customers.map((customer, index) => (
@@ -187,6 +228,53 @@ const NotificationModal = ({ visible, onClose }) => {
                 </CListGroupItem>
               ))}
             </CListGroup>
+              </div>
+            )}
+
+            {/* Low Stock Items Section */}
+            {lowStockItems.length > 0 && (
+              <div className="mb-4">
+                <div className="mb-3">
+                  <strong className="d-flex align-items-center">
+                    <CIcon icon={cilWarning} className="me-2" />
+                    Low Stock Items ({lowStockItems.length})
+                  </strong>
+                </div>
+                <CListGroup>
+                  {lowStockItems.map((item, index) => {
+                    const currentQuantity = item.currentQuantity || item.totalRemainingQuantity || item.stock?.quantity || item.stock?.totalQuantity || item.quantity || 0;
+                    const threshold = item.threshold || lowStockThreshold || 10;
+                    const unit = item.unit || '';
+                    
+                    return (
+                      <CListGroupItem key={item._id || index} className="d-flex justify-content-between align-items-start">
+                        <div className="ms-2 me-auto">
+                          <div className="fw-bold d-flex align-items-center">
+                            <CIcon icon={cilWarning} className="me-2 text-warning" />
+                            {item.itemName}
+                          </div>
+                          <div className="text-muted small mt-1">
+                            Current Quantity: <strong className="text-danger">{currentQuantity} {unit}</strong>
+                          </div>
+                          <div className="mt-2">
+                            <CBadge color="warning" className="me-2">
+                              ⚠️ Low Stock (Threshold: {threshold} {unit})
+                            </CBadge>
+                          </div>
+                        </div>
+                      </CListGroupItem>
+                    );
+                  })}
+                </CListGroup>
+              </div>
+            )}
+
+            {/* No Notifications Message */}
+            {customers.length === 0 && lowStockItems.length === 0 && (
+              <CAlert color="info">
+                <strong>No Notifications:</strong> No upcoming customer events or low stock items.
+              </CAlert>
+            )}
           </div>
         )}
       </CModalBody>
@@ -194,7 +282,10 @@ const NotificationModal = ({ visible, onClose }) => {
         <CButton color="secondary" onClick={onClose}>
           Close
         </CButton>
-        <CButton color="primary" onClick={fetchCustomersWithUpcomingEvents}>
+        <CButton color="primary" onClick={() => {
+          fetchCustomersWithUpcomingEvents();
+          fetchLowStockItems();
+        }}>
           Refresh
         </CButton>
       </CModalFooter>

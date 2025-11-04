@@ -798,7 +798,8 @@ const Cart = React.forwardRef(({
                 <span>System Charge ({selectedSystem.systemName})</span>
                 <div className="d-flex align-items-center">
                   <span className="text-info me-2">₹{Number(selectedSystem.chargeOfSystem || 0).toFixed(2)}</span>
-                  {onSystemChange && (
+                  {/* Change button hidden as per user request */}
+                  {/* {onSystemChange && (
                     <CButton
                       color="outline-primary"
                       size="sm"
@@ -808,7 +809,7 @@ const Cart = React.forwardRef(({
                     >
                       Change
                     </CButton>
-                  )}
+                  )} */}
                 </div>
               </div>
             )}
