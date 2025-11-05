@@ -71,6 +71,20 @@ const _nav = [
     icon: <CIcon icon={cilRestaurant} customClassName="nav-icon" />,
     roles: ['superadmin', 'admin'], // Superadmin and admin can see
   },
+  {
+    component: CNavItem,
+    name:'Spin and Win',
+    to:'/spin-and-win',
+    icon:<CIcon icon={cilStar} customClassName='nav-icon'/>,
+    roles:['superadmin','admin'], // Superadmin and admin can see
+  },
+  {
+    component: CNavItem,
+    name:'Spin',
+    to:'/spin',
+    icon:<CIcon icon={cilStar} customClassName='nav-icon'/>,
+    roles:['superadmin','admin'], // Superadmin and admin can see
+  },
   //  adding subcategory
   {
     component: CNavItem,
@@ -249,6 +263,11 @@ const _nav = [
         component: CNavItem,
         name: 'Table Report',
         to: '/table-report',
+      },
+      {
+        component: CNavItem,
+        name: 'Coupons Report',
+        to: '/coupons-report',
       },
       {
         component: CNavItem,

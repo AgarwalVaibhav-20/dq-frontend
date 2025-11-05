@@ -14,7 +14,10 @@ import KOT from '../../components/KOT'
 import Invoice from '../../components/Invoice'
 import KOTModal from '../../components/KOTModal'
 import InvoiceModal from '../../components/InvoiceModal'
-import { toast } from 'react-toastify'
+import { toast } from 'react-toastify';
+import { createTransaction } from '../../redux/slices/transactionSlice'
+import PaymentModal from '../../components/PaymentModal'
+import { FocusTrap } from 'focus-trap-react';
 const Order = () => {
   const [invoiceContent, setInvoiceContent] = useState(null)
   const [pdfDoc, setPdfDoc] = useState(null)
@@ -34,14 +37,98 @@ const Order = () => {
   const { restaurantProfile } = useSelector((state) => state.restaurantProfile)
   const token = localStorage.getItem("authToken")
   const restaurantId = localStorage.getItem('restaurantId');
-
+  // const isMobile = useMediaQuery('(max-width:600px)')
+  const isTablet = useMediaQuery('(max-width:992px)')
   // Filter states
   const [searchTerm, setSearchTerm] = useState('')
   const [statusFilter, setStatusFilter] = useState('all')
   const [dateFilter, setDateFilter] = useState('all')
-  const [sortBy, setSortBy] = useState('created_at')
+  const [sortBy, setSortBy] = useState('createdAt')
   const [sortOrder, setSortOrder] = useState('desc')
+  //payment adding 
+  const [showPaymentModal, setShowPaymentModal] = useState(false)
+  const [paymentType, setPaymentType] = useState('')
+  const [splitPercentages, setSplitPercentages] = useState({ online: 0, cash: 0, due: 0 })
 
+  // Add this handler function (adapt split logic from POSTableContent's handlePaymentSubmit if needed)
+  const handlePaymentSubmit = async (paymentData) => {
+    try {
+      setIsUpdatingStatus(true)
+      const orderId = selectedOrder._id || selectedOrder.order_id
+      const total = selectedOrder.subtotal || selectedOrder.totalAmount || 0
+
+      // Map items to cart format (similar to generateBill)
+      const cartItems = selectedOrder.items?.map(item => ({
+        id: item._id || item.id || item.itemId,
+        itemName: item.itemName || item.item_name,
+        price: item.price || item.subtotal / item.quantity,
+        quantity: item.quantity,
+        notes: item.notes || ''
+      })) || selectedOrder.order_details?.map(item => ({
+        id: item._id || item.id,
+        itemName: item.item_name,
+        price: item.price,
+        quantity: item.quantity,
+        notes: item.notes || ''
+      })) || []
+
+      // Handle split payments (basic: adjust total per type; extend for multi-transactions if needed)
+      const cashTotal = total * (splitPercentages.cash / 100)
+      const onlineTotal = total * (splitPercentages.online / 100)
+      const dueTotal = total * (splitPercentages.due / 100)
+
+      // For simplicity, create one transaction per payment type > 0 (or single if no split)
+      const paymentTypes = [
+        { type: 'Cash', amount: cashTotal, percent: splitPercentages.cash },
+        { type: 'Online', amount: onlineTotal, percent: splitPercentages.online },
+        { type: 'Due', amount: dueTotal, percent: splitPercentages.due }
+      ].filter(pt => pt.percent > 0)
+
+      let allTransactions = []
+      for (const pt of paymentTypes) {
+        const transactionPayload = {
+          username: localStorage.getItem('username') || 'admin',
+          token,
+          userId: localStorage.getItem('userId'),
+          tableNumber: selectedOrder.tableNumber,
+          items: cartItems, // Pro-rate items if needed, but pass full for now
+          sub_total: pt.amount,
+          tax: (selectedOrder.taxAmount || 0) * (pt.amount / total),
+          discount: (selectedOrder.discountAmount || 0) * (pt.amount / total),
+          total: pt.amount,
+          type: pt.type,
+          restaurantId,
+          customerId: selectedOrder.customerId?._id || selectedOrder.customerId || null,
+          transactionId: `${Date.now()}-${pt.type}`, // Unique per split
+          roundOff: (selectedOrder.roundOff || 0) * (pt.amount / total),
+          systemCharge: (selectedOrder.systemCharge || 0) * (pt.amount / total),
+          notes: paymentData.notes || ''
+        }
+
+        const result = await dispatch(createTransaction(transactionPayload))
+        if (result.type === 'transactions/createTransaction/fulfilled') {
+          allTransactions.push(result.payload.transaction)
+        } else {
+          throw new Error(`Failed to create ${pt.type} transaction`)
+        }
+      }
+
+      // After all transactions, update order status
+      const statusResult = await dispatch(updateOrderStatus({ id: orderId, status: 'complete' }))
+      if (statusResult.type === 'orders/updateOrderStatus/fulfilled') {
+        toast.success(`Order completed! Payment processed: ${paymentTypes.map(pt => `${pt.type}: ₹${pt.amount.toFixed(2)}`).join(', ')}`)
+        setShowPaymentModal(false)
+        closeSidebar()
+        dispatch(fetchOrders({ token, restaurantId })) // Refresh list
+      }
+    } catch (error) {
+      console.error('Payment error:', error)
+      toast.error('Failed to process payment. Order not completed.')
+    } finally {
+      setIsUpdatingStatus(false)
+      setSplitPercentages({ online: 0, cash: 0, due: 0 }) // Reset splits
+    }
+  }
   // Refs for KOT and Invoice components
   const kotRef = useRef(null)
   const invoiceRef = useRef(null)
@@ -197,7 +284,7 @@ const Order = () => {
     centerText('INVOICE', y, 10, 'bold')
     y += 6
 
-    centerText(`Date: ${new Date(transactionDetails.created_at).toLocaleString()}`, y, 8)
+    centerText(`Date: ${new Date(transactionDetails.createdAt).toLocaleString()}`, y, 8)
     y += 4
     centerText(`Table: ${transactionDetails?.table_number || 'N/A'}`, y, 8)
     y += 4
@@ -430,7 +517,7 @@ const Order = () => {
 
       const matchesDate = (() => {
         if (dateFilter === 'all') return true
-        const orderDate = new Date(order.created_at)
+        const orderDate = new Date(order.createdAt)
         const today = new Date()
         const yesterday = new Date(today)
         yesterday.setDate(yesterday.getDate() - 1)
@@ -469,10 +556,10 @@ const Order = () => {
           aValue = parseFloat(a.subtotal) || 0
           bValue = parseFloat(b.subtotal) || 0
           break
-        case 'created_at':
+        case 'createdAt':
         default:
-          aValue = new Date(a.created_at)
-          bValue = new Date(b.created_at)
+          aValue = new Date(a.createdAt)
+          bValue = new Date(b.createdAt)
           break
       }
 
@@ -491,10 +578,10 @@ const Order = () => {
           <div>
             <h6 className="fw-bold mb-1 text-primary">#{order.orderId}</h6>
             <small className="text-muted">
-              {order.created_at
+              {order.createdAt
                 ? (() => {
                   try {
-                    return format(new Date(order.created_at), 'dd/MM/yyyy HH:mm');
+                    return format(new Date(order.createdAt), 'dd/MM/yyyy HH:mm');
                   } catch {
                     return "—";
                   }
@@ -568,37 +655,43 @@ const Order = () => {
   const columns = [
     {
       field: 'orderId',
-      headerName: 'Order Number',
-      width: 150,
+      headerName: 'Order #',
+      flex: 0.8,
+      minWidth: 130,
       headerClassName: 'header-style',
     },
     {
       field: 'items',
       headerName: 'Items',
-      width: 200,
+      flex: 1.5,
+      minWidth: 200,
       headerClassName: 'header-style',
       valueGetter: (params) =>
         params.row.items?.length
-          ? params.row.items.map((item) => `${item.itemName} (x${item.quantity})`).join(', ')
+          ? params.row.items.map((item) => `${item.itemName} (×${item.quantity})`).join(', ')
           : 'N/A',
     },
     {
       field: 'customerName',
-      headerName: 'Customer Name',
-      width: 150,
+      headerName: 'Customer',
+      flex: 0.8,
+      minWidth: 120,
       headerClassName: 'header-style',
-      valueGetter: (params) => params.row.customerName || 'N/A',
+      valueGetter: (params) => params.row.customerName || 'Walk-in',
     },
     {
       field: 'tableNumber',
-      headerName: 'Table Number',
-      width: 120,
+      headerName: 'Table',
+      flex: 0.4,
+      minWidth: 80,
       headerClassName: 'header-style',
+      renderCell: (params) => <span>#{params.value || 'N/A'}</span>,
     },
     {
       field: 'status',
       headerName: 'Status',
-      width: 120,
+      flex: 0.6,
+      minWidth: 110,
       headerClassName: 'header-style',
       renderCell: (params) => (
         <div style={getStatusStyle(params.value)}>
@@ -607,24 +700,26 @@ const Order = () => {
       ),
     },
     {
-      field: 'created_at',
-      headerName: 'Date',
-      width: 180,
+      field: 'createdAt',
+      headerName: 'Date & Time',
+      flex: 1,
+      minWidth: 160,
       headerClassName: 'header-style',
-      valueGetter: (params) => format(new Date(params.row.createdAt), 'dd/MM/yyyy HH:mm'),
+      valueGetter: (params) => format(new Date(params.row.createdAt), 'dd MMM yyyy, HH:mm'),
     },
     {
       field: 'subtotal',
       headerName: 'Total',
-      width: 100,
+      flex: 0.5,
+      minWidth: 100,
       headerClassName: 'header-style',
-      valueGetter: (params) => `₹${params.row.
-        subtotal || 0}`,
+      renderCell: (params) => <span className="fw-bold text-success">₹{params.row.subtotal || 0}</span>,
     },
     {
       field: 'actions',
       headerName: 'Actions',
-      width: 120,
+      flex: 0.6,
+      minWidth: 120,
       headerClassName: 'header-style',
       sortable: false,
       filterable: false,
@@ -634,11 +729,15 @@ const Order = () => {
           size="sm"
           onClick={() => setSelectedOrder(params.row)}
         >
-          View Details
+          View
         </CButton>
       ),
     },
   ]
+
+  // Replace your DataGrid component with this:
+
+
 
   return (
     <div style={{ paddingLeft: '20px', paddingRight: '20px' }}>
@@ -777,7 +876,7 @@ const Order = () => {
                   value={sortBy}
                   onChange={(e) => setSortBy(e.target.value)}
                 >
-                  <option value="created_at">Date</option>
+                  <option value="createdAt">Date</option>
                   <option value="orderId">Order ID</option>
                   <option value="customerName">Customer</option>
                   <option value="subtotal">Total Amount</option>
@@ -805,7 +904,7 @@ const Order = () => {
                   setSearchTerm('')
                   setStatusFilter('all')
                   setDateFilter('all')
-                  setSortBy('created_at')
+                  setSortBy('createdAt')
                   setSortOrder('desc')
                 }}
                 className="w-100"
@@ -1005,134 +1104,308 @@ const Order = () => {
         </CModal>
       )}
 
+
       {selectedOrder && (
         <div
-          className="bg-theme-aware custom-scrollbar"
+          className="custom-scrollbar"
           style={{
             position: 'fixed',
             top: '0',
             right: '0',
             height: '100vh',
-            width: '30%',
-            boxShadow: '0 4px 8px rgba(0, 0, 0, 0.5)',
+            width: isMobile ? '100%' : isTablet ? '60%' : '450px',
+            background: 'white',
+            boxShadow: '-4px 0 24px rgba(0, 0, 0, 0.15)',
             zIndex: 1050,
-            borderLeft: '1px solid var(--cui-border-color)',
             overflowY: 'auto',
-            padding: '20px',
-            ...(window.innerWidth <= 500 && { width: '70%' }),
+            transition: 'transform 0.3s ease',
           }}
         >
-          {/* Sidebar content */}
+          {/* Sidebar Header */}
           <div
             style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              borderBottom: '1px solid var(--cui-border-color)',
-              paddingBottom: '10px',
-              marginBottom: '20px',
+              position: 'sticky',
+              top: 0,
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              color: 'white',
+              padding: '1.5rem',
+              zIndex: 10,
             }}
           >
-            <h5 style={{ fontWeight: 'bold', fontSize: '1.2rem' }}>
-              Order Details: #{selectedOrder.order_id}
-            </h5>
-            <button
-              onClick={closeSidebar}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <h5 style={{ margin: 0, fontSize: '1.25rem', fontWeight: '700' }}>
+                Order #{selectedOrder.orderId}
+              </h5>
+              <button
+                onClick={closeSidebar}
+                style={{
+                  background: 'rgba(255, 255, 255, 0.2)',
+                  border: 'none',
+                  color: 'white',
+                  width: '36px',
+                  height: '36px',
+                  borderRadius: '50%',
+                  fontSize: '1.5rem',
+                  cursor: 'pointer',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = 'rgba(255, 255, 255, 0.3)'
+                  e.target.style.transform = 'rotate(90deg)'
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'rgba(255, 255, 255, 0.2)'
+                  e.target.style.transform = 'rotate(0deg)'
+                }}
+              >
+                ×
+              </button>
+            </div>
+          </div>
+
+          {/* Sidebar Content */}
+          <div style={{ padding: '1.5rem' }}>
+            {/* Order Information Section */}
+            <div
               style={{
-                background: 'none',
-                border: 'none',
-                fontSize: '1.5rem',
-                fontWeight: 'bold',
-                cursor: 'pointer',
-                color: 'var(--cui-body-color)',
+                background: '#f9fafb',
+                borderRadius: '12px',
+                padding: '1.25rem',
+                marginBottom: '1.25rem',
               }}
             >
-              &times;
-            </button>
-          </div>
-          <div>
-            <p>
-              <strong>Order Number:</strong> {selectedOrder.orderId}
-            </p>
-            <p>
-              <strong>Customer Name:</strong> {selectedOrder.customerName || 'N/A'}
-            </p>
-            <p>
-              <strong>Customer Address:</strong> {selectedOrder.customerAddress || selectedOrder.customerId?.address || 'N/A'}
-            </p>
-            <p>
-              <strong>Table Number:</strong> {selectedOrder.tableNumber}
-            </p>
-            <p>
-              <strong>Status:</strong> {selectedOrder.status}
-            </p>
-            <p>
-              <strong>Total:</strong> ₹{selectedOrder.subtotal || 0}
-            </p>
-            <p>
-              <strong>Items:</strong>
-            </p>
-            <ul style={{ paddingLeft: '20px' }}>
-              {selectedOrder.items?.map((item, index) => (
-                <li key={index}>
-                  {item.itemName} (x{item.quantity}) - ₹{item.subtotal}
-                </li>
-              )) || selectedOrder.order_details?.map((item, index) => (
-                <li key={index}>
-                  {item.item_name} (x{item.quantity}) - ₹{item.price * item.quantity}
-                </li>
-              )) || <li>No items found</li>}
-            </ul>
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              marginTop: '20px',
-            }}
-          >
-            <CButton
-              color="success"
-              onClick={() => handleStatusChange(selectedOrder._id || selectedOrder.order_id, 'complete')}
-              style={{ flex: '0 0 48%' }}
-              disabled={isUpdatingStatus}
+              <h6 style={{ fontWeight: '700', color: '#1f2937', marginBottom: '1rem', fontSize: '1rem' }}>
+                📋 Order Information
+              </h6>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>
+                  <span style={{ color: '#6b7280', fontWeight: '500', fontSize: '0.875rem' }}>Order Number</span>
+                  <span style={{ color: '#1f2937', fontWeight: '600', fontSize: '0.9375rem' }}>{selectedOrder.orderId}</span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>
+                  <span style={{ color: '#6b7280', fontWeight: '500', fontSize: '0.875rem' }}>Status</span>
+                  <div style={getStatusStyle(selectedOrder.status)}>
+                    {selectedOrder.status.charAt(0).toUpperCase() + selectedOrder.status.slice(1)}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                  <span style={{ color: '#6b7280', fontWeight: '500', fontSize: '0.875rem' }}>Date & Time</span>
+                  <span style={{ color: '#1f2937', fontWeight: '600', fontSize: '0.9375rem', textAlign: 'right' }}>
+                    {format(new Date(selectedOrder.createdAt), 'dd MMM yyyy, HH:mm')}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Customer Details Section */}
+            <div
+              style={{
+                background: '#f9fafb',
+                borderRadius: '12px',
+                padding: '1.25rem',
+                marginBottom: '1.25rem',
+              }}
             >
-              {isUpdatingStatus ? <CSpinner size="sm" /> : 'Mark as Complete'}
-            </CButton>
-            <CButton
-              color="danger"
-              onClick={() => handleStatusChange(selectedOrder._id || selectedOrder.order_id, 'reject')}
-              style={{ flex: '0 0 48%' }}
-              disabled={isUpdatingStatus}
+              <h6 style={{ fontWeight: '700', color: '#1f2937', marginBottom: '1rem', fontSize: '1rem' }}>
+                👤 Customer Details
+              </h6>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>
+                  <span style={{ color: '#6b7280', fontWeight: '500', fontSize: '0.875rem' }}>Name</span>
+                  <span style={{ color: '#1f2937', fontWeight: '600', fontSize: '0.9375rem' }}>
+                    {selectedOrder.customerName || 'Walk-in'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>
+                  <span style={{ color: '#6b7280', fontWeight: '500', fontSize: '0.875rem' }}>Addres</span>
+                  <span style={{ color: '#1f2937', fontWeight: '600', fontSize: '0.9375rem' }}>
+                    {selectedOrder.customerAddress || 'Walk-in'}
+                  </span>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>
+                  <span style={{ color: '#6b7280', fontWeight: '500', fontSize: '0.875rem' }}>Table Number</span>
+                  <span style={{ color: '#1f2937', fontWeight: '600', fontSize: '0.9375rem' }}>
+                    #{selectedOrder.tableNumber || 'N/A'}
+                  </span>
+                </div>
+                {(selectedOrder.customerAddress || selectedOrder.customerId?.address) && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+                    <span style={{ color: '#6b7280', fontWeight: '500', fontSize: '0.875rem' }}>Address</span>
+                    <span style={{ color: '#1f2937', fontWeight: '600', fontSize: '0.9375rem', textAlign: 'right', maxWidth: '60%' }}>
+                      {selectedOrder.customerAddress || selectedOrder.customerId?.address}
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Order Items Section */}
+            <div
+              style={{
+                background: '#f9fafb',
+                borderRadius: '12px',
+                padding: '1.25rem',
+                marginBottom: '1.25rem',
+              }}
             >
-              {isUpdatingStatus ? <CSpinner size="sm" /> : 'Reject Order'}
-            </CButton>
-          </div>
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              marginTop: '20px',
-            }}
-          >
-            <CButton
-              color="primary"
-              onClick={() => generateKOT(selectedOrder)}
-              style={{ flex: '0 0 48%' }}
+              <h6 style={{ fontWeight: '700', color: '#1f2937', marginBottom: '1rem', fontSize: '1rem' }}>
+                🍽️ Order Items
+              </h6>
+              <ul style={{ listStyle: 'none', padding: 0, margin: 0 }}>
+                {selectedOrder.items?.map((item, index) => (
+                  <li
+                    key={index}
+                    style={{
+                      background: 'white',
+                      padding: '0.75rem',
+                      marginBottom: '0.5rem',
+                      borderRadius: '8px',
+                      border: '1px solid #e5e7eb',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: '600', color: '#1f2937', marginBottom: '0.25rem' }}>
+                        {item.itemName}
+                      </div>
+                      <small style={{ color: '#6b7280' }}>Qty: {item.quantity}</small>
+                    </div>
+                    <span style={{ fontWeight: '700', color: '#10b981', fontSize: '1rem' }}>
+                      ₹{item.subtotal}
+                    </span>
+                  </li>
+                )) || selectedOrder.order_details?.map((item, index) => (
+                  <li
+                    key={index}
+                    style={{
+                      background: 'white',
+                      padding: '0.75rem',
+                      marginBottom: '0.5rem',
+                      borderRadius: '8px',
+                      border: '1px solid #e5e7eb',
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      alignItems: 'center',
+                    }}
+                  >
+                    <div>
+                      <div style={{ fontWeight: '600', color: '#1f2937', marginBottom: '0.25rem' }}>
+                        {item.item_name}
+                      </div>
+                      <small style={{ color: '#6b7280' }}>Qty: {item.quantity}</small>
+                    </div>
+                    <span style={{ fontWeight: '700', color: '#10b981', fontSize: '1rem' }}>
+                      ₹{item.price * item.quantity}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+
+            {/* Order Total Section */}
+            <div
+              style={{
+                background: 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)',
+                borderRadius: '12px',
+                padding: '1.25rem',
+                marginBottom: '1.5rem',
+              }}
             >
-              Generate KOT
-            </CButton>
-            <CButton
-              color="secondary"
-              onClick={() => generateBill(selectedOrder)}
-              style={{ flex: '0 0 48%' }}
-            >
-              Generate Bill
-            </CButton>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '1.125rem', fontWeight: '700', color: '#1f2937' }}>
+                  Total Amount
+                </span>
+                <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#10b981' }}>
+                  ₹{selectedOrder.subtotal || 0}
+                </span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '1.5rem' }}>
+              <CButton
+                color="success"
+                onClick={() => setShowPaymentModal(true)}
+                disabled={isUpdatingStatus || selectedOrder.status === 'complete'}
+                style={{ borderRadius: '8px', fontWeight: '600', padding: '0.75rem' }}
+              >
+                {isUpdatingStatus ? <CSpinner size="sm" /> : '✓ Complete'}
+              </CButton>
+
+              <CButton
+                color="danger"
+                onClick={() => handleStatusChange(selectedOrder._id || selectedOrder.order_id, 'reject')}
+                disabled={isUpdatingStatus || selectedOrder.status === 'reject'}
+                style={{ borderRadius: '8px', fontWeight: '600', padding: '0.75rem' }}
+              >
+                {isUpdatingStatus ? <CSpinner size="sm" /> : '✗ Reject'}
+              </CButton>
+
+              <CButton
+                color="primary"
+                variant="outline"
+                onClick={() => generateKOT(selectedOrder)}
+                style={{ borderRadius: '8px', fontWeight: '600', padding: '0.75rem' }}
+              >
+                📄 Generate KOT
+              </CButton>
+
+              <CButton
+                color="info"
+                variant="outline"
+                onClick={() => generateBill(selectedOrder)}
+                style={{ borderRadius: '8px', fontWeight: '600', padding: '0.75rem' }}
+              >
+                🧾 Generate Bill
+              </CButton>
+            </div>
           </div>
         </div>
       )}
 
+      {/* Add custom scrollbar styling - place this in your <style> tag */}
+      <style>
+        {`
+    .custom-scrollbar::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-track {
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+      background: #888;
+      border-radius: 10px;
+    }
+    
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+      background: #555;
+    }
+  `}
+      </style>
+
+      {/* Payment Modal - Place outside sidebar */}
+      <FocusTrap active={showPaymentModal}>
+        <PaymentModal
+          showPaymentModal={showPaymentModal}
+          setShowPaymentModal={setShowPaymentModal}
+          paymentType={paymentType}
+          setPaymentType={setPaymentType}
+          splitPercentages={splitPercentages}
+          setSplitPercentages={setSplitPercentages}
+          handlePaymentSubmit={handlePaymentSubmit}
+          totalAmount={selectedOrder?.subtotal || selectedOrder?.totalAmount || 0}
+          orderId={selectedOrder?._id || selectedOrder?.order_id}
+        />
+      </FocusTrap>
 
 
       {/* Hidden KOT and Invoice components for generation */}

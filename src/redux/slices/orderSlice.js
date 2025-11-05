@@ -33,12 +33,12 @@ export const createOrder = createAsyncThunk(
     paymentStatus }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('authToken')
-      
+
       // Make headers optional for public orders (customer menu)
       const headers = {
         'Content-Type': 'application/json',
       }
-      
+
       // Only add Authorization header if token exists
       if (token) {
         headers.Authorization = `Bearer ${token}`;
@@ -257,6 +257,29 @@ export const deleteOrder = createAsyncThunk(
   },
 )
 
+// === NEW ADDITION ===
+// Fetch order statistics
+export const fetchOrderStatistics = createAsyncThunk(
+  'orders/fetchOrderStatistics',
+  async (_, { rejectWithValue }) => { // No args needed, token has restaurantId
+    try {
+      const token = localStorage.getItem('authToken');
+      const headers = { Authorization: `Bearer ${token}` };
+
+      // Use the route from orderRoute.js
+      const response = await axiosInstance.get(
+        `${BASE_URL}/order/statistics`, 
+        { headers }
+      );
+      
+      return response.data.data; // The { daily, weekly, monthly } object
+    } catch (error) {
+      return rejectWithValue(error.response?.data?.error || 'Failed to fetch statistics');
+    }
+  }
+);
+// === END NEW ADDITION ===
+
 // Slice
 const orderSlice = createSlice({
   name: 'orders',
@@ -271,6 +294,10 @@ const orderSlice = createSlice({
     loading: false,
     notificationLoading: false,
     error: null,
+    // === NEW ADDITION ===
+    statistics: { daily: 0, weekly: 0, monthly: 0 },
+    statsLoading: false,
+    // === END NEW ADDITION ===
   },
   reducers: {
     resetNewOrderCount: (state) => {
@@ -383,14 +410,18 @@ const orderSlice = createSlice({
       })
       .addCase(updateOrderStatus.fulfilled, (state, action) => {
         state.loading = false
-        const updatedOrder = action.payload.order
+        const updatedOrder = action.payload.data // <-- FIX 1
 
-        const index = state.orders.findIndex((order) => order.order_id === updatedOrder.id)
+        // FIX 2: Match by the Mongoose ID (order.id is the virtual for order._id)
+        const index = state.orders.findIndex((order) => order.id === updatedOrder.id)
+
         if (index !== -1) {
-          state.orders[index] = { ...state.orders[index], status: updatedOrder.status }
+          // Update the status of the order in the list
+          state.orders[index].status = updatedOrder.status
         } else {
-          console.log('Order not found.')
+          console.log('Order not found in state.')
         }
+
         toast.success('Order status updated successfully!')
       })
       .addCase(updateOrderStatus.rejected, (state, action) => {
@@ -467,6 +498,24 @@ const orderSlice = createSlice({
         state.error = action.payload
         toast.error('Failed to delete order.')
       })
+
+    // === NEW ADDITION ===
+    // Fetch Order Statistics
+    builder
+      .addCase(fetchOrderStatistics.pending, (state) => {
+        state.statsLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchOrderStatistics.fulfilled, (state, action) => {
+        state.statsLoading = false;
+        state.statistics = action.payload; // payload is { daily, weekly, monthly }
+      })
+      .addCase(fetchOrderStatistics.rejected, (state, action) => {
+        state.statsLoading = false;
+        state.error = action.payload;
+        toast.error('Failed to fetch statistics.');
+      });
+    // === END NEW ADDITION ===
   },
 })
 

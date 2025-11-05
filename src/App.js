@@ -103,7 +103,7 @@ import TotalRevenueReport from './views/reports/TotalRevenueReport'
 import MostOrderedDishesReport from './views/reports/MostOrderedDishesReport'
 import YearlyChartReport from './views/reports/YearlyChartReport'
 import WeeklyChartReport from './views/reports/WeeklyChartReport'
-
+import CouponsReport from './views/reports/CouponsReport.js';
 // Lazy Loading for pages
 const Waste = React.lazy(() => import('./views/waste/Waste.js'))
 const SubCategory = React.lazy(() => import('./views/subCategory/SubCategory'))
@@ -138,8 +138,8 @@ const DailyReport = React.lazy(() => import('./views/reports/DailyReport'))
 const PaymentReport = React.lazy(() => import('./views/reports/PaymentReport'))
 const Feedback = React.lazy(() => import('./views/feedbacks/Feedback'))
 const Page404 = React.lazy(() => import('./views/pages/page404/Page404'))
-
-
+const SpinAndWin = React.lazy(() => import('./views/spinandwin/SpinAndWin'))
+const Spin = React.lazy(() => import('./views/spin/Spin'))
 const App = () => {
   const dispatch = useDispatch()
   const userId = localStorage.getItem('userId')
@@ -422,11 +422,14 @@ const App = () => {
                         <Route path="transactions" element={<Transactions />} />
                         <Route path="pos" element={<POS />} />
                         <Route path="pos/system/:tableNumber" element={<SystemSelection />} />
+                        <Route path="spin" element={<Spin />} />
+                        <Route path="spin-and-win" element={<SpinAndWin />} />
                         {/* <Route path="table" element={<TableRedirect />} /> */}
                         <Route path="pos/system/tableNumber/:tableNumber" element={<POSTableContent />} />
                         <Route path="pos/tableNumber/:tableNumber" element={<POSTableContent />} />
                         <Route path="account/:userId" element={<Account />} />
                         <Route path="setting" element={<Settings />} />
+                        <Route path="coupons-report" element={<CouponsReport />} />
                         <Route path="daily-report" element={<DailyReport />} />
                         <Route path="payment-report" element={<PaymentReport />} />
                         <Route path="customer-report" element={<CustomerReport />} />
@@ -460,6 +463,11 @@ const App = () => {
                     <Route index element={
                       <PermissionGuard requiredPermissions={['Orders']}>
                         <Orders />
+                      </PermissionGuard>
+                    } />
+                    <Route path="spin-and-win" element={
+                      <PermissionGuard requiredPermissions={['Spin and Win']}>
+                        <SpinAndWin />
                       </PermissionGuard>
                     } />
                     <Route path="orders" element={
@@ -510,9 +518,15 @@ const App = () => {
                         <CustomerMenu />
                       </PermissionGuard>
                     } /> */}
+
                     <Route path="restaurants" element={
                       <PermissionGuard requiredPermissions={['Restaurants']}>
                         <Restaurants />
+                      </PermissionGuard>
+                    } />
+                    <Route path="spin" element={
+                      <PermissionGuard requiredPermissions={['Spin']}>
+                        <Spin />
                       </PermissionGuard>
                     } />
                     <Route path="purchaseanalytics" element={
@@ -622,6 +636,11 @@ const App = () => {
                     <Route path="dashboard-statistics-report" element={
                       <PermissionGuard requiredPermissions={['Reports']}>
                         <DashboardStatisticsReport />
+                      </PermissionGuard>
+                    } />
+                    <Route path="coupons-report" element={
+                      <PermissionGuard requiredPermissions={['Reports']}>
+                        <CouponsReport />
                       </PermissionGuard>
                     } />
                     <Route path="due-report" element={

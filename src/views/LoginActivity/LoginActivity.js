@@ -243,12 +243,15 @@ const LoginActivity = () => {
                     color: 'var(--cui-body-color)' // Ensure text remains readable
                 }}
             >
-                <div className="d-flex align-items-start w-100">
+                <div className="d-flex align-items-start w-100  text-green-400">
                     {/* Icon will inherit color via text-theme-aware on parent */}
-                    <CIcon icon={cilCheckCircle} className="me-2 mt-1" />
+                    <CIcon icon={cilCheckCircle} className="me-2 mt-1 bg-green-600 rounded-full text-white" />
                     <div>
                         <strong>Active Session: </strong>
-                        <span>{currentSession.name} </span>
+                        <span style={{
+                           color: 'var(--cui-body-color)'
+                        }
+                        }>{currentSession.name} </span>
                         <span className="text-secondary">logged in at {formatDate(currentSession.logintime)}</span>
                     </div>
                     {/* Logout button hidden */}

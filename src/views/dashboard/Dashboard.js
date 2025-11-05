@@ -20,6 +20,7 @@ import {
   fetchOverallReport,
   fetchPaymentTypeStats,
 } from '../../redux/slices/dashboardSlice';
+import { fetchOrderStatistics } from '../../redux/slices/orderSlice';
 import { fetchTransactionDetails, getDailyCashBalance } from '../../redux/slices/transactionSlice'
 import axios from 'axios'
 import { BASE_URL } from '../../utils/constants'
@@ -34,6 +35,10 @@ const Dashboard = () => {
     loading,
     error,
   } = useSelector((state) => state.dashboard);
+  const {
+    statistics, // { daily, weekly, monthly }
+    statsLoading, // Loading state for statistics
+  } = useSelector((state) => state.orders);
   const restaurantId = useSelector((state) => state.auth.restaurantId);
   const token = useSelector((state) => state.auth.token) || localStorage.getItem('authToken');
   const userRole = localStorage.getItem('userRole');
@@ -41,6 +46,7 @@ const Dashboard = () => {
   const { dailyCashBalance, dailyTransactionCount, cashLoading } = useSelector((state) => state.transactions);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedWeekYear, setSelectedWeekYear] = useState(new Date().getFullYear());
+  const [statisticsDropdown, setStatisticsDropdown] = useState('daily');
   const [dropdownStates, setDropdownStates] = useState({
     collection: 'today',
     invoices: 'today',
@@ -60,7 +66,7 @@ const Dashboard = () => {
   const handleRestaurantClick = async (restaurantId, restaurantName) => {
     try {
       console.log('Switching to restaurant:', { restaurantId, restaurantName });
-      
+
       // Call switch restaurant API
       const response = await axios.post(`${BASE_URL}/api/restaurant/switch-restaurant`, {
         restaurantId: restaurantId
@@ -70,35 +76,35 @@ const Dashboard = () => {
           'Content-Type': 'application/json'
         }
       });
-      
+
       console.log('Switch restaurant API response:', response.data);
-      
+
       if (response.data.success) {
         // Remove old token from localStorage
         localStorage.removeItem('authToken');
-        
+
         // Update localStorage with new restaurant info and token
         localStorage.setItem('authToken', response.data.token);
         localStorage.setItem('selectedRestaurantId', restaurantId);
         localStorage.setItem('selectedRestaurantName', restaurantName);
         localStorage.setItem('restaurantId', restaurantId);
-        
+
         // Update Redux store with new restaurant ID and token
-        dispatch(updateRestaurantId({ 
-          restaurantId, 
+        dispatch(updateRestaurantId({
+          restaurantId,
           restaurantName,
           token: response.data.token
         }));
-        
+
         // Reload the page to refresh all data with new restaurant
         window.location.reload();
-        
+
         console.log('Restaurant switched successfully with new token!');
       } else {
         console.error('Failed to switch restaurant:', response.data.message);
         alert('Failed to switch restaurant: ' + response.data.message);
       }
-      
+
     } catch (error) {
       console.error('Error switching restaurant:', error);
       const errorMessage = error.response?.data?.message || 'Failed to switch restaurant';
@@ -123,9 +129,9 @@ const Dashboard = () => {
           Authorization: `Bearer ${token}`,
         },
       });
-      
+
       console.log('Restaurants API Response:', response.data);
-      
+
       // Handle different response structures
       let restaurantsData = [];
       if (response.data.success && response.data.data) {
@@ -140,10 +146,10 @@ const Dashboard = () => {
       console.log('First few restaurants:', restaurantsData.slice(0, 3));
 
       // Show only users with restaurantName field (excluding "Not provided" or empty)
-      const allRestaurants = restaurantsData.filter(restaurant => 
-        restaurant.restaurantName && 
-        restaurant.restaurantName !== undefined && 
-        restaurant.restaurantName !== null && 
+      const allRestaurants = restaurantsData.filter(restaurant =>
+        restaurant.restaurantName &&
+        restaurant.restaurantName !== undefined &&
+        restaurant.restaurantName !== null &&
         restaurant.restaurantName !== 'Not provided' &&
         restaurant.restaurantName.trim() !== ''
       );
@@ -153,11 +159,11 @@ const Dashboard = () => {
 
       setRestaurants(allRestaurants);
       setFilteredRestaurants(allRestaurants);
-      
+
       // Check if there's a saved restaurant in localStorage
       const savedRestaurantId = localStorage.getItem('selectedRestaurantId');
       const savedRestaurant = allRestaurants.find(r => r._id === savedRestaurantId);
-      
+
       if (savedRestaurant) {
         // Restore saved restaurant
         console.log('Restoring saved restaurant:', savedRestaurant.restaurantName);
@@ -188,6 +194,7 @@ const Dashboard = () => {
   useEffect(() => {
     if (restaurantId && token) {
       // Initial load of daily cash balance
+      dispatch(fetchOrderStatistics());
       dispatch(getDailyCashBalance({
         token,
         restaurantId: String(restaurantId)
@@ -206,7 +213,7 @@ const Dashboard = () => {
   useEffect(() => {
     const savedRestaurantId = localStorage.getItem('selectedRestaurantId');
     const savedRestaurantName = localStorage.getItem('selectedRestaurantName');
-    
+
     if (savedRestaurantId && savedRestaurantName) {
       console.log('Restoring selected restaurant from localStorage:', {
         id: savedRestaurantId,
@@ -222,7 +229,7 @@ const Dashboard = () => {
     const currentRestaurantId = localStorage.getItem('restaurantId');
     console.log('Current User ID:', currentUserId);
     console.log('Current Restaurant ID:', currentRestaurantId);
-    
+
     // Check if current user's restaurant is in the list
     if (restaurants.length > 0) {
       const currentUserRestaurant = restaurants.find(r => r._id === currentRestaurantId);
@@ -254,6 +261,7 @@ const Dashboard = () => {
       dispatch(fetchOverallReport({ restaurantId: String(restaurantId), token }));
       dispatch(fetchChartData({ year: selectedYear, restaurantId: String(restaurantId), token }));
       dispatch(fetchWeeklyChartData({ year: selectedWeekYear, restaurantId: String(restaurantId), token }));
+      dispatch(fetchOrderStatistics());
     } else {
       console.warn('Missing restaurantId or token:', { restaurantId, token: !!token });
     }
@@ -321,7 +329,7 @@ const Dashboard = () => {
   // Safe data transformation for payment report
   const getPaymentReportData = () => {
     // Use mock data if no real data is available and dates are selected (for testing)
-   
+
 
     if (!paymentTypeStats?.data || !Array.isArray(paymentTypeStats.data)) {
       console.log('No payment stats data available');
@@ -494,52 +502,52 @@ const Dashboard = () => {
     return chartData;
   };
 
-const getPieChartData = () => {
-  
-  if (!weeklyChartData?.datasets || !Array.isArray(weeklyChartData.datasets)) {
-    console.log('No weekly chart data available from API.'); 
-    return { 
-      labels: [], 
-      datasets: [{ 
-        data: [], 
-        backgroundColor: [], 
-        borderColor: [] 
-      }] 
-    };
-  }
+  const getPieChartData = () => {
 
-  try {
- 
-    const labels = weeklyChartData.datasets.map((ds) => ds.label || 'Unknown');
-    const data = weeklyChartData.datasets.map((ds) => {
-      if (!Array.isArray(ds.data)) return 0;
-     
-      return ds.data.reduce((acc, val) => acc + parseFloat(val || 0), 0);
-    });
-    const backgroundColor = weeklyChartData.datasets.map((ds) => ds.backgroundColor || '#ccc');
-    const borderColor = weeklyChartData.datasets.map((ds) => ds.borderColor || '#999');
+    if (!weeklyChartData?.datasets || !Array.isArray(weeklyChartData.datasets)) {
+      console.log('No weekly chart data available from API.');
+      return {
+        labels: [],
+        datasets: [{
+          data: [],
+          backgroundColor: [],
+          borderColor: []
+        }]
+      };
+    }
 
-    return {
-      labels,
-      datasets: [{
-        data,
-        backgroundColor,
-        borderColor,
-      }],
-    };
-  } catch (error) {
-    console.error('Error processing pie chart data:', error);
-  
-    return {
-      labels: [],
-      datasets: [{
-        data: [],
-        backgroundColor: [],
-        borderColor: [],
-      }],
-    };
-  }
-};
+    try {
+
+      const labels = weeklyChartData.datasets.map((ds) => ds.label || 'Unknown');
+      const data = weeklyChartData.datasets.map((ds) => {
+        if (!Array.isArray(ds.data)) return 0;
+
+        return ds.data.reduce((acc, val) => acc + parseFloat(val || 0), 0);
+      });
+      const backgroundColor = weeklyChartData.datasets.map((ds) => ds.backgroundColor || '#ccc');
+      const borderColor = weeklyChartData.datasets.map((ds) => ds.borderColor || '#999');
+
+      return {
+        labels,
+        datasets: [{
+          data,
+          backgroundColor,
+          borderColor,
+        }],
+      };
+    } catch (error) {
+      console.error('Error processing pie chart data:', error);
+
+      return {
+        labels: [],
+        datasets: [{
+          data: [],
+          backgroundColor: [],
+          borderColor: [],
+        }],
+      };
+    }
+  };
 
   const renderReportCard = (title, key) => (
     <CCol md={3} key={key}>
@@ -590,29 +598,70 @@ const getPieChartData = () => {
       </div>
     );
   }
+  const renderStatisticsCard = () => {
+    const titles = {
+      daily: 'Completed Today',
+      weekly: 'Completed This Week',
+      monthly: 'Completed This Month'
+    };
 
+    return (
+      <CCol md={3}>
+        <CCard className="text-white bg-info">
+          <CCardHeader className="d-flex justify-content-between align-items-center">
+            {titles[statisticsDropdown]}
+            <CFormSelect
+              value={statisticsDropdown}
+              onChange={(e) => setStatisticsDropdown(e.target.value)}
+              style={{ width: '120px' }}
+            >
+              <option value="daily">Daily</option>
+              <option value="weekly">Weekly</option>
+              <option value="monthly">Monthly</option>
+            </CFormSelect>
+          </CCardHeader>
+          <CCardBody>
+            <div
+              style={{
+                fontSize: '2rem',
+                fontWeight: 'bold',
+                textAlign: 'center',
+                margin: '20px 0',
+              }}
+            >
+              {statsLoading ? (
+                <CSpinner size="sm" color="white" />
+              ) : (
+                statistics[statisticsDropdown]
+              )}
+            </div>
+          </CCardBody>
+        </CCard>
+      </CCol>
+    );
+  };
   return (
-     <div 
-    style={{ 
-      paddingLeft: '20px', 
-      paddingRight: '20px',
-      // The following styles are added to center the inner content
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-    }}>
+    <div
+      style={{
+        paddingLeft: '20px',
+        paddingRight: '20px',
+        // The following styles are added to center the inner content
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+      }}>
       {/* Header with Restaurant Dropdown (only for superadmin) */}
-      <div style={{ 
-        width: '100%', 
+      <div style={{
+        width: '100%',
         maxWidth: '1200px', // Set a max-width to keep content readable on very large screens
       }}>
         <div>
-           <div className="w-100 d-flex justify-content-center align-items-center mb-3">
+          <div className="w-100 d-flex justify-content-center align-items-center mb-3">
             <h2 className="mb-0 text-center fw-bold fs-3">Overview</h2>
           </div>
           {isSuperAdmin && (
             <p className="text-muted mb-0" style={{ fontSize: '14px' }}>
-              Total Restaurants: <strong>{restaurants.length}</strong> | 
+              Total Restaurants: <strong>{restaurants.length}</strong> |
               Showing: <strong>{filteredRestaurants.length}</strong>
             </p>
           )}
@@ -642,7 +691,7 @@ const getPieChartData = () => {
                 onChange={(e) => {
                   const restaurantId = e.target.value;
                   setSelectedRestaurant(restaurantId);
-                  
+
                   // Find restaurant name for API call
                   const selectedRestaurantData = filteredRestaurants.find(r => r._id === restaurantId);
                   if (selectedRestaurantData) {
@@ -657,7 +706,7 @@ const getPieChartData = () => {
                 ) : filteredRestaurants.length > 0 ? (
                   filteredRestaurants.map((restaurant) => (
                     <option key={restaurant._id} value={restaurant._id}>
-                      {restaurant.restaurantName || 'No Restaurant Name'} 
+                      {restaurant.restaurantName || 'No Restaurant Name'}
                     </option>
                   ))
                 ) : (
@@ -681,12 +730,13 @@ const getPieChartData = () => {
         </div>
       ) : (
         <>
-          {/* Overall Report Section */}
+                 {/* Overall Report Section */}
           <CRow className="mb-4" style={{ width: '100%' }}>
             {renderReportCard('Collection (₹)', 'collection')}
             {renderReportCard('Total Invoices', 'invoices')}
-            {renderReportCard('Completed Orders', 'completedOrders')}
+            {/* {renderReportCard('Completed Orders', 'completedOrders')} */}
             {renderReportCard('Rejected Orders', 'rejectedOrders')}
+            {renderStatisticsCard()}
           </CRow>
 
           {/* Yearly & Weekly Charts */}
