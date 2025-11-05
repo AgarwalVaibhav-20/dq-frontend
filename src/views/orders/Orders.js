@@ -15,9 +15,12 @@ import Invoice from '../../components/Invoice'
 import KOTModal from '../../components/KOTModal'
 import InvoiceModal from '../../components/InvoiceModal'
 import { toast } from 'react-toastify';
-import { createTransaction } from '../../redux/slices/transactionSlice'
+import { createTransaction, getDailyCashBalance } from '../../redux/slices/transactionSlice'
 import PaymentModal from '../../components/PaymentModal'
+import DiscountModal from '../../components/DiscountModal'
+import TaxModal from '../../components/TaxModal'
 import { FocusTrap } from 'focus-trap-react';
+import { updateOrder } from '../../redux/slices/orderSlice'
 const Order = () => {
   const [invoiceContent, setInvoiceContent] = useState(null)
   const [pdfDoc, setPdfDoc] = useState(null)
@@ -49,40 +52,303 @@ const Order = () => {
   const [showPaymentModal, setShowPaymentModal] = useState(false)
   const [paymentType, setPaymentType] = useState('')
   const [splitPercentages, setSplitPercentages] = useState({ online: 0, cash: 0, due: 0 })
+  
+  // Discount and Tax modals
+  const [showDiscountModal, setShowDiscountModal] = useState(false)
+  const [showTaxModal, setShowTaxModal] = useState(false)
+
+  // Handle Discount Submit - Update order with discount
+  const handleDiscountSubmit = async (discounts) => {
+    if (!selectedOrder || !discounts) {
+      toast.error('Invalid discount data');
+      return;
+    }
+
+    try {
+      setIsUpdatingStatus(true);
+      
+      // Calculate total discount amount from all discount sources
+      let totalDiscountAmount = 0;
+      let discountPercentage = 0;
+      let discountType = null;
+
+      // Handle item-specific discount
+      if (discounts.selectedItemDiscount && discounts.selectedItemDiscount.ids && discounts.selectedItemDiscount.ids.length > 0) {
+        const { value, type } = discounts.selectedItemDiscount;
+        const selectedItems = selectedOrder.items?.filter(item => {
+          const itemId = item._id || item.itemId || item.id;
+          return discounts.selectedItemDiscount.ids.includes(itemId.toString());
+        }) || [];
+
+        if (type === 'percentage') {
+          discountPercentage = value;
+          totalDiscountAmount = selectedItems.reduce((sum, item) => {
+            const itemTotal = (item.price || 0) * (item.quantity || 1);
+            return sum + (itemTotal * value / 100);
+          }, 0);
+        } else if (type === 'fixed') {
+          totalDiscountAmount = value * selectedItems.length;
+        }
+        discountType = type;
+      }
+
+      // Handle coupon discount
+      if (discounts.coupon && discounts.coupon.value) {
+        const { value, type } = discounts.coupon;
+        const subtotal = selectedOrder.subtotal || 0;
+        
+        if (type === 'percentage') {
+          const couponDiscount = (subtotal * value) / 100;
+          const maxDiscount = discounts.coupon.maxDiscountAmount || Infinity;
+          totalDiscountAmount += Math.min(couponDiscount, maxDiscount);
+        } else {
+          totalDiscountAmount += value;
+        }
+        discountType = type;
+      }
+
+      // Handle reward points discount
+      if (discounts.rewardPoints && discounts.rewardPoints.enabled) {
+        totalDiscountAmount += discounts.rewardPoints.discountAmount || 0;
+      }
+
+      // Handle manual reward points
+      if (discounts.manualRewardPoints && discounts.manualRewardPoints.enabled) {
+        totalDiscountAmount += discounts.manualRewardPoints.discountAmount || 0;
+      }
+
+      // Update order with discount
+      const orderId = selectedOrder._id || selectedOrder.order_id;
+      const result = await dispatch(updateOrder({
+        id: orderId,
+        discountAmount: Number(totalDiscountAmount.toFixed(2)),
+        discountPercentage: discountPercentage || 0,
+        discountType: discountType || 'fixed',
+      })).unwrap();
+
+      // Update local state
+      setSelectedOrder({
+        ...selectedOrder,
+        discountAmount: Number(totalDiscountAmount.toFixed(2)),
+        discountPercentage: discountPercentage || 0,
+        discountType: discountType || 'fixed',
+        totalAmount: result.data?.totalAmount || selectedOrder.totalAmount,
+      });
+
+      // Refresh orders list
+      await dispatch(fetchOrders({ token, restaurantId }));
+
+      toast.success(`Discount applied successfully! Amount: ₹${totalDiscountAmount.toFixed(2)}`);
+      setShowDiscountModal(false);
+    } catch (error) {
+      console.error('Error applying discount:', error);
+      toast.error('Failed to apply discount');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  // Handle Remove Discount - Remove discount from order
+  const handleRemoveDiscount = async () => {
+    if (!selectedOrder) {
+      toast.error('No order selected');
+      return;
+    }
+
+    try {
+      setIsUpdatingStatus(true);
+
+      // Update order to remove discount
+      const orderId = selectedOrder._id || selectedOrder.order_id;
+      const result = await dispatch(updateOrder({
+        id: orderId,
+        discountAmount: 0,
+        discountPercentage: 0,
+        discountType: null,
+      })).unwrap();
+
+      // Update local state
+      setSelectedOrder({
+        ...selectedOrder,
+        discountAmount: 0,
+        discountPercentage: 0,
+        discountType: null,
+        totalAmount: result.data?.totalAmount || selectedOrder.totalAmount,
+      });
+
+      // Refresh orders list
+      await dispatch(fetchOrders({ token, restaurantId }));
+
+      toast.success('Discount removed successfully!');
+    } catch (error) {
+      console.error('Error removing discount:', error);
+      toast.error('Failed to remove discount');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
+
+  // Handle Tax Submit - Update order with tax
+  const handleTaxSubmit = async (selectedItemIds, taxValue, taxType, taxName) => {
+    if (!selectedOrder || !selectedItemIds || selectedItemIds.length === 0) {
+      toast.error('Please select items to apply tax');
+      return;
+    }
+
+    try {
+      setIsUpdatingStatus(true);
+
+      // Calculate total tax amount
+      const selectedItems = selectedOrder.items?.filter(item => {
+        const itemId = item._id || item.itemId || item.id;
+        return selectedItemIds.includes(itemId.toString());
+      }) || [];
+
+      let totalTaxAmount = 0;
+      let taxPercentage = 0;
+
+      if (taxType === 'percentage') {
+        taxPercentage = taxValue;
+        totalTaxAmount = selectedItems.reduce((sum, item) => {
+          const itemTotal = (item.price || 0) * (item.quantity || 1);
+          return sum + (itemTotal * taxValue / 100);
+        }, 0);
+      } else if (taxType === 'fixed') {
+        totalTaxAmount = taxValue * selectedItems.length;
+      }
+
+      // Update order with tax
+      const orderId = selectedOrder._id || selectedOrder.order_id;
+      const result = await dispatch(updateOrder({
+        id: orderId,
+        taxAmount: Number(totalTaxAmount.toFixed(2)),
+        taxPercentage: taxPercentage || 0,
+        taxType: taxType,
+      })).unwrap();
+
+      // Update local state
+      setSelectedOrder({
+        ...selectedOrder,
+        taxAmount: Number(totalTaxAmount.toFixed(2)),
+        taxPercentage: taxPercentage || 0,
+        taxType: taxType,
+        totalAmount: result.data?.totalAmount || selectedOrder.totalAmount,
+      });
+
+      // Refresh orders list
+      await dispatch(fetchOrders({ token, restaurantId }));
+
+      toast.success(`${taxName || 'Tax'} applied successfully! Amount: ₹${totalTaxAmount.toFixed(2)}`);
+      setShowTaxModal(false);
+    } catch (error) {
+      console.error('Error applying tax:', error);
+      toast.error('Failed to apply tax');
+    } finally {
+      setIsUpdatingStatus(false);
+    }
+  };
 
   // Add this handler function (adapt split logic from POSTableContent's handlePaymentSubmit if needed)
   const handlePaymentSubmit = async (paymentData) => {
     try {
       setIsUpdatingStatus(true)
       const orderId = selectedOrder._id || selectedOrder.order_id
-      const total = selectedOrder.subtotal || selectedOrder.totalAmount || 0
+      
+      // Calculate total amount after discount (discount के बाद का amount)
+      const subtotal = Number(selectedOrder.subtotal || selectedOrder.totalAmount || 0)
+      const discountAmount = Number(selectedOrder.discountAmount || selectedOrder.discount || 0)
+      const taxAmount = Number(selectedOrder.taxAmount || selectedOrder.tax || 0)
+      const systemCharge = Number(selectedOrder.systemCharge || 0)
+      const roundOff = Number(selectedOrder.roundOff || 0)
+      const total = Math.max(0, subtotal - discountAmount + taxAmount + systemCharge + roundOff)
 
-      // Map items to cart format (similar to generateBill)
-      const cartItems = selectedOrder.items?.map(item => ({
-        id: item._id || item.id || item.itemId,
-        itemName: item.itemName || item.item_name,
-        price: item.price || item.subtotal / item.quantity,
-        quantity: item.quantity,
-        notes: item.notes || ''
-      })) || selectedOrder.order_details?.map(item => ({
-        id: item._id || item.id,
-        itemName: item.item_name,
-        price: item.price,
-        quantity: item.quantity,
-        notes: item.notes || ''
-      })) || []
+      // Map items to transaction format (backend expects itemId, itemName, price, quantity)
+      const cartItems = selectedOrder.items?.map(item => {
+        const itemId = item.itemId || item._id || item.id
+        const itemName = item.itemName || item.item_name || 'Unknown Item'
+        const quantity = Number(item.quantity) || 1
+        // Calculate price: if price exists use it, else calculate from subtotal
+        const price = item.price ? Number(item.price) : (item.subtotal ? Number(item.subtotal) / quantity : 0)
+        
+        // Validate required fields
+        if (!itemId || !itemName || !price || !quantity) {
+          console.error('Invalid item:', item)
+          throw new Error(`Item missing required fields: itemId=${itemId}, itemName=${itemName}, price=${price}, quantity=${quantity}`)
+        }
+        
+        return {
+          itemId: itemId, // ✅ Backend expects itemId, not id
+          itemName: itemName,
+          price: price,
+          quantity: quantity,
+          size: item.size || null,
+          selectedSubcategoryId: item.selectedSubcategoryId || null,
+          subtotal: price * quantity
+        }
+      }) || selectedOrder.order_details?.map(item => {
+        const itemId = item.itemId || item._id || item.id
+        const itemName = item.item_name || item.itemName || 'Unknown Item'
+        const quantity = Number(item.quantity) || 1
+        const price = Number(item.price) || 0
+        
+        if (!itemId || !itemName || !price || !quantity) {
+          console.error('Invalid item:', item)
+          throw new Error(`Item missing required fields`)
+        }
+        
+        return {
+          itemId: itemId,
+          itemName: itemName,
+          price: price,
+          quantity: quantity,
+          size: item.size || null,
+          selectedSubcategoryId: item.selectedSubcategoryId || null,
+          subtotal: price * quantity
+        }
+      }) || []
 
-      // Handle split payments (basic: adjust total per type; extend for multi-transactions if needed)
-      const cashTotal = total * (splitPercentages.cash / 100)
-      const onlineTotal = total * (splitPercentages.online / 100)
-      const dueTotal = total * (splitPercentages.due / 100)
+      // Validate cartItems
+      if (!cartItems || cartItems.length === 0) {
+        throw new Error('No items found in order')
+      }
 
-      // For simplicity, create one transaction per payment type > 0 (or single if no split)
-      const paymentTypes = [
-        { type: 'Cash', amount: cashTotal, percent: splitPercentages.cash },
-        { type: 'Online', amount: onlineTotal, percent: splitPercentages.online },
-        { type: 'Due', amount: dueTotal, percent: splitPercentages.due }
-      ].filter(pt => pt.percent > 0)
+      // Handle payment types - split or single
+      let paymentTypes = []
+      
+      // Check if it's a split payment (has percentages set)
+      const isSplitPayment = paymentType === 'Split' || 
+        (splitPercentages.cash > 0 || splitPercentages.online > 0 || splitPercentages.due > 0)
+      
+      if (isSplitPayment) {
+        // Split payment - create multiple transactions
+        const cashTotal = total * (splitPercentages.cash / 100)
+        const onlineTotal = total * (splitPercentages.online / 100)
+        const dueTotal = total * (splitPercentages.due / 100)
+
+        paymentTypes = [
+          { type: 'Cash', amount: cashTotal, percent: splitPercentages.cash },
+          { type: 'Online', amount: onlineTotal, percent: splitPercentages.online },
+          { type: 'Due', amount: dueTotal, percent: splitPercentages.due }
+        ].filter(pt => pt.percent > 0)
+      } else {
+        // Single payment - use the selected payment type
+        const paymentTypeToUse = paymentType || paymentData?.type || 'Cash'
+        paymentTypes = [
+          { type: paymentTypeToUse, amount: total, percent: 100 }
+        ]
+      }
+      
+      // Validate that we have at least one payment type
+      if (paymentTypes.length === 0) {
+        throw new Error('No payment type selected')
+      }
+
+      // Update order totalAmount and subtotal before creating transaction (discount के बाद का amount)
+      await dispatch(updateOrder({
+        id: orderId,
+        subtotal: total, // Save discount के बाद का amount in subtotal
+        totalAmount: total, // Save discount के बाद का amount
+      }));
 
       let allTransactions = []
       for (const pt of paymentTypes) {
@@ -92,16 +358,16 @@ const Order = () => {
           userId: localStorage.getItem('userId'),
           tableNumber: selectedOrder.tableNumber,
           items: cartItems, // Pro-rate items if needed, but pass full for now
-          sub_total: pt.amount,
-          tax: (selectedOrder.taxAmount || 0) * (pt.amount / total),
-          discount: (selectedOrder.discountAmount || 0) * (pt.amount / total),
-          total: pt.amount,
+          sub_total: subtotal, // Original subtotal
+          tax: (taxAmount || 0) * (pt.amount / total),
+          discount: (discountAmount || 0) * (pt.amount / total),
+          total: pt.amount, // Discount के बाद का amount for this payment
           type: pt.type,
           restaurantId,
           customerId: selectedOrder.customerId?._id || selectedOrder.customerId || null,
           transactionId: `${Date.now()}-${pt.type}`, // Unique per split
-          roundOff: (selectedOrder.roundOff || 0) * (pt.amount / total),
-          systemCharge: (selectedOrder.systemCharge || 0) * (pt.amount / total),
+          roundOff: (roundOff || 0) * (pt.amount / total),
+          systemCharge: (systemCharge || 0) * (pt.amount / total),
           notes: paymentData.notes || ''
         }
 
@@ -114,12 +380,25 @@ const Order = () => {
       }
 
       // After all transactions, update order status
-      const statusResult = await dispatch(updateOrderStatus({ id: orderId, status: 'complete' }))
+      const statusResult = await dispatch(updateOrderStatus({ id: orderId, status: 'completed' }))
       if (statusResult.type === 'orders/updateOrderStatus/fulfilled') {
+        // Final update: Ensure totalAmount and subtotal are saved with discount applied (discount के बाद का amount)
+        await dispatch(updateOrder({
+          id: orderId,
+          subtotal: total, // Save discount के बाद का amount in subtotal
+          totalAmount: total, // Final total amount after discount
+        }));
+
         toast.success(`Order completed! Payment processed: ${paymentTypes.map(pt => `${pt.type}: ₹${pt.amount.toFixed(2)}`).join(', ')}`)
         setShowPaymentModal(false)
         closeSidebar()
         dispatch(fetchOrders({ token, restaurantId })) // Refresh list
+        
+        // 🔥 IMPORTANT: Refresh daily cash balance after payment (same as POS page)
+        await dispatch(getDailyCashBalance({
+          token,
+          restaurantId
+        }))
       }
     } catch (error) {
       console.error('Payment error:', error)
@@ -649,7 +928,7 @@ const Order = () => {
     color: 'white',
     textAlign: 'center',
     backgroundColor:
-      status === 'complete' ? '#4CAF50' : status === 'reject' ? '#F44336' : '#FFC107',
+      status === 'completed' ? '#4CAF50' : status === 'reject' ? '#F44336' : '#FFC107',
   })
 
   const columns = [
@@ -849,7 +1128,7 @@ const Order = () => {
                 >
                   <option value="all">All Status</option>
                   <option value="pending">Pending</option>
-                  <option value="complete">Complete</option>
+                  <option value="completed">Complete</option>
                   <option value="reject">Rejected</option>
                 </CFormSelect>
               </div>
@@ -1316,22 +1595,148 @@ const Order = () => {
                 marginBottom: '1.5rem',
               }}
             >
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '1.125rem', fontWeight: '700', color: '#1f2937' }}>
-                  Total Amount
-                </span>
-                <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#10b981' }}>
-                  ₹{selectedOrder.subtotal || 0}
-                </span>
+              <h6 style={{ fontWeight: '700', color: '#1f2937', marginBottom: '1rem', fontSize: '1rem' }}>
+                💰 Order Summary
+              </h6>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
+                {/* Subtotal */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>
+                  <span style={{ color: '#6b7280', fontWeight: '500', fontSize: '0.875rem' }}>Subtotal</span>
+                  <span style={{ color: '#1f2937', fontWeight: '600', fontSize: '0.9375rem' }}>
+                    ₹{selectedOrder.subtotal || selectedOrder.totalAmount || 0}
+                  </span>
+                </div>
+
+                {/* Discount */}
+                {(selectedOrder.discountAmount > 0 || selectedOrder.discount > 0 || selectedOrder.discountPercentage > 0) && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingBottom: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.25rem', flex: 1 }}>
+                      <span style={{ color: '#6b7280', fontWeight: '500', fontSize: '0.875rem' }}>
+                        Discount
+                        {selectedOrder.discountPercentage > 0 && (
+                          <span style={{ color: '#10b981', marginLeft: '0.25rem' }}>
+                            ({selectedOrder.discountPercentage}%)
+                          </span>
+                        )}
+                        {selectedOrder.discountType && (
+                          <span style={{ color: '#6b7280', marginLeft: '0.25rem', fontSize: '0.75rem' }}>
+                            ({selectedOrder.discountType === 'bogo' ? 'BOGO' : selectedOrder.discountType === 'percentage' ? 'Percentage' : 'Fixed'})
+                          </span>
+                        )}
+                      </span>
+                    </div>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                      <span style={{ color: '#10b981', fontWeight: '600', fontSize: '0.9375rem' }}>
+                        -₹{selectedOrder.discountAmount || selectedOrder.discount || 0}
+                      </span>
+                      <button
+                        onClick={handleRemoveDiscount}
+                        disabled={isUpdatingStatus || selectedOrder.status === 'completed'}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: '#ef4444',
+                          cursor: isUpdatingStatus || selectedOrder.status === 'completed' ? 'not-allowed' : 'pointer',
+                          padding: '0.25rem 0.5rem',
+                          borderRadius: '4px',
+                          fontSize: '0.75rem',
+                          fontWeight: '600',
+                          opacity: isUpdatingStatus || selectedOrder.status === 'completed' ? 0.5 : 1,
+                        }}
+                        title="Remove Discount"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {/* Tax */}
+                {(selectedOrder.taxAmount > 0 || selectedOrder.tax > 0 || selectedOrder.taxPercentage > 0) && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>
+                    <span style={{ color: '#6b7280', fontWeight: '500', fontSize: '0.875rem' }}>
+                      Tax
+                      {selectedOrder.taxPercentage > 0 && (
+                        <span style={{ color: '#6b7280', marginLeft: '0.25rem' }}>
+                          ({selectedOrder.taxPercentage}%)
+                        </span>
+                      )}
+                    </span>
+                    <span style={{ color: '#1f2937', fontWeight: '600', fontSize: '0.9375rem' }}>
+                      ₹{selectedOrder.taxAmount || selectedOrder.tax || 0}
+                    </span>
+                  </div>
+                )}
+
+                {/* System Charge */}
+                {selectedOrder.systemCharge > 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>
+                    <span style={{ color: '#6b7280', fontWeight: '500', fontSize: '0.875rem' }}>System Charge</span>
+                    <span style={{ color: '#1f2937', fontWeight: '600', fontSize: '0.9375rem' }}>
+                      ₹{selectedOrder.systemCharge}
+                    </span>
+                  </div>
+                )}
+
+                {/* Round Off */}
+                {selectedOrder.roundOff && selectedOrder.roundOff !== 0 && (
+                  <div style={{ display: 'flex', justifyContent: 'space-between', paddingBottom: '0.5rem', borderBottom: '1px solid #e5e7eb' }}>
+                    <span style={{ color: '#6b7280', fontWeight: '500', fontSize: '0.875rem' }}>Round Off</span>
+                    <span style={{ color: '#1f2937', fontWeight: '600', fontSize: '0.9375rem' }}>
+                      {selectedOrder.roundOff > 0 ? '+' : ''}₹{Math.abs(selectedOrder.roundOff)}
+                    </span>
+                  </div>
+                )}
+
+                {/* Total Amount */}
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '0.5rem', paddingTop: '0.75rem', borderTop: '2px solid #e5e7eb' }}>
+                  <span style={{ fontSize: '1.125rem', fontWeight: '700', color: '#1f2937' }}>
+                    Total Amount
+                  </span>
+                  <span style={{ fontSize: '1.5rem', fontWeight: '700', color: '#10b981' }}>
+                    ₹{(() => {
+                      // Total Amount = Subtotal + Tax + System Charge + Round Off (discount के बिना)
+                      const subtotal = Number(selectedOrder.subtotal || selectedOrder.totalAmount || 0);
+                      const taxAmount = Number(selectedOrder.taxAmount || selectedOrder.tax || 0);
+                      const systemCharge = Number(selectedOrder.systemCharge || 0);
+                      const roundOff = Number(selectedOrder.roundOff || 0);
+                      const total = subtotal + taxAmount + systemCharge + roundOff;
+                      return Math.max(0, total).toFixed(2);
+                    })()}
+                  </span>
+                </div>
               </div>
             </div>
 
+            {/* Discount and Tax Buttons */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '1rem' }}>
+              <CButton
+                color="warning"
+                variant="outline"
+                onClick={() => setShowDiscountModal(true)}
+                disabled={isUpdatingStatus || selectedOrder.status === 'completed'}
+                style={{ borderRadius: '8px', fontWeight: '600', padding: '0.75rem' }}
+              >
+                💰 Discount
+              </CButton>
+
+              <CButton
+                color="info"
+                variant="outline"
+                onClick={() => setShowTaxModal(true)}
+                disabled={isUpdatingStatus || selectedOrder.status === 'completed'}
+                style={{ borderRadius: '8px', fontWeight: '600', padding: '0.75rem' }}
+              >
+                📊 Tax
+              </CButton>
+            </div>
+
             {/* Action Buttons */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '1.5rem' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '1rem' }}>
               <CButton
                 color="success"
                 onClick={() => setShowPaymentModal(true)}
-                disabled={isUpdatingStatus || selectedOrder.status === 'complete'}
+                disabled={isUpdatingStatus || selectedOrder.status === 'completed'}
                 style={{ borderRadius: '8px', fontWeight: '600', padding: '0.75rem' }}
               >
                 {isUpdatingStatus ? <CSpinner size="sm" /> : '✓ Complete'}
@@ -1407,6 +1812,46 @@ const Order = () => {
         />
       </FocusTrap>
 
+      {/* Discount Modal */}
+      <FocusTrap active={showDiscountModal}>
+        <DiscountModal
+          showDiscountModal={showDiscountModal}
+          setShowDiscountModal={setShowDiscountModal}
+          cart={selectedOrder?.items?.map(item => ({
+            id: item._id || item.itemId || item.id,
+            itemName: item.itemName || item.item_name,
+            price: item.price || item.adjustedPrice || 0,
+            quantity: item.quantity || 1,
+            adjustedPrice: item.price || item.adjustedPrice || 0,
+            subtotal: item.subtotal || (item.price * item.quantity) || 0,
+          })) || []}
+          selectedCustomer={selectedOrder?.customerId ? {
+            _id: selectedOrder.customerId._id || selectedOrder.customerId,
+            earnedPoints: selectedOrder.customerId?.earnedPoints || 0,
+            rewardCustomerPoints: selectedOrder.customerId?.rewardCustomerPoints || 0,
+            rewardByAdminPoints: selectedOrder.customerId?.rewardByAdminPoints || 0,
+          } : null}
+          handleDiscountSubmit={handleDiscountSubmit}
+        />
+      </FocusTrap>
+
+      {/* Tax Modal */}
+      <FocusTrap active={showTaxModal}>
+        <TaxModal
+          showTaxModal={showTaxModal}
+          setShowTaxModal={setShowTaxModal}
+          cart={selectedOrder?.items?.map(item => ({
+            id: item._id || item.itemId || item.id,
+            itemName: item.itemName || item.item_name,
+            price: item.price || item.adjustedPrice || 0,
+            quantity: item.quantity || 1,
+            adjustedPrice: item.price || item.adjustedPrice || 0,
+            subtotal: item.subtotal || (item.price * item.quantity) || 0,
+          })) || []}
+          handleTaxSubmit={handleTaxSubmit}
+        />
+      </FocusTrap>
+
 
       {/* Hidden KOT and Invoice components for generation */}
       {selectedOrder && (
@@ -1425,16 +1870,29 @@ const Order = () => {
               cart={selectedOrder.items?.map(item => ({
                 id: item._id || item.id || item.itemId,
                 itemName: item.itemName || item.item_name,
-                price: item.price || item.subtotal,
-                quantity: item.quantity,
+                price: item.price || (item.subtotal / (item.quantity || 1)),
+                adjustedPrice: item.price || (item.subtotal / (item.quantity || 1)),
+                quantity: item.quantity || 1,
+                subtotal: item.subtotal || (item.price * (item.quantity || 1)),
+                taxAmount: item.taxAmount || 0,
                 notes: item.notes || ''
               })) || selectedOrder.order_details?.map(item => ({
                 id: item._id || item.id,
                 itemName: item.item_name,
                 price: item.price,
+                adjustedPrice: item.price,
                 quantity: item.quantity,
+                subtotal: item.price * item.quantity,
+                taxAmount: item.taxAmount || 0,
                 notes: item.notes || ''
               })) || []}
+              subtotal={selectedOrder.subtotal}
+              discountAmount={selectedOrder.discountAmount || selectedOrder.discount || 0}
+              discountPercentage={selectedOrder.discountPercentage || 0}
+              taxAmount={selectedOrder.taxAmount || selectedOrder.tax || 0}
+              taxPercentage={selectedOrder.taxPercentage || 0}
+              systemCharge={selectedOrder.systemCharge || 0}
+              roundOff={selectedOrder.roundOff || 0}
             />
           </div>
 

@@ -27,6 +27,9 @@ export const createOrder = createAsyncThunk(
     orderType,
     tax,
     discount,
+    discountAmount,
+    discountPercentage,
+    discountType,
     subtotal,
     orderId,
     kotGenerated,
@@ -45,6 +48,12 @@ export const createOrder = createAsyncThunk(
       }
 
       console.log('🌐 Creating order - hasToken:', !!token, 'restaurantId:', restaurantId);
+      console.log('🌐 Discount fields being sent:', {
+        discountAmount,
+        discountPercentage,
+        discountType,
+        discount
+      });
 
       const response = await axiosInstance.post(`${BASE_URL}/create/order`, {
         customerId,
@@ -59,6 +68,9 @@ export const createOrder = createAsyncThunk(
         orderType,
         tax,
         discount,
+        discountAmount,
+        discountPercentage,
+        discountType,
         subtotal,
         kotGenerated,
         paymentStatus,
@@ -172,7 +184,7 @@ export const updateOrderStatus = createAsyncThunk(
 
 export const updateOrder = createAsyncThunk(
   'orders/updateOrder',
-  async ({ id, tableNumber, restaurantId, user_id, orderDetails }, { rejectWithValue }) => {
+  async ({ id, tableNumber, restaurantId, user_id, orderDetails, discountAmount, discountPercentage, discountType, taxAmount, taxPercentage, taxType, systemCharge, roundOff, subtotal, totalAmount }, { rejectWithValue }) => {
     try {
       const token = localStorage.getItem('authToken')
       const headers = {
@@ -186,6 +198,16 @@ export const updateOrder = createAsyncThunk(
           restaurantId,
           user_id,
           orderDetails,
+          discountAmount,
+          discountPercentage,
+          discountType,
+          taxAmount,
+          taxPercentage,
+          taxType,
+          systemCharge,
+          roundOff,
+          subtotal,
+          totalAmount,
         },
         { headers },
       )
@@ -438,10 +460,14 @@ const orderSlice = createSlice({
       })
       .addCase(updateOrder.fulfilled, (state, action) => {
         state.loading = false
-        const updatedOrder = action.payload
+        const updatedOrder = action.payload?.data || action.payload
 
         // Find the index of the updated order in the state.orders array
-        const index = state.orders.findIndex((order) => order.order_id === updatedOrder.order_id)
+        const index = state.orders.findIndex((order) => 
+          (order.order_id === updatedOrder.order_id) || 
+          (order._id === updatedOrder._id) || 
+          (order.id === updatedOrder.id)
+        )
 
         if (index !== -1) {
           // Replace the existing order with the updated order

@@ -57,10 +57,14 @@ const RestaurantOrderingApp = () => {
         email: '',
         phoneNumber: '',
         orderType: 'In Restaurant',
-        address: ''
+        address: '',
+        link: ''
     });
     const [existingCustomer, setExistingCustomer] = useState(null);
     const [customerError, setCustomerError] = useState('');
+    
+    // Spin wheel discount state
+    const [spinDiscount, setSpinDiscount] = useState(null);
 
     // --> Pre-fill form from localStorage on initial load (with restaurantId)
     useEffect(() => {
@@ -77,7 +81,8 @@ const RestaurantOrderingApp = () => {
                 email: customer.email || '',
                 phoneNumber: customer.phoneNumber || '',
                 orderType: 'In Restaurant', // Keep default
-                address: customer.address || ''
+                address: customer.address || '',
+                link: customer.link || ''
             });
             if (customer.phoneNumber && customers.length > 0) {
                 checkExistingCustomer(customer.phoneNumber);
@@ -89,11 +94,30 @@ const RestaurantOrderingApp = () => {
                 email: '',
                 phoneNumber: '',
                 orderType: 'In Restaurant',
-                address: ''
+                address: '',
+                link: ''
             });
             setExistingCustomer(null);
         }
     }, [customers, restaurantId]); // Depend on customers and restaurantId to ensure correct data
+
+    // Load spin discount from localStorage on mount
+    useEffect(() => {
+        if (!restaurantId || !tableNumber) return;
+        
+        const spinDiscountKey = `spinDiscount_${restaurantId}_${tableNumber}`;
+        const savedDiscount = localStorage.getItem(spinDiscountKey);
+        
+        if (savedDiscount) {
+            try {
+                const discountData = JSON.parse(savedDiscount);
+                setSpinDiscount(discountData);
+                console.log('✅ Spin discount loaded:', discountData);
+            } catch (error) {
+                console.error('Error parsing spin discount:', error);
+            }
+        }
+    }, [restaurantId, tableNumber]);
 
     const activeMenuItems = menuItems.filter(item => item.status === 1);
     console.log('Active menuItems (status === 1):', activeMenuItems);
@@ -125,6 +149,43 @@ const RestaurantOrderingApp = () => {
     const removeFromCart = (itemKey) => setCart(cart.filter(item => item.key !== itemKey));
     const getTotalPrice = () => cart.reduce((total, item) => total + (item.price * item.quantity), 0);
     const getTotalItems = () => cart.reduce((total, item) => total + item.quantity, 0);
+    
+    // Calculate discount amount from spin wheel
+    const calculateSpinDiscount = () => {
+        if (!spinDiscount || !spinDiscount.discountType) return 0;
+        
+        const subtotal = Number(getTotalPrice()) || 0;
+        
+        // Handle BOGO (Buy One Get One Free) - discount = lowest priced item in cart
+        if (spinDiscount.discountType === 'bogo' || spinDiscount.isBOGO) {
+            if (cart.length === 0) return 0;
+            // Find the lowest priced item in cart
+            const lowestPriceItem = cart.reduce((min, item) => {
+                const itemTotal = Number(item.price) * Number(item.quantity);
+                return itemTotal < min.price ? { price: itemTotal, item } : min;
+            }, { price: Infinity, item: null });
+            
+            // Return the price of the lowest priced item (as number)
+            return lowestPriceItem.price !== Infinity ? Number(lowestPriceItem.price.toFixed(2)) : 0;
+        }
+        
+        if (spinDiscount.discountType === 'percentage' && spinDiscount.discountPercentage > 0) {
+            const percentage = Number(spinDiscount.discountPercentage) || 0;
+            const calculatedDiscount = (subtotal * percentage) / 100;
+            return Number(calculatedDiscount.toFixed(2)); // Return as number with 2 decimal places
+        } else if (spinDiscount.discountType === 'fixed' && spinDiscount.discountAmount > 0) {
+            const fixedAmount = Number(spinDiscount.discountAmount) || 0;
+            return Number(Math.min(fixedAmount, subtotal).toFixed(2)); // Don't exceed subtotal
+        }
+        
+        return 0;
+    };
+    
+    const getDiscountedTotal = () => {
+        const subtotal = getTotalPrice();
+        const discount = calculateSpinDiscount();
+        return Math.max(0, subtotal - discount);
+    };
 
     // MODIFIED: Check current restaurant's customer data only and compare restaurantId
     const handleCheckout = () => {
@@ -171,7 +232,15 @@ const RestaurantOrderingApp = () => {
         try {
             const restaurantId = localStorage.getItem('restaurantId');
             const userId = localStorage.getItem('userId');
-            const totalAmount = getTotalPrice();
+            const subtotal = getTotalPrice();
+            const discountAmount = calculateSpinDiscount();
+            const taxAmount = 0; // Add tax if needed in future
+            const systemCharge = 0; // Add system charge if needed in future
+            const roundOff = 0; // Add round off if needed in future
+            
+            // Calculate total amount after applying discount
+            // totalAmount = subtotal - discount + tax + systemCharge + roundOff
+            const totalAmount = Math.max(0, subtotal - discountAmount + taxAmount + systemCharge + roundOff);
 
             const orderPayload = {
                 customerId: customerData._id,
@@ -186,19 +255,51 @@ const RestaurantOrderingApp = () => {
                     subtotal: item.price * item.quantity,
                     selectedSubcategoryId: item.selectedSize?._id || null
                 })),
-                subtotal: totalAmount,
-                totalAmount: totalAmount,
+                subtotal: Number(subtotal) || 0,
+                discountAmount: Number(discountAmount) || 0, // Discount amount saved
+                discountPercentage: Number(spinDiscount?.discountPercentage) || 0,
+                discountType: spinDiscount?.discountType || null,
+                totalAmount: Number(totalAmount.toFixed(2)) || 0, // Total after discount applied
                 tableNumber,
                 customerName: customerData.name,
                 customerAddress: customerData.address || '',
             };
+            
+            console.log('📦 Order Payload:', {
+                subtotal: orderPayload.subtotal,
+                discountAmount: orderPayload.discountAmount,
+                discountPercentage: orderPayload.discountPercentage,
+                discountType: orderPayload.discountType,
+                totalAmount: orderPayload.totalAmount,
+                calculation: `${orderPayload.subtotal} - ${orderPayload.discountAmount} = ${orderPayload.totalAmount}`,
+                discountAmountType: typeof orderPayload.discountAmount,
+                discountPercentageType: typeof orderPayload.discountPercentage
+            });
 
             await dispatch(createOrder({ token, ...orderPayload })).unwrap();
+
+            // Remove discount from localStorage after successful order placement
+            if (spinDiscount) {
+                const spinDiscountKey = `spinDiscount_${restaurantId}_${tableNumber}`;
+                localStorage.removeItem(spinDiscountKey);
+                setSpinDiscount(null);
+                console.log('✅ Spin discount removed from localStorage after order placement');
+            }
 
             // Reset cart and close any open dialogs
             setCart([]);
             setCartOpen(false);
             setCheckoutOpen(false);
+            
+            // Reset customer form including link
+            setCustomerForm({
+                name: '',
+                email: '',
+                phoneNumber: '',
+                orderType: 'In Restaurant',
+                address: '',
+                link: ''
+            });
 
             alert('Order placed successfully!');
 
@@ -580,13 +681,49 @@ const RestaurantOrderingApp = () => {
                         {/* Cart Footer with Summary */}
                         {cart.length > 0 && (
                             <div className="p-4 border-t bg-white">
+                                {/* Spin Discount Banner */}
+                                {spinDiscount && spinDiscount.discountType && (
+                                    <div className="mb-3 p-3 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-lg text-white text-center">
+                                        <p className="text-sm font-semibold mb-1">🎉 Spin Wheel Discount Applied!</p>
+                                        <p className="text-lg font-bold">
+                                            {spinDiscount.winnerText || 
+                                             (spinDiscount.discountType === 'percentage' 
+                                              ? `${spinDiscount.discountPercentage}% OFF` 
+                                              : `₹${spinDiscount.discountAmount} OFF`)}
+                                        </p>
+                                    </div>
+                                )}
 
                                 <hr className="my-3" />
+
+                                {/* Order Summary */}
+                                <div className="space-y-2 mb-3">
+                                    <div className="flex items-center justify-between text-gray-700">
+                                        <span>Subtotal</span>
+                                        <span>₹ {getTotalPrice().toFixed(2)}</span>
+                                    </div>
+                                    {spinDiscount && calculateSpinDiscount() > 0 && (
+                                        <div className="flex items-center justify-between text-green-600 font-semibold">
+                                            <span>
+                                                Discount 
+                                                {spinDiscount.discountType === 'percentage' && ` (${spinDiscount.discountPercentage}%)`}
+                                            </span>
+                                            <span>-₹ {calculateSpinDiscount().toFixed(2)}</span>
+                                        </div>
+                                    )}
+                                </div>
 
                                 <div className="flex items-center justify-between text-xl font-bold bg-purple-100 text-purple-800 p-3 rounded-lg">
                                     <span>Total</span>
                                     <span>₹ {getTotalPrice().toFixed(2)}</span>
                                 </div>
+                                {spinDiscount && calculateSpinDiscount() > 0 && (
+                                    <div className="mt-2 p-2 bg-yellow-50 border border-yellow-200 rounded-lg">
+                                        <p className="text-xs text-yellow-800 text-center">
+                                            💡 Discount will be saved in order but not applied to payment
+                                        </p>
+                                    </div>
+                                )}
 
                                 <button onClick={handleCheckout} className="mt-4 w-full py-3 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-lg transition-colors text-lg">
                                     Place Order ({getTotalItems()} items)
@@ -688,6 +825,17 @@ const RestaurantOrderingApp = () => {
                                         />
                                     </div>
                                 )}
+
+                                <div>
+                                    <label className="block text-sm font-medium mb-1">Link (Optional)</label>
+                                    <input
+                                        type="url"
+                                        value={customerForm.link || ''}
+                                        onChange={(e) => setCustomerForm({ ...customerForm, link: e.target.value })}
+                                        className="w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-purple-600 focus:border-transparent"
+                                        placeholder="Enter any link"
+                                    />
+                                </div>
                             </div>
                         </div>
 

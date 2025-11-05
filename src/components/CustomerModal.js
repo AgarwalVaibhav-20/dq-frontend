@@ -43,6 +43,7 @@ const CustomerModal = React.forwardRef(({
   const birthdayRef = useRef(null);
   const anniversaryRef = useRef(null);
   const membershipRef = useRef(null);
+  const linkRef = useRef(null);
   const modalHasFocusedRef = useRef(false);
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -54,7 +55,8 @@ const CustomerModal = React.forwardRef(({
     birthday: "",
     anniversary: "",
     membershipId: "",
-    membershipName: ""
+    membershipName: "",
+    link: ""
   });
   const [formErrors, setFormErrors] = useState({});
   const [selectedCustomer, setSelectedCustomer] = useState(null);
@@ -231,7 +233,8 @@ const CustomerModal = React.forwardRef(({
       birthday: "",
       anniversary: "",
       membershipId: "",
-      membershipName: ""
+      membershipName: "",
+      link: ""
     });
     setFormErrors({});
     setSelectedCustomer(null);
@@ -344,7 +347,8 @@ const CustomerModal = React.forwardRef(({
         birthday: "",
         anniversary: "",
         membershipId: "",
-        membershipName: ""
+        membershipName: "",
+        link: ""
       });
       setFormErrors({});
     }
@@ -354,7 +358,7 @@ const CustomerModal = React.forwardRef(({
   const handleKeyDown = useCallback((e, currentRef) => {
     if (!showCustomerModal) return;
     
-    const inputs = [nameRef, emailRef, phoneNumberRef, addressRef, birthdayRef, anniversaryRef, membershipRef];
+    const inputs = [nameRef, emailRef, phoneNumberRef, addressRef, birthdayRef, anniversaryRef, membershipRef, linkRef];
     const currentIndex = inputs.findIndex(ref => ref.current === currentRef?.current);
     
     // Handle Enter key - submit form if valid, otherwise move to next field
@@ -830,6 +834,23 @@ const CustomerModal = React.forwardRef(({
                     </option>
                   ))}
                 </CFormSelect>
+              </div>
+
+              {/* Link */}
+              <div className="mb-3">
+                <CFormLabel htmlFor="link" className="fw-semibold">
+                  Link (Optional)
+                </CFormLabel>
+                <CFormInput
+                  ref={linkRef}
+                  type="url"
+                  id="link"
+                  name="link"
+                  value={formValues.link}
+                  onChange={handleInputChange}
+                  onKeyDown={(e) => handleKeyDown(e, linkRef)}
+                  placeholder="Enter any link"
+                />
               </div>
 
               {/* Add Button */}

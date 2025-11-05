@@ -1,21 +1,49 @@
 import React from "react";
 import { useSelector } from 'react-redux';
 
-const KOT = React.forwardRef(({ tableNumber, cart, selectedSystem }, ref) => {
+const KOT = React.forwardRef(({ 
+  tableNumber, 
+  cart, 
+  selectedSystem,
+  subtotal, // Order subtotal (if provided, use it instead of calculating)
+  discountAmount, // Order discount amount
+  discountPercentage, // Order discount percentage
+  taxAmount, // Order tax amount
+  taxPercentage, // Order tax percentage
+  systemCharge: orderSystemCharge, // Order system charge
+  roundOff, // Order round off
+}, ref) => {
   // Get theme from Redux store
   const theme = useSelector((state) => state.theme.theme);
   const isDarkMode = theme === 'dark';
 
-  // Calculate total for the entire order
-  const totalAmount = cart.reduce((acc, item) => {
-    const price = item.adjustedPrice || item.price || item.subtotal || 0;
+  // Calculate subtotal from cart if not provided
+  const calculatedSubtotal = cart.reduce((acc, item) => {
+    const price = item.adjustedPrice || item.price || (item.subtotal / (item.quantity || 1)) || 0;
     const quantity = item.quantity || 1;
     return acc + (price * quantity);
   }, 0);
   
-  const totalTaxAmount = cart.reduce((acc, item) => acc + (Number(item.taxAmount) || 0), 0);
-  const systemCharge = selectedSystem ? Number(selectedSystem.chargeOfSystem || 0) : 0;
-  const grandTotal = totalAmount + totalTaxAmount + systemCharge;
+  // Use provided subtotal or calculated
+  const orderSubtotal = subtotal !== undefined ? Number(subtotal) : calculatedSubtotal;
+  
+  // Calculate tax from cart items if not provided
+  const calculatedTaxAmount = cart.reduce((acc, item) => acc + (Number(item.taxAmount) || 0), 0);
+  const orderTaxAmount = taxAmount !== undefined ? Number(taxAmount) : calculatedTaxAmount;
+  
+  // System charge from order or selectedSystem
+  const systemCharge = orderSystemCharge !== undefined 
+    ? Number(orderSystemCharge) 
+    : (selectedSystem ? Number(selectedSystem.chargeOfSystem || 0) : 0);
+  
+  // Discount amount
+  const finalDiscountAmount = discountAmount !== undefined ? Number(discountAmount) : 0;
+  
+  // Round off
+  const finalRoundOff = roundOff !== undefined ? Number(roundOff) : 0;
+  
+  // Calculate grand total: subtotal + tax + system charge + round off (discount के बिना)
+  const grandTotal = Math.max(0, orderSubtotal + orderTaxAmount + systemCharge + finalRoundOff);
 
   // Get tax display name
   const getTaxDisplayName = () => {
@@ -96,16 +124,26 @@ const KOT = React.forwardRef(({ tableNumber, cart, selectedSystem }, ref) => {
 
       <hr style={{ borderTop: `1px solid ${borderColor}`, margin: "5px 0" }} />
       <p style={{ margin: "2px 0", color: textColor }}>
-        <strong>Subtotal:</strong> ₹{totalAmount.toFixed(2)}
+        <strong>Subtotal:</strong> ₹{orderSubtotal.toFixed(2)}
       </p>
-      {totalTaxAmount > 0 && (
+      {finalDiscountAmount > 0 && (
         <p style={{ margin: "2px 0", color: textColor }}>
-          <strong>{getTaxDisplayName()}:</strong> ₹{totalTaxAmount.toFixed(2)}
+          <strong>Discount{discountPercentage ? ` (${discountPercentage}%)` : ''}:</strong> -₹{finalDiscountAmount.toFixed(2)}
         </p>
       )}
-      {selectedSystem && (
+      {orderTaxAmount > 0 && (
         <p style={{ margin: "2px 0", color: textColor }}>
-          <strong>System Charge ({selectedSystem.systemName}):</strong> ₹{systemCharge.toFixed(2)}
+          <strong>{getTaxDisplayName()}{taxPercentage ? ` (${taxPercentage}%)` : ''}:</strong> ₹{orderTaxAmount.toFixed(2)}
+        </p>
+      )}
+      {systemCharge > 0 && (
+        <p style={{ margin: "2px 0", color: textColor }}>
+          <strong>System Charge{selectedSystem ? ` (${selectedSystem.systemName})` : ''}:</strong> ₹{systemCharge.toFixed(2)}
+        </p>
+      )}
+      {finalRoundOff !== 0 && (
+        <p style={{ margin: "2px 0", color: textColor }}>
+          <strong>Round Off:</strong> {finalRoundOff > 0 ? '+' : ''}₹{Math.abs(finalRoundOff).toFixed(2)}
         </p>
       )}
       <hr style={{ borderTop: `1px solid ${borderColor}`, margin: "5px 0" }} />

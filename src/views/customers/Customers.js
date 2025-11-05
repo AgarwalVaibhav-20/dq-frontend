@@ -96,6 +96,7 @@ const Customer = () => {
     membershipId: '',
     membershipName: '',
     corporate: false,
+    link: '',
   });
 
   const [updateModalVisible, setUpdateModalVisible] = useState(false);
@@ -110,6 +111,7 @@ const Customer = () => {
     membershipId: '',
     membershipName: '',
     corporate: false,
+    link: '',
   });
 
   const [formErrors, setFormErrors] = useState({});
@@ -422,6 +424,7 @@ const Customer = () => {
           corporate: formData.corporate,
           membershipId: formData.membershipId || null,
           membershipName: formData.membershipName || null,
+          link: formData.link || null,
         })
       ).unwrap();
       setFormData({
@@ -434,6 +437,7 @@ const Customer = () => {
         corporate: false,
         membershipId: '',
         membershipName: '',
+        link: '',
       });
       setFormErrors({});
       setAddCustomerModalVisible(false);
@@ -456,6 +460,7 @@ const Customer = () => {
       membershipId: customer.membershipId?._id || customer.membershipId || '',
       membershipName: customer.membership?.membershipName || customer.membershipName || '',
       corporate: customer.corporate || false,
+      link: customer.link || '',
     });
     setUpdateModalVisible(true);
   };
@@ -478,6 +483,7 @@ const Customer = () => {
           anniversary: updateFormData.anniversary,
           membershipId: updateFormData.membershipId || null,
           membershipName: updateFormData.membershipName || null,
+          link: updateFormData.link || null,
         })
       ).unwrap();
       setUpdateModalVisible(false);
@@ -492,6 +498,7 @@ const Customer = () => {
         membershipId: '',
         membershipName: '',
         corporate: false,
+        link: '',
       });
     } catch (error) {
       console.error('Failed to update customer:', error);
@@ -607,6 +614,65 @@ const Customer = () => {
             {typeInfo.text}
           </span>
         );
+      },
+    },
+    {
+      field: 'link',
+      headerName: 'Link',
+      width: isMobile ? 150 : 200,
+      headerAlign: 'center',
+      align: 'center',
+      renderCell: (params) => {
+        const link = params.row.link;
+        if (link && link.trim() !== '') {
+          // Check if it's a valid URL
+          const isUrl = link.startsWith('http://') || link.startsWith('https://') || link.startsWith('www.');
+          return (
+            <span
+              style={{
+                backgroundColor: '#0d6efd',
+                color: 'white',
+                padding: '4px 8px',
+                borderRadius: '12px',
+                fontSize: '0.75rem',
+                fontWeight: '500',
+                display: 'inline-block',
+                maxWidth: '180px',
+                overflow: 'hidden',
+                textOverflow: 'ellipsis',
+                whiteSpace: 'nowrap',
+                cursor: isUrl ? 'pointer' : 'default',
+              }}
+              title={link}
+              onClick={() => {
+                if (isUrl) {
+                  const url = link.startsWith('www.') ? `https://${link}` : link;
+                  window.open(url, '_blank', 'noopener,noreferrer');
+                }
+              }}
+            >
+              {link.length > 20 ? link.substring(0, 20) + '...' : link}
+            </span>
+          );
+        } else {
+          return (
+            <span
+              style={{
+                backgroundColor: '#6c757d',
+                color: 'white',
+                padding: '4px 8px',
+                borderRadius: '12px',
+                fontSize: '0.75rem',
+                fontWeight: '500',
+                display: 'inline-block',
+                minWidth: '80px',
+                textAlign: 'center',
+              }}
+            >
+              No Link
+            </span>
+          );
+        }
       },
     },
     {
@@ -1487,6 +1553,21 @@ const Customer = () => {
                     </CFormSelect>
                   </div>
                 </div>
+                <div className="col-md-6">
+                  <div className="mb-3">
+                    <CFormLabel htmlFor="link" className="fw-semibold dark:text-gray-200">
+                      Link (Optional)
+                    </CFormLabel>
+                    <CFormInput
+                      type="url"
+                      id="link"
+                      name="link"
+                      value={formData.link}
+                      onChange={handleInputChange}
+                      placeholder="Enter any link"
+                    />
+                  </div>
+                </div>
               </div>
             </CForm>
           </CModalBody>
@@ -1637,6 +1718,21 @@ const Customer = () => {
                         </option>
                       ))}
                     </CFormSelect>
+                  </div>
+                </div>
+                <div className="col-md-6">
+                  <div className="mb-3">
+                    <CFormLabel htmlFor="update-link" className="fw-semibold dark:text-gray-200">
+                      Link (Optional)
+                    </CFormLabel>
+                    <CFormInput
+                      type="url"
+                      id="update-link"
+                      name="link"
+                      value={updateFormData.link}
+                      onChange={handleUpdateInputChange}
+                      placeholder="Enter any link"
+                    />
                   </div>
                 </div>
               </div>

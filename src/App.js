@@ -375,6 +375,7 @@ const App = () => {
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path='/check-otp' element={<CheckOtp />} />
               <Route path='/customer-menu' element={<CustomerMenu />} />
+              <Route path='/spin' element={<Spin />} />
               <Route path="table" element={<TableRedirect />} />
 
               {/* Private Routes */}

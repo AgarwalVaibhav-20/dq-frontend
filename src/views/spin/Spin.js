@@ -1,11 +1,20 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useDispatch, useSelector } from "react-redux";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import { Sparkles, Loader2 } from "lucide-react";
 import { toast } from "react-toastify";
 import { fetchAllWheels } from "../../redux/slices/spinAndWinSlice";
 
 export default function SpinWheel() {
   const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  // Get redirect params
+  const shouldRedirect = searchParams.get('redirect') === 'true';
+  const tableNumber = searchParams.get('table');
+  const restaurantId = searchParams.get('restaurantId') || localStorage.getItem('restaurantId');
+  const floorId = searchParams.get('floorId');
   
   // Redux state
   const { wheels, loading, error } = useSelector((state) => state.spinAndWin);
@@ -17,18 +26,23 @@ export default function SpinWheel() {
   const [spinning, setSpinning] = useState(false);
   const [rotation, setRotation] = useState(0);
   const [winner, setWinner] = useState(null);
+  const [discountSaved, setDiscountSaved] = useState(false);
   const wheelRef = useRef(null);
   const pointerRef = useRef(null);
 
   // Fetch wheels on mount
   useEffect(() => {
-    const restaurantId = localStorage.getItem("restaurantId");
-    if (restaurantId) {
+    const currentRestaurantId = restaurantId || localStorage.getItem("restaurantId");
+    if (currentRestaurantId) {
+      // Save restaurantId to localStorage if coming from URL
+      if (restaurantId && !localStorage.getItem("restaurantId")) {
+        localStorage.setItem("restaurantId", restaurantId);
+      }
       dispatch(fetchAllWheels());
     } else {
       toast.error("Restaurant ID not found. Please log in again.");
     }
-  }, [dispatch]);
+  }, [dispatch, restaurantId]);
 
   // Show error if fetch fails
   useEffect(() => {
@@ -135,10 +149,68 @@ export default function SpinWheel() {
     ctx.stroke();
   };
 
+  // Extract discount from winner text (e.g., "10% OFF", "₹50 OFF", "10%", "50")
+  const extractDiscount = (winnerText) => {
+    if (!winnerText) return { amount: 0, percentage: 0, type: null };
+    
+    // Remove extra spaces and convert to lowercase for easier parsing
+    const text = winnerText.trim().toUpperCase();
+    
+    // Check for percentage discount (e.g., "10%", "10% OFF", "10% DISCOUNT")
+    const percentageMatch = text.match(/(\d+(?:\.\d+)?)\s*%/);
+    if (percentageMatch) {
+      const percentage = parseFloat(percentageMatch[1]);
+      return { amount: 0, percentage, type: 'percentage' };
+    }
+    
+    // Check for rupee discount (e.g., "₹50", "₹50 OFF", "50 RS", "50 RUPEES")
+    const rupeeMatch = text.match(/(?:₹|RS|RUPEES?)\s*(\d+(?:\.\d+)?)/) || text.match(/(\d+(?:\.\d+)?)\s*(?:RS|RUPEES?)/);
+    if (rupeeMatch) {
+      const amount = parseFloat(rupeeMatch[1] || rupeeMatch[0]);
+      return { amount, percentage: 0, type: 'fixed' };
+    }
+    
+    // If just a number, assume it's percentage
+    const numberMatch = text.match(/^(\d+(?:\.\d+)?)$/);
+    if (numberMatch) {
+      const value = parseFloat(numberMatch[1]);
+      // If number is <= 100, assume percentage, else assume amount
+      if (value <= 100) {
+        return { amount: 0, percentage: value, type: 'percentage' };
+      } else {
+        return { amount: value, percentage: 0, type: 'fixed' };
+      }
+    }
+    
+    // No discount found
+    return { amount: 0, percentage: 0, type: null };
+  };
+
+  // Save discount to localStorage
+  const saveDiscountToLocalStorage = (discountData, winnerText) => {
+    if (!restaurantId || !tableNumber) return;
+    
+    const spinDiscountKey = `spinDiscount_${restaurantId}_${tableNumber}`;
+    const discountInfo = {
+      discountAmount: discountData.amount,
+      discountPercentage: discountData.percentage,
+      discountType: discountData.type,
+      winnerText: winnerText,
+      timestamp: new Date().toISOString(),
+      restaurantId,
+      tableNumber
+    };
+    
+    localStorage.setItem(spinDiscountKey, JSON.stringify(discountInfo));
+    console.log('✅ Discount saved to localStorage:', discountInfo);
+    setDiscountSaved(true);
+  };
+
   const handleSpin = () => {
     if (spinning) return;
     setSpinning(true);
     setWinner(null);
+    setDiscountSaved(false);
     const spins = 5 + Math.random() * 5;
     const degrees = spins * 360 + Math.random() * 360;
     const newRotation = rotation + degrees;
@@ -152,9 +224,39 @@ export default function SpinWheel() {
       const winningIndex =
         Math.floor(wheelAngleForPointer / segmentAngle) %
         wheel.segments.length;
-      setWinner(wheel.segments[winningIndex]);
+      const winningSegment = wheel.segments[winningIndex];
+      setWinner(winningSegment);
+      
+      // Extract and save discount
+      const discountData = extractDiscount(winningSegment.text);
+      if (discountData.type) {
+        saveDiscountToLocalStorage(discountData, winningSegment.text);
+        toast.success(`🎉 You won: ${winningSegment.text}! Discount saved.`, {
+          autoClose: 3000
+        });
+      } else {
+        // No discount found, but still save that user played
+        saveDiscountToLocalStorage({ amount: 0, percentage: 0, type: null }, winningSegment.text);
+        toast.success(`🎉 You won: ${winningSegment.text}!`, {
+          autoClose: 3000
+        });
+      }
     }, 4000);
   };
+
+  // Handle redirect after spin (if coming from QR scan)
+  useEffect(() => {
+    if (shouldRedirect && winner && discountSaved && !spinning) {
+      // Wait 3 seconds after showing winner, then redirect
+      const timer = setTimeout(() => {
+        if (tableNumber) {
+          navigate(`/customer-menu?table=${tableNumber}`, { replace: true });
+        }
+      }, 3000);
+      
+      return () => clearTimeout(timer);
+    }
+  }, [winner, discountSaved, shouldRedirect, tableNumber, navigate, spinning]);
 
   // Loading state
   if (loading && wheels.length === 0) {
@@ -175,7 +277,15 @@ export default function SpinWheel() {
             <Sparkles size={40} className="text-gray-400" />
           </div>
           <h3 className="text-2xl font-bold text-gray-800 mb-2">No Wheels Available</h3>
-          <p className="text-gray-500">Please contact the administrator to create a spin wheel.</p>
+          <p className="text-gray-500 mb-6">Please contact the administrator to create a spin wheel.</p>
+          {shouldRedirect && tableNumber && (
+            <button
+              onClick={() => navigate(`/customer-menu?table=${tableNumber}`)}
+              className="px-8 py-3 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-xl hover:from-purple-700 hover:to-pink-700 font-semibold shadow-lg transition-all"
+            >
+              Continue to Menu
+            </button>
+          )}
         </div>
       </div>
     );
@@ -223,8 +333,15 @@ export default function SpinWheel() {
         {wheel.name}
       </h2>
       <p className="text-gray-600 text-center mb-8">
-        Click spin to win amazing prizes!
+        {shouldRedirect ? '🎁 Spin to win exclusive discounts on your order!' : 'Click spin to win amazing prizes!'}
       </p>
+      {shouldRedirect && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg text-center max-w-md">
+          <p className="text-sm text-blue-800">
+            💡 After spinning, your discount will be automatically applied to your order!
+          </p>
+        </div>
+      )}
 
       <div className="relative flex justify-center items-center w-full max-w-[400px]">
         <canvas
@@ -256,30 +373,48 @@ export default function SpinWheel() {
           <p className="text-white text-sm md:text-base font-semibold mb-1">
             🎉 Congratulations! 🎉
           </p>
-          <p className="text-white text-xl md:text-2xl font-bold">
+          <p className="text-white text-xl md:text-2xl font-bold mb-2">
             {winner.text}
           </p>
+          {shouldRedirect && discountSaved && (
+            <p className="text-white text-sm mt-2">
+              ✅ Discount saved! Redirecting to menu...
+            </p>
+          )}
         </div>
       )}
 
-      <button
-        onClick={handleSpin}
-        disabled={spinning}
-        className={`mt-8 px-8 py-4 md:px-12 md:py-5 text-lg md:text-xl font-bold rounded-2xl shadow-2xl transition-all transform hover:scale-105 ${
-          spinning
-            ? "bg-gray-400 cursor-not-allowed"
-            : "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
-        }`}
-      >
-        {spinning ? (
-          <span className="flex items-center justify-center gap-2">
-            <Sparkles className="animate-spin" size={22} />
-            Spinning...
-          </span>
-        ) : (
-          "SPIN THE WHEEL"
+      <div className="flex flex-col items-center gap-4 mt-8">
+        <button
+          onClick={handleSpin}
+          disabled={spinning || (winner && shouldRedirect)}
+          className={`px-8 py-4 md:px-12 md:py-5 text-lg md:text-xl font-bold rounded-2xl shadow-2xl transition-all transform hover:scale-105 ${
+            spinning || (winner && shouldRedirect)
+              ? "bg-gray-400 cursor-not-allowed"
+              : "bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
+          }`}
+        >
+          {spinning ? (
+            <span className="flex items-center justify-center gap-2">
+              <Sparkles className="animate-spin" size={22} />
+              Spinning...
+            </span>
+          ) : winner && shouldRedirect ? (
+            "Already Spun!"
+          ) : (
+            "SPIN THE WHEEL"
+          )}
+        </button>
+        
+        {shouldRedirect && winner && discountSaved && (
+          <button
+            onClick={() => navigate(`/customer-menu?table=${tableNumber}`)}
+            className="px-6 py-3 text-base font-semibold rounded-xl bg-green-600 hover:bg-green-700 text-white shadow-lg transition-all"
+          >
+            Continue to Menu →
+          </button>
         )}
-      </button>
+      </div>
     </div>
   );
 }

@@ -185,6 +185,26 @@ export default function SpinWheelAdmin() {
     }
   };
 
+  const handleToggleQRScan = async (wheelId, showOnQRScan) => {
+    try {
+      await dispatch(updateWheel({ 
+        id: wheelId, 
+        updates: { showOnQRScan } 
+      }));
+      // Refresh wheels list to show updated toggle state
+      await dispatch(fetchAllWheels());
+      toast.success(`QR Scan toggle ${showOnQRScan ? 'enabled' : 'disabled'} successfully!`, {
+        position: "top-right",
+        autoClose: 2000,
+      });
+    } catch (error) {
+      toast.error('Failed to update QR scan toggle', {
+        position: "top-right",
+        autoClose: 3000,
+      });
+    }
+  };
+
   const handleSave = async () => {
     if (selectedWheel) {
       // Update existing wheel
@@ -495,9 +515,36 @@ export default function SpinWheelAdmin() {
                     <h3 className="text-xl font-bold text-slate-800 mb-1">{wheel.name}</h3>
                     <p className="text-sm text-slate-500">{wheel.segments.length} segments</p>
                   </div>
-                  <span className="px-3 py-1 bg-indigo-50 text-indigo-600 rounded-full text-xs font-semibold">
-                    Active
+                  <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                    wheel.isActive 
+                      ? 'bg-indigo-50 text-indigo-600' 
+                      : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {wheel.isActive ? 'Active' : 'Inactive'}
                   </span>
+                </div>
+                
+                {/* QR Scan Toggle */}
+                <div className="mb-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <p className="text-sm font-semibold text-slate-700 mb-1">Show on QR Scan</p>
+                      <p className="text-xs text-slate-500">
+                        {wheel.showOnQRScan !== false 
+                          ? 'Wheel will show when customer scans QR code' 
+                          : 'Customer menu will show directly (no wheel)'}
+                      </p>
+                    </div>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={wheel.showOnQRScan !== false}
+                        onChange={(e) => handleToggleQRScan(wheel._id, e.target.checked)}
+                        className="sr-only peer"
+                      />
+                      <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-indigo-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                  </div>
                 </div>
                 
                 <div className="mb-5">

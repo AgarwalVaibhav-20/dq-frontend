@@ -40,7 +40,7 @@ export const fetchCustomers = createAsyncThunk(
 export const addCustomer = createAsyncThunk(
   'customers/addCustomer',
   async (
-    { token, name, email, address, phoneNumber, birthday, anniversary, membershipId, membershipName, corporate, rewardCustomerPoints, rewardByAdminPoints },
+    { token, name, email, address, phoneNumber, birthday, anniversary, membershipId, membershipName, corporate, rewardCustomerPoints, rewardByAdminPoints, link },
     { rejectWithValue, dispatch }
   ) => {
     try {
@@ -62,6 +62,7 @@ export const addCustomer = createAsyncThunk(
         membershipName,
         rewardCustomerPoints,
         rewardByAdminPoints,
+        link,
       });
 
       // Use public API if no token (for customer menu orders)
@@ -92,6 +93,7 @@ export const addCustomer = createAsyncThunk(
           membershipName,
           rewardCustomerPoints,
           rewardByAdminPoints,
+          link,
         },
         headers
       );
@@ -186,7 +188,7 @@ export const deleteCustomer = createAsyncThunk(
 export const updateCustomer = createAsyncThunk(
   'customers/updateCustomer',
   async (
-    { _id, token, name, email, address, phoneNumber, birthday, anniversary, membershipId, membershipName },
+    { _id, token, name, email, address, phoneNumber, birthday, anniversary, membershipId, membershipName, link },
     { rejectWithValue }
   ) => {
     try {
@@ -205,6 +207,7 @@ export const updateCustomer = createAsyncThunk(
         anniversary,
         membershipId,
         membershipName,
+        link,
       });
       const response = await axios.put(
         `${BASE_URL}/customer/update/${_id}`,
@@ -217,6 +220,7 @@ export const updateCustomer = createAsyncThunk(
           anniversary,
           membershipId,
           membershipName,
+          link,
           restaurantId,
         },
         configureHeaders(token)

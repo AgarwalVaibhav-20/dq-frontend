@@ -45,9 +45,14 @@ export const fetchAllWheels = createAsyncThunk(
         return rejectWithValue("Restaurant ID not found");
       }
 
-      const response = await axios.get(`${BASE_URL}/api/wheel/all`, {
-        params: { restaurantId },
-        headers: { Authorization: `Bearer ${token}` },
+      // Use public endpoint if no token (for customer-facing spin page)
+      // Use authenticated endpoint if token exists (for admin panel)
+      const endpoint = token ? `${BASE_URL}/api/wheel/all` : `${BASE_URL}/api/wheel/public`;
+      const headers = token ? { Authorization: `Bearer ${token}` } : {};
+      
+      const response = await axios.get(endpoint, {
+        params: { restaurantId, isActive: true },
+        headers: headers,
       });
 
       console.log("Fetched wheels:", response.data);

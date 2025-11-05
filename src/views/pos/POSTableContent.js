@@ -29,7 +29,7 @@ import {
   CFormTextarea,
   CCardFooter,
 } from '@coreui/react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { toast } from 'react-toastify'
 import { useDispatch, useSelector } from 'react-redux'
 import axios from 'axios'
@@ -53,7 +53,7 @@ import { fetchSubCategories } from '../../redux/slices/subCategorySlice'
 import { fetchCategories } from '../../redux/slices/categorySlice'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
-import { createOrder } from '../../redux/slices/orderSlice'
+import { createOrder, updateOrderStatus } from '../../redux/slices/orderSlice'
 import CustomerModal from '../../components/CustomerModal'
 import ProductList from '../../components/ProductList'
 import Cart from '../../components/Cart'
@@ -76,9 +76,12 @@ const POSTableContent = () => {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const { tableNumber: tableId } = useParams();
   const navigate = useNavigate()
+  const location = useLocation()
   const dispatch = useDispatch()
   const invoiceRef = useRef(null)
   const kotRef = useRef(null)
+  const generateKOTRef = useRef(null)
+  const generateInvoiceRef = useRef(null)
   const { tableNumber } = useParams()
   const [appliedDiscounts, setAppliedDiscounts] = useState(null);
   const [appliedCoupon, setAppliedCoupon] = useState(null); // Store coupon data for max discount check
@@ -171,6 +174,7 @@ const POSTableContent = () => {
     }
     return null
   })
+  const [currentOrderId, setCurrentOrderId] = useState(null) // Store orderId after KOT generation
 
   // Get userId from Redux state or localStorage
   const userId = useSelector((state) => state.auth.userId) || localStorage.getItem('userId')
@@ -245,6 +249,70 @@ const POSTableContent = () => {
     }
   }, [dispatch, token, restaurantId])
 
+  // Handle navigation state for auto-opening KOT or Bill
+  // This useEffect runs after component mounts and functions are defined
+  useEffect(() => {
+    // Check if we have navigation state to open KOT or Bill
+    if (location.state && (location.state.openKOT || location.state.openBill)) {
+      const openKOT = location.state.openKOT
+      const openBill = location.state.openBill
+      
+      // Wait for component to fully mount and cart to load
+      const timer = setTimeout(() => {
+        // Check cart from localStorage (more reliable than state on initial load)
+        const currentUserId = userId || localStorage.getItem('userId')
+        const cartKey = `cart_${tableId}_${currentUserId}`
+        const savedCart = JSON.parse(localStorage.getItem(cartKey) || '[]')
+        
+        // Use savedCart if available, otherwise use current cart state
+        const cartToCheck = savedCart.length > 0 ? savedCart : cart
+        
+        if (openKOT) {
+          if (cartToCheck.length > 0) {
+            // Use ref to access function
+            if (generateKOTRef.current) {
+              generateKOTRef.current()
+            } else {
+              // If function not ready, try again after a short delay
+              setTimeout(() => {
+                if (generateKOTRef.current) {
+                  generateKOTRef.current()
+                } else {
+                  toast.error('KOT generation is not ready. Please try again.', { autoClose: 3000 })
+                }
+              }, 500)
+            }
+          } else {
+            toast.info('Cart is empty! Please add items to generate KOT.', { autoClose: 3000 })
+          }
+        } else if (openBill) {
+          if (cartToCheck.length > 0) {
+            // Use ref to access function
+            if (generateInvoiceRef.current) {
+              generateInvoiceRef.current()
+            } else {
+              // If function not ready, try again after a short delay
+              setTimeout(() => {
+                if (generateInvoiceRef.current) {
+                  generateInvoiceRef.current()
+                } else {
+                  toast.error('Invoice generation is not ready. Please try again.', { autoClose: 3000 })
+                }
+              }, 500)
+            }
+          } else {
+            toast.info('Cart is empty! Please add items to generate Invoice.', { autoClose: 3000 })
+          }
+        }
+        
+        // Clear the state to prevent re-triggering
+        navigate(location.pathname, { replace: true, state: {} })
+      }, 1200) // Delay to ensure everything is loaded and functions are defined
+      
+      return () => clearTimeout(timer)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.state])
 
   // Function to fetch and auto-select system
   const fetchAndSelectSystem = async () => {
@@ -545,6 +613,9 @@ const POSTableContent = () => {
   }
 
   const clearCart = () => {
+    // Reset orderId when cart is cleared
+    setCurrentOrderId(null)
+    
     // Check if it's a merged table by its ID format
     if (tableId.startsWith('merged_')) {
       if (window.confirm('Are you sure you want to cancel? This will unmerge the tables and restore their original orders.')) {
@@ -1198,7 +1269,25 @@ const POSTableContent = () => {
       // Prepare stock deduction data from cart
       // ✅ REMOVED: Manual stock deduction - automatic deduction already happens in InventoryService
 
-      // 🔥 NEW: 6. Handle unmerge logic if needed
+      // 🔥 NEW: 6. Update order status to 'completed' if KOT was generated
+      if (currentOrderId) {
+        try {
+          console.log('🔄 Updating order status to completed:', currentOrderId);
+          const statusResult = await dispatch(updateOrderStatus({ 
+            id: currentOrderId, 
+            status: 'completed' 
+          })).unwrap();
+          console.log('✅ Order status updated successfully:', statusResult);
+          toast.success('✅ Order completed!', { autoClose: 2000 });
+        } catch (error) {
+          console.error('❌ Error updating order status:', error);
+          toast.warning('⚠️ Payment successful but order status update failed', { autoClose: 3000 });
+        }
+        // Reset orderId after update
+        setCurrentOrderId(null);
+      }
+
+      // 🔥 NEW: 7. Handle unmerge logic if needed
       if (tableId.startsWith('merged_')) {
         const allMergedTables = JSON.parse(localStorage.getItem('mergedTables') || '[]');
         const updatedMergedTables = allMergedTables.filter(m => `merged_${m.id}` !== tableId);
@@ -1207,7 +1296,7 @@ const POSTableContent = () => {
         localStorage.removeItem(`start_time_${tableId}`);
       }
 
-      // 🔥 NEW: 7. Success - clear cart and navigate
+      // 🔥 NEW: 8. Success - clear cart and navigate
       setShowPaymentModal(false);
       clearCart();
       setAppliedDiscounts(null);
@@ -1384,6 +1473,11 @@ const POSTableContent = () => {
         invoiceElement.style.display = 'none'
       })
   }
+  
+  // Store function reference in ref for useEffect access
+  useEffect(() => {
+    generateInvoiceRef.current = generateInvoice
+  }, [generateInvoice])
 
   const handleInvoicePrint = () => {
     const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
@@ -1541,7 +1635,7 @@ const POSTableContent = () => {
       toast.info('Cart is empty! Please add items to generate KOT.', { autoClose: 3000 })
       return
     }
-
+    
     try {
       // Calculate subtotal and tax for all cart items
       const kotSubtotal = cart.reduce((total, item) => total + (item.adjustedPrice * item.quantity), 0);
@@ -1578,6 +1672,14 @@ const POSTableContent = () => {
       }
 
       const result = await dispatch(createOrder(orderData)).unwrap()
+      
+      // Store orderId for later status update after payment
+      const orderId = result?.data?._id || result?.data?.id || result?.order?._id || result?.order?.id
+      if (orderId) {
+        setCurrentOrderId(orderId)
+        console.log('✅ Order ID stored for status update:', orderId)
+      }
+      
       toast.success('KOT generated successfully!', { autoClose: 3000 })
 
       // Update kotItems with all current cart items (including duplicates and different sizes)
@@ -1606,6 +1708,11 @@ const POSTableContent = () => {
       toast.error(`Failed to save order: ${error}`, { autoClose: 3000 })
     }
   }
+  
+  // Store function reference in ref for useEffect access
+  useEffect(() => {
+    generateKOTRef.current = generateKOT
+  }, [generateKOT])
 
   const handlePrint = () => {
     const printWindow = window.open()
