@@ -283,24 +283,42 @@ export const deleteOrder = createAsyncThunk(
 // Fetch order statistics
 export const fetchOrderStatistics = createAsyncThunk(
   'orders/fetchOrderStatistics',
-  async (_, { rejectWithValue }) => { // No args needed, token has restaurantId
+  async ({ token }, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('authToken');
-      const headers = { Authorization: `Bearer ${token}` };
-
-      // Use the route from orderRoute.js
-      const response = await axiosInstance.get(
-        `${BASE_URL}/order/statistics`, 
-        { headers }
-      );
-      
-      return response.data.data; // The { daily, weekly, monthly } object
+      const restaurantId = localStorage.getItem('restaurantId');
+      const response = await axios.get(`${BASE_URL}/order/statistics`, {
+        params: { restaurantId },
+        ...configureHeaders(token),
+      });
+      console.log(response.data, 'order statistics data');
+      return response.data;
     } catch (error) {
-      return rejectWithValue(error.response?.data?.error || 'Failed to fetch statistics');
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to fetch order statistics'
+      );
     }
   }
 );
-// === END NEW ADDITION ===
+
+export const fetchRejectedOrderStatistics = createAsyncThunk(
+  'orders/fetchRejectedOrderStatistics',
+  async ({ token }, { rejectWithValue }) => {
+    try {
+      const restaurantId = localStorage.getItem('restaurantId');
+      const response = await axios.get(`${BASE_URL}/order/rejectedStatistics`, {
+        params: { restaurantId },
+        ...configureHeaders(token),
+      });
+      console.log(response.data, 'order statistics data');
+      return response.data;
+    } catch (error) {
+      return rejectWithValue(
+        error.response?.data?.message || 'Failed to fetch rejected order statistics'
+      );
+    }
+  }
+);
+
 
 // Slice
 const orderSlice = createSlice({
@@ -317,7 +335,16 @@ const orderSlice = createSlice({
     notificationLoading: false,
     error: null,
     // === NEW ADDITION ===
-    statistics: { daily: 0, weekly: 0, monthly: 0 },
+    statistics: {
+      daily: 0,
+      weekly: 0,
+      monthly: 0,
+      rejected: {
+        daily: 0,
+        weekly: 0,
+        monthly: 0
+      }
+    },
     statsLoading: false,
     // === END NEW ADDITION ===
   },
@@ -463,9 +490,9 @@ const orderSlice = createSlice({
         const updatedOrder = action.payload?.data || action.payload
 
         // Find the index of the updated order in the state.orders array
-        const index = state.orders.findIndex((order) => 
-          (order.order_id === updatedOrder.order_id) || 
-          (order._id === updatedOrder._id) || 
+        const index = state.orders.findIndex((order) =>
+          (order.order_id === updatedOrder.order_id) ||
+          (order._id === updatedOrder._id) ||
           (order.id === updatedOrder.id)
         )
 
@@ -524,9 +551,6 @@ const orderSlice = createSlice({
         state.error = action.payload
         toast.error('Failed to delete order.')
       })
-
-    // === NEW ADDITION ===
-    // Fetch Order Statistics
     builder
       .addCase(fetchOrderStatistics.pending, (state) => {
         state.statsLoading = true;
@@ -534,12 +558,31 @@ const orderSlice = createSlice({
       })
       .addCase(fetchOrderStatistics.fulfilled, (state, action) => {
         state.statsLoading = false;
-        state.statistics = action.payload; // payload is { daily, weekly, monthly }
+        // ✅ FIXED: Access nested data object
+        state.statistics.daily = action.payload.data.daily;
+        state.statistics.weekly = action.payload.data.weekly;
+        state.statistics.monthly = action.payload.data.monthly;
       })
       .addCase(fetchOrderStatistics.rejected, (state, action) => {
         state.statsLoading = false;
         state.error = action.payload;
-        toast.error('Failed to fetch statistics.');
+        toast.error(action.payload || 'Failed to fetch order statistics.');
+      })
+      .addCase(fetchRejectedOrderStatistics.pending, (state) => {
+        state.statsLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchRejectedOrderStatistics.fulfilled, (state, action) => {
+        state.statsLoading = false;
+        // ✅ FIXED: Access nested data object
+        state.statistics.rejected.daily = action.payload.data.daily;
+        state.statistics.rejected.weekly = action.payload.data.weekly;
+        state.statistics.rejected.monthly = action.payload.data.monthly;
+      })
+      .addCase(fetchRejectedOrderStatistics.rejected, (state, action) => {
+        state.statsLoading = false;
+        state.error = action.payload;
+        toast.error(action.payload || 'Failed to fetch rejected order statistics.');
       });
     // === END NEW ADDITION ===
   },

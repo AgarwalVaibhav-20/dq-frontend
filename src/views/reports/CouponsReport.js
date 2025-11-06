@@ -327,68 +327,7 @@ function CouponsReport() {
               )}
 
               {/* Usage History */}
-              <div className="border-t border-gray-200 pt-6">
-                <div className="flex items-center gap-2 mb-4">
-                  <TrendingUp size={20} className="text-gray-700" />
-                  <h4 className="text-lg font-semibold text-gray-800">Usage History</h4>
-                </div>
-
-                {detailDialog.coupon.usageHistory && detailDialog.coupon.usageHistory.length > 0 ? (
-                  <>
-                    <div className="overflow-x-auto border border-gray-200 rounded-lg mb-4">
-                      <table className="w-full text-sm">
-                        <thead className="bg-gray-50">
-                          <tr>
-                            <th className="text-left py-2 px-3 font-semibold text-gray-700">Date</th>
-                            <th className="text-left py-2 px-3 font-semibold text-gray-700">Order ID</th>
-                            <th className="text-left py-2 px-3 font-semibold text-gray-700">Customer</th>
-                            <th className="text-right py-2 px-3 font-semibold text-gray-700">Order Value</th>
-                            <th className="text-right py-2 px-3 font-semibold text-gray-700">Discount</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {detailDialog.coupon.usageHistory.map((usage, index) => (
-                            <tr key={index} className="border-t border-gray-100">
-                              <td className="py-2 px-3">{formatDate(usage.date)}</td>
-                              <td className="py-2 px-3 font-mono text-xs">{usage.orderId}</td>
-                              <td className="py-2 px-3">{usage.customer}</td>
-                              <td className="py-2 px-3 text-right">₹{usage.orderValue}</td>
-                              <td className="py-2 px-3 text-right font-semibold text-green-600">-₹{usage.discountApplied}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-
-                    {/* Summary */}
-                    <div className="bg-gray-50 rounded-lg p-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Total Orders</p>
-                          <p className="text-lg font-semibold text-gray-800">{detailDialog.coupon.usageHistory.length}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Total Order Value</p>
-                          <p className="text-lg font-semibold text-gray-800">
-                            ₹{detailDialog.coupon.usageHistory.reduce((sum, h) => sum + h.orderValue, 0)}
-                          </p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-gray-500 mb-1">Total Discount Given</p>
-                          <p className="text-lg font-semibold text-red-600">
-                            ₹{detailDialog.coupon.usageHistory.reduce((sum, h) => sum + h.discountApplied, 0)}
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                ) : (
-                  <div className="text-center py-8 bg-gray-50 rounded-lg">
-                    <AlertCircle size={32} className="text-gray-400 mx-auto mb-2" />
-                    <p className="text-gray-500">No usage history available yet</p>
-                  </div>
-                )}
-              </div>
+              
             </div>
 
             {/* Modal Footer */}

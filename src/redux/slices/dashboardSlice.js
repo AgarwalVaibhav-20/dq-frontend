@@ -16,7 +16,7 @@ export const fetchOverallReport = createAsyncThunk(
     try {
       const currentToken = token || localStorage.getItem('authToken');
       const response = await axios.get(
-        `${BASE_URL}/reports/${restaurantId}`, 
+        `${BASE_URL}/reports/${restaurantId}`,
         configureHeaders(currentToken)
       );
       return response.data.data; // Extract the data property
@@ -33,7 +33,7 @@ export const fetchChartData = createAsyncThunk(
     try {
       const currentToken = token || localStorage.getItem('authToken');
       const response = await axios.get(
-        `${BASE_URL}/dashboard/chart-data?year=${year}&restaurantId=${restaurantId}`, 
+        `${BASE_URL}/dashboard/chart-data?year=${year}&restaurantId=${restaurantId}`,
         configureHeaders(currentToken)
       );
       return response.data.data; // This should contain labels and datasets directly
@@ -50,7 +50,7 @@ export const fetchWeeklyChartData = createAsyncThunk(
     try {
       const currentToken = token || localStorage.getItem('authToken');
       const response = await axios.get(
-        `${BASE_URL}/dashboard/weekly-chart-data?year=${year}&restaurantId=${restaurantId}`, 
+        `${BASE_URL}/dashboard/weekly-chart-data?year=${year}&restaurantId=${restaurantId}`,
         configureHeaders(currentToken)
       );
       return response.data.data; // This should contain datasets directly
@@ -60,28 +60,46 @@ export const fetchWeeklyChartData = createAsyncThunk(
   }
 );
 
-// Fetch payment type statistics - NOW WITH AUTHENTICATION
-export const fetchPaymentTypeStats = createAsyncThunk(
-  'dashboard/fetchPaymentTypeStats',
-  async ({ startDate, endDate, restaurantId, token }, { rejectWithValue }) => {
+export const fetchMonthlyChartData = createAsyncThunk(
+  'dashboard/fetchMonthlyChartData',
+  async ({ year, month, restaurantId, token }, { rejectWithValue }) => {
     try {
       const currentToken = token || localStorage.getItem('authToken');
-      const response = await axios.post(
-        `${BASE_URL}/getReportPaymentType`, 
-        {
-          startDate,
-          endDate,
-          restaurantId,
-        },
-        configureHeaders(currentToken) // Added authentication
+      const response = await axios.get(
+        `${BASE_URL}/dashboard/monthly-chart-data?year=${year}&month=${month}&restaurantId=${restaurantId}`,
+        configureHeaders(currentToken)
       );
-      return response.data;
+      return response.data.data; // Extract data property
     } catch (error) {
       return rejectWithValue(error.response?.data || error.message);
     }
   }
 );
+export const fetchPaymentTypeStats = createAsyncThunk(
+  'dashboard/fetchPaymentTypeStats',
+  async ({ startDate, endDate, restaurantId, token }, { rejectWithValue }) => {
+    try {
+      const currentToken = token || localStorage.getItem('authToken');
+      console.log('fetchPaymentTypeStats - params:', { startDate, endDate, restaurantId });
 
+      const response = await axios.post(
+        `${BASE_URL}/getReportPaymentType`,
+        {
+          startDate,
+          endDate,
+          restaurantId,
+        },
+        configureHeaders(currentToken)
+      );
+
+      console.log('fetchPaymentTypeStats - response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('fetchPaymentTypeStats - error:', error);
+      return rejectWithValue(error.response?.data?.message || error.message);
+    }
+  }
+);
 // Dashboard slice
 const dashboardSlice = createSlice({
   name: 'dashboard',
@@ -89,20 +107,28 @@ const dashboardSlice = createSlice({
     overallReport: null,
     chartData: null,
     weeklyChartData: null,
+    monthlyChartData: null,
     paymentTypeStats: null,
     loading: false,
     error: null,
   },
   reducers: {
-    // Add a reset action to clear errors
+    // Clear error action
     clearError: (state) => {
       state.error = null;
     },
+    // Clear all data
     clearData: (state) => {
       state.overallReport = null;
       state.chartData = null;
+      state.monthlyChartData = null;
       state.weeklyChartData = null;
       state.paymentTypeStats = null;
+    },
+    // Clear payment stats only
+    clearPaymentStats: (state) => {
+      state.paymentTypeStats = null;
+      state.error = null;
     }
   },
   extraReducers: (builder) => {
@@ -114,7 +140,6 @@ const dashboardSlice = createSlice({
       })
       .addCase(fetchOverallReport.fulfilled, (state, action) => {
         state.loading = false;
-        console.log('fetchOverallReport.fulfilled - payload:', action.payload);
         state.overallReport = action.payload;
       })
       .addCase(fetchOverallReport.rejected, (state, action) => {
@@ -147,6 +172,18 @@ const dashboardSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
       })
+      .addCase(fetchMonthlyChartData.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchMonthlyChartData.fulfilled, (state, action) => {
+        state.loading = false;
+        state.monthlyChartData = action.payload;
+      })
+      .addCase(fetchMonthlyChartData.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+      })
       // Handle payment type statistics
       .addCase(fetchPaymentTypeStats.pending, (state) => {
         state.loading = true;
@@ -155,10 +192,12 @@ const dashboardSlice = createSlice({
       .addCase(fetchPaymentTypeStats.fulfilled, (state, action) => {
         state.loading = false;
         state.paymentTypeStats = action.payload;
+        state.error = null;
       })
       .addCase(fetchPaymentTypeStats.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload;
+        state.paymentTypeStats = null;
       });
   },
 });

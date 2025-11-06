@@ -1137,6 +1137,7 @@ const Settings = () => {
                       active={activeTab === 'system'}
                       onClick={() => setActiveTab('system')}
                       style={{ cursor: 'pointer' }}
+                      
                     >
                       <CIcon icon={cilSettings} className="me-2 text-primary" />
                       System Settings

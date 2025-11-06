@@ -35,6 +35,7 @@ import {
   Save,
   Edit,
   Trash2,
+  Share,
   MoreVertical,
   Plus,
   AlertCircle,
@@ -48,6 +49,9 @@ import {
   clearCouponState
 } from '../../redux/slices/coupenSlice';
 
+import { FaWhatsapp } from 'react-icons/fa';
+import html2canvas from 'html2canvas';
+
 function CustomerLoyalty() {
   // Form states
   const [couponCode, setCouponCode] = useState('');
@@ -59,6 +63,8 @@ function CustomerLoyalty() {
   const [maxUsage, setMaxUsage] = useState('');
   const [description, setDescription] = useState('');
   const [isActive, setIsActive] = useState(true);
+  const [shareDialog, setShareDialog] = useState({ open: false, coupon: null });
+const [shareMessage, setShareMessage] = useState('');
 
   // UI states
   const [editingCoupon, setEditingCoupon] = useState(null);
@@ -108,6 +114,71 @@ console.log('coupon for customer:', coupons);
     date.setDate(date.getDate() + 7);
     return date.toISOString().split('T')[0];
   };
+
+  // Share handlers - ADD THESE FUNCTIONS
+const generateCouponImage = async () => {
+  const element = document.getElementById('coupon-image-to-share');
+  if (!element) return null;
+  
+  const canvas = await html2canvas(element, {
+    backgroundColor: null,
+    scale: 2,
+    logging: false
+  });
+  
+  return canvas.toDataURL('image/png');
+};
+
+// const handleWhatsAppShare = async () => {
+//   const text = `🎉 Special Offer!\n\nCoupon Code: ${shareDialog.coupon.code}\nDiscount: ${shareDialog.coupon.discountValue}${shareDialog.coupon.discountType === 'percentage' ? '%' : ' ₹'} OFF\nValid Until: ${formatDate(shareDialog.coupon.expiryDate)}\n${shareDialog.coupon.minOrderValue > 0 ? `Min Order: ₹${shareDialog.coupon.minOrderValue}\n` : ''}\n${shareMessage}`;
+
+//   const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+//   window.open(whatsappUrl, '_blank');
+// };
+const handleWhatsAppShare = async () => {
+  const imageDataUrl = await generateCouponImage(); // using html2canvas
+  if (!imageDataUrl) return;
+
+  const blob = await (await fetch(imageDataUrl)).blob();
+  const file = new File([blob], "coupon.png", { type: "image/png" });
+
+  const text = `🎉 Special Offer!\n\nCoupon Code: ${shareDialog.coupon.code}\nDiscount: ${shareDialog.coupon.discountValue}${shareDialog.coupon.discountType === 'percentage' ? '%' : ' ₹'} OFF\nValid Until: ${formatDate(shareDialog.coupon.expiryDate)}\n${shareMessage}`;
+
+  try {
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      // Try to share image + text together
+      await navigator.share({
+        title: "Exclusive Coupon",
+        text,
+        files: [file],
+      });
+    } else {
+      throw new Error("File sharing not supported");
+    }
+  } catch (error) {
+    console.warn("Falling back to WhatsApp text share:", error);
+
+    // Fallback — share only text through WhatsApp
+    const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(whatsappUrl, "_blank");
+  }
+};
+
+const handleEmailShare = () => {
+  const subject = `Exclusive Coupon: ${shareDialog.coupon.code}`;
+  const body = `Hello,\n\n🎉 Here's a special coupon for you!\n\nCoupon Code: ${shareDialog.coupon.code}\nDiscount: ${shareDialog.coupon.discountValue}${shareDialog.coupon.discountType === 'percentage' ? '%' : ' ₹'} OFF\nValid Until: ${formatDate(shareDialog.coupon.expiryDate)}\n${shareDialog.coupon.minOrderValue > 0 ? `Min Order: ₹${shareDialog.coupon.minOrderValue}\n` : ''}\n${shareMessage}\n\nEnjoy your savings!`;
+
+  const mailtoUrl = `mailto:?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+  window.location.href = mailtoUrl;
+};
+
+const handleSMSShare = () => {
+  const text = `Coupon: ${shareDialog.coupon.code}\nDiscount: ${shareDialog.coupon.discountValue}${shareDialog.coupon.discountType === 'percentage' ? '%' : ' ₹'} OFF\nValid: ${formatDate(shareDialog.coupon.expiryDate)}\n${shareMessage}`;
+  
+  const smsUrl = `sms:?body=${encodeURIComponent(text)}`;
+  window.location.href = smsUrl;
+};
+
 
   // Validate form
   const validateForm = () => {
@@ -577,51 +648,40 @@ console.log('coupon for customer:', coupons);
                         }}
                       >
                         {/* Coupon Header */}
-                        <Box sx={{ 
-                          display: 'flex', 
-                          justifyContent: 'space-between', 
-                          alignItems: 'center', 
-                          mb: 1,
-                          flexDirection: { xs: 'column', sm: 'row' },
-                          gap: { xs: 1, sm: 0 }
-                        }}>
-                          <Typography
-                            variant="h6"
-                            sx={{
-                              fontFamily: 'monospace',
-                              fontWeight: 'bold',
-                              color: (isExpired || isMaxUsageReached || isInactive) ? 'text.secondary' : 'primary.main',
-                              fontSize: { xs: '1rem', sm: '1.25rem' },
-                              textAlign: { xs: 'center', sm: 'left' }
-                            }}
-                          >
-                            {coupon.code}
-                          </Typography>
-                          <Box sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            gap: 1,
-                            justifyContent: { xs: 'center', sm: 'flex-end' }
-                          }}>
-                            <Tooltip title="Copy Code">
-                              <IconButton
-                                size="small"
-                                onClick={() => handleCopyCode(coupon.code)}
-                                color="primary"
-                                sx={{ minWidth: { xs: 40, sm: 32 } }}
-                              >
-                                <Copy size={16} />
-                              </IconButton>
-                            </Tooltip>
-                            <IconButton
-                              size="small"
-                              onClick={(e) => handleMenuClick(e, coupon)}
-                              sx={{ minWidth: { xs: 40, sm: 32 } }}
-                            >
-                              <MoreVertical size={16} />
-                            </IconButton>
-                          </Box>
-                        </Box>
+                       <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+  <Tooltip title="Copy Code">
+    <IconButton
+      size="small"
+      onClick={() => handleCopyCode(coupon.code)}
+      color="primary"
+    >
+      <Copy size={16} />
+    </IconButton>
+  </Tooltip>
+  
+  {/* NEW SHARE BUTTON */}
+  <Tooltip title="Share Coupon">
+    <IconButton
+      size="small"
+      onClick={(e) => {
+        e.stopPropagation();
+        setShareDialog({ open: true, coupon });
+        setShareMessage('');
+      }}
+      color="secondary"
+    >
+      <Share size={16} />
+    </IconButton>
+  </Tooltip>
+  
+  <IconButton
+    size="small"
+    onClick={(e) => handleMenuClick(e, coupon)}
+  >
+    <MoreVertical size={16} />
+  </IconButton>
+</Box>
+
 
                         {/* Status Chips */}
                         <Box sx={{ 
@@ -818,6 +878,206 @@ console.log('coupon for customer:', coupons);
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Dialog
+  open={shareDialog.open}
+  onClose={() => {
+    setShareDialog({ open: false, coupon: null });
+    setShareMessage('');
+  }}
+  maxWidth="sm"
+  fullWidth
+>
+  <DialogTitle sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+    <Share size={24} color="#1976d2" />
+    Share Coupon
+  </DialogTitle>
+  
+  <DialogContent>
+    {shareDialog.coupon && (
+      <>
+        {/* Coupon Image Preview */}
+        <Box sx={{ mb: 3, mt: 2 }}>
+          <Box
+            id="coupon-image-to-share"
+            sx={{
+              position: 'relative',
+              width: '100%',
+              aspectRatio: '16/9',
+              background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+              borderRadius: '16px',
+              padding: '24px',
+              boxShadow: '0 10px 40px rgba(0,0,0,0.3)',
+              overflow: 'hidden'
+            }}
+          >
+            {/* Background Pattern */}
+            <Box
+              sx={{
+                position: 'absolute',
+                top: 0,
+                right: 0,
+                width: '200px',
+                height: '200px',
+                background: 'rgba(255,255,255,0.1)',
+                borderRadius: '50%',
+                transform: 'translate(50%, -50%)'
+              }}
+            />
+            
+            <Box sx={{ position: 'relative', zIndex: 1, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'space-between' }}>
+              {/* Header */}
+              <Box>
+                <Typography sx={{ color: 'rgba(255,255,255,0.8)', fontSize: '12px', fontWeight: 600 }}>
+                  SPECIAL OFFER
+                </Typography>
+                <Typography sx={{ color: 'white', fontSize: '32px', fontWeight: 'bold', mt: 0.5 }}>
+                  {shareDialog.coupon.discountValue}{shareDialog.coupon.discountType === 'percentage' ? '%' : ' ₹'} OFF
+                </Typography>
+              </Box>
+
+              {/* Coupon Code Section */}
+              <Box sx={{ 
+                background: 'rgba(255,255,255,0.15)', 
+                backdropFilter: 'blur(10px)',
+                borderRadius: '12px',
+                padding: '16px',
+                border: '1px solid rgba(255,255,255,0.2)'
+              }}>
+                <Typography sx={{ color: 'rgba(255,255,255,0.7)', fontSize: '10px', mb: 0.5 }}>
+                  COUPON CODE
+                </Typography>
+                <Typography sx={{ 
+                  color: 'white', 
+                  fontSize: '24px', 
+                  fontFamily: 'monospace', 
+                  fontWeight: 'bold',
+                  letterSpacing: '2px'
+                }}>
+                  {shareDialog.coupon.code}
+                </Typography>
+              </Box>
+
+              {/* Details */}
+              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                <Box>
+                  <Typography sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '10px' }}>
+                    VALID UNTIL
+                  </Typography>
+                  <Typography sx={{ color: 'white', fontSize: '12px', fontWeight: 600 }}>
+                    {formatDate(shareDialog.coupon.expiryDate)}
+                  </Typography>
+                </Box>
+                {shareDialog.coupon.minOrderValue > 0 && (
+                  <Box>
+                    <Typography sx={{ color: 'rgba(255,255,255,0.6)', fontSize: '10px' }}>
+                      MIN ORDER
+                    </Typography>
+                    <Typography sx={{ color: 'white', fontSize: '12px', fontWeight: 600 }}>
+                      ₹{shareDialog.coupon.minOrderValue}
+                    </Typography>
+                  </Box>
+                )}
+              </Box>
+
+              {/* Decorative dots */}
+              <Box sx={{ display: 'flex', gap: 0.5, justifyContent: 'center', mt: 1 }}>
+                {[1, 2, 3].map(i => (
+                  <Box key={i} sx={{ width: 6, height: 6, background: 'rgba(255,255,255,0.4)', borderRadius: '50%' }} />
+                ))}
+              </Box>
+            </Box>
+          </Box>
+        </Box>
+
+        {/* Message Input */}
+        <TextField
+          fullWidth
+          multiline
+          rows={3}
+          label="Add a message (optional)"
+          placeholder="Add a personal message..."
+          value={shareMessage}
+          onChange={(e) => setShareMessage(e.target.value)}
+          inputProps={{ maxLength: 500 }}
+          helperText={`${shareMessage.length}/500 characters`}
+          sx={{ mb: 3 }}
+        />
+
+        {/* Share Buttons */}
+        <Typography variant="subtitle2" gutterBottom>
+          Share via:
+        </Typography>
+        <Grid container spacing={2}>
+          {/* WhatsApp */}
+          <Grid item xs={4}>
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={handleWhatsAppShare}
+              sx={{
+                bgcolor: '#25D366',
+                '&:hover': { bgcolor: '#1da851' },
+                flexDirection: 'column',
+                py: 2,
+                gap: 1
+              }}
+            >
+              <FaWhatsapp size={32} />
+              <Typography variant="caption">WhatsApp</Typography>
+            </Button>
+          </Grid>
+
+          {/* Email */}
+          <Grid item xs={4}>
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={handleEmailShare}
+              color="primary"
+              sx={{
+                flexDirection: 'column',
+                py: 2,
+                gap: 1
+              }}
+            >
+              <Box component="span" sx={{ fontSize: '32px' }}>✉️</Box>
+              <Typography variant="caption">Email</Typography>
+            </Button>
+          </Grid>
+
+          {/* SMS */}
+          <Grid item xs={4}>
+            <Button
+              fullWidth
+              variant="contained"
+              onClick={handleSMSShare}
+              sx={{
+                bgcolor: '#9c27b0',
+                '&:hover': { bgcolor: '#7b1fa2' },
+                flexDirection: 'column',
+                py: 2,
+                gap: 1
+              }}
+            >
+              <Box component="span" sx={{ fontSize: '32px' }}>💬</Box>
+              <Typography variant="caption">SMS</Typography>
+            </Button>
+          </Grid>
+        </Grid>
+      </>
+    )}
+  </DialogContent>
+
+  <DialogActions>
+    <Button onClick={() => {
+      setShareDialog({ open: false, coupon: null });
+      setShareMessage('');
+    }}>
+      Close
+    </Button>
+  </DialogActions>
+</Dialog>
 
       {/* Success/Error Snackbar */}
       <Snackbar

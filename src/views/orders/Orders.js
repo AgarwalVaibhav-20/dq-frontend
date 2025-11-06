@@ -928,7 +928,7 @@ const Order = () => {
     color: 'white',
     textAlign: 'center',
     backgroundColor:
-      status === 'completed' ? '#4CAF50' : status === 'reject' ? '#F44336' : '#FFC107',
+      status === 'completed' ? '#4CAF50' : status === 'cancelled' ? '#F44336' : '#FFC107',
   })
 
   const columns = [
@@ -1744,8 +1744,8 @@ const Order = () => {
 
               <CButton
                 color="danger"
-                onClick={() => handleStatusChange(selectedOrder._id || selectedOrder.order_id, 'reject')}
-                disabled={isUpdatingStatus || selectedOrder.status === 'reject'}
+                onClick={() => handleStatusChange(selectedOrder._id || selectedOrder.order_id, 'cancelled')}
+                disabled={isUpdatingStatus || selectedOrder.status === 'cancelled'}
                 style={{ borderRadius: '8px', fontWeight: '600', padding: '0.75rem' }}
               >
                 {isUpdatingStatus ? <CSpinner size="sm" /> : '✗ Reject'}

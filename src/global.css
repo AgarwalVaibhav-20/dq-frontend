@@ -421,18 +421,17 @@ textarea::placeholder {
   color: var(--cui-body-color) !important;
   border-color: var(--cui-border-color) !important;
 }
-
+/* active tabs */
 .nav-tabs .nav-link.active {
-  background-color: var(--cui-card-bg) !important;
-  color: var(--cui-body-color) !important;
-  border-color: var(--cui-border-color) !important;
+  background-color: #6f42c1 !important; /* Purple shade */
+  color: #fff !important;
+  border-color: #6f42c1 !important;
+  border-radius: 6px !important;
+  transition: background-color 0.3s ease;
 }
 
-/* Alert Theme Support */
-.alert {
-  border-color: var(--cui-border-color) !important;
-  color: var(--cui-body-color) !important;
-}
+
+
 
 /* Badge Theme Support */
 .badge {
