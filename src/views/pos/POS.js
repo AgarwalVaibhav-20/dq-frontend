@@ -6,6 +6,7 @@ import { getFloors } from '../../redux/slices/floorSlices'
 import { fetchCombinedOrders } from '../../redux/slices/orderSlice'
 import { useHotkeys } from 'react-hotkeys-hook';
 import FocusTrap from 'focus-trap-react';
+import { BASE_URL } from '../../utils/constants';
 import {
   createTransaction,
   fetchTransactionDetails,
@@ -98,6 +99,7 @@ const POS = () => {
 
   const [paymentBreakdown, setPaymentBreakdown] = useState({});
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [currentSystemSettings, setCurrentSystemSettings] = useState([]);
 
   // Helper function to get floor ID consistently from QR object
   const getFloorIdFromQr = (qr) => {
@@ -382,6 +384,85 @@ const POS = () => {
     }
   }
 
+  // Add CSS animations for table cards and buttons
+  useEffect(() => {
+    const styleSheet = document.createElement("style")
+    styleSheet.id = 'pos-animations'
+    styleSheet.textContent = `
+      @keyframes fadeInUp {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      .animated-button {
+        position: relative;
+        overflow: hidden;
+      }
+      .animated-button::before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(255, 255, 255, 0.3);
+        transform: translate(-50%, -50%);
+        transition: width 0.6s, height 0.6s;
+      }
+      .animated-button:hover::before {
+        width: 300px;
+        height: 300px;
+      }
+    `
+    if (!document.getElementById('pos-animations')) {
+      document.head.appendChild(styleSheet)
+    }
+    return () => {
+      const existing = document.getElementById('pos-animations')
+      if (existing) existing.remove()
+    }
+  }, [])
+
+  // Fetch system settings to validate table colors
+  useEffect(() => {
+    const fetchSystemSettings = async () => {
+      if (!resturantIdLocalStorage || !token) return;
+      
+      try {
+        const response = await fetch(`${BASE_URL}/api/settings?restaurantId=${resturantIdLocalStorage}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success && data.data && data.data.length > 0) {
+          const transformedSystems = data.data.map(setting => ({
+            _id: setting._id,
+            systemName: setting.systemName,
+            chargeOfSystem: parseInt(setting.chargeOfSystem) || 0,
+            willOccupy: setting.willOccupy,
+            color: setting.color || ''
+          }));
+          
+          setCurrentSystemSettings(transformedSystems);
+        }
+      } catch (error) {
+        console.error('Error fetching system settings:', error);
+      }
+    };
+    
+    fetchSystemSettings();
+  }, [resturantIdLocalStorage, token]);
+
   // Fetch QR codes & restore carts
   useEffect(() => {
     if (qrList.length === 0) {
@@ -485,9 +566,24 @@ const POS = () => {
     
     try {
       const system = JSON.parse(savedSystem)
-      const result = system.willOccupy === true
-      console.log(`Table ${qr.tableNumber}: System found, willOccupy=${system.willOccupy}, returning=${result}`)
-      return result
+      
+      // Validate against current system settings from database
+      if (currentSystemSettings.length > 0 && system._id) {
+        const currentSystem = currentSystemSettings.find(s => s._id === system._id)
+        
+        if (currentSystem) {
+          // Only return true if willOccupy is true in current settings
+          // Don't clear system from localStorage if willOccupy is false - it's still a valid system
+          return currentSystem.willOccupy === true
+        } else {
+          // System not found in current settings (might be deleted), clear localStorage
+          localStorage.removeItem(`selectedSystem_${qr.tableNumber}`)
+          return false
+        }
+      }
+      
+      // Fallback to saved system if current settings not loaded yet
+      return system.willOccupy === true
     } catch (error) {
       console.log(`Table ${qr.tableNumber}: Error parsing system`, error)
       return false
@@ -502,11 +598,35 @@ const POS = () => {
     try {
       const system = JSON.parse(savedSystem)
       
-      if (system.willOccupy === true && system.color) {
-        console.log(`Table ${qr.tableNumber} - Color value: ${system.color}, will return: ${system.color}`)
+      // Validate against current system settings from database
+      if (currentSystemSettings.length > 0 && system._id) {
+        const currentSystem = currentSystemSettings.find(s => s._id === system._id)
+        
+        if (currentSystem) {
+          // Only show color if willOccupy is true AND color exists
+          // Don't clear system from localStorage if willOccupy is false - it's still a valid system
+          if (currentSystem.willOccupy === true && currentSystem.color && currentSystem.color.trim() !== '') {
+            // Update localStorage with current system data
+            const updatedSystem = {
+              ...system,
+              willOccupy: currentSystem.willOccupy,
+              color: currentSystem.color
+            }
+            localStorage.setItem(`selectedSystem_${qr.tableNumber}`, JSON.stringify(updatedSystem))
+            return currentSystem.color
+          }
+          // If willOccupy is false or color is empty, just return null (don't clear localStorage)
+          return null
+        } else {
+          // System not found in current settings (might be deleted), clear localStorage
+          localStorage.removeItem(`selectedSystem_${qr.tableNumber}`)
+          return null
+        }
+      }
+      
+      // Fallback to saved system if current settings not loaded yet
+      if (system.willOccupy === true && system.color && system.color.trim() !== '') {
         return system.color
-      } else {
-        console.log(`Table ${qr.tableNumber} - willOccupy: ${system.willOccupy}, color: ${system.color}`)
       }
     } catch (error) {
       console.error('Error parsing saved system:', error)
@@ -943,13 +1063,14 @@ const POS = () => {
     { enableOnTags: ['DIV'], preventDefault: true }
   )
   return (
-    <CContainer className="py-2 px-2 px-md-3">
+    <CContainer fluid className="p-0" style={{ width: '100%', maxWidth: '100%' }}>
+      <div className="px-3 px-md-4">
       {/* Mobile Responsive Header */}
       <div className="mb-4">
         {/* Title Section - Mobile Responsive */}
         <div className="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-3">
-           <div className="w-100 d-flex justify-content-center mb-2 mb-md-0">
-            <h3 className="mb-4 text-center">Select Table To Generate Bill</h3>
+           <div className="w-100 d-flex justify-content-center mb-2 mb-md-0 mt-5 mt-md-5" style={{ marginTop: '3rem' }}>
+            <h3 className="mb-4 text-center" style={{ fontSize: '2.5rem', fontWeight: '700' }}>Select Table To Generate Bill</h3>
           </div>
 
           {/* Mobile Responsive Button Groups */}
@@ -962,10 +1083,22 @@ const POS = () => {
                   color="success"
                   variant="outline"
                   onClick={() => setShowCashInModal(true)}
-                  className="d-flex align-items-center gap-1 flex-fill"
+                  className="d-flex align-items-center gap-1 flex-fill animated-button"
                   disabled={cashLoading}
                   size="sm"
                   title="Add cash to register (Ctrl + I)"
+                  style={{
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transform: 'translateY(0)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)'
+                    e.currentTarget.style.boxShadow = '0 6px 12px rgba(25, 135, 84, 0.3)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
                 >
                   <CIcon icon={cilPlus} size="sm" />
                   <span className="d-none d-sm-inline">Cash In</span>
@@ -975,10 +1108,22 @@ const POS = () => {
                   color="danger"
                   variant="outline"
                   onClick={() => setShowCashOutModal(true)}
-                  className="d-flex align-items-center gap-1 flex-fill"
+                  className="d-flex align-items-center gap-1 flex-fill animated-button"
                   disabled={cashLoading}
                   size="sm"
                   title="Remove cash from register (Ctrl + O)"
+                  style={{
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transform: 'translateY(0)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)'
+                    e.currentTarget.style.boxShadow = '0 6px 12px rgba(220, 53, 69, 0.3)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
                 >
                   <CIcon icon={cilMinus} size="sm" />
                   <span className="d-none d-sm-inline">Cash Out</span>
@@ -993,10 +1138,22 @@ const POS = () => {
                   color="warning"
                   variant="outline"
                   onClick={() => setShowBankInModal(true)}
-                  className="d-flex align-items-center gap-1 flex-fill"
+                  className="d-flex align-items-center gap-1 flex-fill animated-button"
                   disabled={cashLoading}
                   size="sm"
                   title="Add money to bank account (Ctrl + B)"
+                  style={{
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transform: 'translateY(0)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)'
+                    e.currentTarget.style.boxShadow = '0 6px 12px rgba(255, 193, 7, 0.3)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
                 >
                   <CIcon icon={cilMoney} size="sm" />
                   <span className="d-none d-sm-inline">Bank In</span>
@@ -1008,10 +1165,22 @@ const POS = () => {
                   color="info"
                   variant="outline"
                   onClick={() => setShowBankOutModal(true)}
-                  className="d-flex align-items-center gap-1 flex-fill"
+                  className="d-flex align-items-center gap-1 flex-fill animated-button"
                   disabled={cashLoading}
                   size="sm"
                   title="Withdraw money from bank (Ctrl + Shift + B)"
+                  style={{
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transform: 'translateY(0)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)'
+                    e.currentTarget.style.boxShadow = '0 6px 12px rgba(13, 202, 240, 0.3)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
                 >
                   <CIcon icon={cilMinus} size="sm" />
                   <span className="d-none d-sm-inline">Bank Out</span>
@@ -1021,9 +1190,21 @@ const POS = () => {
                 <CButton
                   color="primary"
                   onClick={fetchActiveOrders}
-                  className="flex-fill"
+                  className="flex-fill animated-button"
                   size="sm"
                   title="View all active orders (Ctrl + A)"
+                  style={{
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transform: 'translateY(0)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)'
+                    e.currentTarget.style.boxShadow = '0 6px 12px rgba(13, 110, 253, 0.3)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
                 >
                   <span className="d-none d-sm-inline">All Orders</span>
                   <span className="d-sm-none">Orders</span>
@@ -1031,9 +1212,21 @@ const POS = () => {
                 <CButton
                   color="success"
                   onClick={handleMergeTablesClick}
-                  className="flex-fill"
+                  className="flex-fill animated-button"
                   size="sm"
                   title="Merge multiple tables together (Ctrl + M)"
+                  style={{
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transform: 'translateY(0)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-3px) scale(1.05)'
+                    e.currentTarget.style.boxShadow = '0 6px 12px rgba(25, 135, 84, 0.3)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
                 >
                   <span className="d-none d-sm-inline">Merge Tables</span>
                   <span className="d-sm-none">Merge</span>
@@ -1050,9 +1243,21 @@ const POS = () => {
                 color="success"
                 variant="outline"
                 onClick={() => setShowCashInModal(true)}
-                className="d-flex align-items-center gap-1"
+                className="d-flex align-items-center gap-1 animated-button"
                 disabled={cashLoading}
                 title="Add cash to register (Ctrl + I)"
+                style={{
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  transform: 'translateY(0)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px) scale(1.05)'
+                  e.currentTarget.style.boxShadow = '0 8px 16px rgba(25, 135, 84, 0.3)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                  e.currentTarget.style.boxShadow = 'none'
+                }}
               >
                 <CIcon icon={cilPlus} size="sm" />
                 Cash In
@@ -1101,9 +1306,21 @@ const POS = () => {
                 color="danger"
                 variant="outline"
                 onClick={() => setShowCashOutModal(true)}
-                className="d-flex align-items-center gap-1"
+                className="d-flex align-items-center gap-1 animated-button"
                 disabled={cashLoading}
                 title="Remove cash from register (Ctrl + O)"
+                style={{
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  transform: 'translateY(0)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px) scale(1.05)'
+                  e.currentTarget.style.boxShadow = '0 8px 16px rgba(220, 53, 69, 0.3)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                  e.currentTarget.style.boxShadow = 'none'
+                }}
               >
                 <CIcon icon={cilMinus} size="sm" />
                 Cash Out
@@ -1115,9 +1332,21 @@ const POS = () => {
                   color="warning"
                   variant="outline"
                   onClick={() => setShowBankInModal(true)}
-                  className="d-flex align-items-center gap-1"
+                  className="d-flex align-items-center gap-1 animated-button"
                   disabled={cashLoading}
                   title="Add money to bank account (Ctrl + B)"
+                  style={{
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transform: 'translateY(0)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-4px) scale(1.05)'
+                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(255, 193, 7, 0.3)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
                 >
                   <CIcon icon={cilMoney} size="sm" />
                   Bank In
@@ -1128,9 +1357,21 @@ const POS = () => {
                   color="info"
                   variant="outline"
                   onClick={() => setShowBankOutModal(true)}
-                  className="d-flex align-items-center gap-1"
+                  className="d-flex align-items-center gap-1 animated-button"
                   disabled={cashLoading}
                   title="Withdraw money from bank (Ctrl + Shift + B)"
+                  style={{
+                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                    transform: 'translateY(0)'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'translateY(-4px) scale(1.05)'
+                    e.currentTarget.style.boxShadow = '0 8px 16px rgba(13, 202, 240, 0.3)'
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                    e.currentTarget.style.boxShadow = 'none'
+                  }}
                 >
                   <CIcon icon={cilMinus} size="sm" />
                   Bank Out
@@ -1139,14 +1380,40 @@ const POS = () => {
               <CButton 
                 color="primary" 
                 onClick={fetchActiveOrders}
+                className="animated-button"
                 title="View all active orders (Ctrl + A)"
+                style={{
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  transform: 'translateY(0)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px) scale(1.05)'
+                  e.currentTarget.style.boxShadow = '0 8px 16px rgba(13, 110, 253, 0.3)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                  e.currentTarget.style.boxShadow = 'none'
+                }}
               >
                 All Orders
               </CButton>
               <CButton
                 color="success"
                 onClick={handleMergeTablesClick}
+                className="animated-button"
                 title="Merge multiple tables together (Ctrl + M)"
+                style={{
+                  transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                  transform: 'translateY(0)'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.transform = 'translateY(-4px) scale(1.05)'
+                  e.currentTarget.style.boxShadow = '0 8px 16px rgba(25, 135, 84, 0.3)'
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                  e.currentTarget.style.boxShadow = 'none'
+                }}
               >
                 Merge Tables
               </CButton>
@@ -1279,16 +1546,22 @@ const POS = () => {
                       const floorName = getFloorNameFromQr(qr);
                       const occupied = shouldTableBeOccupied(qr);
                       const color = getTableOccupiedColor(qr);
-                      const finalBgColor = occupied ? (color || '#00ff00') : (theme === 'dark' ? '#6c757d' : '#ffffff');
-                      console.log(`Rendering Table ${qr.tableNumber}: occupied=${occupied}, color=${color}, finalBgColor=${finalBgColor}`);
+                      // Show color if available, otherwise use theme-based default
+                      const finalBgColor = color ? color : (theme === 'dark' ? '#6c757d' : '#ffffff');
+                      // Add table-occupied class if color exists, regardless of occupied status
+                      const hasColor = color && color.trim() !== '';
+                      console.log(`Rendering Table ${qr.tableNumber}: occupied=${occupied}, color=${color}, finalBgColor=${finalBgColor}, hasColor=${hasColor}`);
                       return (
                         <CCol
                           key={index}
                           xs="6" sm="4" md="3" lg="2" xl="2"
                           className="mb-3 mb-md-4 d-flex justify-content-center"
+                          style={{
+                            animation: `fadeInUp 0.5s ease ${index * 0.1}s both`
+                          }}
                         >
                           <div
-                            className={`table-card ${occupied ? 'table-occupied' : ''} d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-2 p-md-3 w-100`}
+                            className={`table-card ${hasColor ? 'table-occupied' : ''} d-flex flex-column align-items-center justify-content-center shadow-lg border rounded p-2 p-md-3 w-100`}
                             onClick={() => handleQrClick(qr)}
                             tabIndex={0}
                             data-bg-color={finalBgColor}
@@ -1299,7 +1572,19 @@ const POS = () => {
                               '--bg-color': finalBgColor,
                               backgroundColor: finalBgColor,
                               color: shouldTableBeOccupied(qr) ? '#000000' : (theme === 'dark' ? '#ffffff' : '#000000'),
-                              minHeight: '8rem'
+                              minHeight: '8rem',
+                              transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                              transform: 'translateY(0) scale(1)'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.transform = 'translateY(-8px) scale(1.03)'
+                              e.currentTarget.style.boxShadow = theme === 'dark'
+                                ? '0 12px 24px rgba(0,0,0,0.5)'
+                                : '0 12px 24px rgba(0,0,0,0.2)'
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.transform = 'translateY(0) scale(1)'
+                              e.currentTarget.style.boxShadow = '0 0.5rem 1rem rgba(0, 0, 0, 0.15)'
                             }}
                           >
                             <CBadge
@@ -1324,26 +1609,35 @@ const POS = () => {
                                 {cart[qr.tableNumber]?.length || 0} items
                               </small>
                             )}
-                            <div className="d-flex gap-1 mt-2" onClick={(e) => e.stopPropagation()}>
+                            <div className="d-flex mt-auto" style={{ width: '100%', marginLeft: '-8px', marginRight: '-8px', marginBottom: '-8px' }} onClick={(e) => e.stopPropagation()}>
                               <CButton
                                 color="info"
-                                size="sm"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigate(`/pos/tableNumber/${qr.tableNumber}`, { state: { openKOT: true } });
                                 }}
-                                style={{ fontSize: '0.7rem', padding: '2px 8px' }}
+                                style={{ 
+                                  fontSize: '1rem', 
+                                  padding: '10px 15px', 
+                                  flex: 1,
+                                  borderRadius: '0 0 0 8px',
+                                  borderRight: '1px solid rgba(0,0,0,0.1)'
+                                }}
                               >
                                 KOT
                               </CButton>
                               <CButton
                                 color="warning"
-                                size="sm"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   navigate(`/pos/tableNumber/${qr.tableNumber}`, { state: { openBill: true } });
                                 }}
-                                style={{ fontSize: '0.7rem', padding: '2px 8px' }}
+                                style={{ 
+                                  fontSize: '1rem', 
+                                  padding: '10px 15px', 
+                                  flex: 1,
+                                  borderRadius: '0 0 8px 0'
+                                }}
                               >
                                 Bill
                               </CButton>
@@ -1926,6 +2220,7 @@ const POS = () => {
           </CModalFooter>
         </CModal>
       </FocusTrap>
+      </div>
     </CContainer>
   )
 }

@@ -244,7 +244,11 @@ const App = () => {
 
   // ✅ Fixed: Fetch orders with restaurantId
   useEffect(() => {
-    if (restaurantId && window.location.pathname !== '/customer-menu') {
+    const currentPath = window.location.pathname;
+    // Exclude customer-facing pages from fetching orders
+    const isCustomerPage = currentPath === '/customer-menu' || currentPath.startsWith('/spin') || currentPath.startsWith('/table');
+    
+    if (restaurantId && !isCustomerPage) {
       dispatch(fetchOrders({ restaurantId }))
       const intervalId = setInterval(() => {
         dispatch(fetchOrders({ restaurantId }))
@@ -272,7 +276,10 @@ const App = () => {
 
   // ✅ Fixed: Check permissions with userId and token
   useEffect(() => {
-    if (userId && token && !permissionCheckAttempted && window.location.pathname !== '/customer-menu') {
+    const currentPath = window.location.pathname;
+    const isCustomerPage = currentPath === '/customer-menu' || currentPath.startsWith('/spin') || currentPath.startsWith('/table');
+    
+    if (userId && token && !permissionCheckAttempted && !isCustomerPage) {
       console.log('Checking permissions for userId:', userId)
       // Fetch user profile to get permissions
       dispatch(fetchUserProfile({ userId, token }))
@@ -294,7 +301,10 @@ const App = () => {
 
   // ✅ Also check permissions when restaurantId changes (if needed)
   useEffect(() => {
-    if (restaurantId && userId && token && permissionCheckAttempted && window.location.pathname !== '/customer-menu') {
+    const currentPath = window.location.pathname;
+    const isCustomerPage = currentPath === '/customer-menu' || currentPath.startsWith('/spin') || currentPath.startsWith('/table');
+    
+    if (restaurantId && userId && token && permissionCheckAttempted && !isCustomerPage) {
       // Only re-check if restaurantId changes after initial check
       // console.log('Restaurant ID changed, re-checking permissions')
       dispatch(fetchUserProfile({ userId, token }))

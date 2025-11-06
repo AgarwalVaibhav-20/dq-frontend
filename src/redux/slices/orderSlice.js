@@ -400,7 +400,12 @@ const orderSlice = createSlice({
       .addCase(fetchOrders.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload
-        toast.error('Failed to fetch orders.')
+        // Don't show error toast on customer-facing pages (QR scan pages)
+        const currentPath = window.location.pathname;
+        const isCustomerPage = currentPath === '/customer-menu' || currentPath.startsWith('/spin') || currentPath.startsWith('/table');
+        if (!isCustomerPage) {
+          toast.error('Failed to fetch orders.')
+        }
       })
 
     // Fetch notifications
@@ -416,7 +421,12 @@ const orderSlice = createSlice({
       .addCase(fetchNotificationOrders.rejected, (state, action) => {
         state.notificationLoading = false
         state.error = action.payload
-        toast.error('Failed to fetch orders.')
+        // Don't show error toast on customer-facing pages (QR scan pages)
+        const currentPath = window.location.pathname;
+        const isCustomerPage = currentPath === '/customer-menu' || currentPath.startsWith('/spin') || currentPath.startsWith('/table');
+        if (!isCustomerPage) {
+          toast.error('Failed to fetch orders.')
+        }
       })
 
     // Fetch delivery orders
@@ -432,7 +442,12 @@ const orderSlice = createSlice({
       .addCase(fetchDeliveryOrders.rejected, (state, action) => {
         state.deliveryOrdersLoading = false
         state.error = action.payload
-        toast.error('Failed to fetch orders.')
+        // Don't show error toast on customer-facing pages (QR scan pages)
+        const currentPath = window.location.pathname;
+        const isCustomerPage = currentPath === '/customer-menu' || currentPath.startsWith('/spin') || currentPath.startsWith('/table');
+        if (!isCustomerPage) {
+          toast.error('Failed to fetch orders.')
+        }
       })
 
     // Fetch order by ID
@@ -448,7 +463,12 @@ const orderSlice = createSlice({
       .addCase(fetchOrderById.rejected, (state, action) => {
         state.loading = false
         state.error = action.payload
-        toast.error('Failed to fetch order details.')
+        // Don't show error toast on customer-facing pages (QR scan pages)
+        const currentPath = window.location.pathname;
+        const isCustomerPage = currentPath === '/customer-menu' || currentPath.startsWith('/spin') || currentPath.startsWith('/table');
+        if (!isCustomerPage) {
+          toast.error('Failed to fetch order details.')
+        }
       })
 
     // Change order status

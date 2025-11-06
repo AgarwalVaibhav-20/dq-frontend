@@ -243,7 +243,7 @@ const ProductList = React.forwardRef(({
                 }
               }}
             >
-              <option value="">Select System</option>
+              <option value="">None (Remove System Charge)</option>
               {systems.map(system => (
                 <option key={system._id} value={system._id}>
                   {system.systemName} - ₹{system.chargeOfSystem}

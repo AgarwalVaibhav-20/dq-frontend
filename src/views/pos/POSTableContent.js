@@ -249,6 +249,49 @@ const POSTableContent = () => {
     }
   }, [dispatch, token, restaurantId])
 
+  // Separate useEffect to validate selectedSystem when it changes
+  useEffect(() => {
+    if (token && restaurantId && selectedSystem && selectedSystem._id) {
+      const validateSelectedSystem = async () => {
+        try {
+          const response = await fetch(`${BASE_URL}/api/settings?restaurantId=${restaurantId}`, {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Content-Type': 'application/json'
+            }
+          })
+          const data = await response.json()
+          
+          if (data.success && data.data) {
+            const currentSystem = data.data.find(s => s._id === selectedSystem._id)
+            if (!currentSystem) {
+              // System was deleted, clear it
+              setSelectedSystem(null)
+              localStorage.removeItem(`selectedSystem_${tableId}`)
+            } else {
+              // System still exists, update it with current data (but keep it even if willOccupy is false)
+              const updatedSystem = {
+                ...selectedSystem,
+                willOccupy: currentSystem.willOccupy,
+                color: currentSystem.color || '',
+                chargeOfSystem: parseInt(currentSystem.chargeOfSystem) || 0
+              }
+              // Only update if something actually changed to avoid infinite loops
+              if (JSON.stringify(updatedSystem) !== JSON.stringify(selectedSystem)) {
+                setSelectedSystem(updatedSystem)
+                localStorage.setItem(`selectedSystem_${tableId}`, JSON.stringify(updatedSystem))
+              }
+            }
+          }
+        } catch (err) {
+          console.error('Error validating system:', err)
+        }
+      }
+      
+      validateSelectedSystem()
+    }
+  }, [token, restaurantId, tableId]) // Only run when these change, not when selectedSystem changes
+
   // Handle navigation state for auto-opening KOT or Bill
   // This useEffect runs after component mounts and functions are defined
   useEffect(() => {
@@ -585,6 +628,10 @@ const POSTableContent = () => {
         setSelectedSystem(system);
         localStorage.setItem(`selectedSystem_${tableId}`, JSON.stringify(system));
       }
+    } else {
+      // Clear system selection when "None" is selected
+      setSelectedSystem(null);
+      localStorage.removeItem(`selectedSystem_${tableId}`);
     }
   }
 
@@ -1301,6 +1348,11 @@ const POSTableContent = () => {
       clearCart();
       setAppliedDiscounts(null);
       setAppliedCoupon(null); // Reset applied coupon
+      
+      // Clear system selection and system charge after payment
+      setSelectedSystem(null);
+      localStorage.removeItem(`selectedSystem_${tableId}`);
+      
       toast.success('✅ Payment processed successfully!');
       navigate('/pos');
 
