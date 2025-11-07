@@ -1275,7 +1275,7 @@ const renderInvoiceCard = () => {
                       {/* Bar Chart */}
                       <CRow className="mb-4">
                         <CCol>
-                          <div className="p-3 bg-light rounded-3" style={{ borderRadius: '0.75rem' }}>
+                          <div className="p-3  rounded-3" style={{ borderRadius: '0.75rem' }}>
                             <CChartBar
                               data={{
                                 labels: paymentReportData.map((item) => item.label),

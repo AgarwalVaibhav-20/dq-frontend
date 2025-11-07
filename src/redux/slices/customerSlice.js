@@ -35,6 +35,35 @@ export const fetchCustomers = createAsyncThunk(
     }
   }
 );
+// Fetch customer report
+export const fetchCustomerReport = createAsyncThunk(
+  'customers/fetchCustomerReport',
+  async ({ restaurantId }, { rejectWithValue }) => {
+    try {
+      const token = localStorage.getItem('authToken');
+      if (!token) return rejectWithValue('No auth token');
+
+      const idToSend = restaurantId || localStorage.getItem('restaurantId');
+      if (!idToSend) return rejectWithValue('No restaurantId found');
+
+      const url = `${BASE_URL}/customer/report?restaurantId=${idToSend}`;
+      console.log('🔍 Fetching Customer Report from:', url);
+
+      const response = await axios.get(url, configureHeaders(token));
+
+      // ✅ Make sure backend response structure is correct
+      if (!response.data.success) {
+        return rejectWithValue(response.data.message || 'Backend error');
+      }
+
+      console.log('✅ Customer report response:', response.data.data);
+      return response.data.data;
+    } catch (error) {
+      console.error('❌ Error fetching customer report:', error);
+      return rejectWithValue(error.response?.data?.message || 'Failed to fetch report');
+    }
+  }
+);
 
 // Add customer
 export const addCustomer = createAsyncThunk(
@@ -68,7 +97,7 @@ export const addCustomer = createAsyncThunk(
       // Use public API if no token (for customer menu orders)
       let url = `${BASE_URL}/customer/add`;
       let headers = {};
-      
+
       if (!token && restaurantId) {
         console.log('🌐 Using public API for customer creation');
         url = `${BASE_URL}/customer/public/add`;
@@ -296,6 +325,9 @@ const customerSlice = createSlice({
     loading: false,
     error: null,
     selectedCustomerType: 'All',
+    reportData: null,     // To store the report object
+    reportLoading: false, // Specific loading state for the report
+    reportError: null,
   },
   reducers: {
     setSelectedCustomerType: (state, action) => {
@@ -454,7 +486,37 @@ const customerSlice = createSlice({
         state.loading = false;
         state.error = action.payload;
         toast.error(`Failed to deduct reward points: ${action.payload}`);
-      });
+      })
+      .addCase(fetchCustomerReport.pending, (state) => {
+        state.reportLoading = true;
+        state.reportError = null;
+      })
+      .addCase(fetchCustomerReport.fulfilled, (state, action) => {
+        state.reportLoading = false;
+
+        // Ensure all fields have proper defaults
+        state.reportData = {
+          totalCustomers: action.payload?.totalCustomers ?? 0,
+          totalSpending: action.payload?.totalSpending ?? 0,
+          totalRewards: action.payload?.totalRewards ?? 0,
+          averageSpendingPerCustomer: action.payload?.averageSpendingPerCustomer ?? 0,
+          breakdownByType: action.payload?.breakdownByType ?? [],
+          highSpendersCount: action.payload?.highSpendersCount ?? 0,
+          regularCustomersCount: action.payload?.regularCustomersCount ?? 0,
+          newCustomersCount: action.payload?.newCustomersCount ?? 0,
+          lostCustomersCount: action.payload?.lostCustomersCount ?? 0,
+          corporateCustomersCount: action.payload?.corporateCustomersCount ?? 0,
+          activeCustomersCount: action.payload?.activeCustomersCount ?? 0,
+        };
+
+        console.log('✅ Customer report fetched successfully:', state.reportData);
+      })
+      .addCase(fetchCustomerReport.rejected, (state, action) => {
+        state.reportLoading = false;
+        state.reportError = action.payload;
+        console.error('❌ Failed to fetch report:', action.payload);
+        toast.error(`Failed to fetch report: ${action.payload}`);
+      })
   },
 });
 

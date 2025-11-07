@@ -27,20 +27,77 @@ export const fetchAllDaysReports = createAsyncThunk(
 // Fetch all transactions for a restaurant
 export const fetchAllTransactions = createAsyncThunk(
   'reports/fetchAllTransactions',
-  async ({ restaurantId , token }, { rejectWithValue }) => {
+  async ({ restaurantId, token }, { rejectWithValue }) => {
     try {
-      console.log('Fetching transactions for restaurantId:', restaurantId)
+      if (!restaurantId) {
+        console.warn('Restaurant ID missing — skipping fetchAllTransactions');
+        return []; // return empty array instead of throwing error
+      }
 
-      const response = await axiosInstance.get(`/transactions/${restaurantId}`, configureHeaders(token))
-      // alert('Fetched transactions successfully', response.data)
-      console.log('Transactions response:', response.data)
-      return response.data
+      console.log('Fetching transactions for restaurantId:', restaurantId);
+
+      const response = await axiosInstance.get(
+        `/get-all/transaction/${restaurantId}`,
+        configureHeaders(token)
+      );
+
+      console.log('Transactions response:', response.data);
+      return response.data;
     } catch (error) {
-      console.error('Transactions fetch error:', error)
-      return rejectWithValue(error.response?.data || error.message)
+      console.error('Transactions fetch error:', error);
+      return rejectWithValue(error.response?.data || error.message);
     }
-  },
-)
+  }
+);
+export const fetchTotalPaymentReport = createAsyncThunk(
+  "reports/fetchTotalPaymentReport",
+  async ({ restaurantId, token }, { rejectWithValue }) => {
+    try {
+      const authToken = token || localStorage.getItem("authToken");
+
+      console.log("📊 Fetching total payment report for:", restaurantId);
+
+      // ✅ FIXED: Removed BASE_URL - axiosInstance already has base URL
+      const response = await axiosInstance.get(`/payment/total`, {
+        params: { restaurantId },
+        ...configureHeaders(authToken),
+      });
+
+      console.log("✅ Payment report response:", response.data);
+
+      return response.data.data;
+    } catch (error) {
+      console.error("❌ Error fetching total payment report:", error);
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+// Fetch Daily Report
+export const fetchDailyReport = createAsyncThunk(
+  "reports/fetchDailyReport",
+  async ({ restaurantId, token }, { rejectWithValue }) => {
+    try {
+      if (!restaurantId) {
+        console.warn("Restaurant ID missing — skipping fetchDailyReport");
+        return { data: [], count: 0, totalSales: 0 };
+      }
+
+      console.log("Fetching daily report for restaurantId:", restaurantId);
+
+      const response = await axiosInstance.get(
+        `/transactions/daily`,
+        configureHeaders(token)
+      );
+
+      console.log("Daily report response:", response.data);
+      return response.data;
+    } catch (error) {
+      console.error("Daily report fetch error:", error);
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
+
 // Fetch report by type (daily or payment report)
 export const fetchReportByType = createAsyncThunk(
   'reports/fetchReportByType',
@@ -282,9 +339,9 @@ export const fetchDashboardChartData = createAsyncThunk(
 
 export const fetchWeeklyChartData = createAsyncThunk(
   'report/fetchWeeklyChartData',
-  async ({ year, restaurantId}, { rejectWithValue }) => {
+  async ({ year, restaurantId }, { rejectWithValue }) => {
     try {
-       const token = localStorage.getItem('authToken')
+      const token = localStorage.getItem('authToken')
       const { data } = await axiosInstance.get(
         `/dashboard/weekly-chart-data`,
         {
@@ -301,6 +358,34 @@ export const fetchWeeklyChartData = createAsyncThunk(
   },
 );
 
+// 🔹 Fetch Daily Report (Filtered by Today's Date)
+export const fetchDailyTransactionsReport = createAsyncThunk(
+  'reports/fetchDailyTransactionsReport',
+  async ({ token, restaurantId }, { rejectWithValue }) => {
+    try {
+      if (!restaurantId) {
+        console.warn('Restaurant ID missing — skipping fetchDailyTransactionsReport');
+        return { data: [], count: 0, totalSales: 0 };
+      }
+
+      console.log('Fetching daily transactions report for:', restaurantId);
+
+      const response = await axiosInstance.get(
+        `/transactions/daily`,
+        {
+          params: { restaurantId },
+          ...configureHeaders(token),
+        }
+      );
+
+      console.log('Daily Transactions Report Response:', response.data);
+      return response.data;
+    } catch (error) {
+      console.error('Daily Transactions Report Error:', error);
+      return rejectWithValue(error.response?.data || error.message);
+    }
+  }
+);
 
 // Report slice
 const reportSlice = createSlice({
@@ -323,6 +408,7 @@ const reportSlice = createSlice({
     mostOrderedDishes: [],
     yearlyChartData: [],
     weeklyChartData: null,
+    totalPaymentReport: null,
     avgOrderValueLoading: false,
     loading: false,
     error: null,
@@ -343,6 +429,37 @@ const reportSlice = createSlice({
         state.loading = false
         state.error = action.payload
         toast.error('Failed to fetch all days reports.')
+      })
+      // -------------------- Fetch Total Payment Report -------------------- //
+      .addCase(fetchTotalPaymentReport.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchTotalPaymentReport.fulfilled, (state, action) => {
+        state.loading = false;
+        state.totalPaymentReport = action.payload;
+      })
+      .addCase(fetchTotalPaymentReport.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        toast.error("Failed to fetch total payment report.");
+      })
+
+      // Fetch daily transactions report
+      .addCase(fetchDailyTransactionsReport.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchDailyTransactionsReport.fulfilled, (state, action) => {
+        state.loading = false;
+        state.dailyTransactionsReport = action.payload?.data || [];
+        state.dailyTransactionCount = action.payload?.count || 0;
+        state.dailyTotalSales = action.payload?.totalSales || 0;
+      })
+      .addCase(fetchDailyTransactionsReport.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload;
+        toast.error('Failed to fetch daily transactions report.');
       })
       // Fetch all transactions
       .addCase(fetchAllTransactions.pending, (state) => {

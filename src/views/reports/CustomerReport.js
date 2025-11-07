@@ -1,249 +1,322 @@
-// Import necessary modules
 import React, { useEffect, useState } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { DataGrid } from '@mui/x-data-grid'
-import { fetchAllTransactions } from '../../redux/slices/reportSlice'
-import { CSpinner, CCard, CCardBody, CCardHeader, CCol, CRow, CFormSelect, CInputGroup, CInputGroupText, CFormInput } from '@coreui/react'
-import CustomToolbar from '../../utils/CustomToolbar'
+import { CSpinner, CCard, CCardBody, CCardHeader, CCol, CRow } from '@coreui/react'
+import { fetchCustomerReport } from '../../redux/slices/customerSlice'
 
 const CustomerReport = () => {
   const dispatch = useDispatch()
-  const { allTransactions, loading } = useSelector((state) => state.reports)
-  const restaurantId = useSelector((state) => state.auth.restaurantId)
-  
-  // State for filters and mobile view
-  const [searchTerm, setSearchTerm] = useState('')
-  const [sortBy, setSortBy] = useState('total_spent')
-  const [sortOrder, setSortOrder] = useState('desc')
+  const { reportData, reportLoading, reportError } = useSelector((state) => state.customers)
+  const restaurantIdFromRedux = useSelector((state) => state.auth.restaurantId)
+  const restaurantId = restaurantIdFromRedux || localStorage.getItem('restaurantId')
+  const token = localStorage.getItem('authToken')
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
-  
-  useEffect(() => {
-    if (restaurantId) {
-      dispatch(fetchAllTransactions({ restaurantId }))
-    }
-  }, [dispatch, restaurantId])
 
-  // Handle window resize for mobile detection
   useEffect(() => {
-    const handleResize = () => {
-      setIsMobile(window.innerWidth <= 768)
+    console.log('restaurantId from Redux:', restaurantIdFromRedux)
+    console.log('restaurantId (final):', restaurantId)
+    console.log('reportData from Redux:', reportData)
+
+    if (!restaurantId) {
+      console.warn('No restaurantId found in Redux or localStorage - cannot fetch report')
     }
+
+    if (restaurantId && token) {
+      dispatch(fetchCustomerReport({ restaurantId }))
+    } else {
+      console.warn('Missing restaurantId or token - skipping fetch')
+    }
+  }, [dispatch, restaurantId, token])
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth <= 768)
     window.addEventListener('resize', handleResize)
     return () => window.removeEventListener('resize', handleResize)
   }, [])
 
-  // Process transactions to group by customer
-  const transactions = Array.isArray(allTransactions) ? allTransactions : []
-  const customerData = transactions.reduce((acc, transaction) => {
-    const customerName = transaction.customerId?.name || transaction.username || 'Unknown Customer'
-    const totalSpent = transaction.sub_total || 0
-    
-    if (!acc[customerName]) {
-      acc[customerName] = {
-        customer_name: customerName,
-        total_spent: 0,
-        transaction_count: 0
-      }
-    }
-    acc[customerName].total_spent += totalSpent
-    acc[customerName].transaction_count += 1
-    
-    return acc
-  }, {})
-
-  // Filter and sort data
-  const filteredAndSortedData = Object.values(customerData)
-    .filter(item => 
-      item.customer_name.toLowerCase().includes(searchTerm.toLowerCase())
+  if (reportLoading) {
+    return (
+      <div className="d-flex justify-content-center py-5">
+        <CSpinner color="primary" variant="grow" />
+      </div>
     )
-    .sort((a, b) => {
-      let aValue = a[sortBy]
-      let bValue = b[sortBy]
-      
-      if (sortBy === 'total_spent') {
-        aValue = parseFloat(aValue)
-        bValue = parseFloat(bValue)
-      }
-      
-      if (sortOrder === 'asc') {
-        return aValue > bValue ? 1 : -1
-      } else {
-        return aValue < bValue ? 1 : -1
-      }
-    })
+  }
 
-  const rows = filteredAndSortedData.map((item, index) => ({
-    id: index + 1,
-    customer_name: item.customer_name,
-    total_spent: item.total_spent.toFixed(2),
-    transaction_count: item.transaction_count
-  }))
-      
+  if (reportError) {
+    return (
+      <div className="alert alert-danger text-center mt-4">
+        Failed to load customer report: {reportError}
+      </div>
+    )
+  }
 
-  const columns = [
-    {
-      field: 'id',
-      headerName: 'S.No.',
-      flex: 1,
-      headerClassName: 'header-style',
-    },
-    {
-      field: 'customer_name',
-      headerName: 'Name',
-      flex: 1,
-      headerClassName: 'header-style',
-    },
-    {
-      field: 'total_spent',
-      headerName: 'Total Spent',
-      flex: 1,
-      headerClassName: 'header-style',
-    },
-    {
-      field: 'transaction_count',
-      headerName: 'Transactions',
-      flex: 1,
-      headerClassName: 'header-style',
-    },
-  ]
+  if (!reportData) {
+    return (
+      <div className="text-center text-muted py-5">
+        <i className="cil-user-x" style={{ fontSize: '3rem' }}></i>
+        <p className="mt-3 mb-0">No report data available</p>
+      </div>
+    )
+  }
 
-  // Mobile Card Component
-  const MobileCard = ({ customer, index }) => (
-    <CCard className="mb-3 shadow-sm">
-      <CCardHeader className="bg-light">
-        <div className="d-flex justify-content-between align-items-center">
-          <h6 className="mb-0 fw-bold">{customer.customer_name}</h6>
-          <span className="badge bg-primary">#{index + 1}</span>
-        </div>
-      </CCardHeader>
-      <CCardBody>
-        <CRow>
-          <CCol xs={6}>
-            <div className="text-muted small">Total Spent</div>
-            <div className="fw-bold text-success">₹{customer.total_spent}</div>
-          </CCol>
-          <CCol xs={6}>
-            <div className="text-muted small">Transactions</div>
-            <div className="fw-bold">{customer.transaction_count}</div>
-          </CCol>
-        </CRow>
-      </CCardBody>
-    </CCard>
-  )
-      
+  // ✅ Use safe defaults to avoid toFixed() on undefined
+  const totalCustomers = reportData?.totalCustomers
+  const totalSpending = reportData?.totalSpending
+  const totalRewards = reportData?.totalRewards
+  const averageSpendingPerCustomer = reportData?.averageSpendingPerCustomer
+  const breakdownByType = reportData?.breakdownByType ?? []
+  const highSpendersCount = reportData?.highSpendersCount
+  const regularCustomersCount = reportData?.regularCustomersCount
+  const newCustomersCount = reportData?.newCustomersCount
+  const lostCustomersCount = reportData?.lostCustomersCount
+  const corporateCustomersCount = reportData?.corporateCustomersCount
+  const activeCustomersCount = reportData?.activeCustomersCount
+
+  console.log('Rendering CustomerReport with data:', {
+    totalCustomers,
+    totalSpending,
+    totalRewards,
+    averageSpendingPerCustomer,
+    breakdownByType,
+    highSpendersCount,
+    regularCustomersCount,
+  })
+
   return (
-    <div className="container-fluid px-3 customer-report-mobile-container">
-      <div className="d-flex justify-content-between align-items-center mb-4 customer-report-mobile-header">
-         <h2 className="mb-0 customer-report-mobile-title">Customer Report</h2>
-         
-        <div className="text-muted customer-report-mobile-subtitle">
-          Total Customers: {rows.length}
-        </div>
+    <div className="container-fluid px-3 customer-report-container">
+      <div className="d-flex justify-content-between align-items-center mb-4">
+        <h2 className="mb-0 fw-bold">Customer Report</h2>
+        <div className="text-muted">Updated Overview</div>
       </div>
 
-      {/* Filter Section */}
-      <CCard className="mb-4 customer-report-mobile-filters">
+      {/* Main Summary Cards */}
+      <CRow className="g-3 mb-4">
+        <CCol xs={6} md={3}>
+          <CCard className="shadow-sm border-start border-primary border-4">
+            <CCardBody className="text-center">
+              <h6 className="text-muted mb-2">Total Customers</h6>
+              <h4 className="fw-bold text-primary">{totalCustomers}</h4>
+            </CCardBody>
+          </CCard>
+        </CCol>
+
+        <CCol xs={6} md={3}>
+          <CCard className="shadow-sm border-start border-success border-4">
+            <CCardBody className="text-center">
+              <h6 className="text-muted mb-2">Total Spending</h6>
+              <h4 className="fw-bold text-success">₹{totalSpending.toFixed(2)}</h4>
+            </CCardBody>
+          </CCard>
+        </CCol>
+
+        <CCol xs={6} md={3}>
+          <CCard className="shadow-sm border-start border-info border-4">
+            <CCardBody className="text-center">
+              <h6 className="text-muted mb-2">Total Rewards</h6>
+              <h4 className="fw-bold text-info">{totalRewards.toFixed(2)}</h4>
+            </CCardBody>
+          </CCard>
+        </CCol>
+
+        <CCol xs={6} md={3}>
+          <CCard className="shadow-sm border-start border-warning border-4">
+            <CCardBody className="text-center">
+              <h6 className="text-muted mb-2">Avg. Spend / Customer</h6>
+              <h4 className="fw-bold text-warning">₹{averageSpendingPerCustomer.toFixed(2)}</h4>
+            </CCardBody>
+          </CCard>
+        </CCol>
+      </CRow>
+
+      {/* Customer Segmentation Cards */}
+      <div className="mb-4">
+        <h5 className="fw-bold mb-3">Customer Segmentation</h5>
+        <CRow className="g-3">
+          <CCol xs={6} md={4} lg={2}>
+            <CCard className="shadow-sm text-center">
+              <CCardBody>
+                <div className="mb-2">
+                  <i className="cil-star" style={{ fontSize: '1.5rem', color: '#ffc107' }}></i>
+                </div>
+                <h6 className="text-muted mb-2">High Spenders</h6>
+                <h4 className="fw-bold text-warning">{highSpendersCount}</h4>
+              </CCardBody>
+            </CCard>
+          </CCol>
+
+          <CCol xs={6} md={4} lg={2}>
+            <CCard className="shadow-sm text-center">
+              <CCardBody>
+                <div className="mb-2">
+                  <i className="cil-loop" style={{ fontSize: '1.5rem', color: '#17a2b8' }}></i>
+                </div>
+                <h6 className="text-muted mb-2">Regular Customers</h6>
+                <h4 className="fw-bold text-info">{regularCustomersCount}</h4>
+              </CCardBody>
+            </CCard>
+          </CCol>
+
+          <CCol xs={6} md={4} lg={2}>
+            <CCard className="shadow-sm text-center">
+              <CCardBody>
+                <div className="mb-2">
+                  <i className="cil-user-follow" style={{ fontSize: '1.5rem', color: '#28a745' }}></i>
+                </div>
+                <h6 className="text-muted mb-2">New Customers</h6>
+                <h4 className="fw-bold text-success">{newCustomersCount}</h4>
+              </CCardBody>
+            </CCard>
+          </CCol>
+
+          <CCol xs={6} md={4} lg={2}>
+            <CCard className="shadow-sm text-center">
+              <CCardBody>
+                <div className="mb-2">
+                  <i className="cil-user-unfollow" style={{ fontSize: '1.5rem', color: '#dc3545' }}></i>
+                </div>
+                <h6 className="text-muted mb-2">Lost Customers</h6>
+                <h4 className="fw-bold text-danger">{lostCustomersCount}</h4>
+              </CCardBody>
+            </CCard>
+          </CCol>
+
+          <CCol xs={6} md={4} lg={2}>
+            <CCard className="shadow-sm text-center">
+              <CCardBody>
+                <div className="mb-2">
+                  <i className="cil-briefcase" style={{ fontSize: '1.5rem', color: '#6f42c1' }}></i>
+                </div>
+                <h6 className="text-muted mb-2">Corporate</h6>
+                <h4 className="fw-bold" style={{ color: '#6f42c1' }}>{corporateCustomersCount}</h4>
+              </CCardBody>
+            </CCard>
+          </CCol>
+
+          <CCol xs={6} md={4} lg={2}>
+            <CCard className="shadow-sm text-center">
+              <CCardBody>
+                <div className="mb-2">
+                  <i className="cil-checkmark" style={{ fontSize: '1.5rem', color: '#20c997' }}></i>
+                </div>
+                <h6 className="text-muted mb-2">Active Customers</h6>
+                <h4 className="fw-bold" style={{ color: '#20c997' }}>{activeCustomersCount}</h4>
+              </CCardBody>
+            </CCard>
+          </CCol>
+        </CRow>
+      </div>
+
+      {/* Breakdown by Customer Type */}
+      <CCard className="shadow-sm">
+        <CCardHeader className="fw-bold bg-light">Breakdown by Customer Type</CCardHeader>
         <CCardBody>
-          <CRow className="g-3">
-            <CCol xs={12} md={4}>
-              <CInputGroup>
-                <CInputGroupText>
-                  <i className="cil-magnifying-glass"></i>
-                </CInputGroupText>
-                <CFormInput
-                  placeholder="Search customers..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </CInputGroup>
-            </CCol>
-            <CCol xs={6} md={3}>
-              <CFormSelect
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-              >
-                <option value="total_spent">Sort by Total Spent</option>
-                <option value="customer_name">Sort by Name</option>
-                <option value="transaction_count">Sort by Transactions</option>
-              </CFormSelect>
-            </CCol>
-            <CCol xs={6} md={3}>
-              <CFormSelect
-                value={sortOrder}
-                onChange={(e) => setSortOrder(e.target.value)}
-              >
-                <option value="desc">High to Low</option>
-                <option value="asc">Low to High</option>
-              </CFormSelect>
-            </CCol>
-            <CCol xs={12} md={2}>
-              <div className="d-flex gap-2">
-                <button
-                  className="btn btn-outline-secondary btn-sm"
-                  onClick={() => {
-                    setSearchTerm('')
-                    setSortBy('total_spent')
-                    setSortOrder('desc')
-                  }}
-                >
-                  Reset
-                </button>
-              </div>
-            </CCol>
-          </CRow>
+          {breakdownByType.length === 0 ? (
+            <p className="text-muted text-center mb-0">No customer type data available</p>
+          ) : (
+            <CRow className="g-3">
+              {breakdownByType.map((item, index) => (
+                <CCol xs={6} md={3} key={index}>
+                  <CCard className="border-0 shadow-sm h-100 text-center">
+                    <CCardBody>
+                      <h6 className="text-muted mb-2">{item.type}</h6>
+                      <h4 className="fw-bold">{item.count}</h4>
+                      <small className="text-muted">
+                        {totalCustomers > 0 ? ((item.count / totalCustomers) * 100).toFixed(1) : 0}%
+                      </small>
+                    </CCardBody>
+                  </CCard>
+                </CCol>
+              ))}
+            </CRow>
+          )}
         </CCardBody>
       </CCard>
 
-      {loading ? (
-        <div className="d-flex justify-content-center py-5 customer-report-mobile-loading">
-          <CSpinner color="primary" variant="grow" />
-        </div>
-      ) : (
-        <>
-          {isMobile ? (
-            // Mobile Card View
-            <div className="mobile-cards-container">
-              {rows.length === 0 ? (
-                <CCard>
-                  <CCardBody className="text-center py-5 customer-report-mobile-empty">
-                    <div className="text-muted">
-                      <i className="cil-user-x" style={{ fontSize: '3rem' }}></i>
-                      <p className="mt-3 mb-0">No customers found</p>
-                    </div>
-                  </CCardBody>
-                </CCard>
-              ) : (
-                rows.map((customer, index) => (
-                  <MobileCard key={customer.id} customer={customer} index={index} />
-                ))
-              )}
-            </div>
-          ) : (
-            // Desktop Table View
-            <div style={{ overflowX: 'auto' }}>
-              <DataGrid
-                style={{ height: 'auto', width: '100%', backgroundColor: 'white' }}
-                rows={rows}
-                columns={columns}
-                pageSize={10}
-                rowsPerPageOptions={[10, 25, 50]}
-                slots={{
-                  toolbar: CustomToolbar,
-                }}
-                sx={{
-                  '& .header-style': {
-                    fontWeight: 'bold',
-                    fontSize: '1.1rem',
-                  },
-                }}
-              />
-            </div>
-          )}
-        </>
-      )}
+      {/* Summary Stats */}
+      <CRow className="g-3 mt-4">
+        <CCol md={6}>
+          <CCard className="shadow-sm">
+            <CCardHeader className="fw-bold bg-light">Customer Engagement</CCardHeader>
+            <CCardBody>
+              <div className="mb-3">
+                <div className="d-flex justify-content-between mb-2">
+                  <span>Active Customers</span>
+                  <strong>{activeCustomersCount} ({totalCustomers > 0 ? ((activeCustomersCount / totalCustomers) * 100).toFixed(1) : 0}%)</strong>
+                </div>
+                <div className="progress">
+                  <div
+                    className="progress-bar bg-success"
+                    style={{
+                      width: totalCustomers > 0 ? ((activeCustomersCount / totalCustomers) * 100) : 0 + '%'
+                    }}
+                  ></div>
+                </div>
+              </div>
+              <div className="mb-3">
+                <div className="d-flex justify-content-between mb-2">
+                  <span>Regular Customers</span>
+                  <strong>{regularCustomersCount} ({totalCustomers > 0 ? ((regularCustomersCount / totalCustomers) * 100).toFixed(1) : 0}%)</strong>
+                </div>
+                <div className="progress">
+                  <div
+                    className="progress-bar bg-info"
+                    style={{
+                      width: totalCustomers > 0 ? ((regularCustomersCount / totalCustomers) * 100) : 0 + '%'
+                    }}
+                  ></div>
+                </div>
+              </div>
+              <div>
+                <div className="d-flex justify-content-between mb-2">
+                  <span>Lost Customers</span>
+                  <strong>{lostCustomersCount} ({totalCustomers > 0 ? ((lostCustomersCount / totalCustomers) * 100).toFixed(1) : 0}%)</strong>
+                </div>
+                <div className="progress">
+                  <div
+                    className="progress-bar bg-danger"
+                    style={{
+                      width: totalCustomers > 0 ? ((lostCustomersCount / totalCustomers) * 100) : 0 + '%'
+                    }}
+                  ></div>
+                </div>
+              </div>
+            </CCardBody>
+          </CCard>
+        </CCol>
+
+        <CCol md={6}>
+          <CCard className="shadow-sm">
+            <CCardHeader className="fw-bold bg-light">Revenue Insights</CCardHeader>
+            <CCardBody>
+              <div className="mb-3">
+                <div className="d-flex justify-content-between">
+                  <span className="text-muted">Total Spending</span>
+                  <strong className="text-success">₹{totalSpending.toFixed(2)}</strong>
+                </div>
+              </div>
+              <div className="mb-3">
+                <div className="d-flex justify-content-between">
+                  <span className="text-muted">Average Per Customer</span>
+                  <strong className="text-primary">₹{averageSpendingPerCustomer.toFixed(2)}</strong>
+                </div>
+              </div>
+              <div className="mb-3">
+                <div className="d-flex justify-content-between">
+                  <span className="text-muted">High Spenders Count</span>
+                  <strong className="text-warning">{highSpendersCount}</strong>
+                </div>
+              </div>
+              <div>
+                <div className="d-flex justify-content-between">
+                  <span className="text-muted">Total Rewards Issued</span>
+                  <strong className="text-info">{totalRewards.toFixed(2)}</strong>
+                </div>
+              </div>
+            </CCardBody>
+          </CCard>
+        </CCol>
+      </CRow>
     </div>
   )
 }
 
 export default CustomerReport
-      

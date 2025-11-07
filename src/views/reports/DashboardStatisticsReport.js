@@ -207,7 +207,7 @@ export default DashboardStatisticsReport;
 //       collection: totalAmount.toFixed(2),
 //       invoices: totalInvoices,
 //       completed: completedOrders,
-//       rejected: rejectedOrders
+//       rejected: rejectedOrders 
 //     }
 //   }
   
