@@ -1,5 +1,6 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import axios from 'axios';
+import axiosInstance from '../../utils/axiosConfig';
 import { toast } from 'react-toastify';
 import { BASE_URL } from '../../utils/constants';
 
@@ -40,27 +41,37 @@ export const fetchCustomerReport = createAsyncThunk(
   'customers/fetchCustomerReport',
   async ({ restaurantId }, { rejectWithValue }) => {
     try {
-      const token = localStorage.getItem('authToken');
-      if (!token) return rejectWithValue('No auth token');
-
       const idToSend = restaurantId || localStorage.getItem('restaurantId');
-      if (!idToSend) return rejectWithValue('No restaurantId found');
+      if (!idToSend) {
+        console.error('❌ No restaurantId found');
+        return rejectWithValue('No restaurantId found');
+      }
 
-      const url = `${BASE_URL}/customer/report?restaurantId=${idToSend}`;
-      console.log('🔍 Fetching Customer Report from:', url);
+      console.log('🔍 Fetching Customer Report for restaurantId:', idToSend);
 
-      const response = await axios.get(url, configureHeaders(token));
+      // ✅ Use axiosInstance which automatically handles auth token
+      const response = await axiosInstance.get('/customer/report', {
+        params: { restaurantId: idToSend }
+      });
+
+      console.log('📊 Full response:', response.data);
 
       // ✅ Make sure backend response structure is correct
       if (!response.data.success) {
+        console.error('❌ Backend returned error:', response.data.message);
         return rejectWithValue(response.data.message || 'Backend error');
       }
 
-      console.log('✅ Customer report response:', response.data.data);
+      console.log('✅ Customer report data:', response.data.data);
       return response.data.data;
     } catch (error) {
       console.error('❌ Error fetching customer report:', error);
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch report');
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      return rejectWithValue(error.response?.data?.message || error.message || 'Failed to fetch report');
     }
   }
 );

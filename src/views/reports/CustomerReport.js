@@ -12,18 +12,35 @@ const CustomerReport = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth <= 768)
 
   useEffect(() => {
-    console.log('restaurantId from Redux:', restaurantIdFromRedux)
-    console.log('restaurantId (final):', restaurantId)
-    console.log('reportData from Redux:', reportData)
+    console.log('🔍 CustomerReport useEffect triggered')
+    console.log('📊 State check:', {
+      restaurantIdFromRedux,
+      restaurantIdFromLocalStorage: localStorage.getItem('restaurantId'),
+      restaurantId,
+      token: token ? 'Present' : 'Missing',
+      reportLoading,
+      reportError,
+      hasReportData: !!reportData
+    })
 
     if (!restaurantId) {
-      console.warn('No restaurantId found in Redux or localStorage - cannot fetch report')
+      console.error('❌ No restaurantId found in Redux or localStorage - cannot fetch report')
+      return
     }
 
-    if (restaurantId && token) {
+    if (!token) {
+      console.error('❌ No auth token found - cannot fetch report')
+      return
+    }
+
+    // Only fetch if we don't have data and we're not already loading
+    if (!reportData && !reportLoading) {
+      console.log('✅ Dispatching fetchCustomerReport with restaurantId:', restaurantId)
       dispatch(fetchCustomerReport({ restaurantId }))
-    } else {
-      console.warn('Missing restaurantId or token - skipping fetch')
+    } else if (reportData) {
+      console.log('✅ Report data already exists, skipping fetch')
+    } else if (reportLoading) {
+      console.log('⏳ Report is already loading, skipping fetch')
     }
   }, [dispatch, restaurantId, token])
 
@@ -59,17 +76,17 @@ const CustomerReport = () => {
   }
 
   // ✅ Use safe defaults to avoid toFixed() on undefined
-  const totalCustomers = reportData?.totalCustomers
-  const totalSpending = reportData?.totalSpending
-  const totalRewards = reportData?.totalRewards
-  const averageSpendingPerCustomer = reportData?.averageSpendingPerCustomer
+  const totalCustomers = reportData?.totalCustomers ?? 0
+  const totalSpending = reportData?.totalSpending ?? 0
+  const totalRewards = reportData?.totalRewards ?? 0
+  const averageSpendingPerCustomer = reportData?.averageSpendingPerCustomer ?? 0
   const breakdownByType = reportData?.breakdownByType ?? []
-  const highSpendersCount = reportData?.highSpendersCount
-  const regularCustomersCount = reportData?.regularCustomersCount
-  const newCustomersCount = reportData?.newCustomersCount
-  const lostCustomersCount = reportData?.lostCustomersCount
-  const corporateCustomersCount = reportData?.corporateCustomersCount
-  const activeCustomersCount = reportData?.activeCustomersCount
+  const highSpendersCount = reportData?.highSpendersCount ?? 0
+  const regularCustomersCount = reportData?.regularCustomersCount ?? 0
+  const newCustomersCount = reportData?.newCustomersCount ?? 0
+  const lostCustomersCount = reportData?.lostCustomersCount ?? 0
+  const corporateCustomersCount = reportData?.corporateCustomersCount ?? 0
+  const activeCustomersCount = reportData?.activeCustomersCount ?? 0
 
   console.log('Rendering CustomerReport with data:', {
     totalCustomers,

@@ -784,6 +784,9 @@ const Order = () => {
   // Filter and sort logic
   const filteredAndSortedOrders = orders
     ?.filter((order) => {
+      // Filter: Only show orders where from field is "system"
+      const matchesSystem = order.from === 'system'
+
       const matchesSearch =
         order.orderId?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         order.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -817,7 +820,7 @@ const Order = () => {
         }
       })()
 
-      return matchesSearch && matchesStatus && matchesDate
+      return matchesSystem && matchesSearch && matchesStatus && matchesDate
     })
     ?.sort((a, b) => {
       let aValue, bValue
