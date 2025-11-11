@@ -18,6 +18,7 @@ import {
   CModalHeader,
   CModalTitle,
   CFormInput,
+  CFormTextarea,
   CSpinner,
   CForm,
   CAlert,
@@ -58,7 +59,6 @@ const Reservation = () => {
   // Refs for form inputs to avoid controlled component issues
   const paymentRef = useRef(null);
   const advanceRef = useRef(null);
-  const tableNumberRef = useRef(null);
   const notesRef = useRef(null);
 
   useEffect(() => {
@@ -116,11 +116,15 @@ const Reservation = () => {
 
   const validateForm = () => {
     const errors = {};
+    // Get values from refs if available (for add modal), otherwise use formData (for edit modal)
+    const paymentValue = paymentRef.current?.value || formData.payment || '';
+    const advanceValue = advanceRef.current?.value || formData.advance || '';
+    
     if (!formData.startTime) errors.startTime = 'Start time is required';
     if (!formData.endTime) errors.endTime = 'End time is required';
     if (!formData.customerId) errors.customerId = 'Customer selection is required';
-    if (!formData.payment || formData.payment <= 0) errors.payment = 'Valid payment amount is required';
-    if (formData.advance && parseFloat(formData.advance) > parseFloat(formData.payment)) {
+    if (!paymentValue || parseFloat(paymentValue) <= 0) errors.payment = 'Valid payment amount is required';
+    if (advanceValue && parseFloat(advanceValue) > parseFloat(paymentValue)) {
       errors.advance = 'Advance cannot be greater than total payment';
     }
     if (formData.tableNumber && !qrList.some((qr) => qr.tableNumber === formData.tableNumber)) {
@@ -147,23 +151,26 @@ const Reservation = () => {
       tableNumber: '',
     });
     setFormErrors({});
+    // Reset ref values
+    if (paymentRef.current) paymentRef.current.value = '';
+    if (advanceRef.current) advanceRef.current.value = '';
+    if (notesRef.current) notesRef.current.value = '';
   };
 
   const handleSaveReservation = async (e) => {
     e.preventDefault();
 
-    // Get values from refs
+    // Get values from refs (for uncontrolled inputs)
     const paymentValue = paymentRef.current?.value || '';
     const advanceValue = advanceRef.current?.value || '';
-    const tableNumberValue = tableNumberRef.current?.value || '';
     const notesValue = notesRef.current?.value || '';
 
     // Update formData with ref values
+    // tableNumber is already in formData (controlled via Select component)
     const updatedFormData = {
       ...formData,
       payment: paymentValue,
       advance: advanceValue,
-      tableNumber: tableNumberValue,
       notes: notesValue
     };
 
@@ -674,19 +681,54 @@ const Reservation = () => {
               </div>
             </div>
             <div className="col-12 col-md-6">
-              <FormField
-                label="Advance Payment"
-                name="advance"
-                type="number"
-                min="0"
-                step="0.01"
-                placeholder="Enter advance amount"
-              />
+              <div className="mb-3">
+                <CFormLabel htmlFor="advance" className={isMobile ? "small" : ""}>
+                  Advance Payment
+                </CFormLabel>
+                <CFormInput
+                  ref={advanceRef}
+                  type="number"
+                  id="advance"
+                  name="advance"
+                  min="0"
+                  step="0.01"
+                  placeholder="Enter advance amount"
+                  invalid={!!formErrors.advance}
+                  size={isMobile ? "sm" : "sm"}
+                  className={isMobile ? "form-control-sm" : ""}
+                  style={isMobile ? { minHeight: '44px' } : {}}
+                />
+                {formErrors.advance && (
+                  <div className="invalid-feedback d-block small">
+                    {formErrors.advance}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <div className="row g-2">
-            <div className="col-12 col-md-6">
-              <FormField label="Notes" name="notes" placeholder="Additional notes" />
+            <div className="col-12">
+              <div className="mb-3">
+                <CFormLabel htmlFor="notes" className={isMobile ? "small" : ""}>
+                  Notes
+                </CFormLabel>
+                <CFormTextarea
+                  ref={notesRef}
+                  id="notes"
+                  name="notes"
+                  rows={3}
+                  placeholder="Additional notes"
+                  invalid={!!formErrors.notes}
+                  size={isMobile ? "sm" : ""}
+                  className={isMobile ? "form-control-sm" : ""}
+                  style={isMobile ? { minHeight: '80px' } : {}}
+                />
+                {formErrors.notes && (
+                  <div className="invalid-feedback d-block small">
+                    {formErrors.notes}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </CForm>
