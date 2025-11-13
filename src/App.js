@@ -243,18 +243,23 @@ const App = () => {
   }
 
   // ✅ Fixed: Fetch orders with restaurantId
+  // ⚠️ DISABLED: Auto-refresh removed - Orders and Delivery pages handle their own fetching
   useEffect(() => {
     const currentPath = window.location.pathname;
-    // Exclude customer-facing pages from fetching orders
+    // Exclude customer-facing pages and Orders/Delivery pages from fetching orders
     const isCustomerPage = currentPath === '/customer-menu' || currentPath.startsWith('/spin') || currentPath.startsWith('/table');
+    const isOrdersPage = currentPath === '/orders' || currentPath.startsWith('/orders');
+    const isDeliveryPage = currentPath === '/delivery' || currentPath.startsWith('/delivery');
     
-    if (restaurantId && !isCustomerPage) {
+    // Only fetch orders if not on Orders/Delivery pages (they handle their own fetching)
+    // and not on customer pages
+    if (restaurantId && !isCustomerPage && !isOrdersPage && !isDeliveryPage) {
       dispatch(fetchOrders({ restaurantId }))
-      const intervalId = setInterval(() => {
-        dispatch(fetchOrders({ restaurantId }))
-      }, 30000)
-
-      return () => clearInterval(intervalId)
+      // Auto-refresh disabled - pages handle their own refresh logic
+      // const intervalId = setInterval(() => {
+      //   dispatch(fetchOrders({ restaurantId }))
+      // }, 30000)
+      // return () => clearInterval(intervalId)
     }
   }, [dispatch, restaurantId])
 

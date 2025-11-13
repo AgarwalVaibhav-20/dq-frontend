@@ -38,8 +38,9 @@ const Order = () => {
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false)
   const isMobile = useMediaQuery('(max-width:600px)')
   const { restaurantProfile } = useSelector((state) => state.restaurantProfile)
-  const token = localStorage.getItem("authToken")
-  const restaurantId = localStorage.getItem('restaurantId');
+  // Store token and restaurantId in state to prevent unnecessary re-renders
+  const [token] = useState(() => localStorage.getItem("authToken"))
+  const [restaurantId] = useState(() => localStorage.getItem('restaurantId'))
   // const isMobile = useMediaQuery('(max-width:600px)')
   const isTablet = useMediaQuery('(max-width:992px)')
   // Filter states
@@ -416,7 +417,9 @@ const Order = () => {
     if (token && restaurantId) {
       dispatch(fetchOrders({ token, restaurantId }))
     }
-  }, [dispatch, token, restaurantId])
+    // Only run once on mount - removed token and restaurantId from dependencies to prevent auto-refresh
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     if (restaurantId) {

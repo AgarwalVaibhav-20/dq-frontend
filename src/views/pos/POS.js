@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import React, { useEffect, useState, useCallback, useRef } from 'react'
 import { useSelector, useDispatch } from 'react-redux'
 import { useNavigate } from 'react-router-dom'
 import { getQrs } from '../../redux/slices/qrSlice'
@@ -49,6 +49,14 @@ import {
 import CIcon from '@coreui/icons-react'
 import { cilBuilding, cilMoney, cilPlus, cilMinus, cilCash, cilNotes } from '@coreui/icons'
 import './POS.css'
+import html2canvas from 'html2canvas'
+import jsPDF from 'jspdf'
+import KOT from '../../components/KOT'
+import Invoice from '../../components/Invoice'
+import KOTModal from '../../components/KOTModal'
+import InvoiceModal from '../../components/InvoiceModal'
+import { toast } from 'react-toastify'
+import { createOrder } from '../../redux/slices/orderSlice'
 
 const POS = () => {
   const theme = useSelector((state) => state.theme.theme);
@@ -100,6 +108,15 @@ const POS = () => {
   const [paymentBreakdown, setPaymentBreakdown] = useState({});
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [currentSystemSettings, setCurrentSystemSettings] = useState([]);
+  
+  // KOT/Bill generation states
+  const [showKOTModal, setShowKOTModal] = useState(false);
+  const [showInvoiceModal, setShowInvoiceModal] = useState(false);
+  const [kotImage, setKotImage] = useState(null);
+  const [invoiceImage, setInvoiceImage] = useState(null);
+  const [currentTableData, setCurrentTableData] = useState(null);
+  const kotRef = useRef(null);
+  const invoiceRef = useRef(null);
 
   // Helper function to get floor ID consistently from QR object
   const getFloorIdFromQr = (qr) => {
@@ -553,7 +570,280 @@ const POS = () => {
   }
 
   const isItemInCart = (qr) => {
-    return cart[qr.tableNumber] && cart[qr.tableNumber].length > 0
+    // Check in state cart first - handle both string and number formats
+    const tableNumber = qr.tableNumber
+    const tableNumberStr = String(tableNumber)
+    const tableNumberNum = Number(tableNumber)
+    
+    // Check both string and number keys in cart
+    const stateCartStr = cart[tableNumberStr] && cart[tableNumberStr].length > 0
+    const stateCartNum = cart[tableNumberNum] && cart[tableNumberNum].length > 0
+    const stateCart = stateCartStr || stateCartNum
+    
+    // Also check localStorage as fallback (in case state is not synced)
+    // POSTableContent.js uses format: cart_${tableId}_${userId}
+    try {
+      const userId = localStorage.getItem('userId') || ''
+      
+      // Check both string and number formats in localStorage
+      // First check with userId (new format)
+      const savedCartStrWithUserId = localStorage.getItem(`cart_${tableNumberStr}_${userId}`)
+      const savedCartNumWithUserId = localStorage.getItem(`cart_${tableNumberNum}_${userId}`)
+      
+      // Then check without userId (old format for backward compatibility)
+      const savedCartStr = localStorage.getItem(`cart_${tableNumberStr}`)
+      const savedCartNum = localStorage.getItem(`cart_${tableNumberNum}`)
+      
+      const savedCart = savedCartStrWithUserId || savedCartNumWithUserId || savedCartStr || savedCartNum
+      
+      if (savedCart) {
+        const parsedCart = JSON.parse(savedCart)
+        if (parsedCart && Array.isArray(parsedCart) && parsedCart.length > 0) {
+          console.log(`✅ Table ${tableNumber}: Found ${parsedCart.length} items in localStorage`)
+          return true // Return true immediately if found in localStorage
+        }
+      }
+    } catch (error) {
+      console.error('Error checking localStorage cart:', error)
+    }
+    
+    // If state cart has items, return true
+    if (stateCart) {
+      console.log(`✅ Table ${tableNumber}: Found items in state cart`)
+      return true
+    } else {
+      console.log(`❌ Table ${tableNumber}: No items found in cart (state or localStorage)`)
+      return false
+    }
+  }
+
+  // Function to generate KOT directly without opening table
+  const handleGenerateKOT = async (qr) => {
+    try {
+      const tableNumber = qr.tableNumber
+      const userId = localStorage.getItem('userId') || ''
+      
+      // Fetch cart from localStorage
+      const savedCartStr = localStorage.getItem(`cart_${tableNumber}_${userId}`) || localStorage.getItem(`cart_${tableNumber}`)
+      
+      if (!savedCartStr) {
+        toast.info('Cart is empty! Please add items to generate KOT.', { autoClose: 3000 })
+        return
+      }
+      
+      const cart = JSON.parse(savedCartStr)
+      if (!cart || cart.length === 0) {
+        toast.info('Cart is empty! Please add items to generate KOT.', { autoClose: 3000 })
+        return
+      }
+      
+      // Fetch system charge info
+      const savedSystem = localStorage.getItem(`selectedSystem_${tableNumber}`)
+      let selectedSystem = null
+      if (savedSystem) {
+        try {
+          selectedSystem = JSON.parse(savedSystem)
+        } catch (e) {
+          console.error('Error parsing system:', e)
+        }
+      }
+      
+      // Fetch customer name
+      const selectedCustomerName = localStorage.getItem(`selectedCustomerName_${tableNumber}`) || 'Walk-in Customer'
+      
+      // Fetch discount
+      const discount = Number(localStorage.getItem(`discount_${tableNumber}`)) || 0
+      
+      // Calculate totals for order
+      const kotSubtotal = cart.reduce((total, item) => total + (item.adjustedPrice || item.price || 0) * (item.quantity || 1), 0)
+      const kotTaxAmount = cart.reduce((total, item) => total + (Number(item.taxAmount) || 0), 0)
+      const kotDiscountAmount = (kotSubtotal * discount) / 100
+      const kotTotal = kotSubtotal + kotTaxAmount - kotDiscountAmount
+      
+      // Create order data
+      const orderData = {
+        token: localStorage.getItem('authToken'),
+        restaurantId: localStorage.getItem('restaurantId') || resturantIdLocalStorage,
+        userId: userId,
+        tableNumber: tableNumber,
+        customerName: selectedCustomerName,
+        items: cart.map((item) => ({
+          itemId: item._id || item.id,
+          itemName: item.itemName,
+          price: item.adjustedPrice || item.price,
+          quantity: item.quantity,
+          selectedSubcategoryId: item.selectedSubcategoryId || null,
+          sizeId: item.sizeId || null,
+          size: item.size || item.selectedSize || null,
+          selectedSize: item.selectedSize || null,
+          subtotal: (item.adjustedPrice || item.price || 0) * (item.quantity || 1),
+          taxPercentage: item.taxPercentage || 0,
+          taxAmount: item.taxAmount || 0
+        })),
+        orderType: 'KOT',
+        status: 'pending',
+        tax: kotTaxAmount,
+        discount: discount,
+        subtotal: kotSubtotal,
+        totalAmount: kotTotal,
+        kotGenerated: true,
+        paymentStatus: 'pending'
+      }
+      
+      // Create order via API
+      try {
+        const result = await dispatch(createOrder(orderData)).unwrap()
+        const orderId = result?.data?._id || result?.data?.id || result?.order?._id || result?.order?.id
+        if (orderId) {
+          console.log('✅ Order ID stored:', orderId)
+        }
+        toast.success('Order created successfully!', { autoClose: 2000 })
+      } catch (orderError) {
+        console.error('Error creating order:', orderError)
+        toast.error(`Failed to create order: ${orderError.message || orderError}`, { autoClose: 3000 })
+        // Continue with KOT generation even if order creation fails
+      }
+      
+      // Set current table data for KOT component
+      setCurrentTableData({
+        tableNumber,
+        cart,
+        selectedSystem,
+        selectedCustomerName
+      })
+      
+      // Wait for component to render
+      setTimeout(() => {
+        const kotElement = kotRef.current
+        if (!kotElement) {
+          toast.error('KOT component not ready. Please try again.', { autoClose: 3000 })
+          return
+        }
+        
+        kotElement.style.display = 'block'
+        kotElement.style.visibility = 'visible'
+        
+        html2canvas(kotElement, { scale: 2, useCORS: true })
+          .then((canvas) => {
+            const imgData = canvas.toDataURL('image/png')
+            setKotImage(imgData)
+            setShowKOTModal(true)
+            toast.success('KOT generated successfully!', { autoClose: 2000 })
+          })
+          .catch((error) => {
+            console.error('KOT generation error:', error)
+            toast.error(`Error generating KOT: ${error.message}`, { autoClose: 3000 })
+          })
+          .finally(() => {
+            kotElement.style.display = 'none'
+            kotElement.style.visibility = 'hidden'
+          })
+      }, 500)
+      
+    } catch (error) {
+      console.error('Error generating KOT:', error)
+      toast.error(`Error generating KOT: ${error.message}`, { autoClose: 3000 })
+    }
+  }
+  
+  // Function to generate Bill directly without opening table
+  const handleGenerateBill = async (qr) => {
+    try {
+      const tableNumber = qr.tableNumber
+      const userId = localStorage.getItem('userId') || ''
+      
+      // Fetch cart from localStorage
+      const savedCartStr = localStorage.getItem(`cart_${tableNumber}_${userId}`) || localStorage.getItem(`cart_${tableNumber}`)
+      
+      if (!savedCartStr) {
+        toast.info('Cart is empty! Please add items to generate Bill.', { autoClose: 3000 })
+        return
+      }
+      
+      const cart = JSON.parse(savedCartStr)
+      if (!cart || cart.length === 0) {
+        toast.info('Cart is empty! Please add items to generate Bill.', { autoClose: 3000 })
+        return
+      }
+      
+      // Fetch system charge info
+      const savedSystem = localStorage.getItem(`selectedSystem_${tableNumber}`)
+      let selectedSystem = null
+      if (savedSystem) {
+        try {
+          selectedSystem = JSON.parse(savedSystem)
+        } catch (e) {
+          console.error('Error parsing system:', e)
+        }
+      }
+      
+      // Fetch customer name
+      const selectedCustomerName = localStorage.getItem(`selectedCustomerName_${tableNumber}`) || 'Walk-in Customer'
+      
+      // Calculate totals
+      const calculateSubtotal = () => {
+        return cart.reduce((total, item) => total + (item.adjustedPrice || item.price || 0) * (item.quantity || 1), 0)
+      }
+      
+      const calculateTotalTaxAmount = () => {
+        return cart.reduce((total, item) => total + (Number(item.taxAmount) || 0), 0)
+      }
+      
+      const discount = Number(localStorage.getItem(`discount_${tableNumber}`)) || 0
+      const calculateDiscountAmount = () => {
+        return (calculateSubtotal() * discount) / 100
+      }
+      
+      const calculateTotal = () => {
+        return calculateSubtotal() + calculateTotalTaxAmount() - calculateDiscountAmount()
+      }
+      
+      // Note: Bill generation does NOT create order - only KOT creates order
+      // Set current table data for Invoice component
+      setCurrentTableData({
+        tableNumber,
+        cart,
+        selectedSystem,
+        selectedCustomerName,
+        calculateSubtotal,
+        calculateTotalTaxAmount,
+        calculateDiscountAmount,
+        calculateTotal,
+        discount
+      })
+      
+      // Wait for component to render
+      setTimeout(() => {
+        const invoiceElement = invoiceRef.current
+        if (!invoiceElement) {
+          toast.error('Invoice component not ready. Please try again.', { autoClose: 3000 })
+          return
+        }
+        
+        invoiceElement.style.display = 'block'
+        invoiceElement.style.visibility = 'visible'
+        
+        html2canvas(invoiceElement, { scale: 2, useCORS: true })
+          .then((canvas) => {
+            const imgData = canvas.toDataURL('image/png')
+            setInvoiceImage(imgData)
+            setShowInvoiceModal(true)
+            toast.success('Bill generated successfully!', { autoClose: 2000 })
+          })
+          .catch((error) => {
+            console.error('Invoice generation error:', error)
+            toast.error(`Error generating Bill: ${error.message}`, { autoClose: 3000 })
+          })
+          .finally(() => {
+            invoiceElement.style.display = 'none'
+            invoiceElement.style.visibility = 'hidden'
+          })
+      }, 500)
+      
+    } catch (error) {
+      console.error('Error generating Bill:', error)
+      toast.error(`Error generating Bill: ${error.message}`, { autoClose: 3000 })
+    }
   }
 
   // Function to check if table should show occupied color
@@ -1546,11 +1836,13 @@ const POS = () => {
                       const floorName = getFloorNameFromQr(qr);
                       const occupied = shouldTableBeOccupied(qr);
                       const color = getTableOccupiedColor(qr);
-                      // Show color if available, otherwise use theme-based default
-                      const finalBgColor = color ? color : (theme === 'dark' ? '#6c757d' : '#ffffff');
-                      // Add table-occupied class if color exists, regardless of occupied status
-                      const hasColor = color && color.trim() !== '';
-                      console.log(`Rendering Table ${qr.tableNumber}: occupied=${occupied}, color=${color}, finalBgColor=${finalBgColor}, hasColor=${hasColor}`);
+                      // Check if cart has items for this table
+                      const hasCartItems = isItemInCart(qr);
+                      // Show color ONLY if cart has items AND color exists, otherwise use theme-based default
+                      const finalBgColor = (hasCartItems && color) ? color : (theme === 'dark' ? '#6c757d' : '#ffffff');
+                      // Add table-occupied class ONLY if cart has items AND color exists
+                      const hasColor = hasCartItems && color && color.trim() !== '';
+                      console.log(`Rendering Table ${qr.tableNumber}: occupied=${occupied}, color=${color}, hasCartItems=${hasCartItems}, finalBgColor=${finalBgColor}, hasColor=${hasColor}`);
                       return (
                         <CCol
                           key={index}
@@ -1604,17 +1896,12 @@ const POS = () => {
                               }}>
                               Table {qr.tableNumber}
                             </div>
-                            {isItemInCart(qr) && (
-                              <small className="text-center mt-1 table-subtitle">
-                                {cart[qr.tableNumber]?.length || 0} items
-                              </small>
-                            )}
                             <div className="d-flex mt-auto" style={{ width: '100%', marginLeft: '-8px', marginRight: '-8px', marginBottom: '-8px' }} onClick={(e) => e.stopPropagation()}>
                               <CButton
                                 color="info"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  navigate(`/pos/tableNumber/${qr.tableNumber}`, { state: { openKOT: true } });
+                                  handleGenerateKOT(qr);
                                 }}
                                 style={{ 
                                   fontSize: '1rem', 
@@ -1630,7 +1917,7 @@ const POS = () => {
                                 color="warning"
                                 onClick={(e) => {
                                   e.stopPropagation();
-                                  navigate(`/pos/tableNumber/${qr.tableNumber}`, { state: { openBill: true } });
+                                  handleGenerateBill(qr);
                                 }}
                                 style={{ 
                                   fontSize: '1rem', 
@@ -2220,6 +2507,137 @@ const POS = () => {
           </CModalFooter>
         </CModal>
       </FocusTrap>
+      
+      {/* KOT Modal */}
+      <KOTModal
+        isVisible={showKOTModal}
+        onClose={() => setShowKOTModal(false)}
+      >
+        {kotImage && (
+          <div>
+            <img src={kotImage} alt="KOT" style={{ width: '100%', height: 'auto' }} />
+            <div style={{ marginTop: '10px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <CButton
+                color="primary"
+                onClick={() => {
+                  const link = document.createElement('a')
+                  link.href = kotImage
+                  link.download = `KOT_Table_${currentTableData?.tableNumber || 'Unknown'}_${Date.now()}.png`
+                  link.click()
+                }}
+              >
+                Download
+              </CButton>
+              <CButton
+                color="secondary"
+                onClick={() => {
+                  const printWindow = window.open()
+                  if (printWindow) {
+                    printWindow.document.write(`
+                      <html>
+                        <head>
+                          <title>KOT Print</title>
+                          <style>
+                            @page { size: 2in auto; margin: 0; }
+                            body { margin: 0; padding: 0; }
+                            img { width: 100%; height: auto; }
+                          </style>
+                        </head>
+                        <body>
+                          <img src="${kotImage}" />
+                        </body>
+                      </html>
+                    `)
+                    printWindow.document.close()
+                    printWindow.print()
+                  }
+                }}
+              >
+                Print
+              </CButton>
+            </div>
+          </div>
+        )}
+      </KOTModal>
+      
+      {/* Invoice Modal */}
+      <InvoiceModal
+        isVisible={showInvoiceModal}
+        onClose={() => setShowInvoiceModal(false)}
+      >
+        {invoiceImage && (
+          <div>
+            <img src={invoiceImage} alt="Invoice" style={{ width: '100%', height: 'auto' }} />
+            <div style={{ marginTop: '10px', display: 'flex', gap: '10px', justifyContent: 'center' }}>
+              <CButton
+                color="primary"
+                onClick={() => {
+                  const link = document.createElement('a')
+                  link.href = invoiceImage
+                  link.download = `Bill_Table_${currentTableData?.tableNumber || 'Unknown'}_${Date.now()}.png`
+                  link.click()
+                }}
+              >
+                Download
+              </CButton>
+              <CButton
+                color="secondary"
+                onClick={() => {
+                  const printWindow = window.open()
+                  if (printWindow) {
+                    printWindow.document.write(`
+                      <html>
+                        <head>
+                          <title>Bill Print</title>
+                          <style>
+                            @page { size: A4; margin: 0; }
+                            body { margin: 0; padding: 0; }
+                            img { width: 100%; height: auto; }
+                          </style>
+                        </head>
+                        <body>
+                          <img src="${invoiceImage}" />
+                        </body>
+                      </html>
+                    `)
+                    printWindow.document.close()
+                    printWindow.print()
+                  }
+                }}
+              >
+                Print
+              </CButton>
+            </div>
+          </div>
+        )}
+      </InvoiceModal>
+      
+      {/* Hidden KOT and Invoice components for rendering */}
+      <div style={{ position: 'absolute', left: '-9999px', visibility: 'hidden' }}>
+        {currentTableData && (
+          <>
+            <KOT
+              ref={kotRef}
+              tableNumber={currentTableData.tableNumber}
+              cart={currentTableData.cart}
+              selectedSystem={currentTableData.selectedSystem}
+            />
+            <Invoice
+              ref={invoiceRef}
+              tableNumber={currentTableData.tableNumber}
+              selectedCustomerName={currentTableData.selectedCustomerName}
+              cart={currentTableData.cart}
+              calculateSubtotal={currentTableData.calculateSubtotal || (() => 0)}
+              tax={currentTableData.calculateTotalTaxAmount ? currentTableData.calculateTotalTaxAmount() : 0}
+              calculateTaxAmount={currentTableData.calculateTotalTaxAmount || (() => 0)}
+              discount={currentTableData.discount || 0}
+              calculateDiscountAmount={currentTableData.calculateDiscountAmount || (() => 0)}
+              calculateTotal={currentTableData.calculateTotal || (() => 0)}
+              selectedSystem={currentTableData.selectedSystem}
+            />
+          </>
+        )}
+      </div>
       </div>
     </CContainer>
   )

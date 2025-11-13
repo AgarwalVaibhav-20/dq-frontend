@@ -34,6 +34,8 @@ const Reservation = () => {
   const { reservations, loading, error } = useSelector((state) => state.reservations);
   const { customers, loading: customerLoading } = useSelector((state) => state.customers);
   const { qrList } = useSelector((state) => state.qr);
+  const theme = useSelector((state) => state.theme.theme);
+  const isDarkMode = theme === 'dark';
   const restaurantId = localStorage.getItem('restaurantId');
   const token = localStorage.getItem('authToken');
   const isMobile = useMediaQuery('(max-width:600px)');
@@ -551,16 +553,49 @@ const Reservation = () => {
   }, [qrList]);
 
   const selectStyles = {
-    control: (base) => ({
+    control: (base, state) => ({
       ...base,
       fontSize: isMobile ? '0.875rem' : '1rem',
       minHeight: '44px',
+      backgroundColor: isDarkMode ? '#1e1e1e' : '#ffffff',
+      borderColor: isDarkMode ? '#444' : '#ced4da',
+      color: isDarkMode ? '#ffffff' : '#000000',
+      '&:hover': {
+        borderColor: isDarkMode ? '#666' : '#adb5bd',
+      },
+      boxShadow: state.isFocused ? (isDarkMode ? '0 0 0 1px #666' : '0 0 0 0.2rem rgba(0, 123, 255, 0.25)') : 'none',
     }),
     menu: (base) => ({
       ...base,
       fontSize: isMobile ? '0.875rem' : '1rem',
       maxHeight: isMobile ? '200px' : '300px',
       overflowY: 'auto',
+      backgroundColor: isDarkMode ? '#1e1e1e' : '#ffffff',
+      color: isDarkMode ? '#ffffff' : '#000000',
+    }),
+    option: (base, state) => ({
+      ...base,
+      backgroundColor: state.isSelected
+        ? (isDarkMode ? '#0066cc' : '#0d6efd')
+        : state.isFocused
+        ? (isDarkMode ? '#333' : '#f0f0f0')
+        : isDarkMode ? '#1e1e1e' : '#ffffff',
+      color: isDarkMode ? '#ffffff' : '#000000',
+      '&:hover': {
+        backgroundColor: isDarkMode ? '#333' : '#f0f0f0',
+      },
+    }),
+    singleValue: (base) => ({
+      ...base,
+      color: isDarkMode ? '#ffffff' : '#000000',
+    }),
+    input: (base) => ({
+      ...base,
+      color: isDarkMode ? '#ffffff' : '#000000',
+    }),
+    placeholder: (base) => ({
+      ...base,
+      color: isDarkMode ? '#999' : '#6c757d',
     }),
   };
 

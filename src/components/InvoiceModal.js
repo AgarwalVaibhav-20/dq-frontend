@@ -1,7 +1,16 @@
 import React from "react";
+import { useSelector } from 'react-redux';
 
 const InvoiceModal = React.forwardRef(({ isVisible, onClose, children }, ref) => {
+  const theme = useSelector((state) => state.theme.theme);
+  const isDarkMode = theme === 'dark';
+
   if (!isVisible) return null;
+
+  // Theme-aware colors
+  const modalBackground = isDarkMode ? "#1e1e1e" : "#fff";
+  const closeButtonColor = isDarkMode ? "#fff" : "#333";
+  const overlayBackground = isDarkMode ? "rgba(0, 0, 0, 0.8)" : "rgba(0, 0, 0, 0.5)";
 
   return (
     <div
@@ -15,14 +24,14 @@ const InvoiceModal = React.forwardRef(({ isVisible, onClose, children }, ref) =>
         display: "flex",
         justifyContent: "center",
         alignItems: "center",
-        backgroundColor: "rgba(0, 0, 0, 0.5)", // Semi-transparent background
+        backgroundColor: overlayBackground,
         zIndex: 9999, // Ensure modal is always on top
         padding: "20px", // Prevent content from getting cut off
       }}
     >
       <div
         style={{
-          background: "#fff",
+          background: modalBackground,
           borderRadius: "8px",
           padding: "20px",
           width: "90%",
@@ -44,7 +53,7 @@ const InvoiceModal = React.forwardRef(({ isVisible, onClose, children }, ref) =>
             border: "none",
             fontSize: "24px",
             cursor: "pointer",
-            color: "#333",
+            color: closeButtonColor,
             zIndex: 10, // Ensure it's always visible
           }}
         >

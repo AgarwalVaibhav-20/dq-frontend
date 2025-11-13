@@ -20,7 +20,9 @@ const Delivery = () => {
     if (restaurantId) {
       dispatch(fetchDeliveryOrders({ restaurantId, pageNo: page }));
     }
-  }, [dispatch, restaurantId, page]);
+    // Only run when page changes, not when restaurantId changes (to prevent auto-refresh)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [page]);
 
   const handleStatusChange = async (orderId, newStatus) => {
     try {

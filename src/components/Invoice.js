@@ -39,6 +39,12 @@ const Invoice = React.forwardRef(
     const token = useSelector((state) => state.auth.token);
     const hasFetched = useRef(false);
     const { auth } = useSelector((state) => state.auth, shallowEqual);
+    const theme = useSelector((state) => state.theme.theme);
+    const isDarkMode = theme === 'dark';
+    
+    // Theme-aware colors
+    const textColor = isDarkMode ? '#ffffff' : '#000000';
+    const hrColor = isDarkMode ? '#ffffff' : '#000000';
 
     useEffect(() => {
       if (restaurantId && token && !hasFetched.current) {
@@ -68,6 +74,8 @@ const Invoice = React.forwardRef(
           lineHeight: '1.2',
           margin: '0 auto',
           textAlign: 'center',
+          color: textColor,
+          backgroundColor: isDarkMode ? '#1e1e1e' : 'transparent',
         }}
       >
         {/* Restaurant Details */}
@@ -82,7 +90,7 @@ const Invoice = React.forwardRef(
           <strong>Phone:</strong> {auth?.phoneNumber || 'N/A'}
         </p>
 
-        <hr style={{ borderTop: '1px solid #000', margin: '5px 0' }} />
+        <hr style={{ borderTop: `1px solid ${hrColor}`, margin: '5px 0' }} />
 
         {/* Invoice Heading */}
         <h2 style={{ fontSize: '14px', margin: '5px 0' }}>INVOICE</h2>
@@ -104,7 +112,7 @@ const Invoice = React.forwardRef(
           </p>
         )}
 
-        <hr style={{ borderTop: '1px solid #000', margin: '5px 0' }} />
+        <hr style={{ borderTop: `1px solid ${hrColor}`, margin: '5px 0' }} />
 
         {/* Order Details */}
         <h4 style={{ fontSize: '12px', margin: '5px 0' }}>Order Details:</h4>
@@ -124,7 +132,7 @@ const Invoice = React.forwardRef(
           })}
         </ul>
 
-        <hr style={{ borderTop: '1px solid #000', margin: '5px 0' }} />
+        <hr style={{ borderTop: `1px solid ${hrColor}`, margin: '5px 0' }} />
 
         {/* Pricing Breakdown */}
         <p style={{ margin: '2px 0' }}>
@@ -142,7 +150,7 @@ const Invoice = React.forwardRef(
           </p>
         )}
 
-        <hr style={{ borderTop: '1px solid #000', margin: '5px 0' }} />
+        <hr style={{ borderTop: `1px solid ${hrColor}`, margin: '5px 0' }} />
 
         {/* Total Amount */}
         <h3 style={{ fontSize: '14px', margin: '5px 0' }}>
