@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { DataGrid } from '@mui/x-data-grid';
 import { useDispatch, useSelector } from 'react-redux';
+import axios from 'axios';
 import {
   fetchReservations,
   addReservation,
@@ -10,6 +11,7 @@ import {
 import { fetchCustomers } from '../../redux/slices/customerSlice';
 import { getQrs } from '../../redux/slices/qrSlice';
 import CustomToolbar from '../../utils/CustomToolbar';
+import { BASE_URL } from '../../utils/constants';
 import {
   CButton,
   CModal,
@@ -57,11 +59,20 @@ const Reservation = () => {
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [formErrors, setFormErrors] = useState({});
   const [submitLoading, setSubmitLoading] = useState(false);
+  const [availableTablesInfo, setAvailableTablesInfo] = useState(null);
+  const [availableTablesLoading, setAvailableTablesLoading] = useState(false);
+  const [availableTablesError, setAvailableTablesError] = useState('');
 
   // Refs for form inputs to avoid controlled component issues
   const paymentRef = useRef(null);
   const advanceRef = useRef(null);
   const notesRef = useRef(null);
+
+  const normalizeTableNumber = (tableNumber) => {
+    if (!tableNumber) return '';
+    const trimmed = tableNumber.toString().trim();
+    return trimmed.toUpperCase().startsWith('T') ? trimmed.substring(1) : trimmed;
+  };
 
   useEffect(() => {
     if (!restaurantId || !token) {
@@ -86,6 +97,89 @@ const Reservation = () => {
       console.log('Available keys in first reservation:', Object.keys(reservations[0]));
     }
   }, [reservations, restaurantId, token]);
+
+  useEffect(() => {
+    const modalOpen = modalVisible || editModalVisible;
+    if (!modalOpen) {
+      setAvailableTablesInfo(null);
+      setAvailableTablesError('');
+      return;
+    }
+
+    if (!formData.startTime || !formData.endTime || !restaurantId) {
+      return;
+    }
+
+    const startDate = new Date(formData.startTime);
+    const endDate = new Date(formData.endTime);
+    if (Number.isNaN(startDate.getTime()) || Number.isNaN(endDate.getTime()) || startDate >= endDate) {
+      return;
+    }
+
+    let isMounted = true;
+
+    const fetchAvailability = async () => {
+      setAvailableTablesLoading(true);
+      setAvailableTablesError('');
+      try {
+        const payload = {
+          userStart: startDate.toISOString(),
+          userEnd: endDate.toISOString(),
+          restaurantId,
+        };
+        const config = token
+          ? {
+              headers: {
+                Authorization: `Bearer ${token}`,
+              },
+            }
+          : {};
+        const response = await axios.post(`${BASE_URL}/reservations/available-tables`, payload, config);
+        if (isMounted) {
+          setAvailableTablesInfo(response.data);
+        }
+      } catch (err) {
+        if (isMounted) {
+          setAvailableTablesInfo(null);
+          setAvailableTablesError(
+            err.response?.data?.message || err.message || 'Failed to fetch available tables'
+          );
+        }
+      } finally {
+        if (isMounted) {
+          setAvailableTablesLoading(false);
+        }
+      }
+    };
+
+    fetchAvailability();
+
+    return () => {
+      isMounted = false;
+    };
+  }, [formData.startTime, formData.endTime, modalVisible, editModalVisible, restaurantId, token]);
+
+  useEffect(() => {
+    if (
+      !availableTablesInfo ||
+      !formData.tableNumber ||
+      !(modalVisible || editModalVisible)
+    ) {
+      return;
+    }
+
+    const normalizedSelected = normalizeTableNumber(formData.tableNumber);
+    const availableList = availableTablesInfo?.availableTables || [];
+    const isSelectedAvailable =
+      availableList.some((table) => normalizeTableNumber(table) === normalizedSelected) ||
+      (editModalVisible &&
+        selectedReservation?.tableNumber &&
+        normalizeTableNumber(selectedReservation.tableNumber) === normalizedSelected);
+
+    if (!isSelectedAvailable) {
+      setFormData((prev) => ({ ...prev, tableNumber: '' }));
+    }
+  }, [availableTablesInfo, formData.tableNumber, modalVisible, editModalVisible, selectedReservation]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -546,11 +640,42 @@ const Reservation = () => {
 
   const tableOptions = React.useMemo(() => {
     if (!Array.isArray(qrList)) return [];
-    return qrList.map((qr) => ({
-      value: qr.tableNumber,
-      label: `Table ${qr.tableNumber}`,
-    }));
-  }, [qrList]);
+
+    if (!availableTablesInfo) {
+      return qrList.map((qr) => ({
+        value: qr.tableNumber,
+        label: `Table ${qr.tableNumber}`,
+        status: 'unknown',
+        isDisabled: false,
+      }));
+    }
+
+    const availableSet = new Set(
+      (availableTablesInfo?.availableTables || []).map((table) => normalizeTableNumber(table))
+    );
+    const bookedSet = new Set(
+      (availableTablesInfo?.bookedTables || []).map((table) => normalizeTableNumber(table))
+    );
+
+    if (editModalVisible && selectedReservation?.tableNumber) {
+      availableSet.add(normalizeTableNumber(selectedReservation.tableNumber));
+    }
+
+    return qrList.map((qr) => {
+      const normalized = normalizeTableNumber(qr.tableNumber);
+      const isAvailable = availableSet.has(normalized);
+      const isBooked = !isAvailable && bookedSet.has(normalized);
+      const status = isAvailable ? 'available' : isBooked ? 'booked' : 'unavailable';
+      const statusLabel =
+        status === 'available' ? 'Available' : status === 'booked' ? 'Booked' : 'Unavailable';
+      return {
+        value: qr.tableNumber,
+        label: `Table ${qr.tableNumber} (${statusLabel})`,
+        isDisabled: status !== 'available',
+        status,
+      };
+    });
+  }, [qrList, availableTablesInfo, editModalVisible, selectedReservation]);
 
   const selectStyles = {
     control: (base, state) => ({
@@ -573,18 +698,50 @@ const Reservation = () => {
       backgroundColor: isDarkMode ? '#1e1e1e' : '#ffffff',
       color: isDarkMode ? '#ffffff' : '#000000',
     }),
-    option: (base, state) => ({
-      ...base,
-      backgroundColor: state.isSelected
-        ? (isDarkMode ? '#0066cc' : '#0d6efd')
-        : state.isFocused
-        ? (isDarkMode ? '#333' : '#f0f0f0')
-        : isDarkMode ? '#1e1e1e' : '#ffffff',
-      color: isDarkMode ? '#ffffff' : '#000000',
-      '&:hover': {
-        backgroundColor: isDarkMode ? '#333' : '#f0f0f0',
-      },
-    }),
+    option: (base, state) => {
+      const status = state.data?.status;
+      let backgroundColor = isDarkMode ? '#1e1e1e' : '#ffffff';
+      let color = isDarkMode ? '#ffffff' : '#000000';
+
+      if (status === 'booked') {
+        backgroundColor = '#fff7ed';
+        color = '#c2410c';
+      } else if (status === 'available') {
+        backgroundColor = isDarkMode ? '#1b4332' : '#ecfdf5';
+        color = isDarkMode ? '#bbf7d0' : '#065f46';
+      } else if (status === 'unavailable') {
+        backgroundColor = isDarkMode ? '#2f2f2f' : '#f8f9fa';
+        color = isDarkMode ? '#bbbbbb' : '#6c757d';
+      }
+
+      if (state.isSelected) {
+        backgroundColor = isDarkMode ? '#0066cc' : '#0d6efd';
+        color = '#ffffff';
+      } else if (state.isFocused) {
+        backgroundColor = isDarkMode ? '#333' : '#f0f0f0';
+      }
+
+      return {
+        ...base,
+        backgroundColor,
+        color,
+        cursor: state.data?.isDisabled ? 'not-allowed' : base.cursor,
+        opacity: state.data?.isDisabled ? 0.6 : 1,
+        '&:hover': {
+          backgroundColor: state.isSelected
+            ? backgroundColor
+            : status === 'booked'
+            ? '#ffe8cc'
+            : status === 'available'
+            ? isDarkMode
+              ? '#245746'
+              : '#def7ec'
+            : isDarkMode
+            ? '#333'
+            : '#f0f0f0',
+        },
+      };
+    },
     singleValue: (base) => ({
       ...base,
       color: isDarkMode ? '#ffffff' : '#000000',
@@ -684,9 +841,30 @@ const Reservation = () => {
               isSearchable
               styles={selectStyles}
               className={formErrors.tableNumber ? 'is-invalid' : ''}
+              isDisabled={!formData.startTime || !formData.endTime || availableTablesLoading}
+              isOptionDisabled={(option) => option.isDisabled}
             />
             {formErrors.tableNumber && (
               <div className="invalid-feedback d-block">{formErrors.tableNumber}</div>
+            )}
+            {availableTablesLoading && (
+              <div className="text-muted small mt-2">Checking table availability...</div>
+            )}
+            {availableTablesError && (
+              <div className="text-danger small mt-2">{availableTablesError}</div>
+            )}
+            {!availableTablesLoading && !availableTablesError && availableTablesInfo && (
+              <div className="d-flex flex-wrap gap-2 mt-2 small">
+                <span className="badge bg-success text-white">
+                  Available: {availableTablesInfo.availableCount ?? availableTablesInfo.availableTables?.length ?? 0}
+                </span>
+                <span className="badge bg-warning text-dark">
+                  Booked: {availableTablesInfo.bookedCount ?? availableTablesInfo.bookedTables?.length ?? 0}
+                </span>
+                <span className="badge bg-primary text-white">
+                  Total: {availableTablesInfo.totalTables ?? qrList?.length ?? 0}
+                </span>
+              </div>
             )}
           </div>
           <div className="row g-2">
@@ -867,9 +1045,30 @@ const Reservation = () => {
             isSearchable
             styles={selectStyles}
             className={formErrors.tableNumber ? 'is-invalid' : ''}
+            isDisabled={!formData.startTime || !formData.endTime || availableTablesLoading}
+            isOptionDisabled={(option) => option.isDisabled}
           />
           {formErrors.tableNumber && (
             <div className="invalid-feedback d-block">{formErrors.tableNumber}</div>
+          )}
+          {availableTablesLoading && (
+            <div className="text-muted small mt-2">Checking table availability...</div>
+          )}
+          {availableTablesError && (
+            <div className="text-danger small mt-2">{availableTablesError}</div>
+          )}
+          {!availableTablesLoading && !availableTablesError && availableTablesInfo && (
+            <div className="d-flex flex-wrap gap-2 mt-2 small">
+              <span className="badge bg-success text-white">
+                Available: {availableTablesInfo.availableCount ?? availableTablesInfo.availableTables?.length ?? 0}
+              </span>
+              <span className="badge bg-warning text-dark">
+                Booked: {availableTablesInfo.bookedCount ?? availableTablesInfo.bookedTables?.length ?? 0}
+              </span>
+              <span className="badge bg-primary text-white">
+                Total: {availableTablesInfo.totalTables ?? qrList?.length ?? 0}
+              </span>
+            </div>
           )}
         </div>
         <div className="row g-2">
